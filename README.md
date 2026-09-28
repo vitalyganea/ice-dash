@@ -1,4 +1,4 @@
-# 🐧 Pine Rush
+# 🐧 Ice Dash
 
 A one-tap endless slide, written in plain HTML + CSS + JavaScript and built to
 pass YouTube Playables certification. No libraries, no build step, no image or
@@ -39,12 +39,25 @@ one side. A tap sends him the other way. That is the whole game.
 - Pines and boulders to weave through, seen from directly overhead
 - 🐟 fish to swallow (25), ✨ a golden fish off the safe line (150),
   🫧 a snow bubble that absorbs one crash, 🚩 flag gates for a bonus
+- 🕳️ **crevasses** that split the run from bank to bank. The only way over is
+  the snow ramp sitting in that row's opening: hit it and you fly, clear of
+  everything, until you land
+- 🛒 a **market**: fish are the currency, and eight creatures to spend them on
+  — four penguins, then a seal, a walrus, an arctic fox and a polar bear. One
+  worn at a time, each with a different way of earning
 - Four stretches of hill that rotate every 520 m, cross-fading into each other rather than cutting: **Pine Forest**,
   **Rocky Pass**, **Glacier** (he turns lazily — tap earlier) and
   **Night Run** (the hill ahead fades into the dark)
 - The run gets harder the whole way down: faster, gaps narrower, rows closer
   together and more often doubled up
 - Best score saved through the Playables cloud save (distance plus everything collected)
+- A **settings** screen: sound, music, and the language
+- **English and Russian.** English is the fallback for every string. Baloo 2
+  has no Cyrillic at all, so a subset of Nunito is embedded alongside it and
+  `unicode-range` picks between them per glyph — an English player downloads
+  nothing extra, and Russian never drops to whatever font the device happened
+  to have. Russian declines its nouns after a number, so the readouts are
+  written as labels (`рыба: 37`) rather than as counted phrases
 - Music and sound effects, each with its own on/off toggle
 - Fills the screen at any shape, from 9:32 to 32:9. A fixed safe region of
   the world is guaranteed visible and the view then extends to the edges, so
@@ -57,8 +70,10 @@ one side. A tap sends him the other way. That is the whole game.
 index.html        the screens (title, help, pause, run over)
 css/font.css      Baloo 2, embedded as a data URI (no external requests)
 css/style.css     all interface styling
+js/i18n.js        every string, in English and Russian
 js/audio.js       sounds and music synthesised with WebAudio
 js/biomes.js      the four stretches of hill: palette, grip, fog
+js/skins.js       the creatures you can wear, and what each one does
 js/game.js        the engine: physics, spawning, collisions, rendering
 js/ui.js          menus, saving, input, Playables lifecycle
 PLAYABLES.md      certification requirements and how each one is met
@@ -79,6 +94,17 @@ do nothing.
 The pause button sits top right, clear of the lower half, because the whole
 screen steers and a control under a resting thumb would pause the run by
 accident.
+
+## What a skin may do
+
+Every perk is allowed to make the hill **more** generous and never harsher:
+a wider reach for fish, more shoals, a shield to start with, sharper turning,
+longer air off a ramp. That is not a style guide, it is a safety rule with a
+test behind it (`scratchpad/pine/skinsafe.js`): each perk has to be declared,
+the scaling ones have to point upward, and every skin is then run through the
+reachability proof below. A "slippery" penguin with a score multiplier would
+be rejected, because a wider swing turns openings the spawner already promised
+into ones nobody can make.
 
 ## How the hill stays fair
 

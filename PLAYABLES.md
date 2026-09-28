@@ -1,6 +1,6 @@
 # YouTube Playables compliance
 
-How Pine Rush meets each certification requirement, and what is still left for
+How Ice Dash meets each certification requirement, and what is still left for
 you to do in the Developer Portal.
 
 ## Integration
@@ -11,7 +11,7 @@ you to do in the Developer Portal.
 | `firstFrameReady()` then `gameReady()` | `js/ui.js` — `firstFrameReady` fires in the first `requestAnimationFrame`; `gameReady` only after `loadData()` settles and the title menu is interactive |
 | Progress saved only via `saveData` | `js/ui.js` `store()` — inside Playables the SDK is the sole mechanism; `localStorage` is used only when the SDK is absent |
 | `loadData()` awaited before `saveData()` | `canSave` stays `false` until the load promise settles; `store()` returns early before that |
-| Old saves must still load | `adopt()` parses defensively and falls back to defaults on anything unexpected |
+| Old saves must still load | `adopt()` parses defensively and falls back to defaults; only skin ids this build knows about survive the load, so a save from a later version cannot equip something that is not here |
 | Save at milestones | when a run ends, and on `onPause` |
 | Failed save retried | `saveData()` is retried once before giving up |
 | Audio follows YouTube | `isAudioEnabled()` seeds the state, `onAudioEnabledChange` updates it; `Sfx.platformAudio()` gates the master bus, so nothing can be output while YouTube is muted |
@@ -37,6 +37,7 @@ you to do in the Developer Portal.
 | Crisp at every resolution | the canvas backing store is sized in device pixels and the context scaled to match; re-runs on resize and on density change |
 | Communicates end of content | the run is endless by design and says so; the run-over screen shows the distance and the best |
 | No sharing prompts / external links / extra agreements / quit button | none present |
+| English supported | English is the default and the fallback for every string; Russian is offered alongside it in Settings, and an unknown device language falls back to English |
 | No icon clashing with platform controls | the in-game button is a ☰ menu glyph, not a pause symbol |
 
 ## Privacy and data
@@ -51,11 +52,11 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 
 | Limit | This game |
 |---|---|
-| Initial bundle < 30 MiB (< 15 recommended) | 118 KB |
-| Individual file < 30 MiB (< 512 KiB recommended) | largest is `css/font.css`, 44 KB |
-| Saved game < 3 MiB (< 500 KiB recommended) | ~50 bytes |
+| Initial bundle < 30 MiB (< 15 recommended) | 177 KB |
+| Individual file < 30 MiB (< 512 KiB recommended) | largest is `js/game.js`, 62 KB |
+| Saved game < 3 MiB (< 500 KiB recommended) | ~180 bytes (best, runs, wallet, wardrobe, language) |
 | Load and interactive < 5 s | no assets to fetch; interactive on the first frame |
-| At most 8000 files | 7 |
+| At most 8000 files | 9 |
 | Only relative paths | yes, the SDK URL aside |
 | File names `[A-Za-z0-9_.-]` | yes |
 | Standards-compliant Web APIs | Canvas 2D, WebAudio, Pointer Events |

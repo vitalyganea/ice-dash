@@ -131,5 +131,38 @@
 <script src="js/skins.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ui.js"></script>
+
+<style>.screen{animation:none !important}</style>
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var lang = q.get('lang') || 'en', view = q.get('v') || 'settings';
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      setLang(lang); applyI18n();
+      if (view === 'settings') { document.querySelector('[data-action="settings"]').click(); }
+      else if (view === 'shop') { document.querySelector('[data-action="shop"]').click(); }
+      else {
+        document.querySelector('[data-action="play"]').click();
+        var K = Game._consts();
+        function steer(){
+          var W=Game.debug(); if(!W||W.state!=='run') return;
+          var row=null;
+          for(var j=0;j<W.rows.length;j++) if(W.rows[j].d>W.dist+30){row=W.rows[j];break;}
+          if(!row) return;
+          var t2=Game._chuteAt(row.d)+row.gap;
+          var fr=Math.max(1,Math.round((row.d-W.dist)/W.speed));
+          function m(d){var x=W.px,v=W.vx,tr=Game._turnRate();
+            for(var p=0;p<fr;p++){v+=(d*K.DRIFT*W.speed-v)*tr;x+=v;}return Math.abs(x-t2);}
+          if(m(-W.dir)<m(W.dir)-6) Game.tap();
+        }
+        var stop = +(q.get('f')||900);
+        for (var f=0; f<stop; f++){ steer(); Game._step(1); }
+        Game._render();
+      }
+    }, 100);
+  });
+})();
+</script>
 </body>
 </html>
