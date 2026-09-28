@@ -40,8 +40,9 @@ body{
 }
 
 /* ------------------- STAGE -------------------
-   JS sizes and centres #stage so the game keeps its aspect ratio at any
-   viewport shape; whatever is left over shows the body as pillar/letterbox. */
+   JS sizes #stage to the whole viewport. The world scales so a fixed safe
+   region always fits and then simply extends to the screen edges, so there
+   is never a letterbox or pillarbox to leave dead, untappable space. */
 #stage{
   position:absolute;
   left:50%;
@@ -58,24 +59,27 @@ body{
   width:100%;
   height:100%;
   image-rendering:auto;
+  touch-action:none;
 }
 
 .hidden{ display:none !important; }
 
 /* ------------------- HUD ------------------- */
-/* The score and move pills are painted on the canvas at the top, so the only
-   HTML control sits at the bottom where nothing else competes for the space. */
+/* The readouts are painted on the canvas down the left, so the pause button
+   takes the top right. It must stay out of the lower half: the whole screen
+   is the steering control, and a thumb resting near the bottom corner would
+   pause the run by accident. */
 #hud{
   position:absolute;
-  inset:auto 0 0 0;
+  inset:0 0 auto 0;
   display:flex;
   align-items:flex-start;
-  justify-content:space-between;
+  justify-content:flex-end;
   gap:8px;
-  padding:14px
-          calc(16px + env(safe-area-inset-right,0px))
-          calc(14px + env(safe-area-inset-bottom,0px))
-          calc(16px + env(safe-area-inset-left,0px));
+  padding:calc(12px + env(safe-area-inset-top,0px))
+          calc(14px + env(safe-area-inset-right,0px))
+          14px
+          calc(14px + env(safe-area-inset-left,0px));
   pointer-events:none;
   font-size:clamp(13px,1.9vw,19px);
 }
@@ -105,7 +109,9 @@ body{
 
 .icon-btn{
   pointer-events:auto;
+  /* 27px on a phone was far too small to hit; keep a proper touch target */
   width:2.1em; height:2.1em;
+  min-width:44px; min-height:44px;
   display:grid; place-items:center;
   font:inherit; font-size:1em; letter-spacing:1px;
   color:var(--ink);
