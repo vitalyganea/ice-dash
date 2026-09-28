@@ -51,7 +51,7 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 
 | Limit | This game |
 |---|---|
-| Initial bundle < 30 MiB (< 15 recommended) | 111 KB |
+| Initial bundle < 30 MiB (< 15 recommended) | 118 KB |
 | Individual file < 30 MiB (< 512 KiB recommended) | largest is `css/font.css`, 44 KB |
 | Saved game < 3 MiB (< 500 KiB recommended) | ~50 bytes |
 | Load and interactive < 5 s | no assets to fetch; interactive on the first frame |

@@ -12,6 +12,12 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<script>
+try { localStorage.setItem('pinerush-save-v1', JSON.stringify({
+  best: 100, runs: 5, fish: 900, gold: 3, owned: ['snowcap'], equipped: 'snowcap'
+})); } catch (e) {}
+</script>
+
 
 <div id="stage">
   <canvas id="game"></canvas>
@@ -113,5 +119,92 @@
 <script src="js/skins.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ui.js"></script>
+
+<pre id="out" style="position:fixed;left:0;top:0;z-index:99999;background:#fff;color:#000;font:11px monospace;margin:0;padding:3px;max-height:100%;overflow:auto"></pre>
+<script>
+var out=[]; function log(s){out.push(s);document.getElementById('out').textContent=out.join('\n');}
+function wait(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function saved(){ try { return JSON.parse(localStorage.getItem('pinerush-save-v1')); } catch(e){ return null; } }
+function cards(){ return [].slice.call(document.querySelectorAll('#shop-grid .skin-card')); }
+function btnFor(id){ return document.querySelector('#shop-grid [data-skin="'+id+'"]'); }
+function click(el){ el.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
+(async function(){
+  await wait(120);
+  log('load: fish='+saved().fish+' gold='+saved().gold);
+
+  document.querySelector('[data-action="shop"]').click();
+  await wait(120);
+  log('shop open, cards='+cards().length+'  wallet="'+
+      document.getElementById('wallet-fish').textContent+' '+
+      document.getElementById('wallet-gold').textContent+'"');
+  cards().forEach(function(c){
+    var b=c.querySelector('[data-skin]');
+    var pic=c.querySelector('canvas');
+    log('  card '+b.getAttribute('data-skin').padEnd(8)+
+        ' btn="'+b.textContent+'"'+(b.disabled?' [disabled]':'')+
+        ' pic='+pic.width+'x'+pic.height+
+        ' cls='+JSON.stringify(c.className));
+  });
+
+  click(btnFor('mitten')); await wait(120);
+  log('bought mitten -> fish='+saved().fish+' equipped='+saved().equipped+
+      ' owned='+JSON.stringify(saved().owned));
+  log('  mitten btn now "'+btnFor('mitten').textContent+'"  snowcap "'+btnFor('snowcap').textContent+'"');
+
+  click(btnFor('snowcap')); await wait(100);
+  log('wore snowcap again -> equipped='+saved().equipped+' fish='+saved().fish+' (must not re-charge)');
+  click(btnFor('mitten')); await wait(100);
+  log('wore mitten again -> equipped='+saved().equipped+' fish='+saved().fish);
+
+  click(btnFor('bubbles')); await wait(120);
+  log('bought bubbles -> fish='+saved().fish+' equipped='+saved().equipped);
+  log('  compass btn "'+btnFor('compass').textContent+'"'+(btnFor('compass').disabled?' [disabled - correct]':' [ENABLED - WRONG]'));
+
+  // does the equipped perk actually reach the run?
+  document.querySelector('#screen-shop [data-action="back-title"]').click(); await wait(80);
+  document.querySelector('#screen-title [data-action="play"]').click(); await wait(80);
+  log('run started with bubbles: shield='+Game.debug().shield+' (want 1)');
+  Game.stop();
+
+  // and the baseline must NOT start shielded
+  document.querySelector('[data-action="shop"]').click(); await wait(100);
+  click(btnFor('snowcap')); await wait(100);
+  document.querySelector('#screen-shop [data-action="back-title"]').click(); await wait(80);
+  document.querySelector('#screen-title [data-action="play"]').click(); await wait(80);
+  log('run started with snowcap: shield='+Game.debug().shield+' (want 0)');
+
+  // earn a run's worth and check it banks
+  var before = saved().fish;
+  var K = Game._consts();
+  function steer(){
+    var W=Game.debug(); if(!W||W.state!=='run') return;
+    var row=null;
+    for(var j=0;j<W.rows.length;j++) if(W.rows[j].d>W.dist+30){row=W.rows[j];break;}
+    if(!row) return;
+    var t=Game._chuteAt(row.d)+row.gap;
+    var fr=Math.max(1,Math.round((row.d-W.dist)/W.speed));
+    function m(d){var x=W.px,v=W.vx;for(var q=0;q<fr;q++){v+=(d*K.DRIFT*W.speed-v)*K.TURN;x+=v;}return Math.abs(x-t);}
+    if(m(-W.dir)<m(W.dir)-6) Game.tap();
+  }
+  for (var i=0;i<2200 && Game.debug() && Game.debug().state==='run';i++){ steer(); Game._step(1); }
+  for (var i2=0;i2<3000 && Game.debug() && Game.debug().state==='run';i2++){ Game._step(1); }
+  Game._step(60);
+  var live = Game.debug();
+  log('run ended: state='+live.state+' '+Math.round(live.dist/8)+'m fish='+live.fish+
+      ' coins='+live.coins+' (first '+FIRST_CATCH+' pay double)');
+  await wait(200);
+  log('after a crash: fish '+before+' -> '+saved().fish+
+      '  card says "'+document.getElementById('over-earned').textContent+'"'+
+      (document.getElementById('over-earned').classList.contains('hidden')?' [hidden]':''));
+
+  // market from the end card must come back to the end card
+  document.querySelector('#screen-over [data-action="shop"]').click(); await wait(100);
+  var inShop = !document.getElementById('screen-shop').classList.contains('hidden');
+  document.querySelector('#screen-shop [data-action="back-title"]').click(); await wait(100);
+  var backOnOver = !document.getElementById('screen-over').classList.contains('hidden');
+  log('market from end card: opened='+inShop+' returned to end card='+backOnOver);
+  log('DONE');
+})();
+</script>
 </body>
 </html>
