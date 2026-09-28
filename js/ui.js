@@ -64,18 +64,18 @@
   function show(name) {
     currentScreen = name;
     for (var k in screens) screens[k].classList.toggle('hidden', k !== name);
-    hud.classList.toggle('hidden', name !== 'pause' && name !== 'over');
+    /* The pause button belongs to play and nothing else. This used to be
+       written the other way round, so show('game') hid it — which happened
+       whenever a run started before loadData() came back, taking away the
+       only way to pause for the rest of that run. */
+    hud.classList.toggle('hidden', name !== 'game');
     if (name === 'title') {
       var t = $('title-best');
       t.textContent = '🏔️ Best ' + save.best + ' points';
       t.classList.toggle('hidden', save.best <= 0);
     }
   }
-  function showGame() {
-    currentScreen = 'game';
-    for (var k in screens) screens[k].classList.add('hidden');
-    hud.classList.remove('hidden');
-  }
+  function showGame() { show('game'); }
 
   /* --------------------------- game -------------------------- */
   function ride() {
@@ -133,6 +133,25 @@
   function toggleMusic(){ save.music = !save.music; store(); Sfx.unlock(); Sfx.music(save.music); syncToggles(); }
   ['t-sfx','t-sfx2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleSfx); });
   ['t-music','t-music2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleMusic); });
+
+  /* --------------------------- tapping ----------------------- */
+  /* The control has to answer anywhere on the screen. Binding it to the
+     canvas meant that on a tall phone the parts of the display outside the
+     drawing surface — including where a thumb naturally rests — swallowed
+     every tap. Two fingers landing together count as one tap, or the
+     direction would flip twice and nothing would appear to happen. */
+  var lastTap = -1e9;
+  window.addEventListener('pointerdown', function (e) {
+    if (currentScreen !== 'game' || Game.isPaused()) return;
+    if (e.target && e.target.closest && e.target.closest('button, [data-action]')) return;
+    var now = e.timeStamp || Date.now();
+    if (now - lastTap < 45) return;
+    lastTap = now;
+    Game.tap();
+  });
+  document.addEventListener('contextmenu', function (e) {
+    if (currentScreen === 'game') e.preventDefault();
+  });
 
   /* ------------------------- keyboard ------------------------ */
   /* Esc is never swallowed: Design req. 2 forbids preventDefault() on it. */

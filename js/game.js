@@ -9,12 +9,17 @@ var Game = (function () {
   'use strict';
 
   var STEP_MS = 1000 / 60;
-  var BASE_H = 540, MIN_W = 640, MAX_W = 1400;
-  var VIEW_W = 960, VIEW_H = BASE_H;
+  /* The world region that must always be on screen. Everything is scaled so
+     this fits, and then the viewport simply IS the screen — both dimensions
+     run past the safe region rather than leaving a bar anywhere. */
+  var SAFE_W = 680, SAFE_H = 540;
+  var VIEW_W = 960, VIEW_H = 540;
+  var CLEAR_AHEAD = 400;       // hill you can always read plainly, in world units
+  var BEHIND = 300;            // how far past the penguin things stay alive (set by resize)
 
   var PLAYER_Y = 390;          // where the penguin sits on screen
   var CHUTE = 300;             // half-width of the ice run
-  var LOOK   = 620;            // how far up the hill objects are kept alive
+  var LOOK   = 620;            // how far up the hill objects are kept alive (set by resize)
 
   var SPEED0 = 3.0, SPEED_MAX = 6.4, SPEED_RAMP = 0.000155;
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
@@ -48,6 +53,55 @@ var Game = (function () {
   }
   function biome() { return BIOMES[W.biome % BIOMES.length]; }
 
+  /* BIOME_LEN is in metres and eight world units make a metre. This used to
+     read BIOME_LEN * 3, so every stretch was a third of its stated length
+     and the hill changed its mind roughly every five seconds. */
+  function zoneLen() { return BIOME_LEN * 8; }
+
+  /* ---- crossfading one stretch of hill into the next ----------
+     Only the look is blended. grip must stay exactly what biome() reports,
+     because that is the number the spawner already predicted when it placed
+     each row; a blended grip would quietly break that promise. */
+  var FADE = 520;
+  var PAL = null;
+
+  function rgbOf(h) {
+    var n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function mixHex(a, b, t) {
+    var A = rgbOf(a), B2 = rgbOf(b);
+    return 'rgb(' + Math.round(A[0] + (B2[0] - A[0]) * t) + ',' +
+                    Math.round(A[1] + (B2[1] - A[1]) * t) + ',' +
+                    Math.round(A[2] + (B2[2] - A[2]) * t) + ')';
+  }
+  function mixTriplet(a, b, t) {
+    if (!a) a = b; if (!b) b = a;
+    if (!a) return '';
+    var A = a.split(','), B2 = b.split(',');
+    return Math.round(+A[0] + (+B2[0] - +A[0]) * t) + ',' +
+           Math.round(+A[1] + (+B2[1] - +A[1]) * t) + ',' +
+           Math.round(+A[2] + (+B2[2] - +A[2]) * t);
+  }
+  var TINTS = ['snowA', 'iceTop', 'iceBot', 'bankEdge', 'bankShade',
+               'far', 'edge', 'tree', 'treeDark', 'trunk', 'rock', 'rockDark'];
+
+  function buildPal() {
+    var cur = biome();
+    if (W.biome === 0 || W.biomeT >= FADE) return cur;      // nothing to fade
+    var prev = BIOMES[(W.biome - 1) % BIOMES.length];
+    var t = W.biomeT / FADE;
+    var out = { name: cur.name, grip: cur.grip };
+    for (var i = 0; i < TINTS.length; i++)
+      out[TINTS[i]] = mixHex(prev[TINTS[i]], cur[TINTS[i]], t);
+    out.sky = [mixHex(prev.sky[0], cur.sky[0], t), mixHex(prev.sky[1], cur.sky[1], t)];
+    out.fog = prev.fog + (cur.fog - prev.fog) * t;
+    out.fogRGB = mixTriplet(prev.fogRGB, cur.fogRGB, t);
+    out.hazeRGB = mixTriplet(prev.hazeRGB, cur.hazeRGB, t);
+    return out;
+  }
+  function pal() { return PAL || biome(); }
+
   /* --------------------- world construction ------------------- */
   function newRun() {
     var w = {
@@ -62,9 +116,11 @@ var Game = (function () {
     W = w;
     w.px = chuteAt(0);
     var i;
-    for (i = 0; i < 46; i++)
+    var nStreak = Math.round(46 * Math.max(1, LOOK / 620));
+    for (i = 0; i < nStreak; i++)
       w.streaks.push({ x: rnd(-CHUTE, CHUTE), d: rnd(0, LOOK), len: rnd(40, 130), a: rnd(0.05, 0.22) });
-    for (i = 0; i < 40; i++)
+    var nFlake = Math.round(40 * Math.max(1, (VIEW_W * VIEW_H) / (960 * 540)));
+    for (i = 0; i < Math.min(nFlake, 160); i++)
       w.flakes.push({ x: rnd(-VIEW_W, VIEW_W), y: rnd(0, VIEW_H), v: rnd(0.4, 1.5), r: rnd(1, 2.6) });
     while (w.nextRowD < LOOK) spawnRow();
     return w;
@@ -85,7 +141,7 @@ var Game = (function () {
      will be underfoot when this row arrives is known exactly. */
   function gripAt(d) {
     var ahead = Math.max(0, d - W.dist);
-    var i = W.biome + Math.floor((W.biomeT + ahead) / (BIOME_LEN * 3));
+    var i = W.biome + Math.floor((W.biomeT + ahead) / zoneLen());
     return BIOMES[i % BIOMES.length].grip;
   }
 
@@ -98,7 +154,11 @@ var Game = (function () {
   function reachOver(step, hard, d) {
     var speed = speedAt(d);
     var frames = Math.max(1, Math.floor(step / speed));
-    var t = TURN * Math.min(gripAt(d - step), gripAt(d));
+    /* A row can land exactly on a zone boundary, where the penguin crosses
+       the line in the same instant he reaches it. Sample just past the row
+       as well, so the promise is made on the grip he will actually have
+       underfoot rather than the one he had a frame earlier. */
+    var t = TURN * Math.min(gripAt(d - step), gripAt(d), gripAt(d + 12));
     var x = 0, vx = -DRIFT * speed;
     for (var i = 0; i < frames; i++) { vx += (DRIFT * speed - vx) * t; x += vx; }
     return Math.max(0, x) * lerp(0.60, 0.93, hard);
@@ -128,11 +188,13 @@ var Game = (function () {
     var gap = rnd(lo, hi);
     W.lastGap = gap;
     W.rows.push({ d: d, gap: gap, gapW: gapW, reach: reach, step: prevStep });
-    while (W.rows.length && W.rows[0].d < W.dist - 200) W.rows.shift();
+    while (W.rows.length && W.rows[0].d < W.dist - BEHIND - 80) W.rows.shift();
 
     /* Rows reason in chute-relative space, but every object is stored in
        absolute world x. Mixing the two put the rocks outside the run. */
     function place(rel, dd) { return chuteAt(dd) + rel; }
+
+    spawnScenery(d);
 
     if (Math.random() < 0.15 && W.dist > 900)
       W.objects.push({ t: 'gate', x: place(gap, d), d: d, w: gapW, passed: false });
@@ -166,6 +228,27 @@ var Game = (function () {
       var bd = d + 90;
       W.objects.push({ t: 'bubble', x: place(gap + rnd(-16, 16), bd), d: bd, r: 24,
                        got: false, ph: rnd(0, 6.28) });
+    }
+  }
+
+  /* Trees and boulders standing off the run itself. They never collide —
+     they are there because on a wide screen the banks are most of the
+     picture, and an empty field of snow reads as a bar rather than a place.
+     They stay well clear of the bank edge so nothing looks like a hazard
+     you were meant to dodge. */
+  function spawnScenery(d) {
+    var half = VIEW_W / 2 + 150;
+    var room = half - CHUTE - 80;
+    if (room < 60) return;
+    var n = Math.min(5, 1 + Math.round(room / 230));
+    for (var i = 0; i < n; i++) {
+      var side = Math.random() < 0.5 ? -1 : 1;
+      var dd = d + rnd(-95, 95);
+      W.objects.push({
+        t: 'deco', kind: Math.random() < 0.62 ? 'tree' : 'rock',
+        x: chuteAt(dd) + side * (CHUTE + 80 + Math.random() * room),
+        d: dd, r: rnd(19, 37), rot: rnd(0, 6.28), pts: rockPts()
+      });
     }
   }
 
@@ -215,7 +298,7 @@ var Game = (function () {
 
     for (var i = W.objects.length - 1; i >= 0; i--) {
       var o = W.objects[i];
-      if (o.d < W.dist - 160) { W.objects.splice(i, 1); continue; }
+      if (o.d < W.dist - BEHIND) { W.objects.splice(i, 1); continue; }
       var dy = o.d - W.dist, dx = o.x - W.px;
 
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble') && !o.got &&
@@ -252,8 +335,8 @@ var Game = (function () {
     /* Carry the overshoot over instead of dropping it: zeroing here makes
        every zone a fraction longer than the last, and the drift eventually
        puts gripAt() in the wrong biome when it places a row near a border. */
-    if (W.biomeT >= BIOME_LEN * 3) {
-      W.biomeT -= BIOME_LEN * 3; W.biome++; Sfx.zone(); W.tapFlash = 14;
+    if (W.biomeT >= zoneLen()) {
+      W.biomeT -= zoneLen(); W.biome++; Sfx.zone(); W.tapFlash = 14;
     }
 
     updPuffs(); updFlakes();
@@ -294,6 +377,7 @@ var Game = (function () {
 
   /* ========================= RENDERING ========================= */
   function render() {
+    PAL = buildPal();
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.globalAlpha = 1;
     var shx = (Math.random() - 0.5) * W.shake, shy = (Math.random() - 0.5) * W.shake;
@@ -301,6 +385,7 @@ var Game = (function () {
     ctx.translate(shx, shy);
     drawChute();
     drawObjects();
+    drawHaze();
     drawFog();
     drawPenguin();
     drawFlakes();
@@ -310,7 +395,7 @@ var Game = (function () {
 
   /* the ice run and the snow banks that wind along either side */
   function drawChute() {
-    var B = biome(), y, d, c, i;
+    var B = pal(), y, d, c, i;
 
     ctx.fillStyle = B.snowA;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -397,11 +482,16 @@ var Game = (function () {
       return y > -140 && y < VIEW_H + 140;
     }).sort(function (a, b) { return a.d - b.d; });        // nearest drawn last
 
-    var B = biome();
+    var B = pal();
     for (var i = 0; i < list.length; i++) {
       var o = list[i], x = scrX(o.x), y = scrY(o.d);
       if (o.t === 'rock')        drawRock(x, y, o, B);
       else if (o.t === 'tree')   drawTree(x, y, o, B);
+      else if (o.t === 'deco') {                       // never a hazard, so it sits back
+        ctx.globalAlpha = 0.82;
+        if (o.kind === 'tree') drawTree(x, y, o, B); else drawRock(x, y, o, B);
+        ctx.globalAlpha = 1;
+      }
       else if (o.t === 'gate')   drawGate(x, y, o);
       else if (o.t === 'fish')   { if (!o.got) drawFish(x, y, o, false); }
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
@@ -710,10 +800,27 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* A tall phone shows far more hill than a laptop does. Left alone that
+     would hand the phone player several extra seconds of warning, so past a
+     fixed budget of clearly-readable hill the distance hazes over: shapes
+     still show through, but not sharply enough to plan on. */
+  function drawHaze() {
+    var top = PLAYER_Y - CLEAR_AHEAD;
+    if (top <= 8) return;
+    var B = pal();
+    var rgb = B.hazeRGB || '220,238,250';
+    var g = ctx.createLinearGradient(0, top, 0, 0);
+    g.addColorStop(0, 'rgba(' + rgb + ',0)');
+    g.addColorStop(0.55, 'rgba(' + rgb + ',0.5)');
+    g.addColorStop(1, 'rgba(' + rgb + ',0.82)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VIEW_W, top);
+  }
+
   /* Night closes the hill in: the far end of the run fades out, so a tap has
      to be committed to before the next row is fully in view. */
   function drawFog() {
-    var B = biome();
+    var B = pal();
     if (!B.fog || !B.fogRGB) return;
     var h = PLAYER_Y - 40;
     var g = ctx.createLinearGradient(0, 0, 0, h);
@@ -752,8 +859,11 @@ var Game = (function () {
   }
 
   function drawHud() {
+    /* Both readouts stack down the left so the top right stays clear for the
+       pause button. The whole screen is the control here, so that button must
+       not sit where a thumb taps. */
     pill(66, 34, 'SCORE', Math.floor(W.score), '#ffd83d');
-    pill(VIEW_W - 70, 34, 'METRES', Math.floor(W.dist / 8), '#eaf7ff');
+    pill(72, 84, 'METRES', Math.floor(W.dist / 8), '#eaf7ff');
     if (W.shield > 0) {
       ctx.save();
       ctx.translate(VIEW_W / 2, 62);
@@ -793,12 +903,23 @@ var Game = (function () {
     stage  = document.getElementById('stage');
     ctx    = canvas.getContext('2d');
     resize();
-    window.addEventListener('resize', resize);
-    window.addEventListener('orientationchange', resize);
-    canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); tap(); });
+    window.addEventListener('resize', reflow);
+    window.addEventListener('orientationchange', reflow);
+    /* On phones the visual viewport changes on its own when the browser
+       chrome slides away, and after a rotation innerHeight is briefly the
+       old one — so measure again a moment later. */
+    if (window.visualViewport && window.visualViewport.addEventListener)
+      window.visualViewport.addEventListener('resize', reflow);
     canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     watchDpr();
   }
+  var reflowT = null;
+  function reflow() {
+    resize();
+    if (reflowT) clearTimeout(reflowT);
+    reflowT = setTimeout(function () { reflowT = null; resize(); }, 260);
+  }
+
   function watchDpr() {
     if (!window.matchMedia) return;
     if (dprQuery && dprQuery.removeEventListener) dprQuery.removeEventListener('change', onDpr);
@@ -810,18 +931,25 @@ var Game = (function () {
   function resize() {
     if (!canvas) return;
     var vw = Math.max(1, window.innerWidth || 960), vh = Math.max(1, window.innerHeight || 540);
-    VIEW_H = BASE_H;
-    VIEW_W = Math.round(clamp(BASE_H * (vw / vh), MIN_W, MAX_W));
-    var scale = Math.min(vw / VIEW_W, vh / VIEW_H);
-    var cssW = Math.round(VIEW_W * scale), cssH = Math.round(VIEW_H * scale);
-    stage.style.width = cssW + 'px'; stage.style.height = cssH + 'px';
+
+    var scale = Math.min(vw / SAFE_W, vh / SAFE_H);   // world units per css pixel
+    VIEW_W = Math.round(vw / scale);                  // both are >= the safe region,
+    VIEW_H = Math.round(vh / scale);                  // and together they fill the screen
+    stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
+
     var dpr = window.devicePixelRatio || 1;
-    var eff = Math.max(1, Math.min(dpr, 2.5, 3840 / cssW, 2160 / cssH));
-    canvas.width = Math.round(cssW * eff); canvas.height = Math.round(cssH * eff);
-    drawK = canvas.width / VIEW_W;
+    var eff = Math.max(1, Math.min(dpr, 2.5, 3840 / vw, 2160 / vh));
+    canvas.width = Math.round(vw * eff); canvas.height = Math.round(vh * eff);
+    drawK = canvas.width / VIEW_W;                    // equals canvas.height / VIEW_H
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
     PLAYER_Y = Math.round(VIEW_H * 0.72);
+    LOOK = Math.max(620, PLAYER_Y + 300);             // spawn before it can be seen
+    /* A tall screen shows a lot of hill BELOW the penguin. Culling at a fixed
+       distance made everything he had just passed wink out halfway down the
+       picture. Keep it until it has genuinely left the view. */
+    BEHIND = (VIEW_H - PLAYER_Y) + 190;
     if (W && !suspended) render();
   }
 
@@ -839,6 +967,8 @@ var Game = (function () {
     } else accT = 0;
     render();
   }
+
+  if (typeof document !== 'undefined' && document.getElementById('game')) setup();
 
   return {
     start: function (best, cbs) {
