@@ -9,7 +9,10 @@
   var IN_YT = !!(window.ytgame && window.ytgame.IN_PLAYABLES_ENV);
 
   /* -------------------------- saving ------------------------- */
-  function defaults() { return { best: 0, runs: 0, sfx: true, music: true }; }
+  function defaults() {
+    return { best: 0, runs: 0, sfx: true, music: true,
+             fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap' };
+  }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
 
@@ -22,6 +25,17 @@
       save.runs  = Math.max(0, parseInt(o.runs, 10) || 0);
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
+      save.fish  = Math.max(0, parseInt(o.fish, 10) || 0);
+      save.gold  = Math.max(0, parseInt(o.gold, 10) || 0);
+      /* Only ids this build actually knows about survive the load, so a save
+         written by a later version cannot equip a skin that is not here. */
+      save.owned = ['snowcap'];
+      if (Object.prototype.toString.call(o.owned) === '[object Array]')
+        for (var i = 0; i < o.owned.length; i++)
+          if (SKIN_BY_ID[o.owned[i]] && save.owned.indexOf(o.owned[i]) < 0)
+            save.owned.push(o.owned[i]);
+      save.equipped = (SKIN_BY_ID[o.equipped] && save.owned.indexOf(o.equipped) >= 0)
+                    ? o.equipped : 'snowcap';
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -57,7 +71,8 @@
   /* ------------------------- elements ------------------------ */
   var $ = function (id) { return document.getElementById(id); };
   var screens = { title: $('screen-title'), help: $('screen-help'),
-                  pause: $('screen-pause'), over: $('screen-over') };
+                  pause: $('screen-pause'), over: $('screen-over'),
+                  shop: $('screen-shop') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -69,6 +84,7 @@
        whenever a run started before loadData() came back, taking away the
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
+    if (name === 'shop') buildShop();
     if (name === 'title') {
       var t = $('title-best');
       t.textContent = '🏔️ Best ' + save.best + ' points';
@@ -81,14 +97,22 @@
   function ride() {
     showGame();
     Sfx.unlock();
-    Game.start(save.best, { hud: function () {}, over: onOver });
+    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped);
   }
 
   function onOver(res) {
     save.runs++;
     var beat = res.score > save.best;
     if (beat) save.best = res.score;
+    save.fish += res.coins || 0;
+    save.gold += res.gold || 0;
     store();
+    var earned = $('over-earned');
+    var bits = [];
+    if (res.coins) bits.push('+' + res.coins + ' 🐟');
+    if (res.gold)  bits.push('+' + res.gold + ' ✨');
+    earned.textContent = bits.join('   ');
+    earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
     $('over-score').textContent = res.score + ' points';
     var bits = [res.dist + ' m', res.fish + ' fish'];
@@ -105,7 +129,13 @@
     switch (name) {
       case 'play':       Sfx.click(); ride(); break;
       case 'help':       Sfx.click(); show('help'); break;
-      case 'back-title': Sfx.click(); Game.stop(); show('title'); break;
+      case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
+      case 'back-title':
+        Sfx.click();
+        /* Leaving the market puts you back where you opened it from, so
+           browsing between runs does not throw away the end card. */
+        if (currentScreen === 'shop' && shopBack === 'over') { shopBack = null; show('over'); break; }
+        shopBack = null; Game.stop(); show('title'); break;
       case 'resume':     Sfx.click(); showGame(); Game.resume(); break;
     }
   }
@@ -133,6 +163,84 @@
   function toggleMusic(){ save.music = !save.music; store(); Sfx.unlock(); Sfx.music(save.music); syncToggles(); }
   ['t-sfx','t-sfx2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleSfx); });
   ['t-music','t-music2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleMusic); });
+
+  /* ---------------------------- shop ------------------------- */
+  var shopBack = null;
+
+  function wallet() {
+    $('wallet-fish').textContent = '🐟 ' + save.fish;
+    $('wallet-gold').textContent = '✨ ' + save.gold;
+  }
+
+  function owns(id) { return save.owned.indexOf(id) >= 0; }
+  function balance(cur) { return cur === 'gold' ? save.gold : save.fish; }
+
+  function buildShop() {
+    wallet();
+    var grid = $('shop-grid');
+    grid.textContent = '';
+    for (var i = 0; i < SKINS.length; i++) grid.appendChild(card(SKINS[i]));
+  }
+
+  function card(sk) {
+    var el = document.createElement('div');
+    el.className = 'skin-card' + (save.equipped === sk.id ? ' worn' : '')
+                               + (owns(sk.id) ? ' owned' : '');
+    var cv = document.createElement('canvas');
+    cv.className = 'skin-pic';
+    el.appendChild(cv);
+    Game.drawSkinPreview(cv, sk.id, 88);
+
+    /* Portrait and words are separate boxes so a narrow screen can stand
+       them side by side instead of making every card a screenful. */
+    var info = document.createElement('div');
+    info.className = 'skin-info';
+    el.appendChild(info);
+
+    var h = document.createElement('div');
+    h.className = 'skin-name'; h.textContent = sk.name;
+    info.appendChild(h);
+
+    var perk = document.createElement('div');
+    perk.className = 'skin-perk'; perk.textContent = sk.perkText;
+    info.appendChild(perk);
+
+    var b = document.createElement('button');
+    b.className = 'btn btn-sm';
+    b.setAttribute('data-skin', sk.id);
+    if (save.equipped === sk.id) {
+      b.textContent = '✓ Wearing'; b.disabled = true; b.className += ' btn-ghost';
+    } else if (owns(sk.id)) {
+      b.textContent = 'Wear'; b.className += ' btn-green';
+    } else {
+      var icon = sk.currency === 'gold' ? ' ✨' : ' 🐟';
+      b.textContent = sk.price + icon;
+      var canAfford = balance(sk.currency) >= sk.price;
+      b.className += canAfford ? ' btn-blue' : ' btn-ghost';
+      b.disabled = !canAfford;
+      if (!canAfford) b.title = 'Catch ' + (sk.price - balance(sk.currency)) + ' more';
+    }
+    info.appendChild(b);
+    return el;
+  }
+
+  $('shop-grid').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-skin]') : null;
+    if (!b || b.disabled) return;
+    var sk = SKIN_BY_ID[b.getAttribute('data-skin')];
+    if (!sk) return;
+    if (!owns(sk.id)) {
+      if (balance(sk.currency) < sk.price) return;
+      if (sk.currency === 'gold') save.gold -= sk.price; else save.fish -= sk.price;
+      save.owned.push(sk.id);
+      Sfx.gold();
+    } else {
+      Sfx.click();
+    }
+    save.equipped = sk.id;          // buying it puts it on straight away
+    store();
+    buildShop();
+  });
 
   /* --------------------------- tapping ----------------------- */
   /* The control has to answer anywhere on the screen. Binding it to the

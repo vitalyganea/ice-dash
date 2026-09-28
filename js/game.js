@@ -30,6 +30,8 @@ var Game = (function () {
   var PR = 24;                 // the penguin's radius
 
   var canvas, ctx, stage, W = null;
+  var skin = (typeof SKINS !== 'undefined') ? SKINS[0] : null;
+  function perk() { return (skin && skin.perk) || {}; }
   var rafId = null, lastT = 0, accT = 0, paused = false, suspended = false;
   var hooks = { hud: null, over: null };
   var drawK = 1;
@@ -105,7 +107,7 @@ var Game = (function () {
   /* --------------------- world construction ------------------- */
   function newRun() {
     var w = {
-      t: 0, dist: 0, speed: SPEED0, score: 0, fish: 0, gold: 0, gates: 0,
+      t: 0, dist: 0, speed: SPEED0, score: 0, fish: 0, gold: 0, gates: 0, coins: 0,
       shield: 0, invuln: 0, saved: 0,
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], streaks: [],
@@ -115,6 +117,7 @@ var Game = (function () {
     };
     W = w;
     w.px = chuteAt(0);
+    if (perk().startShield) w.shield = 1;
     var i;
     var nStreak = Math.round(46 * Math.max(1, LOOK / 620));
     for (i = 0; i < nStreak; i++)
@@ -209,8 +212,9 @@ var Game = (function () {
         r: rnd(26, 40), rot: rnd(0, 6.28), pts: rockPts()
       });
     }
-    if (Math.random() < 0.3) {
-      var n = 2 + ((Math.random() * 3) | 0);
+    var shoal = perk().shoal || 1;
+    if (Math.random() < Math.min(0.85, 0.3 * shoal)) {
+      var n = 2 + ((Math.random() * 3 * shoal) | 0);
       for (var i = 0; i < n; i++) {
         var fd = d + i * 46 - 44;
         W.objects.push({ t: 'fish', x: place(gap + rnd(-14, 14), fd), d: fd,
@@ -278,7 +282,8 @@ var Game = (function () {
       updPuffs(); updFlakes();
       if (W.endT === 46 && hooks.over)
         hooks.over({ score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
-                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved });
+                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
+                     coins: W.coins });
       return;
     }
 
@@ -301,11 +306,19 @@ var Game = (function () {
       if (o.d < W.dist - BEHIND) { W.objects.splice(i, 1); continue; }
       var dy = o.d - W.dist, dx = o.x - W.px;
 
+      /* Reach only ever widens what he can PICK UP. The rock test below is
+         untouched, so no perk can move the line between a clean pass and a
+         crash — only how far he can lean for a fish. */
+      var grab = (o.r + PR) * (perk().reach || 1);
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble') && !o.got &&
-          Math.abs(dy) < o.r + PR && Math.abs(dx) < o.r + PR) {
+          Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
-        if (o.t === 'fish')      { W.fish++; W.score += 25; Sfx.berry(); }
+        if (o.t === 'fish')      {
+          W.fish++; W.score += 25;
+          W.coins += (W.fish <= FIRST_CATCH) ? 2 : 1;      // early catch pays double
+          Sfx.berry();
+        }
         else if (o.t === 'gold') { W.gold++; W.score += 150; Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12; }
         else                     { W.shield = 1; Sfx.bubble(); tone = '#9fe8ff'; W.tapFlash = 12; }
         for (var b = 0; b < (o.t === 'fish' ? 7 : 15); b++)
@@ -701,102 +714,150 @@ var Game = (function () {
   }
 
   /* ---- the penguin, flat on its belly, seen from directly above ---- */
+  /* What tells one penguin from another when you are looking straight down
+     at his back: something round the neck, something on his head, or a light
+     of his own. Anything subtler than that is invisible at this size. */
+  function drawSkinExtra(c, S) {
+    if (!S.accessory || !S.accent) return;
+    if (S.accessory === 'scarf') {
+      c.fillStyle = S.accent;
+      c.beginPath(); c.ellipse(0, -15, 15.5, 7.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.18)';
+      c.beginPath(); c.ellipse(0, -13, 15.5, 5.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = S.accent;                       // two tails streaming behind
+      [-1, 1].forEach(function (k) {
+        c.beginPath();
+        c.moveTo(k * 8, -12);
+        c.quadraticCurveTo(k * 17, 6, k * 12, 20);
+        c.lineTo(k * 5, 17);
+        c.quadraticCurveTo(k * 9, 4, k * 3, -11);
+        c.closePath(); c.fill();
+      });
+    } else if (S.accessory === 'cap') {
+      c.fillStyle = S.accent;
+      c.beginPath(); c.ellipse(0, -26, 10.5, 9.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.35)';
+      c.beginPath(); c.ellipse(-3, -29, 4.5, 3.5, -0.4, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.22)';              // brim, towards the tail
+      c.beginPath(); c.ellipse(0, -19, 11.5, 4, 0, 0, 6.2832); c.fill();
+    } else if (S.accessory === 'glow') {
+      var gg = c.createRadialGradient(0, -4, 10, 0, -4, 34);
+      gg.addColorStop(0, 'rgba(159,232,255,0)');
+      gg.addColorStop(1, 'rgba(159,232,255,.5)');
+      c.fillStyle = gg;
+      c.beginPath(); c.ellipse(0, -4, 30, 33, 0, 0, 6.2832); c.fill();
+    }
+  }
+
+  /* One painter, two callers: the live penguin on the hill and the little
+     portrait on each shop card. Everything it needs comes in through `o`,
+     so the preview does not have to fake a world to borrow the drawing. */
+  function paintPenguin(c, S, o) {
+    var ang = o.ang || 0, wag = o.wag || 0;
+    c.save();
+    c.scale(o.scale, o.scale);
+
+    c.fillStyle = 'rgba(70,110,150,.25)';             // shadow, offset down-right
+    c.beginPath(); c.ellipse(5, 7, 30, 34, 0, 0, 6.2832); c.fill();
+
+    [-1, 1].forEach(function (k) {                    // flippers spread wide
+      c.save();
+      c.translate(k * 17, -4);
+      c.rotate(k * (0.6 + wag) - ang * 0.32 * k);
+      var fg = c.createLinearGradient(0, -6, k * 30, 16);
+      fg.addColorStop(0, S.flipper[0]); fg.addColorStop(0.6, S.flipper[1]);
+      fg.addColorStop(1, S.flipper[2]);
+      c.fillStyle = fg;
+      c.beginPath();
+      c.moveTo(0, -9);
+      c.quadraticCurveTo(k * 25, -4, k * 22, 13);
+      c.quadraticCurveTo(k * 11, 9, 0, 10);
+      c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(170,198,230,.4)'; c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(0, -8);
+      c.quadraticCurveTo(k * 24, -4, k * 21, 12);
+      c.stroke();
+      c.restore();
+    });
+
+    [-1, 1].forEach(function (k) {                    // webbed feet trailing behind
+      c.save();
+      c.translate(k * 11, 26);
+      c.rotate(k * 0.5);
+      c.fillStyle = S.trim;
+      c.beginPath();
+      c.moveTo(0, -6);
+      c.lineTo(k * 12, 9); c.lineTo(k * 5, 11); c.lineTo(k * 6, 14);
+      c.lineTo(-k * 1, 12); c.lineTo(-k * 2, 15); c.lineTo(-k * 7, 8);
+      c.closePath(); c.fill();
+      c.strokeStyle = S.trimEdge; c.lineWidth = 1.2;
+      c.stroke();
+      c.restore();
+    });
+
+    /* Lying flat, the white front is underneath him — all that shows from
+       straight overhead is a thin edge of it either side of the tail. */
+    c.fillStyle = 'rgba(244,250,255,.7)';
+    [-1, 1].forEach(function (k) {
+      c.beginPath();
+      c.ellipse(k * 13, 19, 5.5, 8.5, k * 0.45, 0, 6.2832);
+      c.fill();
+    });
+
+    var bg = c.createRadialGradient(-8, -12, 4, 0, 0, 34);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath();                                    // body, narrowing to a head lobe
+    c.moveTo(0, -22);
+    c.bezierCurveTo(16, -24, 23, -10, 22, 5);
+    c.bezierCurveTo(21, 19, 12, 25, 0, 25);
+    c.bezierCurveTo(-12, 25, -21, 19, -22, 5);
+    c.bezierCurveTo(-23, -10, -16, -24, 0, -22);
+    c.closePath(); c.fill();
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, -25, 12.5, 11.5, 0, 0, 6.2832); c.fill();
+
+    c.fillStyle = 'rgba(255,255,255,.1)';             // sheen along the back
+    c.beginPath(); c.ellipse(-6, -10, 9, 15, -0.25, 0, 6.2832); c.fill();
+
+    drawSkinExtra(c, S);
+
+    c.fillStyle = S.trim;                             // beak tip poking past the head
+    c.beginPath();
+    c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
+    c.closePath(); c.fill();
+
+    if (o.shield >= 0) {
+      var r = 48;
+      var sg = c.createRadialGradient(-14, -16, 6, 0, 0, r);
+      sg.addColorStop(0, 'rgba(255,255,255,.28)');
+      sg.addColorStop(0.7, 'rgba(150,225,255,.14)');
+      sg.addColorStop(1, 'rgba(120,205,250,.3)');
+      c.fillStyle = sg;
+      c.beginPath(); c.arc(0, 0, r, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(200,240,255,' + (0.55 + 0.2 * Math.sin(o.shield * 0.13)).toFixed(2) + ')';
+      c.lineWidth = 2.6;
+      c.beginPath(); c.arc(0, 0, r, 0, 6.2832); c.stroke();
+    }
+    c.restore();
+  }
+
   function drawPenguin() {
-    var x = scrX(W.px), y = PLAYER_Y;
+    var S = skin || SKINS[0];
     var ang = Math.atan2(W.vx, W.speed) * 0.85;       // heading, forward is up
     var crashed = W.state !== 'run';
     var blink = W.invuln > 0 && Math.floor(W.invuln / 5) % 2 === 0;
 
     ctx.save();
-    ctx.translate(x, y);
-    if (crashed && W.crashAt) ctx.rotate(W.crashAt.spin);
-    else ctx.rotate(ang);
-    ctx.scale(1.45, 1.45);
+    ctx.translate(scrX(W.px), PLAYER_Y);
+    ctx.rotate(crashed && W.crashAt ? W.crashAt.spin : ang);
     if (blink) ctx.globalAlpha = 0.45;
-
-    ctx.fillStyle = 'rgba(70,110,150,.25)';           // shadow, offset down-right
-    ctx.beginPath(); ctx.ellipse(5, 7, 30, 34, 0, 0, 6.2832); ctx.fill();
-
-    var wag = Math.sin(W.t * 0.3) * 0.1;
-    [-1, 1].forEach(function (k) {                    // flippers spread wide
-      ctx.save();
-      ctx.translate(k * 17, -4);
-      ctx.rotate(k * (0.6 + wag) - ang * 0.32 * k);
-      var fg = ctx.createLinearGradient(0, -6, k * 30, 16);
-      fg.addColorStop(0, '#54617d'); fg.addColorStop(0.6, '#2b3444');
-      fg.addColorStop(1, '#161c26');
-      ctx.fillStyle = fg;
-      ctx.beginPath();
-      ctx.moveTo(0, -9);
-      ctx.quadraticCurveTo(k * 25, -4, k * 22, 13);
-      ctx.quadraticCurveTo(k * 11, 9, 0, 10);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(170,198,230,.4)'; ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, -8);
-      ctx.quadraticCurveTo(k * 24, -4, k * 21, 12);
-      ctx.stroke();
-      ctx.restore();
+    paintPenguin(ctx, S, {
+      ang: ang, wag: Math.sin(W.t * 0.3) * 0.1, scale: 1.45,
+      shield: (W.shield > 0 && !crashed) ? W.t : -1
     });
-
-    [-1, 1].forEach(function (k) {                    // webbed feet trailing behind
-      ctx.save();
-      ctx.translate(k * 11, 26);
-      ctx.rotate(k * 0.5);
-      ctx.fillStyle = '#ff9f2e';
-      ctx.beginPath();
-      ctx.moveTo(0, -6);
-      ctx.lineTo(k * 12, 9); ctx.lineTo(k * 5, 11); ctx.lineTo(k * 6, 14);
-      ctx.lineTo(-k * 1, 12); ctx.lineTo(-k * 2, 15); ctx.lineTo(-k * 7, 8);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(180,90,10,.45)'; ctx.lineWidth = 1.2;
-      ctx.stroke();
-      ctx.restore();
-    });
-
-    /* Lying flat, the white front is underneath him — all that shows from
-       straight overhead is a thin edge of it either side of the tail. */
-    ctx.fillStyle = 'rgba(244,250,255,.7)';
-    [-1, 1].forEach(function (k) {
-      ctx.beginPath();
-      ctx.ellipse(k * 13, 19, 5.5, 8.5, k * 0.45, 0, 6.2832);
-      ctx.fill();
-    });
-
-    var bg = ctx.createRadialGradient(-8, -12, 4, 0, 0, 34);
-    bg.addColorStop(0, '#48536e'); bg.addColorStop(0.55, '#262d3c'); bg.addColorStop(1, '#131820');
-    ctx.fillStyle = bg;
-    ctx.beginPath();                                  // body, narrowing to a head lobe
-    ctx.moveTo(0, -22);
-    ctx.bezierCurveTo(16, -24, 23, -10, 22, 5);
-    ctx.bezierCurveTo(21, 19, 12, 25, 0, 25);
-    ctx.bezierCurveTo(-12, 25, -21, 19, -22, 5);
-    ctx.bezierCurveTo(-23, -10, -16, -24, 0, -22);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = bg;
-    ctx.beginPath(); ctx.ellipse(0, -25, 12.5, 11.5, 0, 0, 6.2832); ctx.fill();
-
-    ctx.fillStyle = 'rgba(255,255,255,.1)';           // sheen along the back
-    ctx.beginPath(); ctx.ellipse(-6, -10, 9, 15, -0.25, 0, 6.2832); ctx.fill();
-
-    ctx.fillStyle = '#ff9f2e';                        // beak tip poking past the head
-    ctx.beginPath();
-    ctx.moveTo(-5, -30); ctx.lineTo(0, -39); ctx.lineTo(5, -30);
-    ctx.closePath(); ctx.fill();
-
     ctx.globalAlpha = 1;
-    if (W.shield > 0 && !crashed) {
-      var r = 48;
-      var sg = ctx.createRadialGradient(-14, -16, 6, 0, 0, r);
-      sg.addColorStop(0, 'rgba(255,255,255,.28)');
-      sg.addColorStop(0.7, 'rgba(150,225,255,.14)');
-      sg.addColorStop(1, 'rgba(120,205,250,.3)');
-      ctx.fillStyle = sg;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-      ctx.strokeStyle = 'rgba(200,240,255,' + (0.55 + 0.2 * Math.sin(W.t * 0.13)).toFixed(2) + ')';
-      ctx.lineWidth = 2.6;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
-    }
     ctx.restore();
   }
 
@@ -971,8 +1032,9 @@ var Game = (function () {
   if (typeof document !== 'undefined' && document.getElementById('game')) setup();
 
   return {
-    start: function (best, cbs) {
+    start: function (best, cbs, skinId) {
       if (!ctx) setup();
+      if (typeof SKINS !== 'undefined') skin = skinById(skinId);
       hooks.hud = cbs.hud; hooks.over = cbs.over;
       newRun();
       W.best = best || 0;
@@ -997,6 +1059,25 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
+
+    /* A still portrait of one skin, for the shop card. Borrows the very
+       painter the hill uses, so a card can never drift out of step with
+       what you actually get. */
+    drawSkinPreview: function (cv, skinId, size) {
+      if (!cv || !cv.getContext || typeof SKINS === 'undefined') return;
+      var k = Math.min(window.devicePixelRatio || 1, 2.5);
+      size = size || 92;
+      cv.width = Math.round(size * k); cv.height = Math.round(size * k);
+      cv.style.width = size + 'px'; cv.style.height = size + 'px';
+      var c = cv.getContext('2d');
+      c.setTransform(k, 0, 0, k, 0, 0);
+      c.clearRect(0, 0, size, size);
+      c.lineJoin = 'round'; c.lineCap = 'round';
+      c.save();
+      c.translate(size / 2, size / 2 + size * 0.03);
+      paintPenguin(c, skinById(skinId), { ang: 0, wag: 0, scale: size / 108, shield: -1 });
+      c.restore();
+    },
     /* stepping the world by hand, for tests and screenshots */
     _step: function (n) { for (var i = 0; i < n; i++) if (W) step(); },
     _render: function () { if (W) render(); },
