@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The Playables SDK MUST load before any game code (Integration req. 1). -->
+<script src="https://www.youtube.com/game_api/v1"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#8fd4ff">
+<title>Pine Rush</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>">
+<link rel="stylesheet" href="css/font.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="game"></canvas>
+  <div id="hud" class="hidden">
+    <div class="hud-side"></div>
+    <div class="hud-mid"></div>
+    <div class="hud-side hud-right">
+      <button id="btn-menu" class="icon-btn" aria-label="Open menu">☰</button>
+    </div>
+  </div>
+</div>
+
+<section id="screen-title" class="screen">
+  <div class="sky-deco" aria-hidden="true">
+    <span class="float f1">🌲</span><span class="float f2">❄️</span><span class="float f3">🐧</span>
+    <span class="float f4">⛰️</span><span class="float f5">❄️</span><span class="float f6">🌲</span>
+  </div>
+  <div class="panel panel-title">
+    <div class="hero-emoji">🐧</div>
+    <h1 class="game-title">Pine<br><span>Rush</span></h1>
+    <p class="subtitle">One tap sends the penguin the other way. Mind the trees!</p>
+    <div class="btn-row">
+      <button class="btn btn-big btn-green" data-action="play">▶ Ride</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-purple" data-action="help">❓ How to play</button>
+    </div>
+    <p id="title-best" class="big-score hidden">🏔️ Best 0 points</p>
+    <div class="toggles">
+      <button class="chip" id="t-sfx">🔊 Sounds</button>
+      <button class="chip" id="t-music">🎵 Music</button>
+    </div>
+  </div>
+</section>
+
+<section id="screen-help" class="screen hidden">
+  <div class="panel">
+    <h2 class="panel-title-text">How to play</h2>
+    <ul class="help-list">
+      <li>The penguin slides on his belly, and always drifts to one side</li>
+      <li><b>Tap anywhere</b> (or press <b class="keycap">Space</b>) to slide the other way</li>
+      <li>That is the only control. Time your taps to weave between the pines and rocks</li>
+      <li>🐟 Swallow fish as you pass — 25 points each</li>
+      <li>✨ A <b>golden fish</b> is worth 150, but it never sits on the easy line</li>
+      <li>🫧 A <b>snow bubble</b> takes one crash for you — grab it when you can</li>
+      <li>🚩 Slip between the flag gates for a bonus</li>
+      <li>🧊 On the glacier he turns lazily — tap earlier</li>
+      <li>🌙 At night you see less of the hill ahead</li>
+      <li>One crash ends the run. How far can you get?</li>
+    </ul>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title">Got it!</button></div>
+  </div>
+</section>
+
+<section id="screen-pause" class="screen hidden">
+  <div class="panel">
+    <h2 class="panel-title-text">Paused</h2>
+    <div class="btn-row"><button class="btn btn-big btn-green" data-action="resume">▶ Keep going</button></div>
+    <div class="btn-row">
+      <button class="btn btn-blue" data-action="play">↻ New run</button>
+      <button class="btn btn-purple" data-action="back-title">🏠 Menu</button>
+    </div>
+    <div class="toggles">
+      <button class="chip" id="t-sfx2">🔊 Sounds</button>
+      <button class="chip" id="t-music2">🎵 Music</button>
+    </div>
+  </div>
+</section>
+
+<section id="screen-over" class="screen hidden">
+  <div class="panel panel-win">
+    <div class="win-emoji">🌲</div>
+    <h2 class="panel-title-text">Ouch!</h2>
+    <p id="new-best" class="big-score hidden">🏆 New best!</p>
+    <p id="over-score" class="subtitle">0 points</p>
+    <div id="over-detail" class="total-stars">0 m · 0 berries · 0 gates</div>
+    <div class="btn-row"><button class="btn btn-big btn-green" data-action="play">↻ Ride again</button></div>
+    <div class="btn-row"><button class="btn btn-purple" data-action="back-title">🏠 Menu</button></div>
+  </div>
+</section>
+
+<script src="js/audio.js"></script>
+<script src="js/biomes.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
