@@ -1,5 +1,5 @@
 /* ===========================================================
-   game.js — Pine Rush: one-tap belly slide, seen from above
+   game.js — Ice Dash: one-tap belly slide, seen from above
    -----------------------------------------------------------
    A top-down chute that winds down the mountain. Everything lives in
    world pixels, so what the collision code measures is exactly what the
@@ -26,6 +26,16 @@ var Game = (function () {
   var TURN   = 0.16;           // how quickly the tap takes effect
 
   var ROW_GAP0 = 230, ROW_GAP1 = 165;   // rows close up as the run goes on
+
+  /* A crevasse splits the whole run, and the only way over is the ramp of
+     packed snow sitting in that row's opening. Because the ramp IS the
+     opening, the reachability proof needs no special case: steer to the gap
+     as always, and the gap happens to throw you into the air.
+     Air is measured in DISTANCE, not frames, so it covers the same stretch
+     of hill whether you are crawling at the start or flat out later on. */
+  var CREV_SPAN = 150;                  // how wide the hole in the ice is
+  var RAMP_LEAD = 52;                   // how far the ramp sits before it
+  var AIR_DIST  = 340;                  // hill covered while airborne
   var HARD_OVER = 30000;                // world units to reach full difficulty
   var PR = 24;                 // the penguin's radius
 
@@ -35,6 +45,12 @@ var Game = (function () {
   var rafId = null, lastT = 0, accT = 0, paused = false, suspended = false;
   var hooks = { hud: null, over: null };
   var drawK = 1;
+
+  /* The canvas draws its own words. i18n.js may not be there — the engine
+     is loaded on its own by the tests — so fall back to the English. */
+  function tr(key, fallback) {
+    return (typeof t === 'function') ? t(key, null, fallback) : fallback;
+  }
 
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -112,6 +128,7 @@ var Game = (function () {
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
+      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0
     };
@@ -197,12 +214,29 @@ var Game = (function () {
        absolute world x. Mixing the two put the rocks outside the run. */
     function place(rel, dd) { return chuteAt(dd) + rel; }
 
+    /* Now and then the row is a crevasse instead. Nothing else is placed on
+       it, and the stretch beyond stays clear so nobody lands on a boulder
+       they were never given the chance to avoid. */
+    if (d > 1500 && d > W.clearUntil && Math.random() < lerp(0.05, 0.17, hard)) {
+      W.crevs++;
+      W.objects.push({ t: 'ramp', x: place(gap, d - RAMP_LEAD), d: d - RAMP_LEAD,
+                       w: gapW, used: false });
+      W.objects.push({ t: 'crevasse', x: place(0, d), d: d,
+                       span: CREV_SPAN, passed: false });
+      W.clearUntil = d + CREV_SPAN + 200;
+      return;
+    }
+    /* The landing lane is kept clear of things that can HURT you. It used to
+       skip the whole row, fish included, which left long dead stretches and
+       quietly made the run a good deal easier than it was meant to be. */
+    var clearLane = d < W.clearUntil;
+
     spawnScenery(d);
 
     if (Math.random() < 0.15 && W.dist > 900)
       W.objects.push({ t: 'gate', x: place(gap, d), d: d, w: gapW, passed: false });
 
-    for (var x = -CHUTE + 26; x <= CHUTE - 26; x += rnd(62, 96)) {
+    if (!clearLane) for (var x = -CHUTE + 26; x <= CHUTE - 26; x += rnd(62, 96)) {
       if (Math.abs(x - gap) < gapW / 2 + 28) continue;
       if (Math.random() > lerp(0.60, 0.94, hard)) continue;
       var dd = d + rnd(-26, 26);
@@ -212,16 +246,28 @@ var Game = (function () {
         r: rnd(26, 40), rot: rnd(0, 6.28), pts: rockPts()
       });
     }
+    /* Mostly MORE strings, only a little longer: scaling both by the same
+       factor multiplied out to nearly four times the fish, which is far more
+       than one 850-fish skin should be worth. */
     var shoal = perk().shoal || 1;
+    var longer = 1 + (shoal - 1) * 0.45;
     if (Math.random() < Math.min(0.85, 0.3 * shoal)) {
-      var n = 2 + ((Math.random() * 3 * shoal) | 0);
+      var n = 2 + ((Math.random() * 3 * longer) | 0);
+      /* The shoal weaves across the lane instead of sitting on the racing
+         line. On the line it was free score that asked nothing of you — and
+         it made the reach perk worthless, because you already passed within
+         a few units of every fish. The sweep is kept inside the opening so
+         chasing one never walks you into a boulder. */
+      var sweep = Math.min(58, gapW / 2 + 8);
+      var phase = rnd(0, 6.28);
       for (var i = 0; i < n; i++) {
         var fd = d + i * 46 - 44;
-        W.objects.push({ t: 'fish', x: place(gap + rnd(-14, 14), fd), d: fd,
+        W.objects.push({ t: 'fish',
+                         x: place(gap + Math.sin(phase + i * 0.85) * sweep, fd), d: fd,
                          r: 15, got: false, ph: rnd(0, 6.28) });
       }
     }
-    if (Math.random() < 0.13 && W.dist > 1200) {
+    if (Math.random() < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && W.dist > 1200) {
       var gd = d + 20;
       W.objects.push({ t: 'gold',
                        x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(90, 150),
@@ -293,7 +339,10 @@ var Game = (function () {
     W.score += W.speed * 0.25;
 
     var target = W.dir * DRIFT * W.speed;
-    W.vx = lerp(W.vx, target, TURN * B.grip);
+    /* A grip perk may only ever turn SHARPER. The spawner sizes every
+       opening against the biome's own grip, so a sharper turn beats the
+       promise rather than breaking it. */
+    W.vx = lerp(W.vx, target, turnRate());
     W.px += W.vx;
 
     var c = chuteAt(W.dist);
@@ -324,12 +373,34 @@ var Game = (function () {
         for (var b = 0; b < (o.t === 'fish' ? 7 : 15); b++)
           W.puffs.push({ x: o.x, d: o.d, life: 22, max: 22, s: rnd(4, 11), tint: tone });
       }
+      if (o.t === 'ramp' && !o.used && o.d <= W.dist) {
+        o.used = true;
+        if (Math.abs(dx) < o.w / 2) {
+          W.airSpan = AIR_DIST * (perk().rampBoost || 1);
+          W.airTo = W.dist + W.airSpan;
+          W.shake = Math.max(W.shake, 5);
+          Sfx.jump();
+          for (var j = 0; j < 12; j++)
+            W.puffs.push({ x: W.px + rnd(-14, 14), d: W.dist - rnd(0, 16),
+                           life: 24, max: 24, s: rnd(5, 12) });
+        }
+      }
+      if (o.t === 'crevasse' && !o.passed && o.d <= W.dist) {
+        o.passed = true;
+        if (!airborne()) { crash(o); continue; }     // straight down the hole
+      }
       if (o.t === 'gate' && !o.passed && o.d < W.dist) {
         o.passed = true;
-        if (Math.abs(dx) < o.w / 2) { W.gates++; W.score += 50; Sfx.gate(); W.tapFlash = 10; }
+        if (Math.abs(dx) < o.w / 2) {
+          var gb = perk().gateBonus || 1;
+          W.gates++;
+          W.score += Math.round(50 * gb);
+          W.coins += Math.round(2 * gb);       // gates pay the shop as well
+          Sfx.gate(); W.tapFlash = 10;
+        }
       }
       /* plain circle overlap, in the very pixels being drawn */
-      if (solid(o) && W.invuln <= 0 &&
+      if (solid(o) && W.invuln <= 0 && !airborne() &&
           dx * dx + dy * dy < (o.r * 0.82 + PR * 0.78) * (o.r * 0.82 + PR * 0.78)) {
         if (W.shield > 0) {
           W.shield = 0; W.saved++; W.invuln = 80; W.shake = 16; W.tapFlash = 12;
@@ -342,6 +413,22 @@ var Game = (function () {
     }
 
     while (W.nextRowD < W.dist + LOOK) spawnRow();
+
+    if (W.wasAir && !airborne()) {                   // touchdown
+      W.wasAir = false;
+      /* You cannot be killed by whatever you happen to come down on. The
+         alternative was clearing the hill for as far as the longest possible
+         flight, which with a ramp-boosting skin meant hollowing out 600
+         units of run every time — the landing lane is for looks now, and
+         this is what actually makes the landing fair. */
+      W.invuln = Math.max(W.invuln, 30);
+      Sfx.land();
+      W.shake = Math.max(W.shake, 9);
+      for (var lp = 0; lp < 16; lp++)
+        W.puffs.push({ x: W.px + rnd(-20, 20), d: W.dist - rnd(0, 18),
+                       life: 26, max: 26, s: rnd(5, 14) });
+    }
+    if (airborne()) W.wasAir = true;
 
     if (W.invuln > 0) W.invuln--;
     W.biomeT += W.speed;
@@ -357,6 +444,12 @@ var Game = (function () {
   }
 
   function solid(o) { return o.t === 'rock' || o.t === 'tree'; }
+  function airborne() { return W.airTo > W.dist; }
+
+  /* How fast the steering actually answers right now, perk included. Anything
+     predicting where the creature will be has to use this and not the raw
+     constant, or it will steer for a machine that is not the one running. */
+  function turnRate() { return TURN * biome().grip * (perk().grip || 1); }
 
   function bank() { W.shake = Math.max(W.shake, 6); Sfx.bank(); }
 
@@ -498,7 +591,9 @@ var Game = (function () {
     var B = pal();
     for (var i = 0; i < list.length; i++) {
       var o = list[i], x = scrX(o.x), y = scrY(o.d);
-      if (o.t === 'rock')        drawRock(x, y, o, B);
+      if (o.t === 'crevasse')    drawCrevasse(y, o, B);
+      else if (o.t === 'ramp')   drawRamp(x, y, o, B);
+      else if (o.t === 'rock')   drawRock(x, y, o, B);
       else if (o.t === 'tree')   drawTree(x, y, o, B);
       else if (o.t === 'deco') {                       // never a hazard, so it sits back
         ctx.globalAlpha = 0.82;
@@ -639,6 +734,98 @@ var Game = (function () {
 
   /* Two posts with pennants turned in towards each other, and a faint line
      between them, so the pair reads as one opening to aim at. */
+  /* A split clean through the ice. Drawn as a hole rather than a stripe:
+     the walls catch the light, the depth does not. */
+  function drawCrevasse(y, o, B) {
+    var top = scrY(o.d + o.span), bot = y;
+    var cTop = chuteAt(o.d + o.span) - chuteAt(W.dist);
+    var cBot = chuteAt(o.d) - chuteAt(W.dist);
+    var lTop = VIEW_W / 2 + cTop - CHUTE - 30, rTop = VIEW_W / 2 + cTop + CHUTE + 30;
+    var lBot = VIEW_W / 2 + cBot - CHUTE - 30, rBot = VIEW_W / 2 + cBot + CHUTE + 30;
+
+    function edge(yy, xa, xb, amp, phase) {          // a broken, icy lip
+      var n = 16, i;
+      for (i = 0; i <= n; i++) {
+        var t = i / n, xx = xa + (xb - xa) * t;
+        ctx.lineTo(xx, yy + Math.sin(t * 9 + phase) * amp + Math.sin(t * 23) * amp * 0.4);
+      }
+    }
+    ctx.beginPath();
+    ctx.moveTo(lTop, top);
+    edge(top, lTop, rTop, 7, 0.6);
+    ctx.lineTo(rBot, bot);
+    for (var i = 16; i >= 0; i--) {
+      var t = i / 16, xx = lBot + (rBot - lBot) * t;
+      ctx.lineTo(xx, bot + Math.sin(t * 9 + 2.3) * 7 + Math.sin(t * 23) * 2.8);
+    }
+    ctx.closePath();
+    var g = ctx.createLinearGradient(0, top, 0, bot);
+    g.addColorStop(0, '#12354f'); g.addColorStop(0.45, '#06131f'); g.addColorStop(1, '#0d2841');
+    ctx.fillStyle = g; ctx.fill();
+
+    ctx.save(); ctx.clip();                          // ice walls glowing near the top
+    ctx.fillStyle = 'rgba(120,200,240,.3)';
+    ctx.beginPath(); ctx.rect(0, top, VIEW_W, 16); ctx.fill();
+    ctx.fillStyle = 'rgba(90,170,215,.2)';
+    ctx.beginPath(); ctx.rect(0, bot - 13, VIEW_W, 13); ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;  // the broken rim
+    ctx.beginPath(); ctx.moveTo(lTop, top); edge(top, lTop, rTop, 7, 0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lBot, bot); edge(bot, lBot, rBot, 7, 2.3); ctx.stroke();
+  }
+
+  /* The way across: packed snow heaped into a ramp, sitting exactly in the
+     row's opening so it is aimed at the same way as every other gap. */
+  function drawRamp(x, y, o, B) {
+    var hw = o.w / 2, h = 46;
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.fillStyle = 'rgba(70,110,150,.22)';
+    ctx.beginPath(); ctx.ellipse(4, 8, hw * 0.95, 20, 0, 0, 6.2832); ctx.fill();
+
+    var g = ctx.createLinearGradient(0, h * 0.5, 0, -h * 0.7);
+    g.addColorStop(0, B.bankShade); g.addColorStop(0.55, B.snowA); g.addColorStop(1, '#ffffff');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-hw, h * 0.5);
+    ctx.lineTo(-hw * 0.72, -h * 0.62);
+    ctx.quadraticCurveTo(0, -h * 0.82, hw * 0.72, -h * 0.62);
+    ctx.lineTo(hw, h * 0.5);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;  // the lip you leave from
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.72, -h * 0.62);
+    ctx.quadraticCurveTo(0, -h * 0.82, hw * 0.72, -h * 0.62);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,190,60,.85)';          // chevrons: aim here
+    for (var ch = 0; ch < 2; ch++) {
+      var cy = -h * 0.18 + ch * 15;
+      ctx.beginPath();
+      ctx.moveTo(-hw * 0.3, cy + 7);
+      ctx.lineTo(0, cy - 4);
+      ctx.lineTo(hw * 0.3, cy + 7);
+      ctx.lineTo(hw * 0.3, cy + 12);
+      ctx.lineTo(0, cy + 1);
+      ctx.lineTo(-hw * 0.3, cy + 12);
+      ctx.closePath(); ctx.fill();
+    }
+
+    ctx.fillStyle = 'rgba(80,140,190,.28)';          // ribs of packed snow
+    for (var k = -1; k <= 1; k++) {
+      ctx.beginPath();
+      ctx.moveTo(k * hw * 0.34 - 3, h * 0.42);
+      ctx.lineTo(k * hw * 0.26 - 2, -h * 0.5);
+      ctx.lineTo(k * hw * 0.26 + 2, -h * 0.5);
+      ctx.lineTo(k * hw * 0.34 + 3, h * 0.42);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawGate(x, y, o) {
     var tone = o.passed ? '#46c98a' : '#ffb63d';
     ctx.save();
@@ -752,14 +939,12 @@ var Game = (function () {
   /* One painter, two callers: the live penguin on the hill and the little
      portrait on each shop card. Everything it needs comes in through `o`,
      so the preview does not have to fake a world to borrow the drawing. */
-  function paintPenguin(c, S, o) {
-    var ang = o.ang || 0, wag = o.wag || 0;
-    c.save();
-    c.scale(o.scale, o.scale);
+  /* ---- the creatures -------------------------------------------
+     All of them are seen from straight above, flat out on their fronts
+     with the head forward. What has to read at this size is the
+     silhouette and two or three markings; anything finer is mud. */
 
-    c.fillStyle = 'rgba(70,110,150,.25)';             // shadow, offset down-right
-    c.beginPath(); c.ellipse(5, 7, 30, 34, 0, 0, 6.2832); c.fill();
-
+  function bodyPenguin(c, S, ang, wag) {
     [-1, 1].forEach(function (k) {                    // flippers spread wide
       c.save();
       c.translate(k * 17, -4);
@@ -796,9 +981,7 @@ var Game = (function () {
       c.restore();
     });
 
-    /* Lying flat, the white front is underneath him — all that shows from
-       straight overhead is a thin edge of it either side of the tail. */
-    c.fillStyle = 'rgba(244,250,255,.7)';
+    c.fillStyle = 'rgba(244,250,255,.7)';             // white front, just peeking
     [-1, 1].forEach(function (k) {
       c.beginPath();
       c.ellipse(k * 13, 19, 5.5, 8.5, k * 0.45, 0, 6.2832);
@@ -808,7 +991,7 @@ var Game = (function () {
     var bg = c.createRadialGradient(-8, -12, 4, 0, 0, 34);
     bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
     c.fillStyle = bg;
-    c.beginPath();                                    // body, narrowing to a head lobe
+    c.beginPath();
     c.moveTo(0, -22);
     c.bezierCurveTo(16, -24, 23, -10, 22, 5);
     c.bezierCurveTo(21, 19, 12, 25, 0, 25);
@@ -818,15 +1001,254 @@ var Game = (function () {
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -25, 12.5, 11.5, 0, 0, 6.2832); c.fill();
 
-    c.fillStyle = 'rgba(255,255,255,.1)';             // sheen along the back
+    c.fillStyle = 'rgba(255,255,255,.1)';
     c.beginPath(); c.ellipse(-6, -10, 9, 15, -0.25, 0, 6.2832); c.fill();
 
     drawSkinExtra(c, S);
 
-    c.fillStyle = S.trim;                             // beak tip poking past the head
+    c.fillStyle = S.trim;                             // beak past the head
     c.beginPath();
     c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
     c.closePath(); c.fill();
+  }
+
+  /* A white animal on white snow has no silhouette at all unless you draw
+     it one. Dark creatures leave `outline` off and get nothing. */
+  function edge(c, S, w) {
+    if (!S.outline) return false;
+    c.strokeStyle = S.outline; c.lineWidth = w || 2.2;
+    return true;
+  }
+
+  /* four paws, used by everything that is not a bird */
+  function paws(c, S, ang, wag, fx, fy, fr, bx, by, br) {
+    [-1, 1].forEach(function (k) {
+      c.save();
+      c.translate(k * fx, fy);
+      c.rotate(k * (0.5 + wag) - ang * 0.3 * k);
+      c.fillStyle = S.flipper[1];
+      c.beginPath(); c.ellipse(0, 0, fr, fr * 1.5, k * 0.3, 0, 6.2832); c.fill();
+      if (edge(c, S, 1.8)) c.stroke();
+      c.restore();
+      c.save();
+      c.translate(k * bx, by);
+      c.rotate(k * 0.35);
+      c.fillStyle = S.flipper[2];
+      c.beginPath(); c.ellipse(0, 0, br, br * 1.4, k * 0.2, 0, 6.2832); c.fill();
+      if (edge(c, S, 1.8)) c.stroke();
+      c.restore();
+    });
+  }
+
+  function bodyBear(c, S, ang, wag) {
+    paws(c, S, ang, wag, 22, -2, 9, 16, 26, 8.5);
+    var bg = c.createRadialGradient(-9, -14, 5, 0, 0, 38);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath();                                    // heavy, near-round back
+    c.moveTo(0, -20);
+    c.bezierCurveTo(20, -23, 27, -8, 26, 7);
+    c.bezierCurveTo(25, 22, 14, 29, 0, 29);
+    c.bezierCurveTo(-14, 29, -25, 22, -26, 7);
+    c.bezierCurveTo(-27, -8, -20, -23, 0, -20);
+    c.closePath(); c.fill();
+    if (edge(c, S, 2.4)) c.stroke();
+    [-1, 1].forEach(function (k) {                    // small round ears
+      c.fillStyle = S.body[2];
+      c.beginPath(); c.arc(k * 12, -33, 7.5, 0, 6.2832); c.fill();
+      if (edge(c, S, 2)) c.stroke();
+      c.fillStyle = S.nose;
+      c.globalAlpha = 0.35;
+      c.beginPath(); c.arc(k * 12, -33, 3.6, 0, 6.2832); c.fill();
+      c.globalAlpha = 1;
+    });
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, -25, 15, 13, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 2.2)) c.stroke();
+    c.fillStyle = S.mark;                             // muzzle
+    c.beginPath(); c.ellipse(0, -34, 8.5, 7, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 1.8)) c.stroke();
+    c.fillStyle = S.nose;
+    c.beginPath(); c.ellipse(0, -38, 4.2, 3.2, 0, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.14)';
+    c.beginPath(); c.ellipse(-8, -8, 10, 16, -0.2, 0, 6.2832); c.fill();
+  }
+
+  function bodyWalrus(c, S, ang, wag) {
+    [-1, 1].forEach(function (k) {                    // broad front flippers
+      c.save();
+      c.translate(k * 20, 2);
+      c.rotate(k * (0.72 + wag) - ang * 0.3 * k);
+      c.fillStyle = S.flipper[1];
+      c.beginPath();
+      c.moveTo(0, -9);
+      c.quadraticCurveTo(k * 24, -2, k * 20, 15);
+      c.quadraticCurveTo(k * 9, 10, 0, 10);
+      c.closePath(); c.fill();
+      c.restore();
+    });
+    [-1, 1].forEach(function (k) {                    // tail flukes
+      c.fillStyle = S.flipper[2];
+      c.beginPath(); c.ellipse(k * 10, 30, 8, 11, k * 0.5, 0, 6.2832); c.fill();
+    });
+    var bg = c.createRadialGradient(-8, -12, 5, 0, 0, 36);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath();                                    // bulky, tapering to the tail
+    c.moveTo(0, -18);
+    c.bezierCurveTo(19, -21, 25, -6, 23, 9);
+    c.bezierCurveTo(21, 23, 11, 28, 0, 28);
+    c.bezierCurveTo(-11, 28, -21, 23, -23, 9);
+    c.bezierCurveTo(-25, -6, -19, -21, 0, -18);
+    c.closePath(); c.fill();
+    if (edge(c, S, 2)) c.stroke();
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, -23, 16, 12, 0, 0, 6.2832); c.fill();
+    c.fillStyle = S.mark;                             // the great whiskery pad
+    c.beginPath(); c.ellipse(0, -31, 12, 9, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 1.1;
+    [-1, 1].forEach(function (k) {
+      for (var w = 0; w < 3; w++) {
+        c.beginPath();
+        c.moveTo(k * 4, -31 + w * 3);
+        c.lineTo(k * (13 + w * 2), -34 + w * 4);
+        c.stroke();
+      }
+    });
+    [-1, 1].forEach(function (k) {                    // tusks
+      c.fillStyle = '#f6f2e4';
+      c.beginPath();
+      c.moveTo(k * 4.5, -34);
+      c.quadraticCurveTo(k * 8, -44, k * 6, -50);
+      c.lineTo(k * 2.5, -48);
+      c.quadraticCurveTo(k * 4, -42, k * 1.5, -34);
+      c.closePath(); c.fill();
+    });
+    c.fillStyle = S.nose;
+    c.beginPath(); c.ellipse(0, -35, 3.6, 2.8, 0, 0, 6.2832); c.fill();
+  }
+
+  function bodySeal(c, S, ang, wag) {
+    [-1, 1].forEach(function (k) {                    // little front flippers
+      c.save();
+      c.translate(k * 15, 0);
+      c.rotate(k * (0.62 + wag) - ang * 0.3 * k);
+      c.fillStyle = S.flipper[1];
+      c.beginPath(); c.ellipse(0, 2, 6.5, 12, k * 0.35, 0, 6.2832); c.fill();
+      c.restore();
+    });
+    [-1, 1].forEach(function (k) {                    // rear flippers, fanned
+      c.save();
+      c.translate(k * 9, 28);
+      c.rotate(k * 0.7);
+      c.fillStyle = S.flipper[2];
+      c.beginPath();
+      c.moveTo(0, -8);
+      c.quadraticCurveTo(k * 14, 2, k * 10, 14);
+      c.quadraticCurveTo(k * 3, 8, 0, 6);
+      c.closePath(); c.fill();
+      c.restore();
+    });
+    var bg = c.createRadialGradient(-7, -12, 4, 0, 0, 32);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath();                                    // sleek and tapered
+    c.moveTo(0, -24);
+    c.bezierCurveTo(13, -26, 18, -10, 17, 6);
+    c.bezierCurveTo(16, 20, 9, 27, 0, 27);
+    c.bezierCurveTo(-9, 27, -16, 20, -17, 6);
+    c.bezierCurveTo(-18, -10, -13, -26, 0, -24);
+    c.closePath(); c.fill();
+    if (edge(c, S, 2)) c.stroke();
+    c.fillStyle = 'rgba(0,0,0,.14)';                  // dappled back
+    [[-7, -6], [6, -2], [-3, 8], [8, 12], [-8, 15]].forEach(function (q) {
+      c.beginPath(); c.ellipse(q[0], q[1], 3.4, 2.6, 0.3, 0, 6.2832); c.fill();
+    });
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, -27, 11.5, 10.5, 0, 0, 6.2832); c.fill();
+    c.fillStyle = S.mark;
+    c.beginPath(); c.ellipse(0, -34, 6, 5, 0, 0, 6.2832); c.fill();
+    c.fillStyle = S.nose;
+    c.beginPath(); c.ellipse(0, -37, 3, 2.4, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 1;
+    [-1, 1].forEach(function (k) {
+      c.beginPath(); c.moveTo(k * 3, -34); c.lineTo(k * 11, -37); c.stroke();
+      c.beginPath(); c.moveTo(k * 3, -32); c.lineTo(k * 11, -31); c.stroke();
+    });
+  }
+
+  function bodyFox(c, S, ang, wag) {
+    c.save();                                         // the tail is the whole point
+    c.translate(0, 14);                               // overlapping the rump, not floating below it
+    c.rotate(Math.sin(wag * 8) * 0.18 - ang * 0.5);
+    var tg = c.createLinearGradient(0, -8, 0, 32);
+    tg.addColorStop(0, S.body[2]); tg.addColorStop(0.6, S.body[1]); tg.addColorStop(1, S.mark);
+    c.fillStyle = tg;
+    c.beginPath(); c.ellipse(0, 16, 12.5, 22, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 2.2)) c.stroke();
+    c.fillStyle = '#ffffff';                          // the white tip
+    c.beginPath(); c.ellipse(0, 31, 8, 8.5, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 1.6)) c.stroke();
+    c.restore();
+
+    paws(c, S, ang, wag, 17, -4, 6.5, 12, 22, 6);
+    var bg = c.createRadialGradient(-7, -12, 4, 0, 0, 30);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath();                                    // narrow, quick-looking
+    c.moveTo(0, -22);
+    c.bezierCurveTo(13, -25, 18, -9, 17, 5);
+    c.bezierCurveTo(16, 18, 9, 24, 0, 24);
+    c.bezierCurveTo(-9, 24, -16, 18, -17, 5);
+    c.bezierCurveTo(-18, -9, -13, -25, 0, -22);
+    c.closePath(); c.fill();
+    if (edge(c, S, 2.2)) c.stroke();
+    [-1, 1].forEach(function (k) {                    // sharp ears
+      c.fillStyle = S.body[2];
+      c.beginPath();
+      c.moveTo(k * 4, -30); c.lineTo(k * 16, -46); c.lineTo(k * 16, -28);
+      c.closePath(); c.fill();
+      if (edge(c, S, 2)) c.stroke();
+      c.fillStyle = S.nose;                           // dark inner ear reads at any size
+      c.globalAlpha = 0.4;
+      c.beginPath();
+      c.moveTo(k * 7, -31); c.lineTo(k * 13.5, -41); c.lineTo(k * 13.5, -30);
+      c.closePath(); c.fill();
+      c.globalAlpha = 1;
+    });
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, -26, 11, 10.5, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 2)) c.stroke();
+    c.fillStyle = S.mark;                             // pointed snout
+    c.beginPath();
+    c.moveTo(-5.5, -31); c.lineTo(0, -43); c.lineTo(5.5, -31);
+    c.closePath(); c.fill();
+    if (edge(c, S, 1.6)) c.stroke();
+    c.fillStyle = S.nose;
+    c.beginPath(); c.ellipse(0, -41, 3, 2.4, 0, 0, 6.2832); c.fill();
+  }
+
+  var BODIES = { penguin: bodyPenguin, bear: bodyBear, walrus: bodyWalrus,
+                 seal: bodySeal, fox: bodyFox };
+
+  /* One painter, two callers: the creature on the hill and the little
+     portrait on each shop card. Everything it needs comes in through `o`,
+     so the preview does not have to fake a world to borrow the drawing. */
+  function paintCreature(c, S, o) {
+    var ang = o.ang || 0, wag = o.wag || 0, lift = o.lift || 0;
+    c.save();
+    /* Height reads as the shadow falling away and shrinking while the animal
+       itself grows — the only way to show altitude from straight above. */
+    c.fillStyle = 'rgba(70,110,150,' + (0.25 - 0.13 * lift).toFixed(3) + ')';
+    c.save();
+    c.scale(o.scale, o.scale);
+    c.beginPath();
+    c.ellipse(5 + lift * 10, 7 + lift * 34, 30 - lift * 9, 34 - lift * 11, 0, 0, 6.2832);
+    c.fill();
+    c.restore();
+    c.scale(o.scale * (1 + 0.5 * lift), o.scale * (1 + 0.5 * lift));
+
+    (BODIES[S.shape] || bodyPenguin)(c, S, ang, wag);
 
     if (o.shield >= 0) {
       var r = 48;
@@ -853,8 +1275,33 @@ var Game = (function () {
     ctx.translate(scrX(W.px), PLAYER_Y);
     ctx.rotate(crashed && W.crashAt ? W.crashAt.spin : ang);
     if (blink) ctx.globalAlpha = 0.45;
-    paintPenguin(ctx, S, {
-      ang: ang, wag: Math.sin(W.t * 0.3) * 0.1, scale: 1.45,
+    var lift = 0;
+    if (airborne()) {
+      var p = 1 - (W.airTo - W.dist) / W.airSpan;    // 0 at the lip, 1 at touchdown
+      lift = Math.sin(Math.PI * clamp(p, 0, 1));
+
+      /* Over the hole there is nothing for a shadow to fall on, so height
+         has to be said another way: rushing air, streaming past and behind. */
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)';
+      ctx.lineCap = 'round';
+      for (var a = 0; a < 7; a++) {
+        var side = a % 2 ? 1 : -1;
+        var off = 26 + (a * 13) % 34;
+        var len = 22 + lift * 30 + (a * 7) % 14;
+        var wob = Math.sin(W.t * 0.4 + a) * 3;
+        ctx.globalAlpha = (0.2 + 0.4 * lift) * (1 - a / 9);
+        ctx.lineWidth = 3.4 - a * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(side * off + wob, 16 + a * 5);
+        ctx.lineTo(side * (off + 5) + wob, 16 + a * 5 + len);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    paintCreature(ctx, S, {
+      ang: ang, wag: Math.sin(W.t * 0.3) * 0.1, scale: 1.45, lift: lift,
       shield: (W.shield > 0 && !crashed) ? W.t : -1
     });
     ctx.globalAlpha = 1;
@@ -923,8 +1370,8 @@ var Game = (function () {
     /* Both readouts stack down the left so the top right stays clear for the
        pause button. The whole screen is the control here, so that button must
        not sit where a thumb taps. */
-    pill(66, 34, 'SCORE', Math.floor(W.score), '#ffd83d');
-    pill(72, 84, 'METRES', Math.floor(W.dist / 8), '#eaf7ff');
+    pill(66, 34, tr('hud.score', 'SCORE'), Math.floor(W.score), '#ffd83d');
+    pill(72, 84, tr('hud.metres', 'METRES'), Math.floor(W.dist / 8), '#eaf7ff');
     if (W.shield > 0) {
       ctx.save();
       ctx.translate(VIEW_W / 2, 62);
@@ -941,7 +1388,7 @@ var Game = (function () {
       ctx.textAlign = 'center';
       ctx.font = '700 13px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
       ctx.fillStyle = 'rgba(30,70,105,.7)';
-      ctx.fillText('BEST  ' + W.best, VIEW_W / 2, 26);
+      ctx.fillText(tr('hud.best', 'BEST') + '  ' + W.best, VIEW_W / 2, 26);
       ctx.restore();
     }
     if (W.tapFlash > 0 && W.biomeT < 120) {
@@ -950,9 +1397,10 @@ var Game = (function () {
       ctx.textAlign = 'center';
       ctx.font = '800 30px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
       ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,255,255,.92)';
-      ctx.strokeText(biome().name, VIEW_W / 2, 120);
+      var zone = tr('biome.' + (W.biome % BIOMES.length), biome().name);
+      ctx.strokeText(zone, VIEW_W / 2, 120);
       ctx.fillStyle = '#12496f';
-      ctx.fillText(biome().name, VIEW_W / 2, 120);
+      ctx.fillText(zone, VIEW_W / 2, 120);
       ctx.restore();
     }
   }
@@ -1075,7 +1523,7 @@ var Game = (function () {
       c.lineJoin = 'round'; c.lineCap = 'round';
       c.save();
       c.translate(size / 2, size / 2 + size * 0.03);
-      paintPenguin(c, skinById(skinId), { ang: 0, wag: 0, scale: size / 108, shield: -1 });
+      paintCreature(c, skinById(skinId), { ang: 0, wag: 0, scale: size / 112, shield: -1 });
       c.restore();
     },
     /* stepping the world by hand, for tests and screenshots */
@@ -1083,6 +1531,7 @@ var Game = (function () {
     _render: function () { if (W) render(); },
     _screen: function (x, d) { return { x: scrX(x), y: scrY(d) }; },
     _chuteAt: chuteAt,
+    _turnRate: function () { return W ? turnRate() : TURN; },
     _consts: function () { return { CHUTE: CHUTE, PR: PR, LOOK: LOOK,
                                     PLAYER_Y: PLAYER_Y, VIEW_W: VIEW_W, VIEW_H: VIEW_H,
                                     SPEED_MAX: SPEED_MAX, HARD_OVER: HARD_OVER,

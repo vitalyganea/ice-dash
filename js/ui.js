@@ -5,13 +5,19 @@
   'use strict';
 
   var LOAD_TIMEOUT = 3000;
-  var SAVE_KEY = 'pinerush-save-v1';
+  var SAVE_KEY = 'icedash-save-v1';
+  /* The game used to be called Pine Rush. Anyone who played it then still
+     has their fish under the old key, so read it once if the new one is
+     empty. Only matters outside Playables, where the cloud save is keyed
+     by the game rather than by this string. */
+  var OLD_KEYS = ['pinerush-save-v1'];
   var IN_YT = !!(window.ytgame && window.ytgame.IN_PLAYABLES_ENV);
 
   /* -------------------------- saving ------------------------- */
   function defaults() {
     return { best: 0, runs: 0, sfx: true, music: true,
-             fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap' };
+             fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
+             lang: detectLang() };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -36,6 +42,7 @@
             save.owned.push(o.owned[i]);
       save.equipped = (SKIN_BY_ID[o.equipped] && save.owned.indexOf(o.equipped) >= 0)
                     ? o.equipped : 'snowcap';
+      if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -45,7 +52,11 @@
         new Promise(function (r) { setTimeout(r, LOAD_TIMEOUT); })
       ]);
     }
-    try { adopt(localStorage.getItem(SAVE_KEY)); } catch (e) {}
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      for (var i = 0; !raw && i < OLD_KEYS.length; i++) raw = localStorage.getItem(OLD_KEYS[i]);
+      adopt(raw);
+    } catch (e) {}
     return Promise.resolve();
   }
   function store() {
@@ -72,7 +83,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
-                  shop: $('screen-shop') };
+                  shop: $('screen-shop'), settings: $('screen-settings') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -85,10 +96,11 @@
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
     if (name === 'shop') buildShop();
+    if (name === 'settings') buildSettings();
     if (name === 'title') {
-      var t = $('title-best');
-      t.textContent = '🏔️ Best ' + save.best + ' points';
-      t.classList.toggle('hidden', save.best <= 0);
+      var el = $('title-best');
+      el.textContent = t('title.best', { n: save.best });
+      el.classList.toggle('hidden', save.best <= 0);
     }
   }
   function showGame() { show('game'); }
@@ -114,11 +126,11 @@
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
-    $('over-score').textContent = res.score + ' points';
-    var bits = [res.dist + ' m', res.fish + ' fish'];
-    if (res.gold)  bits.push(res.gold + ' golden');
-    if (res.gates) bits.push(res.gates + ' gates');
-    if (res.saved) bits.push(res.saved + ' bubble save' + (res.saved > 1 ? 's' : ''));
+    $('over-score').textContent = t('over.points', { n: res.score });
+    var bits = [res.dist + ' ' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
+    if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
+    if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
+    if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
     $('over-detail').textContent = bits.join('  ·  ');
     Game.pause();
     show('over');
@@ -130,11 +142,15 @@
       case 'play':       Sfx.click(); ride(); break;
       case 'help':       Sfx.click(); show('help'); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
+      case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'back-title':
         Sfx.click();
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
-        if (currentScreen === 'shop' && shopBack === 'over') { shopBack = null; show('over'); break; }
+        if ((currentScreen === 'shop' || currentScreen === 'settings') &&
+            (shopBack === 'over' || shopBack === 'pause')) {
+          var back = shopBack; shopBack = null; show(back); break;
+        }
         shopBack = null; Game.stop(); show('title'); break;
       case 'resume':     Sfx.click(); showGame(); Game.resume(); break;
     }
@@ -179,7 +195,14 @@
     wallet();
     var grid = $('shop-grid');
     grid.textContent = '';
-    for (var i = 0; i < SKINS.length; i++) grid.appendChild(card(SKINS[i]));
+    /* Cheapest first, so the next thing you can afford is the next thing
+       you see. Prices in different currencies cannot be compared, so the
+       gold ones go last however small the number on them looks. */
+    var list = SKINS.slice().sort(function (a, b) {
+      var ga = a.currency === 'gold' ? 1 : 0, gb = b.currency === 'gold' ? 1 : 0;
+      return ga !== gb ? ga - gb : a.price - b.price;
+    });
+    for (var i = 0; i < list.length; i++) grid.appendChild(card(list[i]));
   }
 
   function card(sk) {
@@ -198,27 +221,28 @@
     el.appendChild(info);
 
     var h = document.createElement('div');
-    h.className = 'skin-name'; h.textContent = sk.name;
+    h.className = 'skin-name'; h.textContent = t('skin.' + sk.id + '.name', null, sk.name);
     info.appendChild(h);
 
     var perk = document.createElement('div');
-    perk.className = 'skin-perk'; perk.textContent = sk.perkText;
+    perk.className = 'skin-perk';
+    perk.textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
     info.appendChild(perk);
 
     var b = document.createElement('button');
     b.className = 'btn btn-sm';
     b.setAttribute('data-skin', sk.id);
     if (save.equipped === sk.id) {
-      b.textContent = '✓ Wearing'; b.disabled = true; b.className += ' btn-ghost';
+      b.textContent = t('shop.wearing'); b.disabled = true; b.className += ' btn-ghost';
     } else if (owns(sk.id)) {
-      b.textContent = 'Wear'; b.className += ' btn-green';
+      b.textContent = t('shop.wear'); b.className += ' btn-green';
     } else {
       var icon = sk.currency === 'gold' ? ' ✨' : ' 🐟';
       b.textContent = sk.price + icon;
       var canAfford = balance(sk.currency) >= sk.price;
       b.className += canAfford ? ' btn-blue' : ' btn-ghost';
       b.disabled = !canAfford;
-      if (!canAfford) b.title = 'Catch ' + (sk.price - balance(sk.currency)) + ' more';
+      if (!canAfford) b.title = t('shop.needmore', { n: sk.price - balance(sk.currency) });
     }
     info.appendChild(b);
     return el;
@@ -240,6 +264,38 @@
     save.equipped = sk.id;          // buying it puts it on straight away
     store();
     buildShop();
+  });
+
+  /* -------------------------- settings ----------------------- */
+  function buildSettings() {
+    var row = $('lang-row');
+    row.textContent = '';
+    LANGS.forEach(function (L) {
+      var b = document.createElement('button');
+      b.className = 'chip' + (getLang() === L.id ? ' on' : '');
+      b.textContent = L.label;
+      b.setAttribute('data-lang', L.id);
+      b.setAttribute('aria-pressed', getLang() === L.id ? 'true' : 'false');
+      row.appendChild(b);
+    });
+    syncToggles();
+  }
+
+  $('lang-row').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-lang]') : null;
+    if (!b) return;
+    var id = b.getAttribute('data-lang');
+    if (id === getLang()) return;
+    setLang(id);
+    save.lang = getLang();
+    store();
+    Sfx.click();
+    /* Everything already on the page is re-read, and the two screens that
+       build themselves are rebuilt, so nothing is left in the old language. */
+    applyI18n();
+    buildSettings();
+    buildShop();
+    if (currentScreen === 'title') show('title');
   });
 
   /* --------------------------- tapping ----------------------- */
@@ -307,6 +363,8 @@
 
   /* --------------------------- boot -------------------------- */
   bootSdk();
+  setLang(save.lang);
+  applyI18n();
   Sfx.sound(save.sfx);
   syncToggles();
   show('title');
@@ -315,6 +373,8 @@
     announce('firstFrameReady');
     loadSave().then(function () {
       canSave = true;
+      setLang(save.lang);           // the cloud save may disagree with the device
+      applyI18n();
       syncToggles();
       Sfx.sound(save.sfx);
       show(currentScreen === 'title' ? 'title' : currentScreen);

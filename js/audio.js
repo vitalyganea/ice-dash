@@ -78,7 +78,13 @@ var Sfx = (function () {
     crash:  function(){ tone({ freq:240, to:60, dur:0.4, type:'sawtooth', vol:0.26 });
                         noise(0.36, 0.24, 320); },
     click:  function(){ tone({ freq:700, to:1000, dur:0.06, type:'square', vol:0.16 }); },
-    locked: function(){ tone({ freq:180, dur:0.1, type:'square', vol:0.2 }); }
+    locked: function(){ tone({ freq:180, dur:0.1, type:'square', vol:0.2 }); },
+    /* hitting a ramp: a scrape that slides upward into the launch */
+    jump:   function(){ noise(0.1, 0.1, 900);
+                        tone({ freq:330, to:880, dur:0.22, type:'triangle', vol:0.2 }); },
+    /* coming back down: a thump with a spray of snow behind it */
+    land:   function(){ tone({ freq:200, to:110, dur:0.16, type:'sine', vol:0.24 });
+                        noise(0.16, 0.14, 420); }
   };
 
   /* ---------- background music ---------- */
