@@ -406,3 +406,14 @@ body{
   .skin-info{ align-items:flex-start; flex:1 1 auto; text-align:left; }
   .skin-perk{ text-align:left; min-height:0; }
 }
+
+/* Settings headings: small, quiet labels above each group of controls. */
+.set-head{
+  margin:16px 0 2px;
+  font-size:clamp(13px,2.1vw,16px);
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.set-head:first-of-type{ margin-top:6px; }
