@@ -333,3 +333,76 @@ body{
   .level-grid  { gap:7px; margin:4px 0 8px; }
   .total-stars { font-size:14px; }
 }
+
+/* ------------------- FISH MARKET -------------------
+   The cards have to stay legible on a phone, so the grid collapses to a
+   single column rather than shrinking the portraits into thumbnails. */
+.wallet{
+  display:flex; gap:18px; justify-content:center;
+  font-size:clamp(18px,3.2vw,26px); font-weight:800;
+  color:var(--gold-dark);
+  margin:2px 0 14px;
+}
+
+.shop-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  gap:12px;
+  margin:0 0 6px;
+}
+
+.skin-card{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:12px 10px 14px;
+  border-radius:20px;
+  background:rgba(255,255,255,.8);
+  border:3px solid transparent;
+  box-shadow:0 3px 0 rgba(0,0,0,.08);
+}
+.skin-card.owned{ background:rgba(236,250,241,.92); }
+.skin-card.worn{ border-color:var(--green); background:rgba(214,245,225,.96); }
+
+.skin-info{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+
+.skin-pic{
+  display:block;
+  width:88px; height:88px;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 38%, #dff1fb 0%, #b9dcf0 100%);
+}
+
+.skin-name{ font-weight:800; font-size:clamp(15px,2.4vw,19px); color:var(--ink); }
+.skin-perk{
+  font-size:clamp(12px,1.9vw,14px);
+  color:var(--ink-soft);
+  text-align:center;
+  line-height:1.3;
+  min-height:2.6em;
+}
+.btn-sm{ font-size:clamp(13px,2vw,16px); padding:9px 18px; }
+.btn-sm:disabled{ cursor:default; filter:none; }
+.btn-sm:disabled:active{ transform:none; }
+
+.shop-note{
+  font-size:clamp(12px,1.9vw,15px);
+  color:var(--ink-soft);
+  text-align:center;
+  margin:8px 0 2px;
+}
+
+.earned{
+  font-size:clamp(17px,3vw,23px);
+  font-weight:800;
+  color:var(--gold-dark);
+  margin:2px 0 4px;
+}
+
+/* One column means there is room to stand the portrait beside the words,
+   which keeps a card to a third of the height on a phone. */
+@media (max-width:540px){
+  .shop-grid{ grid-template-columns:1fr; gap:10px; }
+  .skin-card{ flex-direction:row; align-items:center; gap:14px; padding:10px 14px; }
+  .skin-pic{ width:66px; height:66px; flex:0 0 auto; }
+  .skin-info{ align-items:flex-start; flex:1 1 auto; text-align:left; }
+  .skin-perk{ text-align:left; min-height:0; }
+}
