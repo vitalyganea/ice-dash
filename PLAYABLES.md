@@ -25,10 +25,12 @@ you to do in the Developer Portal.
 
 | Requirement | How it is met |
 |---|---|
-| Playable at every aspect ratio | the world is always 540 units tall, the visible width follows the viewport (clamped 640–1400); leftovers become pillar/letterbox. Verified 9:32 → 32:9 |
+| Playable at every aspect ratio | the view is scaled so a fixed safe region of the world always fits, then extended to the screen edges. Verified at twelve shapes from 9:32 to 32:9 |
+| Fills the viewport | exactly, at every shape — there is no letterbox or pillarbox at any aspect ratio |
 | No orientation lock | none requested |
 | State survives resize | `Game.resize()` reframes the live run; distance, score and the penguin's position are untouched |
-| Touch **and mouse** for everything | the single control is a tap anywhere, driven by Pointer Events, so mouse, touch and pen all work; every menu is ordinary buttons |
+| Touch **and mouse** for everything | the single control is a tap anywhere on the window, driven by Pointer Events, so mouse, touch and pen all work; every menu is ordinary buttons |
+| Touch targets | the one on-screen button is at least 44×44 css px and sits clear of the steering area |
 | No input dropped | one control, no held state to get stuck |
 | Esc closes modals | help and pause both close on Esc |
 | No `preventDefault()` on Esc | the Esc branch returns before any other handling |

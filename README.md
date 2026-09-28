@@ -39,15 +39,17 @@ one side. A tap sends him the other way. That is the whole game.
 - Pines and boulders to weave through, seen from directly overhead
 - 🐟 fish to swallow (25), ✨ a golden fish off the safe line (150),
   🫧 a snow bubble that absorbs one crash, 🚩 flag gates for a bonus
-- Four stretches of hill that rotate every 900 m: **Pine Forest**,
+- Four stretches of hill that rotate every 520 m, cross-fading into each other rather than cutting: **Pine Forest**,
   **Rocky Pass**, **Glacier** (he turns lazily — tap earlier) and
   **Night Run** (the hill ahead fades into the dark)
 - The run gets harder the whole way down: faster, gaps narrower, rows closer
   together and more often doubled up
 - Best score saved through the Playables cloud save (distance plus everything collected)
 - Music and sound effects, each with its own on/off toggle
-- Responsive from 9:32 to 32:9: the world stays 540 units tall and the visible
-  width follows the screen, so nothing is ever stretched or cut off
+- Fills the screen at any shape, from 9:32 to 32:9. A fixed safe region of
+  the world is guaranteed visible and the view then extends to the edges, so
+  there is never a letterbox or pillarbox — and never a strip of screen that
+  ignores your taps
 
 ## Layout
 
@@ -64,6 +66,19 @@ PLAYABLES.md      certification requirements and how each one is met
 
 `README.md` and `PLAYABLES.md` are documentation — leave them out of the
 uploaded bundle.
+
+## One control, whole screen
+
+The tap is bound to the window, not to the drawing surface. That matters: the
+build before this one sized the canvas to a fixed aspect and centred it, so on
+a tall phone more than half the display — including where a thumb naturally
+rests — silently swallowed every tap. Two pointers landing within 45 ms count
+as one tap, or a two-finger press would flip the direction twice and appear to
+do nothing.
+
+The pause button sits top right, clear of the lower half, because the whole
+screen steers and a control under a resting thumb would pause the run by
+accident.
 
 ## How the hill stays fair
 
@@ -83,3 +98,8 @@ So the run can demand a near-perfect tap, but it can never demand an impossible
 one. `scratchpad/pine/mech.js` checks this by replaying every row a real run
 produces; it also verifies that the drawn scene and the collision test agree to
 within a millionth of a pixel, and that distance survived actually tracks skill.
+
+A tall phone shows far more hill than a laptop does, which would otherwise hand
+it several extra seconds of warning. Past a fixed budget of clearly readable
+hill the distance hazes over: shapes still show through, but not sharply enough
+to plan on, so the run asks about the same of everyone.
