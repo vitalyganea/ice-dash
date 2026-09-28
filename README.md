@@ -51,6 +51,9 @@ one side. A tap sends him the other way. That is the whole game.
 - The run gets harder the whole way down: faster, gaps narrower, rows closer
   together and more often doubled up
 - Best score saved through the Playables cloud save (distance plus everything collected)
+- 🏅 **15 trophies**, each paying out in fish — distance, catches, crevasses
+  cleared, creatures owned. Progress is shown whether or not you have earned
+  one, so a locked row still tells you how close you are
 - A **settings** screen: sound, music, and the language
 - **English and Russian.** English is the fallback for every string. Baloo 2
   has no Cyrillic at all, so a subset of Nunito is embedded alongside it and
@@ -74,6 +77,7 @@ js/i18n.js        every string, in English and Russian
 js/audio.js       sounds and music synthesised with WebAudio
 js/biomes.js      the four stretches of hill: palette, grip, fog
 js/skins.js       the creatures you can wear, and what each one does
+js/achievements.js the trophies and what each one pays
 js/game.js        the engine: physics, spawning, collisions, rendering
 js/ui.js          menus, saving, input, Playables lifecycle
 PLAYABLES.md      certification requirements and how each one is met

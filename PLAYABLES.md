@@ -52,11 +52,11 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 
 | Limit | This game |
 |---|---|
-| Initial bundle < 30 MiB (< 15 recommended) | 177 KB |
-| Individual file < 30 MiB (< 512 KiB recommended) | largest is `js/game.js`, 62 KB |
-| Saved game < 3 MiB (< 500 KiB recommended) | ~180 bytes (best, runs, wallet, wardrobe, language) |
+| Initial bundle < 30 MiB (< 15 recommended) | 194 KB |
+| Individual file < 30 MiB (< 512 KiB recommended) | largest is `js/game.js`, 66 KB |
+| Saved game < 3 MiB (< 500 KiB recommended) | ~380 bytes (best, runs, wallet, wardrobe, language, trophies and their counters) |
 | Load and interactive < 5 s | no assets to fetch; interactive on the first frame |
-| At most 8000 files | 9 |
+| At most 8000 files | 10 |
 | Only relative paths | yes, the SDK URL aside |
 | File names `[A-Za-z0-9_.-]` | yes |
 | Standards-compliant Web APIs | Canvas 2D, WebAudio, Pointer Events |
