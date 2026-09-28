@@ -17,7 +17,12 @@
   function defaults() {
     return { best: 0, runs: 0, sfx: true, music: true,
              fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
-             lang: detectLang() };
+             lang: detectLang(),
+             /* Trophy progress is kept as running totals rather than being
+                worked out from history, so a goal can show how far along you
+                are at any moment and not only when it ticks over. */
+             ach: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
+             totSaves: 0, bestDist: 0, bestRunFish: 0 };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -43,6 +48,14 @@
       save.equipped = (SKIN_BY_ID[o.equipped] && save.owned.indexOf(o.equipped) >= 0)
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
+      ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish']
+        .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
+      save.ach = [];
+      if (Object.prototype.toString.call(o.ach) === '[object Array]')
+        for (var j = 0; j < o.ach.length; j++)
+          for (var q = 0; q < ACHIEVEMENTS.length; q++)
+            if (ACHIEVEMENTS[q].id === o.ach[j] && save.ach.indexOf(o.ach[j]) < 0)
+              save.ach.push(o.ach[j]);
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -83,7 +96,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
-                  shop: $('screen-shop'), settings: $('screen-settings') };
+                  shop: $('screen-shop'), settings: $('screen-settings'),
+                  ach: $('screen-ach') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -97,6 +111,7 @@
     hud.classList.toggle('hidden', name !== 'game');
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
+    if (name === 'ach') buildAch();
     if (name === 'title') {
       var el = $('title-best');
       el.textContent = t('title.best', { n: save.best });
@@ -118,7 +133,16 @@
     if (beat) save.best = res.score;
     save.fish += res.coins || 0;
     save.gold += res.gold || 0;
+    save.totFish  += res.fish  || 0;
+    save.totGold  += res.gold  || 0;
+    save.totGates += res.gates || 0;
+    save.totJumps += res.jumps || 0;
+    save.totSaves += res.saved || 0;
+    save.bestDist    = Math.max(save.bestDist, res.dist || 0);
+    save.bestRunFish = Math.max(save.bestRunFish, res.fish || 0);
+    var won = achCheck(save);                        // pays out into save.fish
     store();
+    showWon(won);
     var earned = $('over-earned');
     var bits = [];
     if (res.coins) bits.push('+' + res.coins + ' 🐟');
@@ -143,11 +167,13 @@
       case 'help':       Sfx.click(); show('help'); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
+      case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
       case 'back-title':
         Sfx.click();
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
-        if ((currentScreen === 'shop' || currentScreen === 'settings') &&
+        if ((currentScreen === 'shop' || currentScreen === 'settings' ||
+             currentScreen === 'ach') &&
             (shopBack === 'over' || shopBack === 'pause')) {
           var back = shopBack; shopBack = null; show(back); break;
         }
@@ -262,9 +288,77 @@
       Sfx.click();
     }
     save.equipped = sk.id;          // buying it puts it on straight away
+    achCheck(save);                 // owning things is a goal in its own right
     store();
     buildShop();
   });
+
+  /* -------------------------- trophies ----------------------- */
+  function showWon(won) {
+    var box = $('over-won');
+    box.textContent = '';
+    box.classList.toggle('hidden', !won.length);
+    won.forEach(function (a) {
+      var row = document.createElement('div');
+      row.className = 'won-row';
+      row.textContent = a.icon + '  ' + t('ach.' + a.id + '.name') + '   +' + a.reward + ' 🐟';
+      box.appendChild(row);
+    });
+  }
+
+  function buildAch() {
+    /* Sweep before drawing. A goal can be satisfied by a route that never
+       passes through the end-of-run check — an older save, a rule that
+       changed, a target that moved — and without this it would sit there
+       reading 30 / 30 and locked. */
+    if (achCheck(save).length) store();
+    var done = 0;
+    for (var i = 0; i < ACHIEVEMENTS.length; i++)
+      if (save.ach.indexOf(ACHIEVEMENTS[i].id) >= 0) done++;
+    $('ach-count').textContent = t('ach.count', { a: done, b: ACHIEVEMENTS.length });
+
+    var list = $('ach-list');
+    list.textContent = '';
+    ACHIEVEMENTS.forEach(function (a) {
+      var p = achProgress(a, save);
+      var got = save.ach.indexOf(a.id) >= 0;
+
+      var row = document.createElement('div');
+      row.className = 'ach-row' + (got ? ' got' : '');
+
+      var ico = document.createElement('div');
+      ico.className = 'ach-ico'; ico.textContent = a.icon;
+      row.appendChild(ico);
+
+      var mid = document.createElement('div');
+      mid.className = 'ach-mid';
+      var nm = document.createElement('div');
+      nm.className = 'ach-name'; nm.textContent = t('ach.' + a.id + '.name');
+      mid.appendChild(nm);
+      var ds = document.createElement('div');
+      ds.className = 'ach-desc'; ds.textContent = t('ach.' + a.id + '.desc');
+      mid.appendChild(ds);
+
+      var bar = document.createElement('div');
+      bar.className = 'ach-bar';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(p.cur / Math.max(1, p.goal) * 100) + '%';
+      bar.appendChild(fill);
+      mid.appendChild(bar);
+      row.appendChild(mid);
+
+      var right = document.createElement('div');
+      right.className = 'ach-right';
+      right.textContent = got ? ('✓ ' + t('ach.earned'))
+                              : (p.cur + ' / ' + p.goal);
+      var rew = document.createElement('small');
+      rew.textContent = '+' + a.reward + ' 🐟';
+      right.appendChild(rew);
+      row.appendChild(right);
+
+      list.appendChild(row);
+    });
+  }
 
   /* -------------------------- settings ----------------------- */
   function buildSettings() {
@@ -375,6 +469,7 @@
       canSave = true;
       setLang(save.lang);           // the cloud save may disagree with the device
       applyI18n();
+      achCheck(save);               // anything the loaded save already earned
       syncToggles();
       Sfx.sound(save.sfx);
       show(currentScreen === 'title' ? 'title' : currentScreen);

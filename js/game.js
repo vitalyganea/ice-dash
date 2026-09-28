@@ -128,7 +128,7 @@ var Game = (function () {
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
-      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0,
+      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0
     };
@@ -329,7 +329,7 @@ var Game = (function () {
       if (W.endT === 46 && hooks.over)
         hooks.over({ score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
-                     coins: W.coins });
+                     coins: W.coins, jumps: W.jumps });
       return;
     }
 
@@ -378,6 +378,7 @@ var Game = (function () {
         if (Math.abs(dx) < o.w / 2) {
           W.airSpan = AIR_DIST * (perk().rampBoost || 1);
           W.airTo = W.dist + W.airSpan;
+          W.jumps++;
           W.shake = Math.max(W.shake, 5);
           Sfx.jump();
           for (var j = 0; j < 12; j++)
@@ -777,51 +778,96 @@ var Game = (function () {
 
   /* The way across: packed snow heaped into a ramp, sitting exactly in the
      row's opening so it is aimed at the same way as every other gap. */
+  /* The way across, carved from the ice itself rather than heaped out of
+     snow. Ice colours are fixed instead of taken from the biome: in the
+     rocky pass the snow palette is sandy, and a sand-coloured ramp read as
+     a dune. A faint biome wash keeps it from looking pasted on. */
   function drawRamp(x, y, o, B) {
-    var hw = o.w / 2, h = 46;
+    var hw = o.w / 2, h = 48;
     ctx.save();
     ctx.translate(x, y);
 
-    ctx.fillStyle = 'rgba(70,110,150,.22)';
-    ctx.beginPath(); ctx.ellipse(4, 8, hw * 0.95, 20, 0, 0, 6.2832); ctx.fill();
+    /* It sits proud of the ice, and it is the one thing you must not miss,
+       so it gets a real shadow and a darker foot rather than melting into
+       the run behind it. */
+    ctx.fillStyle = 'rgba(40,78,116,.34)';
+    ctx.beginPath(); ctx.ellipse(5, 13, hw * 1.0, 21, 0, 0, 6.2832); ctx.fill();
 
-    var g = ctx.createLinearGradient(0, h * 0.5, 0, -h * 0.7);
-    g.addColorStop(0, B.bankShade); g.addColorStop(0.55, B.snowA); g.addColorStop(1, '#ffffff');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(-hw, h * 0.5);
-    ctx.lineTo(-hw * 0.72, -h * 0.62);
-    ctx.quadraticCurveTo(0, -h * 0.82, hw * 0.72, -h * 0.62);
-    ctx.lineTo(hw, h * 0.5);
-    ctx.closePath(); ctx.fill();
-
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;  // the lip you leave from
-    ctx.beginPath();
-    ctx.moveTo(-hw * 0.72, -h * 0.62);
-    ctx.quadraticCurveTo(0, -h * 0.82, hw * 0.72, -h * 0.62);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255,190,60,.85)';          // chevrons: aim here
-    for (var ch = 0; ch < 2; ch++) {
-      var cy = -h * 0.18 + ch * 15;
+    function slab(inset) {
       ctx.beginPath();
-      ctx.moveTo(-hw * 0.3, cy + 7);
-      ctx.lineTo(0, cy - 4);
-      ctx.lineTo(hw * 0.3, cy + 7);
-      ctx.lineTo(hw * 0.3, cy + 12);
-      ctx.lineTo(0, cy + 1);
-      ctx.lineTo(-hw * 0.3, cy + 12);
-      ctx.closePath(); ctx.fill();
+      ctx.moveTo(-hw + inset, h * 0.5 - inset);
+      ctx.lineTo(-hw * 0.72 + inset, -h * 0.62 + inset);
+      ctx.quadraticCurveTo(0, -h * 0.84 + inset, hw * 0.72 - inset, -h * 0.62 + inset);
+      ctx.lineTo(hw - inset, h * 0.5 - inset);
+      ctx.closePath();
     }
 
-    ctx.fillStyle = 'rgba(80,140,190,.28)';          // ribs of packed snow
-    for (var k = -1; k <= 1; k++) {
+    var g = ctx.createLinearGradient(0, h * 0.5, 0, -h * 0.8);
+    g.addColorStop(0, '#2f7fae');                    // deep, wet ice at the foot
+    g.addColorStop(0.42, '#7cc6e6');
+    g.addColorStop(0.85, '#d8f1fc');
+    g.addColorStop(1, '#ffffff');                    // frosted lip
+    ctx.fillStyle = g;
+    slab(0); ctx.fill();
+
+    ctx.save(); slab(0); ctx.clip();
+    ctx.globalAlpha = 0.16;                          // a whisper of the local light
+    ctx.fillStyle = B.iceTop;
+    ctx.fillRect(-hw, -h, hw * 2, h * 2);
+    ctx.globalAlpha = 1;
+
+    /* Cleaved faces, the way a block of ice breaks: straight, bright edges
+       rather than the soft ribs packed snow would have. */
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = 2;
+    [-0.62, -0.2, 0.24, 0.66].forEach(function (f, i) {
       ctx.beginPath();
-      ctx.moveTo(k * hw * 0.34 - 3, h * 0.42);
-      ctx.lineTo(k * hw * 0.26 - 2, -h * 0.5);
-      ctx.lineTo(k * hw * 0.26 + 2, -h * 0.5);
-      ctx.lineTo(k * hw * 0.34 + 3, h * 0.42);
-      ctx.closePath(); ctx.fill();
+      ctx.moveTo(hw * f, h * 0.5);
+      ctx.lineTo(hw * f * 0.66 + (i % 2 ? 3 : -3), -h * 0.6);
+      ctx.stroke();
+    });
+    ctx.strokeStyle = 'rgba(70,130,175,.35)';
+    ctx.lineWidth = 1.4;
+    [-0.42, 0.06, 0.46].forEach(function (f) {
+      ctx.beginPath();
+      ctx.moveTo(hw * f, h * 0.5);
+      ctx.lineTo(hw * f * 0.66, -h * 0.6);
+      ctx.stroke();
+    });
+
+    ctx.fillStyle = 'rgba(255,255,255,.4)';          // glassy sheen off the face
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.5, h * 0.44);
+    ctx.lineTo(-hw * 0.2, -h * 0.55);
+    ctx.lineTo(-hw * 0.02, -h * 0.55);
+    ctx.lineTo(-hw * 0.26, h * 0.44);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 4;
+    ctx.beginPath();                                 // the frosted lip you leave from
+    ctx.moveTo(-hw * 0.72, -h * 0.62);
+    ctx.quadraticCurveTo(0, -h * 0.84, hw * 0.72, -h * 0.62);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(38,92,132,.7)'; ctx.lineWidth = 2.4;
+    slab(0); ctx.stroke();
+
+    for (var ch = 0; ch < 2; ch++) {                 // chevrons: aim here
+      var cy = -h * 0.14 + ch * 17;
+      ctx.beginPath();
+      ctx.moveTo(-hw * 0.34, cy + 8);
+      ctx.lineTo(0, cy - 5);
+      ctx.lineTo(hw * 0.34, cy + 8);
+      ctx.lineTo(hw * 0.34, cy + 14);
+      ctx.lineTo(0, cy + 1);
+      ctx.lineTo(-hw * 0.34, cy + 14);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(120,60,0,.35)';
+      ctx.fill();
+      ctx.translate(0, -2);
+      ctx.fillStyle = '#ffc032';
+      ctx.fill();
+      ctx.translate(0, 2);
     }
     ctx.restore();
   }
@@ -998,11 +1044,13 @@ var Game = (function () {
     c.bezierCurveTo(-12, 25, -21, 19, -22, 5);
     c.bezierCurveTo(-23, -10, -16, -24, 0, -22);
     c.closePath(); c.fill();
+    crease(c, 0, -17, 12, 5, 0.16);                   // where the head sits on the back
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -25, 12.5, 11.5, 0, 0, 6.2832); c.fill();
+    sheen(c, -4, -29, 6, 4.5, -0.4, 0.16);            // light on the crown
 
-    c.fillStyle = 'rgba(255,255,255,.1)';
-    c.beginPath(); c.ellipse(-6, -10, 9, 15, -0.25, 0, 6.2832); c.fill();
+    sheen(c, -7, -9, 8.5, 15, -0.25, 0.14);           // along the back
+    sheen(c, 9, 2, 3.5, 11, 0.2, 0.07);               // a thin edge on the far side
 
     drawSkinExtra(c, S);
 
@@ -1010,6 +1058,18 @@ var Game = (function () {
     c.beginPath();
     c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
     c.closePath(); c.fill();
+  }
+
+  /* Light off the top left, and a soft dark crease where one mass sits on
+     another. Between them they turn a flat blob into something with a back
+     and a head. */
+  function sheen(c, x, y, rx, ry, rot, a) {
+    c.fillStyle = 'rgba(255,255,255,' + a + ')';
+    c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, 6.2832); c.fill();
+  }
+  function crease(c, x, y, rx, ry, a) {
+    c.fillStyle = 'rgba(0,0,0,' + a + ')';
+    c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 6.2832); c.fill();
   }
 
   /* A white animal on white snow has no silhouette at all unless you draw
@@ -1026,14 +1086,14 @@ var Game = (function () {
       c.save();
       c.translate(k * fx, fy);
       c.rotate(k * (0.5 + wag) - ang * 0.3 * k);
-      c.fillStyle = S.flipper[1];
+      c.fillStyle = S.paw || S.flipper[1];
       c.beginPath(); c.ellipse(0, 0, fr, fr * 1.5, k * 0.3, 0, 6.2832); c.fill();
       if (edge(c, S, 1.8)) c.stroke();
       c.restore();
       c.save();
       c.translate(k * bx, by);
       c.rotate(k * 0.35);
-      c.fillStyle = S.flipper[2];
+      c.fillStyle = S.pawDark || S.flipper[2];
       c.beginPath(); c.ellipse(0, 0, br, br * 1.4, k * 0.2, 0, 6.2832); c.fill();
       if (edge(c, S, 1.8)) c.stroke();
       c.restore();
@@ -1062,16 +1122,18 @@ var Game = (function () {
       c.beginPath(); c.arc(k * 12, -33, 3.6, 0, 6.2832); c.fill();
       c.globalAlpha = 1;
     });
+    crease(c, 0, -16, 14, 6, 0.13);                   // heavy neck
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -25, 15, 13, 0, 0, 6.2832); c.fill();
     if (edge(c, S, 2.2)) c.stroke();
+    sheen(c, -5, -29, 7, 5, -0.4, 0.3);
     c.fillStyle = S.mark;                             // muzzle
     c.beginPath(); c.ellipse(0, -34, 8.5, 7, 0, 0, 6.2832); c.fill();
     if (edge(c, S, 1.8)) c.stroke();
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -38, 4.2, 3.2, 0, 0, 6.2832); c.fill();
-    c.fillStyle = 'rgba(255,255,255,.14)';
-    c.beginPath(); c.ellipse(-8, -8, 10, 16, -0.2, 0, 6.2832); c.fill();
+    sheen(c, -10, -6, 11, 17, -0.2, 0.32);            // the shoulder catching light
+    crease(c, 13, 10, 8, 14, 0.07);                   // and the far flank falling away
   }
 
   function bodyWalrus(c, S, ang, wag) {
@@ -1102,8 +1164,10 @@ var Game = (function () {
     c.bezierCurveTo(-25, -6, -19, -21, 0, -18);
     c.closePath(); c.fill();
     if (edge(c, S, 2)) c.stroke();
+    crease(c, 0, -13, 15, 6, 0.16);                   // fold behind the head
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -23, 16, 12, 0, 0, 6.2832); c.fill();
+    sheen(c, -9, -4, 9, 15, -0.2, 0.16);
     c.fillStyle = S.mark;                             // the great whiskery pad
     c.beginPath(); c.ellipse(0, -31, 12, 9, 0, 0, 6.2832); c.fill();
     c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 1.1;
@@ -1164,17 +1228,22 @@ var Game = (function () {
     [[-7, -6], [6, -2], [-3, 8], [8, 12], [-8, 15]].forEach(function (q) {
       c.beginPath(); c.ellipse(q[0], q[1], 3.4, 2.6, 0.3, 0, 6.2832); c.fill();
     });
+    crease(c, 0, -19, 11, 5, 0.14);
     c.fillStyle = bg;
-    c.beginPath(); c.ellipse(0, -27, 11.5, 10.5, 0, 0, 6.2832); c.fill();
+    c.beginPath(); c.ellipse(0, -28, 13, 12, 0, 0, 6.2832); c.fill();
+    if (edge(c, S, 1.8)) c.stroke();
+    sheen(c, -4, -32, 6, 4.5, -0.4, 0.18);
     c.fillStyle = S.mark;
-    c.beginPath(); c.ellipse(0, -34, 6, 5, 0, 0, 6.2832); c.fill();
+    c.beginPath(); c.ellipse(0, -36, 7, 5.5, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
-    c.beginPath(); c.ellipse(0, -37, 3, 2.4, 0, 0, 6.2832); c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 1;
+    c.beginPath(); c.ellipse(0, -39, 3.2, 2.6, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.1;
     [-1, 1].forEach(function (k) {
-      c.beginPath(); c.moveTo(k * 3, -34); c.lineTo(k * 11, -37); c.stroke();
-      c.beginPath(); c.moveTo(k * 3, -32); c.lineTo(k * 11, -31); c.stroke();
+      c.beginPath(); c.moveTo(k * 3.5, -37); c.lineTo(k * 15, -41); c.stroke();
+      c.beginPath(); c.moveTo(k * 3.5, -35); c.lineTo(k * 15, -35); c.stroke();
+      c.beginPath(); c.moveTo(k * 3.5, -33); c.lineTo(k * 13, -29); c.stroke();
     });
+    sheen(c, -6, -8, 7, 13, -0.2, 0.12);
   }
 
   function bodyFox(c, S, ang, wag) {
@@ -1186,9 +1255,13 @@ var Game = (function () {
     c.fillStyle = tg;
     c.beginPath(); c.ellipse(0, 16, 12.5, 22, 0, 0, 6.2832); c.fill();
     if (edge(c, S, 2.2)) c.stroke();
-    c.fillStyle = '#ffffff';                          // the white tip
-    c.beginPath(); c.ellipse(0, 31, 8, 8.5, 0, 0, 6.2832); c.fill();
-    if (edge(c, S, 1.6)) c.stroke();
+    /* The tip is brushed on inside the tail rather than stuck on the end;
+       as its own circle it read as a snowball she was towing. */
+    var tip = c.createRadialGradient(0, 30, 2, 0, 30, 12);
+    tip.addColorStop(0, 'rgba(255,255,255,.95)');
+    tip.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = tip;
+    c.beginPath(); c.ellipse(0, 29, 11, 13, 0, 0, 6.2832); c.fill();
     c.restore();
 
     paws(c, S, ang, wag, 17, -4, 6.5, 12, 22, 6);
@@ -1216,9 +1289,12 @@ var Game = (function () {
       c.closePath(); c.fill();
       c.globalAlpha = 1;
     });
+    crease(c, 0, -18, 10, 4.5, 0.12);
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -26, 11, 10.5, 0, 0, 6.2832); c.fill();
     if (edge(c, S, 2)) c.stroke();
+    sheen(c, -4, -29, 5.5, 4, -0.4, 0.4);
+    sheen(c, -8, -6, 7, 12, -0.2, 0.35);
     c.fillStyle = S.mark;                             // pointed snout
     c.beginPath();
     c.moveTo(-5.5, -31); c.lineTo(0, -43); c.lineTo(5.5, -31);

@@ -95,6 +95,7 @@ var SKINS = [
     body: ['#ffffff', '#e4edf5', '#c3d3e1'],
     flipper: ['#f3f8fc', '#d9e5ef', '#bdccda'],
     mark: '#fbfdff', nose: '#2f3742', outline: 'rgba(96,126,152,.75)',
+    paw: '#dbe6f0', pawDark: '#c3d2e0',
     trim: '#e8f1f8', trimEdge: 'rgba(120,140,160,.35)',
     accent: null, accessory: null
   },
@@ -107,6 +108,7 @@ var SKINS = [
     body: ['#fffdf6', '#eceade', '#cdcec1'],
     flipper: ['#f8f6ed', '#dedcce', '#c0bfb0'],
     mark: '#f3f0e4', nose: '#2b2b2b', outline: 'rgba(130,128,106,.7)',
+    paw: '#ddd9c8', pawDark: '#c6c2b0',
     trim: '#f0eee2', trimEdge: 'rgba(130,130,115,.35)',
     accent: null, accessory: null
   }
