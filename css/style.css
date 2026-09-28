@@ -417,3 +417,59 @@ body{
   color:var(--ink-soft);
 }
 .set-head:first-of-type{ margin-top:6px; }
+
+/* ------------------- TROPHIES -------------------
+   One row each: badge, what it is, how far along, and what it pays. The
+   bar is the point — a locked row should still tell you it is close. */
+.ach-list{ display:flex; flex-direction:column; gap:8px; margin:4px 0 6px; }
+
+.ach-row{
+  display:flex; align-items:center; gap:12px;
+  padding:9px 12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.72);
+  border:2px solid transparent;
+  text-align:left;
+}
+.ach-row.got{ background:rgba(236,250,241,.94); border-color:var(--green); }
+
+.ach-ico{
+  flex:0 0 auto;
+  width:42px; height:42px;
+  display:grid; place-items:center;
+  font-size:22px;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 38%, #e7f4fd 0%, #bcdcef 100%);
+  filter:grayscale(.75) opacity(.6);
+}
+.ach-row.got .ach-ico{ filter:none; background:radial-gradient(circle at 50% 38%, #fff6d5 0%, #ffd97a 100%); }
+
+.ach-mid{ flex:1 1 auto; min-width:0; }
+.ach-name{ font-weight:800; font-size:clamp(14px,2.2vw,17px); color:var(--ink); }
+.ach-desc{ font-size:clamp(11px,1.8vw,13px); color:var(--ink-soft); line-height:1.25; }
+
+.ach-bar{
+  margin-top:5px; height:7px; border-radius:99px;
+  background:rgba(70,110,150,.18); overflow:hidden;
+}
+.ach-bar i{ display:block; height:100%; border-radius:99px; background:var(--green); }
+.ach-row.got .ach-bar i{ background:var(--gold-dark); }
+
+.ach-right{
+  flex:0 0 auto; text-align:right;
+  font-weight:800; font-size:clamp(11px,1.8vw,14px); color:var(--ink-soft);
+}
+.ach-right small{ display:block; font-weight:800; color:var(--gold-dark); font-size:.92em; }
+
+.won-box{ display:flex; flex-direction:column; gap:4px; margin:6px 0 2px; }
+.won-row{
+  font-weight:800; font-size:clamp(13px,2.1vw,16px);
+  color:var(--gold-dark);
+  background:rgba(255,246,213,.85);
+  border-radius:99px; padding:5px 14px;
+}
+
+@media (max-width:540px){
+  .ach-ico{ width:34px; height:34px; font-size:18px; }
+  .ach-row{ gap:9px; padding:8px 10px; }
+}
