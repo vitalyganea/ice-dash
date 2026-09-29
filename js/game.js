@@ -237,6 +237,17 @@ var Game = (function () {
   }
   function reachBetweenRows() { return W ? reachOver(W.lastStep, hardness(), W.nextRowD) : 0; }
 
+  /* One stable number per (row, column). A marked run has to come out the
+     same every time, so the sides cannot be random — but keying them to the
+     column alone, as they were, gave every row the identical wall of trees
+     and boulders all the way down the course. Mixing the row index in keeps
+     it repeatable and stops it repeating. */
+  function courseNoise(row, col, salt) {
+    var n = (row * 73856093) ^ (col * 19349663) ^ (salt * 83492791);
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+
   function rockPts() {
     var p = [];
     for (var k = 0; k < 9; k++) p.push(0.70 + Math.random() * 0.44);
@@ -253,8 +264,26 @@ var Game = (function () {
     W.lastStep = C.step;
     W.nextRowD += C.step;
 
-    if (!cr) {                                       // past the last row: run out to the line
-      if (W.finishD < 0) W.finishD = d + 240;
+    if (!cr) {                                       // past the last row
+      if (W.finishD < 0) {
+        /* The run-out used to be an empty chute and then the run simply
+           stopped: nothing told you the course had ended, so the last two
+           seconds read as a bug. Mark it on the hill instead — the glacier
+           opens out into a bright apron of blue ice with seracs standing
+           either side of the mouth. Natural, and visible from far enough
+           back to see it coming. */
+        W.finishD = d + 300;
+        W.objects.push({ t: 'finish', x: place(0, W.finishD), d: W.finishD });
+        for (var sk = 0; sk < 6; sk++) {
+          var ss = sk < 3 ? -1 : 1, si = sk % 3;
+          var sd = W.finishD + (si - 1) * 62;
+          W.objects.push({
+            t: 'deco', kind: 'rock',
+            x: place(ss * (CHUTE + 18 + si * 20), sd), d: sd,
+            r: 34 + si * 9, rot: sk * 1.7, pts: rockPts()
+          });
+        }
+      }
       return;
     }
     W.lastGap = cr.gap;
@@ -279,13 +308,25 @@ var Game = (function () {
                        w: cgw, passed: false });
     }
 
+    /* The clearance either side of the opening is unchanged — only which
+       thing stands where, how big and which way round. The wall is as solid
+       as it was; it just stops looking stamped out. */
+    var col = 0;
     for (var x = -CHUTE + 26; x <= CHUTE - 26; x += 74) {
-      if (Math.abs(x - cr.gap) < cr.gapW / 2 + 28) continue;
-      var dd = d + ((x * 7) % 21) - 10;               // a fixed stagger, not a random one
+      col++;
+      var n1 = courseNoise(C.i, col, 1), n2 = courseNoise(C.i, col, 2),
+          n3 = courseNoise(C.i, col, 3), n4 = courseNoise(C.i, col, 4);
+      /* Nudge it sideways first, then test the clearance against where it
+         actually ends up. Testing the nominal column and shifting afterwards
+         would let a boulder creep 11px into the opening and quietly narrow
+         every course. */
+      var jx = x + Math.round(n4 * 22) - 11;
+      if (Math.abs(jx - cr.gap) < cr.gapW / 2 + 28) continue;
+      var dd = d + Math.round(n1 * 38) - 19;
       W.objects.push({
-        t: ((Math.abs(x) * 31) % 100) < 58 ? 'tree' : 'rock',
-        x: place(x, dd), d: dd,
-        r: 27 + (Math.abs(x * 13) % 11), rot: Math.abs(x * 0.37) % 6.28, pts: rockPts()
+        t: n2 < 0.58 ? 'tree' : 'rock',
+        x: place(jx, dd), d: dd,
+        r: 27 + Math.round(n3 * 11), rot: n4 * 6.28, pts: rockPts()
       });
     }
     spawnScenery(d);
@@ -750,13 +791,17 @@ var Game = (function () {
   function drawObjects() {
     var list = W.objects.filter(function (o) {
       var y = scrY(o.d);
+      /* The finish is 450 units tall and is the one thing the player needs
+         to see coming, so it is kept well before the ordinary cull. */
+      if (o.t === 'finish') return y > -700 && y < VIEW_H + 200;
       return y > -140 && y < VIEW_H + 140;
     }).sort(function (a, b) { return a.d - b.d; });        // nearest drawn last
 
     var B = pal();
     for (var i = 0; i < list.length; i++) {
       var o = list[i], x = scrX(o.x), y = scrY(o.d);
-      if (o.t === 'crevasse')    drawCrevasse(y, o, B);
+      if (o.t === 'finish')      drawFinish(y, o, B);
+      else if (o.t === 'crevasse') drawCrevasse(y, o, B);
       else if (o.t === 'ramp')   drawRamp(x, y, o, B);
       else if (o.t === 'rock')   drawRock(x, y, o, B);
       else if (o.t === 'tree')   drawTree(x, y, o, B);
@@ -777,6 +822,60 @@ var Game = (function () {
       ctx.beginPath(); ctx.arc(scrX(p.x), scrY(p.d), p.s, 0, 6.2832); ctx.fill();
     }
     ctx.globalAlpha = 1;
+  }
+
+  /* Where the course runs out. Not a banner or a flag — the ice itself
+     changes: a wide apron of clean blue glacier, a bright lip where it
+     starts, and spray hanging over it. */
+  function drawFinish(y, o, B) {
+    /* Straddle the line rather than sit past it: the apron starts while the
+       player is still running and the lip falls exactly on the line, so the
+       end is something you watch arrive instead of something that has
+       already happened by the time you notice it. */
+    var before = 260, after = 300, w = CHUTE + 80;
+    var cx = scrX(o.x), top = y - after, bot = y + before;
+    ctx.save();
+
+    var g = ctx.createLinearGradient(0, bot, 0, top);
+    g.addColorStop(0, 'rgba(126,206,246,0)');
+    g.addColorStop(0.30, 'rgba(126,206,246,.30)');
+    g.addColorStop(0.46, 'rgba(126,206,246,.55)');
+    g.addColorStop(0.62, 'rgba(196,238,254,.80)');   // brightest at the line
+    g.addColorStop(1, 'rgba(236,250,255,.55)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - w, top, w * 2, bot - top);
+
+    /* Spray hanging over the apron, thickest just beyond the line. */
+    for (var k = 0; k < 30; k++) {
+      var px = cx + Math.sin(k * 2.399 * 1.7) * w * 0.94;
+      var py = top + ((k * 53) % (after + before - 30));
+      var near = 1 - Math.min(1, Math.abs(py - y) / 220);
+      ctx.globalAlpha = (0.06 + 0.16 * near) * (0.6 + 0.4 * Math.sin(W.t * 0.04 + k));
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(px, py, 26 + (k % 5) * 8, 10 + (k % 3) * 5, 0, 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    /* The lip itself, on the line: a ridge of clean ice across the run. */
+    var i, lx, ly;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (var pass = 0; pass < 3; pass++) {
+      ctx.beginPath();
+      for (i = 0; i <= 22; i++) {
+        var t = i / 22;
+        lx = cx - w + w * 2 * t;
+        ly = y + Math.sin(t * 8.1) * 9 + Math.sin(t * 19) * 3;
+        i ? ctx.lineTo(lx, ly) : ctx.moveTo(lx, ly);
+      }
+      ctx.lineWidth = [22, 11, 4][pass];
+      ctx.strokeStyle = ['rgba(120,196,240,.45)',
+                         'rgba(255,255,255,.95)',
+                         'rgba(150,214,246,.9)'][pass];
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /* A boulder from above: grey stone with a cap of snow sitting on its upper
