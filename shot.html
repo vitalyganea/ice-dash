@@ -1,168 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<!-- The Playables SDK MUST load before any game code (Integration req. 1). -->
-<script src="https://www.youtube.com/game_api/v1"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#8fd4ff">
-<title>Ice Dash</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>">
-<link rel="stylesheet" href="css/font.css">
-<link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-
-<div id="stage">
-  <canvas id="game"></canvas>
-  <div id="hud" class="hidden">
-    <div class="hud-side"></div>
-    <div class="hud-mid"></div>
-    <div class="hud-side hud-right">
-      <button id="btn-menu" class="icon-btn" data-i18n-aria="btn.settings" aria-label="Menu">☰</button>
-    </div>
-  </div>
-</div>
-
-<section id="screen-title" class="screen">
-  <div class="sky-deco" aria-hidden="true">
-    <span class="float f1">🌲</span><span class="float f2">❄️</span><span class="float f3">🐧</span>
-    <span class="float f4">⛰️</span><span class="float f5">❄️</span><span class="float f6">🌲</span>
-  </div>
-  <div class="panel panel-title">
-    <div class="hero-emoji">🐧</div>
-    <h1 class="game-title">Ice<br><span>Dash</span></h1>
-    <p class="subtitle" data-i18n="title.tagline">One tap sends you the other way. Mind the trees!</p>
-    <div class="btn-row">
-      <button class="btn btn-big btn-green" data-action="play" data-i18n="btn.ride">▶ Ride</button>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">🐟 Market</button>
-      <button class="btn btn-purple" data-action="help" data-i18n="btn.help">❓ How to play</button>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">⚙️ Settings</button>
-    </div>
-    <p id="title-best" class="big-score hidden">🏔️ Best 0 points</p>
-  </div>
-</section>
-
-<section id="screen-help" class="screen hidden">
-  <div class="panel">
-    <h2 class="panel-title-text" data-i18n="help.title">How to play</h2>
-    <ul class="help-list">
-      <li data-i18n-html="help.1"></li>
-      <li data-i18n-html="help.2"></li>
-      <li data-i18n-html="help.3"></li>
-      <li data-i18n-html="help.4"></li>
-      <li data-i18n-html="help.5"></li>
-      <li data-i18n-html="help.6"></li>
-      <li data-i18n-html="help.7"></li>
-      <li data-i18n-html="help.8"></li>
-      <li data-i18n-html="help.9"></li>
-      <li data-i18n-html="help.10"></li>
-      <li data-i18n-html="help.11"></li>
-      <li data-i18n-html="help.12"></li>
-    </ul>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.gotit">Got it!</button></div>
-  </div>
-</section>
-
-<section id="screen-pause" class="screen hidden">
-  <div class="panel">
-    <h2 class="panel-title-text" data-i18n="pause.title">Paused</h2>
-    <div class="btn-row"><button class="btn btn-big btn-green" data-action="resume" data-i18n="btn.keepgoing">▶ Keep going</button></div>
-    <div class="btn-row">
-      <button class="btn btn-blue" data-action="play" data-i18n="btn.newrun">↻ New run</button>
-      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">🏠 Menu</button>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">⚙️ Settings</button>
-    </div>
-  </div>
-</section>
-
-<section id="screen-over" class="screen hidden">
-  <div class="panel panel-win">
-    <div class="win-emoji">🌲</div>
-    <h2 class="panel-title-text" data-i18n="over.title">Ouch!</h2>
-    <p id="new-best" class="big-score hidden" data-i18n="over.newbest">🏆 New best!</p>
-    <p id="over-score" class="subtitle">0 points</p>
-    <div id="over-detail" class="total-stars">0 m · 0 berries · 0 gates</div>
-    <p id="over-earned" class="earned hidden">+0 🐟</p>
-    <div class="btn-row"><button class="btn btn-big btn-green" data-action="play" data-i18n="btn.again">↻ Ride again</button></div>
-    <div class="btn-row">
-      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">🐟 Market</button>
-      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">🏠 Menu</button>
-    </div>
-  </div>
-</section>
-
-<section id="screen-shop" class="screen hidden">
-  <div class="panel panel-wide">
-    <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
-    <p class="wallet"><span id="wallet-fish">🐟 0</span><span id="wallet-gold">✨ 0</span></p>
-    <div id="shop-grid" class="shop-grid"></div>
-    <p id="shop-note" class="shop-note" data-i18n="shop.note">Wear one at a time.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
-  </div>
-</section>
-
-<section id="screen-settings" class="screen hidden">
-  <div class="panel">
-    <h2 class="panel-title-text" data-i18n="set.title">Settings</h2>
-
-    <h3 class="set-head" data-i18n="set.sound">Sound</h3>
-    <div class="toggles">
-      <button class="chip" id="t-sfx" data-i18n="set.sounds">🔊 Sounds</button>
-      <button class="chip" id="t-music" data-i18n="set.music">🎵 Music</button>
-    </div>
-
-    <h3 class="set-head" data-i18n="set.language">Language</h3>
-    <div class="toggles" id="lang-row"></div>
-
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
-  </div>
-</section>
-
-<script src="js/i18n.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/biomes.js"></script>
-<script src="js/skins.js"></script>
-<script src="js/game.js"></script>
-<script src="js/ui.js"></script>
-
-<style>.screen{animation:none !important}</style>
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/style.css"><style>html,body{margin:0}</style></head><body>
+<div id="stage"><canvas id="game"></canvas><div id="hud" class="hidden"></div></div>
+<script src="js/i18n.js"></script><script src="js/audio.js"></script>
+<script src="js/biomes.js"></script><script src="js/skins.js"></script>
+<script src="js/courses.js"></script><script src="js/game.js"></script>
 <script>
-(function(){
-  var q = new URLSearchParams(location.search);
-  var lang = q.get('lang') || 'en', view = q.get('v') || 'settings';
-  window.addEventListener('load', function(){
-    setTimeout(function(){
-      setLang(lang); applyI18n();
-      if (view === 'settings') { document.querySelector('[data-action="settings"]').click(); }
-      else if (view === 'shop') { document.querySelector('[data-action="shop"]').click(); }
-      else {
-        document.querySelector('[data-action="play"]').click();
-        var K = Game._consts();
-        function steer(){
-          var W=Game.debug(); if(!W||W.state!=='run') return;
-          var row=null;
-          for(var j=0;j<W.rows.length;j++) if(W.rows[j].d>W.dist+30){row=W.rows[j];break;}
-          if(!row) return;
-          var t2=Game._chuteAt(row.d)+row.gap;
-          var fr=Math.max(1,Math.round((row.d-W.dist)/W.speed));
-          function m(d){var x=W.px,v=W.vx,tr=Game._turnRate();
-            for(var p=0;p<fr;p++){v+=(d*K.DRIFT*W.speed-v)*tr;x+=v;}return Math.abs(x-t2);}
-          if(m(-W.dir)<m(W.dir)-6) Game.tap();
-        }
-        var stop = +(q.get('f')||900);
-        for (var f=0; f<stop; f++){ steer(); Game._step(1); }
-        Game._render();
-      }
-    }, 100);
-  });
-})();
-</script>
-</body>
-</html>
+window.Sfx=new Proxy({},{get:function(){return function(){};}});
+var q=new URLSearchParams(location.search);
+Game.start(0,{hud:function(){},over:function(){}}, q.get('s')||'snowcap', q.get('c')||null);
+Game.resize();
+var K=Game._consts();
+function steer(){var w=Game.debug(); if(!w||w.state!=='run')return;
+  var row=null; for(var j=0;j<w.rows.length;j++) if(w.rows[j].d>w.dist+30){row=w.rows[j];break;}
+  if(!row)return; var t=Game._chuteAt(row.d)+row.gap;
+  var fr=Math.max(1,Math.round((row.d-w.dist)/w.speed));
+  function m(d){var x=w.px,v=w.vx,tr=Game._turnRate();
+    for(var p=0;p<fr;p++){v+=(d*K.DRIFT*w.speed-v)*tr;x+=v;}return Math.abs(x-t);}
+  if(m(-w.dir)<m(w.dir)-6) Game.tap();}
+var want=+(q.get('gap')||300), look=q.get('t')||'crevasse';
+for(var f=0;f<60000;f++){
+  var w=Game.debug(); if(!w||w.state!=='run')break;
+  var cr=null;
+  for(var i=0;i<w.objects.length;i++) if(w.objects[i].t===look){cr=w.objects[i];break;}
+  if(cr && cr.d - w.dist < want) break;
+  steer(); Game._step(1);
+}
+Game._render();
+</script></body></html>

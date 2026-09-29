@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ice Dash — unlock for testing</title>
+<link rel="stylesheet" href="css/font.css">
+<style>
+  :root{ --ink:#0f3a55; --ink-soft:#3d6b86; --green:#21c48a; --green-dark:#149268;
+         --blue:#2f9fe0; --blue-dark:#1a74ab; --red:#ef4b5e; --red-dark:#c22b3d; }
+  *{ box-sizing:border-box }
+  body{
+    margin:0; padding:22px 16px 40px;
+    font-family:'Baloo 2',system-ui,sans-serif; color:var(--ink);
+    background:linear-gradient(180deg,#cfe9f8 0%, #9ed2ef 55%, #7bbde5 100%);
+    min-height:100vh;
+  }
+  .wrap{ max-width:940px; margin:0 auto }
+  h1{ font-size:clamp(26px,5vw,40px); margin:0 0 2px; color:#ff9a3d;
+      -webkit-text-stroke:3px #fff; paint-order:stroke fill }
+  h1 span{ color:#21c48a }
+  .sub{ color:var(--ink-soft); font-weight:700; margin:0 0 18px }
+  .note{ background:rgba(255,255,255,.65); border-radius:16px; padding:12px 16px;
+         font-size:14px; line-height:1.45; color:var(--ink-soft); margin:0 0 18px }
+  .row{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px }
+  button, a.btn{
+    font:inherit; font-weight:800; font-size:16px; color:#fff; text-decoration:none;
+    padding:12px 24px; border:none; border-radius:999px; cursor:pointer;
+    background:var(--blue); box-shadow:0 5px 0 var(--blue-dark);
+  }
+  button.go{ background:var(--green); box-shadow:0 5px 0 var(--green-dark) }
+  button.wipe{ background:var(--red); box-shadow:0 5px 0 var(--red-dark) }
+  a.btn{ background:var(--green); box-shadow:0 5px 0 var(--green-dark); display:inline-block }
+  button:active, a.btn:active{ transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,.25) }
+  #state{ background:rgba(255,255,255,.8); border-radius:16px; padding:12px 16px;
+          font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap;
+          color:#12364f; margin:0 0 20px }
+  h2{ font-size:20px; margin:22px 0 10px }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px }
+  .card{ background:rgba(255,255,255,.8); border-radius:20px; padding:14px 12px 16px;
+         text-align:center; box-shadow:0 3px 0 rgba(0,0,0,.08) }
+  .card canvas{ background:radial-gradient(circle at 50% 38%, #f2fafe, #b6dcf0);
+                border-radius:50%; display:block; margin:0 auto 8px }
+  .nm{ font-weight:800; font-size:18px }
+  .pr{ font-weight:800; color:#e09b00; font-size:14px }
+  .pk{ font-size:12.5px; color:var(--ink-soft); line-height:1.35; margin-top:4px }
+  .grid.wide{ grid-template-columns:repeat(auto-fill,minmax(260px,1fr)) }
+  .grid.wide .card canvas{ background:none; border-radius:12px; width:100%; height:auto }
+  .where{ font-size:12.5px; color:var(--ink-soft); margin-top:3px }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ice <span>Dash</span></h1>
+  <p class="sub">Unlock page — for looking at things, not part of the game.</p>
+
+  <p class="note">
+    This writes straight into the same saved game the real page reads, because
+    Chrome hands every <code>file://</code> document the one <code>file://</code>
+    origin. Press a button, then open the game — your wallet and wardrobe will
+    already be there.<br>
+    <b>Delete this file before you upload the game anywhere.</b>
+  </p>
+
+  <div class="row">
+    <button class="go"  id="all">Unlock everything</button>
+    <button           id="skins">Skins only, empty wallet</button>
+    <button class="wipe" id="wipe">Back to a fresh save</button>
+    <a class="btn" href="index.html">Open the game →</a>
+  </div>
+
+  <div id="state">reading…</div>
+
+  <h2>Every creature, drawn by the game itself</h2>
+  <div class="grid" id="grid"></div>
+
+  <h2>Every stretch of hill</h2>
+  <div class="grid wide" id="zones"></div>
+</div>
+
+<div id="stage" style="position:absolute;left:-4000px;top:0;width:420px;height:300px">
+  <canvas id="game"></canvas>
+</div>
+<script src="js/i18n.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/biomes.js"></script>
+<script src="js/skins.js"></script>
+<script src="js/courses.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/game.js"></script>
+<script>
+/* The engine wants a Sfx object; nothing here makes a sound. */
+window.Sfx = new Proxy({}, { get: function () { return function () {}; } });
+
+var KEY = 'icedash-save-v1';
+
+function fishIds() {
+  return SKINS.filter(function (s) { return s.currency === 'fish'; })
+              .map(function (s) { return s.id; });
+}
+function base() {
+  return { best: 0, runs: 0, sfx: true, music: true,
+           fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
+           lang: (typeof detectLang === 'function' ? detectLang() : 'en'),
+           ach: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
+           totSaves: 0, bestDist: 0, bestRunFish: 0, courses: {} };
+}
+function write(o) {
+  try { localStorage.setItem(KEY, JSON.stringify(o)); }
+  catch (e) { alert('Could not write the save: ' + e.name); }
+  render();
+}
+
+document.getElementById('all').onclick = function () {
+  var s = base();
+  s.owned = SKINS.map(function (k) { return k.id; });
+  s.equipped = 'snowcap';
+  s.fish = 99999; s.gold = 999;
+  s.ach = ACHIEVEMENTS.map(function (a) { return a.id; });
+  s.best = 12000; s.runs = 99;
+  s.totFish = 9999; s.totGold = 99; s.totGates = 999;
+  s.totJumps = 99; s.totSaves = 99; s.bestDist = 9999; s.bestRunFish = 99;
+  /* Three stars on every marked run. This also opens Freeride, which the
+     game holds back until the first line is finished — without it, pressing
+     "unlock everything" still left you staring at two padlocks. */
+  COURSES.forEach(function (cd) { s.courses[cd.id] = 3; });
+  write(s);
+};
+document.getElementById('skins').onclick = function () {
+  var s = base();
+  s.owned = SKINS.map(function (k) { return k.id; });
+  write(s);
+};
+document.getElementById('wipe').onclick = function () {
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  render();
+};
+
+function render() {
+  var raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) {}
+  var el = document.getElementById('state');
+  if (!raw) { el.textContent = 'No save yet — the game will start you from scratch.'; return; }
+  var o = {};
+  try { o = JSON.parse(raw); } catch (e) { el.textContent = 'Save is not readable JSON.'; return; }
+  el.textContent =
+    'wallet     ' + o.fish + ' fish, ' + o.gold + ' gold\n' +
+    'wearing    ' + o.equipped + '\n' +
+    'owned      ' + (o.owned || []).length + ' of ' + SKINS.length + '  (' + (o.owned || []).join(', ') + ')\n' +
+    'trophies   ' + (o.ach || []).length + ' of ' + ACHIEVEMENTS.length + '\n' +
+    'runs       ' + COURSES.filter(function (c) { return (o.courses || {})[c.id]; }).length +
+      ' of ' + COURSES.length + ' open,  ' +
+      COURSES.reduce(function (a, c) { return a + ((o.courses || {})[c.id] || 0); }, 0) +
+      ' of ' + (COURSES.length * 3) + ' stars\n' +
+    'freeride   ' + (((o.courses || {})[COURSES[0].id] || 0) > 0 ? 'open' : 'locked') + '\n' +
+    'best       ' + o.best + ' points,  ' + o.bestDist + ' m\n' +
+    'language   ' + o.lang;
+}
+
+/* The gallery borrows the game's own painter, so what you see here is
+   exactly what gets drawn on the hill. */
+var grid = document.getElementById('grid');
+SKINS.forEach(function (sk) {
+  var card = document.createElement('div'); card.className = 'card';
+  var cv = document.createElement('canvas'); card.appendChild(cv);
+  var nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = sk.name;
+  card.appendChild(nm);
+  var pr = document.createElement('div'); pr.className = 'pr';
+  pr.textContent = sk.price ? (sk.price + (sk.currency === 'gold' ? ' gold' : ' fish')) : 'free';
+  card.appendChild(pr);
+  var pk = document.createElement('div'); pk.className = 'pk'; pk.textContent = sk.perkText;
+  card.appendChild(pk);
+  grid.appendChild(card);
+  Game.drawSkinPreview(cv, sk.id, 150);
+});
+
+/* Each zone painted by the engine itself, the same way the skins above are:
+   start a run, hold it in that stretch of hill, and copy the frame out. No
+   second renderer to drift away from the real one. */
+var zones = document.getElementById('zones');
+var src = document.getElementById('game');
+var onCourse = {};
+COURSES.forEach(function (cd) { onCourse[cd.biome] = cd.id; });
+
+BIOMES.forEach(function (B, i) {
+  var card = document.createElement('div'); card.className = 'card';
+  /* Same shape as the hidden stage the frame is copied from, or the hill
+     comes out stretched. */
+  var cv = document.createElement('canvas'); cv.width = 420; cv.height = 300;
+  card.appendChild(cv);
+  var nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = B.name;
+  card.appendChild(nm);
+  var wh = document.createElement('div'); wh.className = 'where';
+  wh.textContent = onCourse[i] ? 'marked run: ' + onCourse[i] : 'Freeride only';
+  card.appendChild(wh);
+  zones.appendChild(card);
+
+  Game.start(0, {}, 'snowcap');
+  var W = Game.debug();
+  for (var k = 0; k < 9; k++) { W.biome = i; W.biomeT = 6000; Game._step(44); }
+  W.biome = i; W.biomeT = 6000;
+  Game._render();
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  Game.stop();
+});
+
+/* unlock.html?auto=all jumps straight in, for a bookmark. */
+var auto = new URLSearchParams(location.search).get('auto');
+if (auto === 'all') document.getElementById('all').click();
+else if (auto === 'skins') document.getElementById('skins').click();
+else if (auto === 'wipe') document.getElementById('wipe').click();
+
+render();
+</script>
+</body>
+</html>

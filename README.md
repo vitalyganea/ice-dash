@@ -21,6 +21,26 @@ Opened this way the game runs standalone: the Playables SDK is not present, so
 the best score goes to `localStorage` instead of the cloud save, and the
 platform pause and audio hooks are simply inactive.
 
+## Two ways down
+
+**Freeride** is the endless one: the hill is built as you ride it and it never
+stops. Distance and points are the scoreboard.
+
+**Known Lines** are six routes that are written down rather than generated —
+*First Light*, *The Narrows*, *Gap Teeth*, *Glass Run*, *Nightfall* and *The
+Cornice*. Every opening, boulder and crevasse is in `js/courses.js`, so the
+run is the same on your fortieth attempt as on your first; you can learn a
+line and have it stay learnt. Each has a finish, one to three stars, and
+unlocks the next. They keep their own scoreboard, so a short course can never
+spoil a freeride best.
+
+A course is written as one token per row — `4*` is an opening left of centre
+with fish through it, `6C|` a crevasse right of centre with a gate over the
+ramp. Writing it by hand does not make it fair, so
+`scratchpad/pine/courses.js` replays every row of every course against the
+same reachability proof the generator uses, rides each one to the finish, and
+checks that two different random seeds produce an identical hill.
+
 ## The one control
 
 The penguin slides down an ice chute on his belly and is **always** drifting to
@@ -38,13 +58,17 @@ one side. A tap sends him the other way. That is the whole game.
 - An **endless** run down a chute that winds between snow banks
 - Pines and boulders to weave through, seen from directly overhead
 - 🐟 fish to swallow (25), ✨ a golden fish off the safe line (150),
-  🫧 a snow bubble that absorbs one crash, 🚩 flag gates for a bonus
+  🫧 a snow bubble that absorbs one crash, 💠 tongues of wind-polished blue
+  ice that pay a bonus if you lean off the safe line to cross them
 - 🕳️ **crevasses** that split the run from bank to bank. The only way over is
   the snow ramp sitting in that row's opening: hit it and you fly, clear of
   everything, until you land
 - 🛒 a **market**: fish are the currency, and eight creatures to spend them on
-  — four penguins, then a seal, a walrus, an arctic fox and a polar bear. One
-  worn at a time, each with a different way of earning
+  — four penguins, then a seal, a walrus, a reindeer and an orca. One worn at
+  a time, each with a different way of earning. They are deliberately dark or
+  strongly marked: the first pair of animals here were an arctic fox and a
+  polar bear, and white on pale ice turned out to be unreadable no matter how
+  they were drawn
 - Four stretches of hill that rotate every 520 m, cross-fading into each other rather than cutting: **Pine Forest**,
   **Rocky Pass**, **Glacier** (he turns lazily — tap earlier) and
   **Night Run** (the hill ahead fades into the dark)
@@ -77,14 +101,25 @@ js/i18n.js        every string, in English and Russian
 js/audio.js       sounds and music synthesised with WebAudio
 js/biomes.js      the four stretches of hill: palette, grip, fog
 js/skins.js       the creatures you can wear, and what each one does
+js/courses.js     the six marked runs, written out row by row
 js/achievements.js the trophies and what each one pays
 js/game.js        the engine: physics, spawning, collisions, rendering
 js/ui.js          menus, saving, input, Playables lifecycle
 PLAYABLES.md      certification requirements and how each one is met
 ```
 
-`README.md` and `PLAYABLES.md` are documentation — leave them out of the
-uploaded bundle.
+`README.md`, `PLAYABLES.md` and `unlock.html` are not part of the game —
+leave all three out of the uploaded bundle.
+
+## Looking at everything without earning it
+
+Open `unlock.html` and press **Unlock everything**, then **Open the game**.
+It writes the same saved game the real page reads: Chrome hands every
+`file://` document the one `file://` origin, so a sibling page can seed it.
+The page also draws all eight creatures large, using the game's own painter,
+so what you see there is exactly what appears on the hill.
+
+`unlock.html?auto=all` does it without the click, if you want a bookmark.
 
 ## One control, whole screen
 
@@ -98,6 +133,20 @@ do nothing.
 The pause button sits top right, clear of the lower half, because the whole
 screen steers and a control under a resting thumb would pause the run by
 accident.
+
+## Nothing on the hill is man-made
+
+The mountain is the only thing in the picture. There are no signs, no poles,
+no flags, no painted markings, nothing anybody put there — every feature you
+steer around or across is something the ice and the weather made: boulders,
+pines, crevasses, ramps shoved up out of the glacier, tongues of blue ice
+scoured smooth by the wind.
+
+This is a design constraint, not a description. Two things have already had
+to be rebuilt for it: the launch ramp lost its painted chevrons and its
+moulded look and became a block of cleaved ice, and the bonus gates lost
+their posts and pennants and became patches of polished blue ice. Anything
+added later is held to the same line.
 
 ## What a skin may do
 
