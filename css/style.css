@@ -157,17 +157,110 @@ body{
 
 .panel-win{ background:linear-gradient(180deg,#f7fcff 0%, #d9f7ec 100%); }
 
-.game-title{
-  margin:2px 0 6px;
-  font-size:clamp(34px,7vw,62px);
-  line-height:.95;
-  font-weight:800;
-  color:#ff9a3d;
-  -webkit-text-stroke:3px #fff;
-  paint-order:stroke fill;
-  text-shadow:0 6px 0 rgba(0,0,0,.14);
+/* ---- the title ----
+   Artwork rather than styled text. The <h1> still holds the words for a
+   screen reader; .sr-only takes them out of the picture without taking
+   them out of the accessibility tree, which display:none would. */
+.sr-only{
+  position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
 }
-.game-title span{ color:#21c48a; }
+.game-title{
+  position:relative;
+  container-type:inline-size;        /* the melt sizes itself off this */
+  margin:4px auto 30px;
+  width:min(560px, 86%);
+  line-height:0;                       /* no stray text line under the art */
+  filter:drop-shadow(0 6px 10px rgba(20,62,96,.3));
+}
+.game-title picture, .game-title img{ display:block; width:100%; height:auto; }
+/* The artwork's own edge is feathered away to nothing in the file, so it
+   melts into the panel. It was a hard rectangle with a white frame before,
+   which read as a screenshot pasted on top rather than part of the screen. */
+
+/* ---- ice melting off the letters ----
+   Each spike hangs from the bottom of the logo and grows a drop at its tip;
+   the drop pinches off, falls and fades. Every spike runs on its own clock
+   so they never let go together. */
+/* The box covers the artwork itself, so each spike can be placed at the
+   height its own letter ends at. */
+.melt{ position:absolute; inset:0; pointer-events:none; }
+/* The spike is a pseudo-element rather than the <i> itself. clip-path on
+   an element clips its descendants too, so with the triangle on the <i> the
+   drop hanging below the tip was cut away and never appeared at all. */
+.melt i{
+  position:absolute; left:var(--x); top:var(--y);
+  width:calc(var(--w) * 1cqw); height:calc(var(--len) * 1cqw);
+  margin-left:calc(var(--w) * -0.5cqw);
+}
+.melt i::before{
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(100deg,
+    #eaf7ff 0%, #a8d8f2 26%, #4d9fd3 58%, #1c6ea6 100%);
+  clip-path:polygon(0 0, 100% 0, 50% 100%);
+  filter:drop-shadow(0 2px 3px rgba(16,58,92,.5));
+  animation:thaw var(--t) ease-in-out var(--d) infinite;
+  transform-origin:top center;
+}
+/* The drop, born at the tip and outside the spike's clip. */
+.melt i::after{
+  content:'';
+  position:absolute; left:50%; top:100%;
+  width:calc(var(--w) * 0.86cqw); height:calc(var(--w) * 1.02cqw);
+  margin-left:calc(var(--w) * -0.43cqw);
+  border-radius:48% 48% 52% 52% / 38% 38% 62% 62%;
+  background:radial-gradient(ellipse at 32% 28%,
+    #ffffff 0%, #b6dff5 34%, #3f93cc 72%, #14618f 100%);
+  filter:drop-shadow(0 2px 3px rgba(16,58,92,.45));
+  animation:drip var(--t) cubic-bezier(.45,0,.75,1) var(--d) infinite;
+}
+/* The spike itself only breathes — a drop leaving takes a little ice with it. */
+@keyframes thaw{
+  0%, 100% { transform:scaleY(1); }
+  46%      { transform:scaleY(1.06); }
+  58%      { transform:scaleY(.94); }
+}
+@keyframes drip{
+  0%, 40%  { transform:translateY(-0.4cqw) scale(.25); opacity:0; }
+  62%      { transform:translateY(0) scale(1); opacity:1; }      /* hanging */
+  70%      { transform:translateY(0.8cqw) scaleY(1.35) scaleX(.78); opacity:1; }
+  100%     { transform:translateY(11cqw) scaleY(1.5) scaleX(.6); opacity:0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .melt i::before{ animation:none; }
+  .melt i::after{ animation:none; opacity:0; }
+}
+
+/* A band of light crossing the ice. It is masked by the logo's own alpha,
+   so it lights the artwork and stops exactly where the artwork fades out —
+   no rectangle reappears at the edges. */
+.game-title::after{
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(104deg,
+    rgba(255,255,255,0) 43%, rgba(255,255,255,.45) 50%, rgba(255,255,255,0) 57%);
+  background-size:300% 100%;
+  -webkit-mask-image:url(../img/logo.webp); mask-image:url(../img/logo.webp);
+  -webkit-mask-size:100% 100%; mask-size:100% 100%;
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  pointer-events:none;
+  animation:glint 6s ease-in-out infinite;
+}
+/* With the gradient three times the width of the logo, its band sits at
+   1.5 widths from its left edge, so position 0% parks the band off the
+   right and 100% carries it off the left. The first attempt ran 170% to
+   -70%, which left the band sitting on the artwork for most of the cycle,
+   and with mix-blend-mode:screen on top it bleached the logo to nothing. */
+@keyframes glint{
+  0%, 64% { background-position:0% 0; }
+  100%    { background-position:100% 0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .game-title::after{ animation:none; background-position:50% 0; opacity:.5; }
+}
+
+
 
 .panel-title-text{
   margin:0 0 10px;
@@ -308,7 +401,7 @@ body{
   .btn-row    { margin-top:7px; gap:8px; }
   .hero-emoji { font-size:clamp(34px,7vw,52px); }
   .win-emoji  { font-size:clamp(32px,7vw,48px); }
-  .game-title { font-size:clamp(28px,6vw,46px); }
+  .game-title { width:min(440px, 88%); margin-bottom:26px; }
   .subtitle   { margin:2px 0 8px; }
   .toggles    { margin-top:10px; }
   .help-list  { gap:6px; }
@@ -319,7 +412,7 @@ body{
   .screen      { padding-top:calc(10px + env(safe-area-inset-top,0px));
                  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
   .panel       { padding:14px 18px 12px; }
-  .game-title  { font-size:clamp(24px,5.2vw,34px); line-height:.92; }
+  .game-title  { width:min(330px, 76%); margin:2px auto 22px; }
   .panel-title-text { font-size:clamp(19px,3.6vw,26px); margin-bottom:6px; }
   .subtitle    { font-size:clamp(12px,1.9vw,14px); margin:2px 0 6px; }
   .btn         { padding:9px 20px; font-size:clamp(14px,2vw,16px); }
@@ -473,3 +566,186 @@ body{
   .ach-ico{ width:34px; height:34px; font-size:18px; }
   .ach-row{ gap:9px; padding:8px 10px; }
 }
+
+/* ===================== A FROZEN FRONT DOOR =====================
+   The mascot and the ice are drawn with boxes and gradients. An emoji is
+   whichever glyph the device happens to ship — on some phones 🐧 is a
+   different bird, on others it is a flat outline that fights the artwork. */
+
+/* ---- icicles ---- */
+.eaves, .drips{
+  position:absolute; left:0; right:0; top:0;
+  display:flex; justify-content:space-between;
+  pointer-events:none;
+}
+.eaves i, .drips i{
+  flex:0 0 auto;
+  background:linear-gradient(180deg,
+    rgba(255,255,255,.97) 0%, rgba(223,244,253,.9) 40%, rgba(150,208,238,.5) 100%);
+  clip-path:polygon(0 0, 100% 0, 50% 100%);
+}
+/* Hanging from the very top of the screen, long and irregular. */
+.eaves{ padding:0 2px; }
+.eaves i{ width:15px; height:26px; }
+.eaves i:nth-child(2n){ height:44px; width:12px; }
+.eaves i:nth-child(3n){ height:17px; width:17px; }
+.eaves i:nth-child(5n){ height:62px; width:11px; }
+.eaves i:nth-child(7n){ height:34px; width:14px; }
+/* And a shorter row along the lip of the panel itself. */
+/* On the pale panel a white icicle is invisible, so these lean blue and
+   cast a shadow onto the panel behind them. */
+.drips{ padding:0 16px; top:2px; z-index:2;
+        filter:drop-shadow(0 2px 1px rgba(40,95,135,.28)); }
+.drips i{ width:10px; height:13px;
+          background:linear-gradient(180deg,
+            rgba(255,255,255,.98) 0%, rgba(186,226,246,.95) 45%, rgba(110,178,218,.8) 100%); }
+.drips i:nth-child(2n){ height:22px; width:8px; }
+.drips i:nth-child(3n){ height:9px;  width:11px; }
+.drips i:nth-child(5n){ height:29px; width:7px; }
+
+/* ---- floating ice ----
+   Diamonds cut with clip-path. The first pass used rounded squares with an
+   inner bar and they read as grey tiles with a character stuck in them. */
+.shard{
+  position:absolute;
+  width:22px; height:22px;
+  background:linear-gradient(140deg, rgba(255,255,255,.95) 0%,
+                                     rgba(198,235,252,.8) 45%,
+                                     rgba(120,190,232,.55) 100%);
+  clip-path:polygon(50% 0, 100% 42%, 50% 100%, 0 42%);
+  opacity:.75;
+  animation:drift 11s ease-in-out infinite;
+}
+
+/* ---- the skyline, also in boxes ----
+   These were 🌲 and ⛰️. The mountain came out as an empty rectangle on a
+   machine whose emoji font has no glyph for it, which is exactly the kind
+   of thing you cannot check for on someone else's phone. */
+.pine, .berg{ position:absolute; pointer-events:none; }
+.pine{
+  width:34px; height:44px;
+  background:linear-gradient(170deg,#3f8f61 0%, #256845 70%, #1b5136 100%);
+  clip-path:polygon(50% 0, 74% 34%, 62% 34%, 88% 68%, 72% 68%, 100% 100%,
+                    0 100%, 28% 68%, 12% 68%, 38% 34%, 26% 34%);
+  opacity:.5;
+  animation:drift 13s ease-in-out infinite;
+}
+.berg{
+  width:64px; height:40px;
+  background:linear-gradient(170deg,#ffffff 0%, #d5ecf8 38%, #8fc4e2 100%);
+  clip-path:polygon(0 100%, 26% 30%, 40% 48%, 62% 0, 82% 44%, 100% 100%);
+  opacity:.42;
+  animation:drift 16s ease-in-out infinite;
+}
+.p1{ left:7%;  top:16%; animation-delay:0s; }
+.p2{ right:9%; bottom:14%; width:28px; height:36px; animation-delay:-6s; }
+.p3{ left:16%; bottom:9%;  width:22px; height:29px; animation-delay:-3s; }
+.b1{ right:11%; top:20%; animation-delay:-2s; }
+.b2{ left:5%;  bottom:26%; width:46px; height:29px; animation-delay:-8s; }
+.s1{ left:14%; top:30%; transform:rotate(18deg);  animation-delay:-1s; }
+.s2{ right:12%; top:22%; width:15px; height:15px; transform:rotate(-24deg); animation-delay:-4s; }
+.s3{ left:22%; bottom:18%; width:17px; height:17px; transform:rotate(38deg); animation-delay:-7s; }
+.s4{ right:19%; bottom:26%; width:26px; height:26px; transform:rotate(-8deg); animation-delay:-2.5s; }
+.s5{ left:46%; bottom:8%;  width:13px; height:13px; transform:rotate(52deg); animation-delay:-9s; }
+
+/* The panel needs room under the icicles hanging off its lip. */
+.panel-title{ padding-top:34px; }
+
+@media (prefers-reduced-motion: reduce){
+  .peng, .shard, .pine, .berg, .float{ animation:none; }
+}
+
+/* Frost creeping in from the corners of the screen. Two pseudo-elements
+   rather than more markup: it is pure decoration and must never be
+   something a reader or a finger can reach. */
+.sky-deco::before, .sky-deco::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+}
+.sky-deco::before{
+  background:
+    radial-gradient(60% 42% at 0% 0%,   rgba(226,245,255,.34), transparent 70%),
+    radial-gradient(56% 38% at 100% 0%, rgba(226,245,255,.28), transparent 70%),
+    radial-gradient(70% 46% at 50% 100%,rgba(198,232,250,.22), transparent 72%);
+}
+/* A few crystals frozen onto the glass itself, tiny and still. */
+.sky-deco::after{
+  background-image:
+    radial-gradient(3px 3px at 12% 62%, rgba(255,255,255,.7), transparent 60%),
+    radial-gradient(2px 2px at 28% 84%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(4px 4px at 63% 12%, rgba(255,255,255,.5),  transparent 60%),
+    radial-gradient(2px 2px at 84% 56%, rgba(255,255,255,.6),  transparent 60%),
+    radial-gradient(3px 3px at 91% 82%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(2px 2px at 44% 34%, rgba(255,255,255,.5),  transparent 60%);
+}
+
+/* A shorter run of icicles on a phone, or they eat the panel. */
+@media (max-width:540px){
+  .eaves i:nth-child(5n){ height:40px; }
+  .eaves i:nth-child(2n){ height:28px; }
+  .peng{ font-size:clamp(9px,3.4vw,13px); }
+  .panel-title{ padding-top:28px; }
+}
+
+/* ------------------- SHORT SCREENS, PART TWO -------------------
+   These have to sit after the decoration's own rules. Tucked into the
+   media queries further up they lost every time, because the base
+   `.eaves, .drips { display:flex }` came later in the file and won. */
+@media (max-height:640px){
+  .peng{ font-size:clamp(8px,1.6vw,11px); }
+  .panel-title{ padding-top:26px; }
+  .eaves i{ height:16px }
+  .eaves i:nth-child(2n){ height:26px }
+  .eaves i:nth-child(3n){ height:12px }
+  .eaves i:nth-child(5n){ height:34px }
+  .eaves i:nth-child(7n){ height:21px }
+}
+@media (max-height:460px){
+  /* No room for a mascot at all, and the icicles would reach the buttons. */
+  .peng{ display:none; }
+  .drips{ display:none; }
+  .panel-title{ padding-top:14px; }
+  .eaves i,
+  .eaves i:nth-child(2n),
+  .eaves i:nth-child(3n),
+  .eaves i:nth-child(5n),
+  .eaves i:nth-child(7n){ height:14px }
+  .eaves i:nth-child(2n){ height:22px }
+}
+
+/* ------------------- MODES AND MARKED RUNS ------------------- */
+.modes{ flex-direction:column; align-items:stretch; gap:9px; }
+.mode-btn{ display:block; text-align:center; line-height:1.15; padding:12px 22px; }
+.mode-btn b{ display:block; font-size:1em; }
+.mode-btn small{
+  display:block; font-weight:700; font-size:.6em; opacity:.88; margin-top:2px;
+}
+
+.runs-list{ display:flex; flex-direction:column; gap:9px; margin:4px 0 6px; }
+.run-row{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 13px; border-radius:17px; text-align:left;
+  background:rgba(255,255,255,.78);
+  border:2px solid transparent;
+  cursor:pointer; font:inherit; color:inherit; width:100%;
+}
+.run-row.done{ background:rgba(236,250,241,.94); border-color:var(--green); }
+.run-row.locked{ background:rgba(255,255,255,.4); cursor:default; }
+/* Freeride before the first line is passed: still readable, plainly shut. */
+.mode-btn.locked{ filter:grayscale(.7); opacity:.62; cursor:default; box-shadow:none; }
+.mode-btn.locked:active{ transform:none; }
+.mode-btn.locked b::after{ content:' 🔒'; }
+.run-row.locked .run-name, .run-row.locked .run-sub{ opacity:.55; }
+
+.run-no{
+  flex:0 0 auto; width:34px; height:34px; border-radius:50%;
+  display:grid; place-items:center; font-weight:800; font-size:16px;
+  background:linear-gradient(180deg,#bfe3f6,#8dc7e6); color:#12496f;
+}
+.run-row.done .run-no{ background:linear-gradient(180deg,#fff0bd,#ffd15e); color:#7a5300; }
+.run-row.locked .run-no{ background:rgba(180,200,215,.5); color:#5c7488; }
+
+.run-mid{ flex:1 1 auto; min-width:0; }
+.run-name{ font-weight:800; font-size:clamp(15px,2.3vw,18px); }
+.run-sub{ font-size:clamp(11px,1.8vw,13px); color:var(--ink-soft); }
+.run-stars{ flex:0 0 auto; font-size:clamp(14px,2.2vw,18px); letter-spacing:1px; color:var(--gold-dark); }
+p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:3px; }
