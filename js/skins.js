@@ -77,7 +77,7 @@ var SKINS = [
   {
     id: 'walrus', name: 'Walrus', price: 2600, currency: 'fish',
     blurb: 'Goes through things, not round them.',
-    perkText: 'Barges the flag gates for triple the catch.',
+    perkText: 'Reads the blue ice — triple from every tongue of it.',
     perk: { gateBonus: 3 },
     shape: 'walrus',
     body: ['#b07e66', '#824f3d', '#512f23'],
@@ -87,31 +87,33 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'fox', name: 'Arctic Fox', price: 4200, currency: 'fish',
-    blurb: 'Never once lost her footing.',
-    perkText: 'Sure-footed — the glacier cannot swing her wide.',
+    id: 'reindeer', name: 'Reindeer', price: 4200, currency: 'fish',
+    blurb: 'Knows every inch of this hill.',
+    perkText: 'Sure-footed — the glacier cannot swing him wide.',
     perk: { grip: 1.45 },
-    shape: 'fox',
-    body: ['#ffffff', '#e4edf5', '#c3d3e1'],
-    flipper: ['#f3f8fc', '#d9e5ef', '#bdccda'],
-    mark: '#fbfdff', nose: '#2f3742', outline: 'rgba(96,126,152,.75)',
-    paw: '#dbe6f0', pawDark: '#c3d2e0',
-    trim: '#e8f1f8', trimEdge: 'rgba(120,140,160,.35)',
+    shape: 'reindeer',
+    body: ['#a07a57', '#6d4e36', '#432f20'],
+    flipper: ['#8d6a4a', '#5a402c', '#382718'],
+    mark: '#e0cfb6', nose: '#2c221a', outline: 'rgba(56,40,28,.85)',
+    paw: '#4a3526', pawDark: '#33241a', claw: '#2a1e15',
+    antler: '#cbb694',
+    trim: '#a07a57', trimEdge: 'rgba(60,42,28,.45)',
     accent: null, accessory: null
   },
   {
-    id: 'bear', name: 'Polar Bear', price: 8, currency: 'gold',
-    blurb: 'The one everything else gets out of the way of.',
-    perkText: 'Hits a ramp so hard he clears half the hill — and starts shielded.',
+    id: 'orca', name: 'Orca', price: 8, currency: 'gold',
+    blurb: 'Should not be up here at all, and does not care.',
+    perkText: 'Hits a ramp so hard she clears half the hill — and starts shielded.',
     perk: { rampBoost: 1.8, startShield: 1 },
-    shape: 'bear',
-    body: ['#fffdf6', '#eceade', '#cdcec1'],
-    flipper: ['#f8f6ed', '#dedcce', '#c0bfb0'],
-    mark: '#f3f0e4', nose: '#2b2b2b', outline: 'rgba(130,128,106,.7)',
-    paw: '#ddd9c8', pawDark: '#c6c2b0',
-    trim: '#f0eee2', trimEdge: 'rgba(130,130,115,.35)',
+    shape: 'orca',
+    body: ['#2b3340', '#161b23', '#080b10'],
+    flipper: ['#242b36', '#12161d', '#070a0e'],
+    mark: '#f2f7fb', nose: '#05070a', outline: 'rgba(6,9,14,.9)',
+    paw: '#12161d', pawDark: '#080b10',
+    trim: '#1b212a', trimEdge: 'rgba(4,6,10,.5)',
     accent: null, accessory: null
   }
+
 ];
 
 var SKIN_BY_ID = {};

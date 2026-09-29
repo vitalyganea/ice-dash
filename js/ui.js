@@ -22,7 +22,9 @@
                 worked out from history, so a goal can show how far along you
                 are at any moment and not only when it ticks over. */
              ach: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
-             totSaves: 0, bestDist: 0, bestRunFish: 0 };
+             totSaves: 0, bestDist: 0, bestRunFish: 0,
+             /* stars earned per marked run, by id */
+             courses: {} };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -50,6 +52,11 @@
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
+      save.courses = {};
+      if (o.courses && typeof o.courses === 'object')
+        for (var cid in o.courses)
+          if (courseById(cid))
+            save.courses[cid] = Math.max(0, Math.min(3, parseInt(o.courses[cid], 10) || 0));
       save.ach = [];
       if (Object.prototype.toString.call(o.ach) === '[object Array]')
         for (var j = 0; j < o.ach.length; j++)
@@ -97,7 +104,7 @@
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
-                  ach: $('screen-ach') };
+                  ach: $('screen-ach'), runs: $('screen-runs') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -112,7 +119,9 @@
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
     if (name === 'ach') buildAch();
+    if (name === 'runs') buildRuns();
     if (name === 'title') {
+      refreshModes();
       var el = $('title-best');
       el.textContent = t('title.best', { n: save.best });
       el.classList.toggle('hidden', save.best <= 0);
@@ -121,15 +130,25 @@
   function showGame() { show('game'); }
 
   /* --------------------------- game -------------------------- */
-  function ride() {
+  var lastCourse = null;
+  function ride(courseId) {
+    lastCourse = courseId || null;
     showGame();
     Sfx.unlock();
-    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped);
+    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped, lastCourse);
   }
 
   function onOver(res) {
     save.runs++;
-    var beat = res.score > save.best;
+    /* A marked run has its own scoreboard: stars, not distance. The freeride
+       best must not be moved by a course, or a short course would look like
+       a bad run forever. */
+    var cd = res.course ? courseById(res.course) : null;
+    var stars = cd ? courseStars(cd, res) : 0;
+    if (cd) {
+      if (stars > (save.courses[cd.id] || 0)) save.courses[cd.id] = stars;
+    }
+    var beat = !cd && res.score > save.best;
     if (beat) save.best = res.score;
     save.fish += res.coins || 0;
     save.gold += res.gold || 0;
@@ -150,6 +169,15 @@
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
+    document.querySelector('#screen-over .panel-title-text').textContent =
+      t(res.finished ? 'over.finish' : 'over.title');
+    var st = $('over-stars');
+    st.classList.toggle('hidden', !cd);
+    if (cd) st.textContent = '★★★☆☆☆'.slice(3 - stars, 6 - stars);
+    /* Retry re-runs the same course; on freeride it is a fresh hill. */
+    var again = document.querySelector('#screen-over [data-action="play"], #screen-over [data-action="retry"]');
+    again.setAttribute('data-action', cd ? 'retry' : 'play');
+    again.textContent = t(cd ? 'btn.retry' : 'btn.again');
     $('over-score').textContent = t('over.points', { n: res.score });
     var bits = [res.dist + ' ' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
@@ -163,17 +191,21 @@
   /* -------------------------- actions ------------------------ */
   function act(name) {
     switch (name) {
-      case 'play':       Sfx.click(); ride(); break;
+      case 'play':
+        if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
+        Sfx.click(); ride(null); break;
       case 'help':       Sfx.click(); show('help'); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
+      case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
+      case 'retry':      Sfx.click(); ride(lastCourse); break;
       case 'back-title':
         Sfx.click();
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
-             currentScreen === 'ach') &&
+             currentScreen === 'ach' || currentScreen === 'runs') &&
             (shopBack === 'over' || shopBack === 'pause')) {
           var back = shopBack; shopBack = null; show(back); break;
         }
@@ -291,6 +323,81 @@
     achCheck(save);                 // owning things is a goal in its own right
     store();
     buildShop();
+  });
+
+  /* ------------------------ marked runs ---------------------- */
+  function runUnlocked(i) {
+    if (i === 0) return true;                        // the first is always open
+    return (save.courses[COURSES[i - 1].id] || 0) > 0;
+  }
+
+  /* Freeride is where the fish are, so it cannot be held back far: locking
+     it behind all six lines would also lock a beginner out of the shop, and
+     they clear the sixth roughly never. One line is enough — it is the run
+     that teaches you what a tap does, and it is passed in a few attempts. */
+  function freeUnlocked() { return (save.courses[COURSES[0].id] || 0) > 0; }
+
+  function refreshModes() {
+    var b = $('btn-free'), open = freeUnlocked();
+    if (!b) return;
+    b.disabled = !open;
+    b.classList.toggle('locked', !open);
+    var sub = $('free-sub');
+    if (open) { sub.setAttribute('data-i18n', 'mode.free.sub'); sub.textContent = t('mode.free.sub'); }
+    else {
+      sub.removeAttribute('data-i18n');
+      sub.textContent = t('mode.free.locked', { n: t('course.' + COURSES[0].id + '.name') });
+    }
+  }
+
+  function buildRuns() {
+    var total = 0;
+    for (var k = 0; k < COURSES.length; k++) total += (save.courses[COURSES[k].id] || 0);
+    $('runs-count').textContent = t('runs.count', { a: total, b: COURSES.length * 3 });
+
+    var list = $('runs-list');
+    list.textContent = '';
+    COURSES.forEach(function (cd, i) {
+      var stars = save.courses[cd.id] || 0;
+      var open = runUnlocked(i);
+
+      var row = document.createElement('button');
+      row.className = 'run-row' + (stars ? ' done' : '') + (open ? '' : ' locked');
+      row.setAttribute('data-run', cd.id);
+      if (!open) row.disabled = true;
+
+      var no = document.createElement('div');
+      no.className = 'run-no'; no.textContent = open ? (i + 1) : '🔒';
+      row.appendChild(no);
+
+      var mid = document.createElement('div');
+      mid.className = 'run-mid';
+      var nm = document.createElement('div');
+      nm.className = 'run-name'; nm.textContent = t('course.' + cd.id + '.name');
+      mid.appendChild(nm);
+      var sub = document.createElement('div');
+      sub.className = 'run-sub';
+      sub.textContent = open
+        ? t('biome.' + cd.biome) + '  ·  ' +
+          t('runs.len', { n: Math.round(parseCourse(cd, 300).length * cd.step / 8) })
+        : t('runs.locked');
+      mid.appendChild(sub);
+      row.appendChild(mid);
+
+      var st = document.createElement('div');
+      st.className = 'run-stars';
+      st.textContent = open ? '★★★☆☆☆'.slice(3 - stars, 6 - stars) : '';
+      row.appendChild(st);
+
+      list.appendChild(row);
+    });
+  }
+
+  $('runs-list').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-run]') : null;
+    if (!b || b.disabled) return;
+    Sfx.click();
+    ride(b.getAttribute('data-run'));
   });
 
   /* -------------------------- trophies ----------------------- */

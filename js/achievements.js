@@ -21,7 +21,7 @@ var ACHIEVEMENTS = [
   { id: 'fish3000', icon: '🐠', reward: 350, goal: 3000, stat: function (s) { return s.totFish; } },
   { id: 'gold1',    icon: '✨', reward:  60, goal: 1,    stat: function (s) { return s.totGold; } },
   { id: 'gold25',   icon: '🌟', reward: 300, goal: 25,   stat: function (s) { return s.totGold; } },
-  { id: 'gates100', icon: '🚩', reward: 120, goal: 100,  stat: function (s) { return s.totGates; } },
+  { id: 'gates100', icon: '💠', reward: 120, goal: 100,  stat: function (s) { return s.totGates; } },
   { id: 'jump1',    icon: '🕳️', reward:  40, goal: 1,    stat: function (s) { return s.totJumps; } },
   { id: 'jump50',   icon: '🪂', reward: 250, goal: 50,   stat: function (s) { return s.totJumps; } },
   { id: 'saves10',  icon: '🫧', reward: 150, goal: 10,   stat: function (s) { return s.totSaves; } },

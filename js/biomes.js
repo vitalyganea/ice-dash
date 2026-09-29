@@ -2,7 +2,13 @@
    biomes.js — the stretches of hill you ride through
    -----------------------------------------------------------
    The run is endless; every BIOME_LEN metres the world changes
-   look and, in two cases, how the penguin handles.
+   look and, in one case, how the penguin handles.
+
+   `air` is whatever is falling through the frame — snow on most of the
+   hill, ash and embers over the lava field. `rise` is subtracted from the
+   fall, so a lit ember climbs against the run instead of dropping with it.
+   `aurora` hangs a band of light in the sky. Everything here is weather
+   and rock: there is nothing on this hill that anybody built.
    =========================================================== */
 
 var BIOME_LEN = 520;          // metres per stretch (8 world units = 1 metre)
@@ -31,6 +37,21 @@ var BIOMES = [
     fog:   0,   fogRGB: ''
   },
   {
+    /* Polar noon with the sun too low to warm anything: the hill, the sky
+       and the haze are all within a few points of white, so the only thing
+       you can read is the shadow an obstacle throws. */
+    name: 'Arctic Shelf',
+    sky:   ['#cfefff', '#ffffff'],
+    hazeRGB: '244,252,255',
+    snowA: '#ffffff', iceTop: '#d6f1ff', iceBot: '#aadcf4', bankEdge: '#ffffff', bankShade: '#c2dded',
+    far:   '#d4e9f4', edge: '#a2c7de',
+    tree:  '#7fb0c6', treeDark: '#5b8ea6', trunk: '#7d909c',
+    rock:  '#8c9dad', rockDark: '#5e6f80',
+    grip:  1,
+    fog:   0.18, fogRGB: '238,251,255',
+    air:   { rgb: '255,255,255', a: 0.6, r: 1.5, rise: 0, drift: 2.4, n: 0.8 }
+  },
+  {
     name: 'Glacier',
     /* The one stretch where he handles differently, so it has to look
        unmistakably colder than the pine forest or the tell is lost. */
@@ -44,6 +65,43 @@ var BIOMES = [
     fog:   0,   fogRGB: ''
   },
   {
+    /* A glacier running over a live volcanic field. The snow is grey with
+       fallen ash, the rock is basalt, and the sky is lit from below by
+       something the hill is sitting on. */
+    name: 'Ashfall',
+    sky:   ['#2a1214', '#a8431f'],
+    hazeRGB: '96,38,24',
+    snowA: '#3a3430', iceTop: '#454252', iceBot: '#232029', bankEdge: '#4a423d', bankShade: '#241f1c',
+    far:   '#1f0f0d', edge: '#6b2e19',
+    tree:  '#382c24', treeDark: '#221b16', trunk: '#2c211b',
+    rock:  '#635d70', rockDark: '#363240',
+    cap:   '#d2cac4', capShade: 'rgba(40,30,26,.45)', shadow: 'rgba(0,0,0,.42)',
+    lip:   '#6e625a', streak: 'rgba(255,138,64,.34)',
+    vents: 1,                 // heat showing up through the ice
+    grip:  1,
+    fog:   0.34, fogRGB: '74,28,18',
+    air:   { rgb: '255,146,54', a: 0.95, r: 2.2, rise: 2.1, drift: 0.9, hot: 1, n: 0.55 },
+    ember: 1
+  },
+  {
+    /* Deep midwinter at dusk: rose light on the snow, the conifers loaded
+       past bending, fat slow flakes, and the aurora already out. Nothing
+       hung on anything — the season does all of it by itself. */
+    name: 'Midwinter',
+    sky:   ['#2a3a6e', '#eebac6'],
+    hazeRGB: '234,188,199',
+    snowA: '#f0e2e8', iceTop: '#93a6d8', iceBot: '#5f73ad', bankEdge: '#e8d8e0', bankShade: '#b09fb6',
+    far:   '#3f4480', edge: '#6a64a4',
+    tree:  '#1f5c44', treeDark: '#12392c', trunk: '#4a3a2e',
+    rock:  '#7a7d9c', rockDark: '#4e5170',
+    lip:   '#fbeef2',
+    grip:  1,
+    fog:   0.24, fogRGB: '56,58,110',
+    air:   { rgb: '255,255,255', a: 0.85, r: 3.1, rise: 0, drift: 1.4, n: 1 },
+    aurora: '124,232,184',
+    snowyTrees: 1
+  },
+  {
     name: 'Night Run',
     sky:   ['#231c52', '#4a3a86'],
     hazeRGB: '39,31,88',
@@ -54,5 +112,59 @@ var BIOMES = [
     grip:  1,
     fog:   0.55,              // you see less of the hill ahead
     fogRGB: '31,25,74'
+  },
+  {
+    /* Ashfall is a glacier with something under it. This is the mountain
+       itself: black obsidian underfoot and open lava running either side
+       of the line. The only safe ground is the strip you are on. */
+    name: 'Emberflow',
+    sky:   ['#1a0a0b', '#d05a1e'],
+    hazeRGB: '132,40,14',
+    snowA: '#2b221e', iceTop: '#3c3135', iceBot: '#1d1619', bankEdge: '#3a2c25', bankShade: '#150f0d',
+    far:   '#170808', edge: '#7e3212',
+    tree:  '#33261e', treeDark: '#1e1612', trunk: '#271c16',
+    rock:  '#8d776a', rockDark: '#514238',
+    cap:   '#c0b2a6', capShade: 'rgba(46,32,24,.5)', shadow: 'rgba(0,0,0,.5)',
+    lip:   '#6a4a38', streak: 'rgba(255,120,40,.30)',
+    grip:  1,
+    fog:   0.30, fogRGB: '88,24,10',
+    air:   { rgb: '255,168,72', a: 0.95, r: 2.4, rise: 2.6, drift: 1.1, hot: 1, n: 0.8 },
+    ember: 0.7,
+    lava:  1                  // open channels running either side of the line
+  },
+  {
+    /* Midwinter at noon instead of dusk. Rowan holds its fruit all winter,
+       so the red is the hill's own: berries in the snow against the darkest
+       green on the mountain. Nothing here was hung on anything. */
+    name: 'Hollyfrost',
+    sky:   ['#bfe0ff', '#fff2dc'],
+    hazeRGB: '255,241,216',
+    snowA: '#fff4e2', iceTop: '#e2ecf4', iceBot: '#b4cadb', bankEdge: '#fffaf0', bankShade: '#c9b9a4',
+    far:   '#dcd0bd', edge: '#b3a894',
+    tree:  '#14512f', treeDark: '#0b3a21', trunk: '#54381f',
+    rock:  '#96a4b4', rockDark: '#66768a',
+    grip:  1,
+    fog:   0.10, fogRGB: '255,246,228',
+    air:   { rgb: '255,255,255', a: 0.8, r: 2.4, rise: 0, drift: 1.2, n: 0.8 },
+    snowyTrees: 0.55,         // enough to read as laden, not enough to hide the green
+    berries: 1.3              // rowan in the snow along the banks
+  },
+  {
+    /* A winter that never gets to end: moonlight, no wind, and frost that
+       has had years to grow. The forest is still standing in it, frozen
+       silver rather than green. */
+    name: 'Everwinter',
+    sky:   ['#101c34', '#3f5a86'],
+    hazeRGB: '38,54,88',
+    snowA: '#eef4ff', iceTop: '#a6c0e2', iceBot: '#7591bd', bankEdge: '#ffffff', bankShade: '#9fb2cf',
+    far:   '#2c3f63', edge: '#5f7aa6',
+    tree:  '#6d8ca4', treeDark: '#46647c', trunk: '#46505f',
+    rock:  '#7d8ea6', rockDark: '#4c5c74',
+    snowyTrees: 0.8,
+    cap:   '#eef6ff', capShade: 'rgba(120,150,190,.5)', shadow: 'rgba(24,36,62,.4)',
+    grip:  1,
+    fog:   0.26, fogRGB: '32,48,84',
+    air:   { rgb: '226,240,255', a: 0.55, r: 1.3, rise: 0, drift: 0.5, n: 0.35 },
+    sparkle: 1                // frost catching the moon
   }
 ];
