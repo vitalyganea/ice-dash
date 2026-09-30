@@ -14,6 +14,9 @@
        *     a shoal of fish through the opening
        +     a golden fish, off to one side
        o     a snow bubble
+       $     a nodule of ice with something frozen inside it
+       T     a snow bridge arches over the run here
+       R     a ball of packed powder: take it and nothing can stop you
        |     a tongue of polished blue ice
        !     opening a little tighter than the course's norm
        ~     opening a little wider
@@ -34,7 +37,7 @@
 var COURSES = [
   {
     id: 'firstlight', biome: 0, step: 278, gapW: [250, 228],
-    script: '5 5* 4 4 4* 5 5| 6 6* 7 7 6 5| 5* 4 3 3 4* 5 5| ' +
+    script: '5 5* 4 4 4* 5 5| 6 6* 7T 7 6 5| 5* 4 3 3 4* 5 5| ' +
             '6 6* 5 5'
   },
   {
@@ -54,14 +57,14 @@ var COURSES = [
   },
   {
     id: 'nightfall', biome: 9, step: 244, gapW: [206, 172],
-    script: '5 5 6 6* 7 7! 6 5 4| 3 3! 3 4 5 6* 7 8 8! 7 6 5 4 ' +
-            '3! 2 2 3* 4 5| 6 7 7! 8 8 7 6* 5 4 4! 3 3 4 5C 5 5'
+    script: '5 5 6 6* 7 7! 6 5 4| 3 3! 3T 4 5 6* 7 8 8! 7 6 5 4 ' +
+            '3! 2 2 3* 4 5| 6 7 7! 8$ 8 7 6* 5 4 4! 3 3 4 5C 5 5'
   },
   {
     id: 'cornice', biome: 8, step: 234, gapW: [198, 156],
     script: '5 5* 6 7 8! 8 7 6 5C 5 4 3! 2 2* 3 4 5| 6 7! 8 8 7 ' +
             '6C 6 5 4! 3 2 2 3* 4 5 6! 7 8 8| 7 6 5C 5 4 3! 3 ' +
-            '2 3 4* 5 6 7! 8 8 7 6 5| 4 4C 4 4* 5 5'
+            '2 3 4*R 5 6 7! 8T 8 7 6 5| 4 4C 4$ 4* 5 5'
   }
 ];
 
@@ -85,6 +88,9 @@ function parseCourse(cd, CHUTE) {
       fish: tk.indexOf('*') >= 0,
       gold: tk.indexOf('+') >= 0,
       bubble: tk.indexOf('o') >= 0,
+      find: tk.indexOf('$') >= 0,
+      tunnel: tk.indexOf('T') >= 0,
+      rush: tk.indexOf('R') >= 0,
       gate: tk.indexOf('|') >= 0
     });
   }

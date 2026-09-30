@@ -14,6 +14,20 @@
   var IN_YT = !!(window.ytgame && window.ytgame.IN_PLAYABLES_ENV);
 
   /* -------------------------- saving ------------------------- */
+  /* Declared above adopt(), which clamps a loaded save against the cap. */
+  var LIFE_PRICE = 250, LIFE_CAP = 5;
+  /* What comes out of a frozen find, by weight. Fish most of the time; the
+     spare life is the thing worth chasing, and it is rare enough that it
+     never becomes the way you stock up — the market is. */
+  var FIND_PRIZES = [
+    { w: 32, kind: 'fish', n: 80 },
+    { w: 25, kind: 'fish', n: 150 },
+    { w: 16, kind: 'fish', n: 300 },
+    { w: 13, kind: 'gold', n: 1 },
+    { w: 9,  kind: 'life', n: 1 },
+    { w: 5,  kind: 'gold', n: 3 }
+  ];
+
   function defaults() {
     return { best: 0, runs: 0, sfx: true, music: true,
              fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
@@ -23,6 +37,8 @@
                 are at any moment and not only when it ticks over. */
              ach: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
              totSaves: 0, bestDist: 0, bestRunFish: 0,
+             /* spare lives bought at the market, and unopened finds */
+             lives: 0, finds: 0, totRevives: 0,
              /* stars earned per marked run, by id */
              courses: {} };
   }
@@ -50,8 +66,13 @@
       save.equipped = (SKIN_BY_ID[o.equipped] && save.owned.indexOf(o.equipped) >= 0)
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
-      ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish']
+      ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
+       'totRevives']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
+      /* Both are capped on load as well as on purchase: a hand-edited save
+         should not be able to hand out a hundred lives. */
+      save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
+      save.finds = Math.max(0, Math.min(99, parseInt(o.finds, 10) || 0));
       save.courses = {};
       if (o.courses && typeof o.courses === 'object')
         for (var cid in o.courses)
@@ -104,7 +125,8 @@
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
-                  ach: $('screen-ach'), runs: $('screen-runs') };
+                  ach: $('screen-ach'), runs: $('screen-runs'),
+                  revive: $('screen-revive') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -132,13 +154,69 @@
   /* --------------------------- game -------------------------- */
   var lastCourse = null;
   function ride(courseId) {
+    pendingRes = null;
+    if (tickT) { clearInterval(tickT); tickT = null; }
     lastCourse = courseId || null;
     showGame();
     Sfx.unlock();
-    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped, lastCourse);
+    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped,
+               lastCourse, save.lives || 0);
   }
 
+  /* A crash with a life in hand is not the end of the run, so nothing may be
+     banked yet: the result is held until the player picks. Committing here
+     and rolling back afterwards would double-count fish and trophies. */
+  var pendingRes = null;
   function onOver(res) {
+    if (res.canRevive) { pendingRes = res; showRevive(); return; }
+    commitRun(res);
+  }
+
+  function showRevive() {
+    var n = save.lives || 0;
+    $('revive-count').textContent = t('revive.left', { n: n });
+    var hs = $('revive-hearts');
+    hs.textContent = '';
+    for (var i = 0; i < Math.min(5, n); i++) {
+      var h = document.createElement('span');
+      h.className = 'heart';
+      hs.appendChild(h);
+    }
+    $('revive-tick').classList.add('hidden');
+    $('revive-buttons').classList.remove('hidden');
+    Game.pause();
+    show('revive');
+  }
+
+  var tickT = null;
+  function useLife() {
+    if ((save.lives || 0) <= 0) { noLife(); return; }
+    $('revive-buttons').classList.add('hidden');
+    var el = $('revive-tick');
+    el.classList.remove('hidden');
+    var n = 3;
+    el.textContent = String(n);
+    Sfx.click();
+    if (tickT) clearInterval(tickT);
+    tickT = setInterval(function () {
+      n--;
+      if (n > 0) { el.textContent = String(n); Sfx.click(); return; }
+      clearInterval(tickT); tickT = null;
+      el.textContent = t('revive.go');
+      save.lives = Math.max(0, (save.lives || 0) - 1);
+      store();
+      pendingRes = null;
+      if (Game.revive()) { showGame(); Game.resume(); }
+      else { commitRun(pendingRes || { score: 0, dist: 0, fish: 0, gold: 0 }); }
+    }, 800);
+  }
+  function noLife() {
+    if (tickT) { clearInterval(tickT); tickT = null; }
+    var r = pendingRes; pendingRes = null;
+    commitRun(r || { score: 0, dist: 0, fish: 0, gold: 0, coins: 0 });
+  }
+
+  function commitRun(res) {
     save.runs++;
     /* A marked run has its own scoreboard: stars, not distance. The freeride
        best must not be moved by a course, or a short course would look like
@@ -159,13 +237,15 @@
     save.totSaves += res.saved || 0;
     save.bestDist    = Math.max(save.bestDist, res.dist || 0);
     save.bestRunFish = Math.max(save.bestRunFish, res.fish || 0);
+    save.finds = Math.min(99, (save.finds || 0) + (res.finds || 0));
+    save.totRevives += res.revives || 0;
     var won = achCheck(save);                        // pays out into save.fish
     store();
     showWon(won);
     var earned = $('over-earned');
     var bits = [];
-    if (res.coins) bits.push('+' + res.coins + ' 🐟');
-    if (res.gold)  bits.push('+' + res.gold + ' ✨');
+    if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
+    if (res.gold)  bits.push('+' + res.gold + ' ' + t('cur.gold'));
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
@@ -184,8 +264,50 @@
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
     $('over-detail').textContent = bits.join('  ·  ');
+    buildFinds(true);
     Game.pause();
     show('over');
+  }
+
+  /* ------------------------ frozen finds --------------------- */
+  function buildFinds(reset) {
+    var box = $('over-finds'), n = save.finds || 0;
+    box.classList.toggle('hidden', n <= 0);
+    if (n <= 0) return;
+    $('find-count').textContent = t('find.have', { n: n });
+    if (reset) $('find-prize').classList.add('hidden');
+    var btn = box.querySelector('[data-action="open-find"]');
+    btn.textContent = t(reset ? 'find.open' : 'find.again');
+    if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 140);
+  }
+
+  function openFind() {
+    if ((save.finds || 0) <= 0) return;
+    save.finds--;
+    var total = 0, i;
+    for (i = 0; i < FIND_PRIZES.length; i++) total += FIND_PRIZES[i].w;
+    var roll = Math.random() * total, pick = FIND_PRIZES[0];
+    for (i = 0; i < FIND_PRIZES.length; i++) {
+      roll -= FIND_PRIZES[i].w;
+      if (roll <= 0) { pick = FIND_PRIZES[i]; break; }
+    }
+    var msg;
+    if (pick.kind === 'fish') { save.fish += pick.n; msg = t('find.fish', { n: pick.n }); }
+    else if (pick.kind === 'gold') { save.gold += pick.n; msg = t('find.gold', { n: pick.n }); }
+    else {
+      /* A life you cannot carry would just vanish, so it is paid out. */
+      if ((save.lives || 0) < LIFE_CAP) { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
+      else { save.fish += LIFE_PRICE; msg = t('find.lifefull', { n: LIFE_PRICE }); }
+    }
+    var p = $('find-prize');
+    p.textContent = msg;
+    p.classList.remove('hidden');
+    /* restart the reveal even when the same prize comes up twice */
+    p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
+    Sfx.gold();
+    achCheck(save);
+    store();
+    buildFinds(false);
   }
 
   /* -------------------------- actions ------------------------ */
@@ -194,6 +316,9 @@
       case 'play':
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null); break;
+      case 'use-life':   useLife(); break;
+      case 'open-find':  openFind(); break;
+      case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
@@ -242,14 +367,60 @@
   var shopBack = null;
 
   function wallet() {
-    $('wallet-fish').textContent = '🐟 ' + save.fish;
-    $('wallet-gold').textContent = '✨ ' + save.gold;
+    $('wallet-fish').textContent = save.fish + ' ' + t('cur.fish');
+    $('wallet-gold').textContent = save.gold + ' ' + t('cur.gold');
   }
 
   function owns(id) { return save.owned.indexOf(id) >= 0; }
   function balance(cur) { return cur === 'gold' ? save.gold : save.fish; }
 
+  /* Supplies sit above the animals: they are consumable, everything below
+     is permanent, and mixing them in one grid made the shop read as if you
+     could "wear" a life. */
+  function buildSupply() {
+    var box = $('shop-supply');
+    if (!box) return;
+    box.textContent = '';
+    var n = save.lives || 0, full = n >= LIFE_CAP, broke = save.fish < LIFE_PRICE;
+
+    var card = document.createElement('div');
+    card.className = 'supply-card';
+
+    var art = document.createElement('div');
+    art.className = 'supply-art';
+    for (var i = 0; i < LIFE_CAP; i++) {
+      var h = document.createElement('span');
+      h.className = 'heart' + (i < n ? '' : ' spent');
+      art.appendChild(h);
+    }
+    card.appendChild(art);
+
+    var mid = document.createElement('div');
+    mid.className = 'supply-mid';
+    var nm = document.createElement('div');
+    nm.className = 'nm'; nm.textContent = t('shop.life');
+    mid.appendChild(nm);
+    var ds = document.createElement('div');
+    ds.className = 'pk'; ds.textContent = t('shop.life.desc');
+    mid.appendChild(ds);
+    var hv = document.createElement('div');
+    hv.className = 'pk'; hv.textContent = t('shop.life.have', { n: n, m: LIFE_CAP });
+    mid.appendChild(hv);
+    card.appendChild(mid);
+
+    var buy = document.createElement('button');
+    buy.className = 'btn ' + (full || broke ? 'btn-ghost' : 'btn-green');
+    buy.setAttribute('data-buy-life', '1');
+    buy.disabled = full || broke;
+    buy.textContent = full ? t('shop.life.full')
+                           : t('shop.buy') + '  ' + LIFE_PRICE + ' ' + t('cur.fish');
+    card.appendChild(buy);
+
+    box.appendChild(card);
+  }
+
   function buildShop() {
+    buildSupply();
     wallet();
     var grid = $('shop-grid');
     grid.textContent = '';
@@ -295,7 +466,7 @@
     } else if (owns(sk.id)) {
       b.textContent = t('shop.wear'); b.className += ' btn-green';
     } else {
-      var icon = sk.currency === 'gold' ? ' ✨' : ' 🐟';
+      var icon = ' ' + t(sk.currency === 'gold' ? 'cur.gold' : 'cur.fish');
       b.textContent = sk.price + icon;
       var canAfford = balance(sk.currency) >= sk.price;
       b.className += canAfford ? ' btn-blue' : ' btn-ghost';
@@ -321,6 +492,17 @@
     }
     save.equipped = sk.id;          // buying it puts it on straight away
     achCheck(save);                 // owning things is a goal in its own right
+    store();
+    buildShop();
+  });
+
+  $('shop-supply').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-buy-life]') : null;
+    if (!b || b.disabled) return;
+    if (save.fish < LIFE_PRICE || (save.lives || 0) >= LIFE_CAP) { Sfx.click(); return; }
+    save.fish -= LIFE_PRICE;
+    save.lives = (save.lives || 0) + 1;
+    Sfx.gold();
     store();
     buildShop();
   });
@@ -367,7 +549,7 @@
       if (!open) row.disabled = true;
 
       var no = document.createElement('div');
-      no.className = 'run-no'; no.textContent = open ? (i + 1) : '🔒';
+      no.className = 'run-no'; no.textContent = i + 1;
       row.appendChild(no);
 
       var mid = document.createElement('div');
@@ -408,7 +590,7 @@
     won.forEach(function (a) {
       var row = document.createElement('div');
       row.className = 'won-row';
-      row.textContent = a.icon + '  ' + t('ach.' + a.id + '.name') + '   +' + a.reward + ' 🐟';
+      row.textContent = t('ach.' + a.id + '.name') + '   +' + a.reward + ' ' + t('cur.fish');
       box.appendChild(row);
     });
   }
@@ -459,7 +641,7 @@
       right.textContent = got ? ('✓ ' + t('ach.earned'))
                               : (p.cur + ' / ' + p.goal);
       var rew = document.createElement('small');
-      rew.textContent = '+' + a.reward + ' 🐟';
+      rew.textContent = '+' + a.reward + ' ' + t('cur.fish');
       right.appendChild(rew);
       row.appendChild(right);
 
@@ -505,15 +687,31 @@
      drawing surface — including where a thumb naturally rests — swallowed
      every tap. Two fingers landing together count as one tap, or the
      direction would flip twice and nothing would appear to happen. */
-  var lastTap = -1e9;
+  var lastTap = -1e9, down = 0;
   window.addEventListener('pointerdown', function (e) {
     if (currentScreen !== 'game' || Game.isPaused()) return;
     if (e.target && e.target.closest && e.target.closest('button, [data-action]')) return;
+    down++;
+    /* Steering is a single tap, so a second finger is never a steering
+       input — which makes it free to mean pause. The first finger has
+       already flipped the direction by the time the second lands, so undo
+       that flip: the player resumes going the way they were. */
+    if (down > 1) {
+      Game.undoTap();
+      Game.pause(); show('pause');
+      return;
+    }
     var now = e.timeStamp || Date.now();
     if (now - lastTap < 45) return;
     lastTap = now;
     Game.tap();
   });
+  function liftPointer() { if (down > 0) down--; }
+  window.addEventListener('pointerup', liftPointer);
+  window.addEventListener('pointercancel', liftPointer);
+  /* A pointer that leaves the window never reports up, and the count would
+     stick above zero and pause on the next ordinary tap. */
+  window.addEventListener('blur', function () { down = 0; });
   document.addEventListener('contextmenu', function (e) {
     if (currentScreen === 'game') e.preventDefault();
   });
