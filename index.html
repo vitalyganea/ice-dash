@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#8fd4ff">
 <title>Ice Dash</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>">
+<link rel="icon" href="img/logo.png">
 <link rel="stylesheet" href="css/font.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -15,12 +15,13 @@
 
 <div id="stage">
   <canvas id="game"></canvas>
+  <!-- The readouts are painted on the canvas; the only thing the HUD holds
+       is the pause control. It sits bottom-right, where a thumb already is:
+       the top-right corner meant reaching across the whole phone. -->
   <div id="hud" class="hidden">
-    <div class="hud-side"></div>
-    <div class="hud-mid"></div>
-    <div class="hud-side hud-right">
-      <button id="btn-menu" class="icon-btn" data-i18n-aria="btn.settings" aria-label="Menu">☰</button>
-    </div>
+    <button id="btn-menu" class="pause-btn" data-i18n-aria="btn.pause" aria-label="Pause">
+      <span class="pause-bars" aria-hidden="true"><i></i><i></i></span>
+    </button>
   </div>
 </div>
 
@@ -77,14 +78,14 @@
       </button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">🐟 Market</button>
-      <button class="btn btn-purple" data-action="help" data-i18n="btn.help">❓ How to play</button>
+      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">Market</button>
+      <button class="btn btn-purple" data-action="help" data-i18n="btn.help">How to play</button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-ghost" data-action="trophies" data-i18n="btn.trophies">🏅 Trophies</button>
-      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">⚙️ Settings</button>
+      <button class="btn btn-ghost" data-action="trophies" data-i18n="btn.trophies">Trophies</button>
+      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
     </div>
-    <p id="title-best" class="big-score hidden">🏔️ Best 0 points</p>
+    <p id="title-best" class="big-score hidden">Best 0 points</p>
   </div>
 </section>
 
@@ -103,7 +104,10 @@
       <li data-i18n-html="help.9"></li>
       <li data-i18n-html="help.10"></li>
       <li data-i18n-html="help.11"></li>
+      <li data-i18n-html="help.rush"></li>
+      <li data-i18n-html="help.find"></li>
       <li data-i18n-html="help.12"></li>
+      <li data-i18n-html="help.13"></li>
     </ul>
     <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.gotit">Got it!</button></div>
   </div>
@@ -114,29 +118,52 @@
     <h2 class="panel-title-text" data-i18n="pause.title">Paused</h2>
     <div class="btn-row"><button class="btn btn-big btn-green" data-action="resume" data-i18n="btn.keepgoing">▶ Keep going</button></div>
     <div class="btn-row">
-      <button class="btn btn-blue" data-action="play" data-i18n="btn.newrun">↻ New run</button>
-      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">🏠 Menu</button>
+      <button class="btn btn-blue" data-action="play" data-i18n="btn.newrun">New run</button>
+      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">Menu</button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">⚙️ Settings</button>
+      <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
     </div>
   </div>
 </section>
 
 <section id="screen-over" class="screen hidden">
   <div class="panel panel-win">
-    <div class="win-emoji">🌲</div>
+    
     <h2 class="panel-title-text" data-i18n="over.title">Ouch!</h2>
-    <p id="new-best" class="big-score hidden" data-i18n="over.newbest">🏆 New best!</p>
+    <p id="new-best" class="big-score hidden" data-i18n="over.newbest">New best!</p>
     <p id="over-score" class="subtitle">0 points</p>
     <div id="over-detail" class="total-stars">0 m · 0 berries · 0 gates</div>
     <p id="over-stars" class="run-stars hidden"></p>
-    <p id="over-earned" class="earned hidden">+0 🐟</p>
+    <p id="over-earned" class="earned hidden">+0</p>
     <div id="over-won" class="won-box hidden"></div>
-    <div class="btn-row"><button class="btn btn-big btn-green" data-action="play" data-i18n="btn.again">↻ Ride again</button></div>
+    <!-- Nodules picked up on the hill, cracked open here. -->
+    <div id="over-finds" class="finds-box hidden">
+      <canvas id="find-art" class="find-art" width="140" height="140" aria-hidden="true"></canvas>
+      <p id="find-count" class="find-count"></p>
+      <p id="find-prize" class="find-prize hidden"></p>
+      <button class="btn btn-green" data-action="open-find" data-i18n="find.open">Crack it open</button>
+    </div>
+    <div class="btn-row"><button class="btn btn-big btn-green" data-action="play" data-i18n="btn.again">Ride again</button></div>
     <div class="btn-row">
-      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">🐟 Market</button>
-      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">🏠 Menu</button>
+      <button class="btn btn-blue" data-action="shop" data-i18n="btn.market">Market</button>
+      <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">Menu</button>
+    </div>
+  </div>
+</section>
+
+<!-- Shown in place of the results when a crash happened and a spare life
+     is in hand. Nothing is banked until the player decides. -->
+<section id="screen-revive" class="screen hidden">
+  <div class="panel">
+    <h2 class="panel-title-text" data-i18n="revive.title">That was close</h2>
+    <p class="revive-sub" data-i18n="revive.sub">Use a spare life and carry on from where you fell?</p>
+    <div class="revive-hearts" id="revive-hearts" aria-hidden="true"></div>
+    <p class="revive-count" id="revive-count" data-i18n="revive.left">Spare lives: 0</p>
+    <div id="revive-tick" class="revive-tick hidden" aria-live="polite"></div>
+    <div class="btn-row" id="revive-buttons">
+      <button class="btn btn-big btn-green" data-action="use-life" data-i18n="revive.use">Use a life</button>
+      <button class="btn btn-big btn-blue" data-action="no-life" data-i18n="revive.skip">End the run</button>
     </div>
   </div>
 </section>
@@ -144,10 +171,11 @@
 <section id="screen-shop" class="screen hidden">
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
-    <p class="wallet"><span id="wallet-fish">🐟 0</span><span id="wallet-gold">✨ 0</span></p>
+    <p class="wallet"><span id="wallet-fish">0</span><span id="wallet-gold">0</span></p>
+    <div id="shop-supply" class="shop-supply"></div>
     <div id="shop-grid" class="shop-grid"></div>
     <p id="shop-note" class="shop-note" data-i18n="shop.note">Wear one at a time.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -157,7 +185,7 @@
     <p id="runs-count" class="wallet"></p>
     <div id="runs-list" class="runs-list"></div>
     <p class="shop-note" data-i18n="runs.note">Nothing here is shuffled.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -167,7 +195,7 @@
     <p id="ach-count" class="wallet"></p>
     <div id="ach-list" class="ach-list"></div>
     <p class="shop-note" data-i18n="ach.note">Every one of them pays out in fish.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -177,14 +205,14 @@
 
     <h3 class="set-head" data-i18n="set.sound">Sound</h3>
     <div class="toggles">
-      <button class="chip" id="t-sfx" data-i18n="set.sounds">🔊 Sounds</button>
-      <button class="chip" id="t-music" data-i18n="set.music">🎵 Music</button>
+      <button class="chip" id="t-sfx" data-i18n="set.sounds">Sounds</button>
+      <button class="chip" id="t-music" data-i18n="set.music">Music</button>
     </div>
 
     <h3 class="set-head" data-i18n="set.language">Language</h3>
     <div class="toggles" id="lang-row"></div>
 
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">⟵ Back</button></div>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
