@@ -38,13 +38,15 @@ you to do in the Developer Portal.
 | Communicates end of content | the run is endless by design and says so; the run-over screen shows the distance and the best |
 | No sharing prompts / external links / extra agreements / quit button | none present |
 | English supported | English is the default and the fallback for every string; Russian is offered alongside it in Settings, and an unknown device language falls back to English |
-| No icon clashing with platform controls | the in-game button is a ☰ menu glyph, not a pause symbol |
+| No icon clashing with platform controls | the one in-game button is a pause glyph (two bars) in the **bottom**-right, 64 css px across, clear of the top edge where the platform draws its own chrome. It is the only persistent icon the game puts on screen |
 
 ## Privacy and data
 
 No external calls other than the SDK itself. The webfont is embedded as a
-data URI in `css/font.css` (Baloo 2, SIL OFL 1.1) precisely so nothing is
-fetched at runtime. No clipboard access, no personal data, no login-like
+data URI in `css/font.css` (Baloo 2, SIL OFL 1.1). The only file fetched at
+runtime is the title logo, `img/logo.webp` (158 KB) with `img/logo.png`
+(380 KB) as the fallback for browsers without WebP — both are in the
+bundle, so this is a same-origin read, not a network call. No clipboard access, no personal data, no login-like
 screens, no QR-like graphics, no obfuscation, single page application, and no
 `eval`, WebAssembly or Web Workers.
 
@@ -52,11 +54,11 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 
 | Limit | This game |
 |---|---|
-| Initial bundle < 30 MiB (< 15 recommended) | 239 KB |
-| Individual file < 30 MiB (< 512 KiB recommended) | largest is `js/game.js`, 89 KB |
-| Saved game < 3 MiB (< 500 KiB recommended) | ~430 bytes (best, runs, wallet, wardrobe, language, trophies, course stars) |
-| Load and interactive < 5 s | no assets to fetch; interactive on the first frame |
-| At most 8000 files | 11 (`unlock.html` is a testing page and is not shipped) |
+| Initial bundle < 30 MiB (< 15 recommended) | 936 KB across 13 files — 541 KB of it the two logo encodings, 204 KB `js/game.js`, 55 KB the embedded font |
+| Individual file < 30 MiB (< 512 KiB recommended) | largest is `img/logo.png`, 380 KB; largest script is `js/game.js`, 204 KB |
+| Saved game < 3 MiB (< 500 KiB recommended) | 748 bytes with everything in it — every skin owned, every trophy earned, all six marked runs starred. A fresh save is about half that |
+| Load and interactive < 5 s | one image to fetch (158 KB WebP, same origin); the title screen is interactive on the first frame and does not wait for it |
+| At most 8000 files | 13 (`unlock.html` is a testing page and is not shipped) |
 | Only relative paths | yes, the SDK URL aside |
 | File names `[A-Za-z0-9_.-]` | yes |
 | Standards-compliant Web APIs | Canvas 2D, WebAudio, Pointer Events |

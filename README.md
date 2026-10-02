@@ -1,9 +1,11 @@
 # 🐧 Ice Dash
 
 A one-tap endless slide, written in plain HTML + CSS + JavaScript and built to
-pass YouTube Playables certification. No libraries, no build step, no image or
-audio files — everything is drawn on a `<canvas>` and every sound is
-synthesised at runtime with WebAudio.
+pass YouTube Playables certification. No libraries, no build step and no
+audio files: the hill, the creatures and every effect are drawn on a
+`<canvas>`, and every sound is synthesised at runtime with WebAudio. The one
+picture in the whole game is the title logo (`img/logo.webp`, with a PNG
+fallback).
 
 See [PLAYABLES.md](PLAYABLES.md) for how each certification requirement is met.
 
@@ -37,8 +39,8 @@ spoil a freeride best.
 A course is written as one token per row — `4*` is an opening left of centre
 with fish through it, `6C|` a crevasse right of centre with a gate over the
 ramp. Writing it by hand does not make it fair, so
-`scratchpad/pine/courses.js` replays every row of every course against the
-same reachability proof the generator uses, rides each one to the finish, and
+`test/courses.js` replays every row of every course against the same
+reachability proof the generator uses, rides each one to the finish, and
 checks that two different random seeds produce an identical hill.
 
 ## The one control
@@ -63,19 +65,34 @@ one side. A tap sends him the other way. That is the whole game.
 - 🕳️ **crevasses** that split the run from bank to bank. The only way over is
   the snow ramp sitting in that row's opening: hit it and you fly, clear of
   everything, until you land
-- 🛒 a **market**: fish are the currency, and eight creatures to spend them on
-  — four penguins, then a seal, a walrus, a reindeer and an orca. One worn at
-  a time, each with a different way of earning. They are deliberately dark or
+- **nunataks** — spines of bare rock standing up through the ice and splitting
+  the run in two for a few hundred metres. Both ways past are open and the
+  spawner proves it; the tighter one is the one with the gold down it. It is
+  the one thing on the hill you choose rather than dodge
+- **deep snow**, which never kills you and only bogs you down — the game's
+  one outcome that is neither fine nor fatal — and **meltwater geysers**,
+  lethal only while they are up, standing clear of the middle of an opening
+  so there is always a way round
+- Three more things to pick up: a **cold draught** that runs the whole hill
+  slow for three seconds, a **lens of clear ice** that lights up the next
+  openings before you reach them, and a **ring of fish** that pulls every
+  fish on the hill towards you
+- 🛒 a **market**: fish are the currency, and eleven creatures to spend them
+  on — four penguins, then a seal, an arctic hare, a snowy owl, a walrus, a
+  narwhal, a reindeer and an orca, priced in a ladder so cost tracks worth.
+  One worn at a time, each with a different way of earning. They are deliberately dark or
   strongly marked: the first pair of animals here were an arctic fox and a
   polar bear, and white on pale ice turned out to be unreadable no matter how
   they were drawn
-- Four stretches of hill that rotate every 520 m, cross-fading into each other rather than cutting: **Pine Forest**,
-  **Rocky Pass**, **Glacier** (he turns lazily — tap earlier) and
-  **Night Run** (the hill ahead fades into the dark)
+- Ten stretches of hill that rotate every 520 m, cross-fading into each other
+  rather than cutting: **Pine Forest**, **Rocky Pass**, **Arctic Shelf**,
+  **Glacier** (he turns lazily — tap earlier), **Ashfall**, **Midwinter**,
+  **Night Run** (the hill ahead fades into the dark), **Emberflow**,
+  **Hollyfrost** and **Everwinter**
 - The run gets harder the whole way down: faster, gaps narrower, rows closer
   together and more often doubled up
 - Best score saved through the Playables cloud save (distance plus everything collected)
-- 🏅 **15 trophies**, each paying out in fish — distance, catches, crevasses
+- 🏅 **24 trophies**, each paying out in fish — distance, catches, crevasses
   cleared, creatures owned. Progress is shown whether or not you have earned
   one, so a locked row still tells you how close you are
 - A **settings** screen: sound, music, and the language
@@ -99,24 +116,46 @@ css/font.css      Baloo 2, embedded as a data URI (no external requests)
 css/style.css     all interface styling
 js/i18n.js        every string, in English and Russian
 js/audio.js       sounds and music synthesised with WebAudio
-js/biomes.js      the four stretches of hill: palette, grip, fog
+img/logo.*        the title logo, WebP with a PNG fallback
+js/biomes.js      the ten stretches of hill: palette, grip, fog, weather
 js/skins.js       the creatures you can wear, and what each one does
 js/courses.js     the six marked runs, written out row by row
 js/achievements.js the trophies and what each one pays
 js/game.js        the engine: physics, spawning, collisions, rendering
 js/ui.js          menus, saving, input, Playables lifecycle
+build.sh          builds the upload package from an allowlist
+test/             the checks, and the browser playtest
 PLAYABLES.md      certification requirements and how each one is met
 ```
 
-`README.md`, `PLAYABLES.md` and `unlock.html` are not part of the game —
-leave all three out of the uploaded bundle.
+`README.md`, `PLAYABLES.md`, `GAME_SPEC.md`, `SYSTEMS.md`, `PLAYTEST.md`,
+`unlock.html`, `build.sh` and `test/` are not part of the game. Rather than
+remember that, run `./build.sh`: it builds `icedash.zip` from a list of the
+thirteen files the game needs and fails if any of the above turns up inside
+the archive.
+
+## Checking it
+
+```bash
+./test/run.sh                   # all thirteen suites
+./test/run.sh fork              # or one by name
+node test/playtest.js           # the real page, in a real browser
+```
+
+The suites run the engine headless with the DOM stubbed out, each one
+proving a property rather than pinning a number: that no row the spawner
+lays down can be impossible, that a marked run is the same run twice, that
+no skin can make the hill harsher, that both ways past a fork are open.
+`test/playtest.js` is the other half — it starts Chrome, serves the real
+page and walks it end to end on desktop and phone with real mouse and
+touch events, failing on anything the page writes to the console.
 
 ## Looking at everything without earning it
 
 Open `unlock.html` and press **Unlock everything**, then **Open the game**.
 It writes the same saved game the real page reads: Chrome hands every
 `file://` document the one `file://` origin, so a sibling page can seed it.
-The page also draws all eight creatures large, using the game's own painter,
+The page also draws all eleven creatures large, using the game's own painter,
 so what you see there is exactly what appears on the hill.
 
 `unlock.html?auto=all` does it without the click, if you want a bookmark.
@@ -130,9 +169,9 @@ rests — silently swallowed every tap. Two pointers landing within 45 ms count
 as one tap, or a two-finger press would flip the direction twice and appear to
 do nothing.
 
-The pause button sits top right, clear of the lower half, because the whole
-screen steers and a control under a resting thumb would pause the run by
-accident.
+The pause button sits bottom right. The top-right corner meant reaching
+across the whole phone, and anywhere further in would sit under a resting
+thumb and pause the run by accident — the whole screen steers.
 
 ## Nothing on the hill is man-made
 
@@ -153,7 +192,7 @@ added later is held to the same line.
 Every perk is allowed to make the hill **more** generous and never harsher:
 a wider reach for fish, more shoals, a shield to start with, sharper turning,
 longer air off a ramp. That is not a style guide, it is a safety rule with a
-test behind it (`scratchpad/pine/skinsafe.js`): each perk has to be declared,
+test behind it (`test/skinsafe.js`): each perk has to be declared,
 the scaling ones have to point upward, and every skin is then run through the
 reachability proof below. A "slippery" penguin with a score multiplier would
 be rejected, because a wider swing turns openings the spawner already promised
@@ -174,7 +213,7 @@ the opening by at most a fraction of that number, rising from 60% at the start
 to 93% at full difficulty.
 
 So the run can demand a near-perfect tap, but it can never demand an impossible
-one. `scratchpad/pine/mech.js` checks this by replaying every row a real run
+one. `test/mech.js` checks this by replaying every row a real run
 produces; it also verifies that the drawn scene and the collision test agree to
 within a millionth of a pixel, and that distance survived actually tracks skill.
 
