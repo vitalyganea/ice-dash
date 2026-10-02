@@ -541,6 +541,9 @@ body{
 }
 .ach-row.got{ background:rgba(236,250,241,.94); border-color:var(--green); }
 
+/* The emoji that used to sit in here went with all the others. What is
+   left is a disc that fills in when the trophy is earned, which is the
+   only thing the picture was ever telling you. */
 .ach-ico{
   flex:0 0 auto;
   width:42px; height:42px;
@@ -587,6 +590,60 @@ body{
    whichever glyph the device happens to ship — on some phones 🐧 is a
    different bird, on others it is a flat outline that fights the artwork. */
 
+.ach-ico.got{
+  background:radial-gradient(circle at 50% 36%, #7ee2b4 0%, #21a16e 100%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.75);
+}
+.ach-ico.got::after{
+  content:''; width:16px; height:9px; margin-top:-4px;
+  border-left:3.5px solid #fff; border-bottom:3.5px solid #fff;
+  transform:rotate(-45deg);
+}
+
+.over-lives{ display:flex; align-items:center; justify-content:center; gap:7px; margin:0 0 12px; }
+.over-lives-txt{ font-weight:800; color:var(--ink-soft); font-size:.9em; }
+
+/* ---- the market's purse stays put ----
+   The shop is a long scroll — supplies plus eight animals — and the wallet
+   sat at the top of it. By the time you had scrolled to the dearest one
+   you could no longer see whether you could afford it. */
+#screen-shop .wallet{
+  position:sticky; top:0; z-index:3;
+  /* bleed to the panel's edges so nothing shows past it while it holds */
+  margin:-8px -26px 14px; padding:12px 26px 12px;
+  /* Solid, with the shadow doing the work. A gradient that faded to clear
+     left the card beneath it half-legible through the bottom of the bar,
+     which reads as a rendering fault rather than as something passing
+     behind. */
+  background:#f7fcff;
+  box-shadow:0 8px 10px -8px rgba(26,70,104,.45);
+}
+@media (max-width:420px){
+  #screen-shop .wallet{ margin:-8px -18px 12px; padding:10px 18px 8px; }
+}
+
+/* ---- pause ---- */
+.pause-note{ margin:14px 0 2px; font-size:.84em; font-weight:700; color:var(--ink-soft); }
+/* The one button here that cannot be undone. It should not read as an
+   equal sibling of the two that keep your run. */
+.btn-quiet{ font-size:.82em; padding:9px 18px; opacity:.72; }
+.btn-quiet:hover{ opacity:1; }
+.help-key{ font-size:.78em; font-weight:700; opacity:.75; }
+
+/* ---- how to play ---- */
+.help-hero{
+  background:linear-gradient(180deg,#e9f7ff 0%, #cfeaf8 100%);
+  border-radius:20px; padding:16px 18px; margin:0 0 16px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.8);
+}
+.help-hero-main{ margin:0 0 6px; font-size:clamp(17px,3.6vw,22px); font-weight:800; color:var(--ink); }
+.help-hero-sub{ margin:0; font-size:.92em; font-weight:700; color:var(--ink-soft); }
+.help-head{
+  margin:16px 0 8px; text-align:left;
+  font-size:.86em; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-soft);
+}
+
 /* ---- frozen finds ---- */
 .finds-box{
   background:rgba(255,255,255,.7); border-radius:20px;
@@ -602,22 +659,27 @@ body{
 @keyframes prizePop{ from{ transform:scale(.7); opacity:0 } to{ transform:none; opacity:1 } }
 
 /* ---- spare lives ---- */
-/* A heart drawn from two rotated squares: an emoji heart is whichever glyph
-   the device ships, and half of them are not red. */
+/* One SVG path, not a rotated square with two circles stuck to it — that
+   construction never resolved into a heart at this size and read as a
+   little cluster of circles, which is exactly what it was. An emoji is no
+   good either: half the devices ship one that is not even red. */
 .heart{
-  position:relative; display:inline-block;
-  width:18px; height:18px; margin:0 3px;
-  background:#ff5e74; transform:rotate(-45deg);
-  border-bottom-left-radius:3px;
+  display:inline-block; width:22px; height:20px;
+  background:#e8415c;
+  -webkit-mask:var(--heart-svg) center/contain no-repeat;
+  mask:var(--heart-svg) center/contain no-repeat;
 }
-.heart::before, .heart::after{
-  content:''; position:absolute; width:18px; height:18px;
-  border-radius:50%; background:#ff5e74;
+/* An empty slot is an outline, not a grey heart: grey-on-pale read as a
+   smudge, and you could not tell the full ones from the empty ones. */
+.heart.spent{
+  background:rgba(120,150,175,.45);
+  -webkit-mask:var(--heart-outline) center/contain no-repeat;
+  mask:var(--heart-outline) center/contain no-repeat;
 }
-.heart::before{ top:-9px; left:0; }
-.heart::after{ top:0; left:9px; }
-.heart.spent{ background:rgba(140,165,185,.35); }
-.heart.spent::before, .heart.spent::after{ background:rgba(140,165,185,.35); }
+:root{
+  --heart-svg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21C6 16.5 1.5 12.8 1.5 8.2 1.5 4.8 4.1 2.3 7.2 2.3c1.9 0 3.7 1 4.8 2.6 1.1-1.6 2.9-2.6 4.8-2.6 3.1 0 5.7 2.5 5.7 5.9 0 4.6-4.5 8.3-10.5 12.8z'/%3E%3C/svg%3E");
+  --heart-outline:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath fill='none' stroke='black' stroke-width='2.2' d='M12 20C6.4 15.8 2.6 12.4 2.6 8.3 2.6 5.4 4.8 3.4 7.3 3.4c1.7 0 3.3.9 4.7 2.6 1.4-1.7 3-2.6 4.7-2.6 2.5 0 4.7 2 4.7 4.9 0 4.1-3.8 7.5-9.4 11.7z'/%3E%3C/svg%3E");
+}
 
 .revive-sub{ color:var(--ink-soft); font-weight:700; margin:0 0 12px; }
 .revive-hearts{ display:flex; justify-content:center; gap:10px; margin:6px 0 14px; padding-left:4px; }
@@ -798,7 +860,16 @@ body{
 .run-row.done{ background:rgba(236,250,241,.94); border-color:var(--green); }
 .run-row.locked{ background:rgba(255,255,255,.4); cursor:default; }
 /* Freeride before the first line is passed: still readable, plainly shut. */
-.mode-btn.locked{ filter:grayscale(.7); opacity:.62; cursor:default; box-shadow:none; }
+/* White text on a grey wash was close to unreadable, and the line under
+   it is the one that tells you how to open the thing. Keep the panel pale
+   and put dark ink on it instead of dimming the whole button. */
+.mode-btn.locked{
+  background:rgba(206,221,232,.95);
+  color:#44647c;
+  cursor:default;
+  box-shadow:0 4px 0 rgba(140,165,185,.5);
+}
+.mode-btn.locked small{ color:#44647c; opacity:.9; }
 .mode-btn.locked:active{ transform:none; }
 /* No icon at all. The emoji padlock went with the rest of them, and the
    shackle drawn in its place read as a stray arc at button size — the grey
@@ -812,6 +883,7 @@ body{
 }
 .run-row.done .run-no{ background:linear-gradient(180deg,#fff0bd,#ffd15e); color:#7a5300; }
 .run-row.locked .run-no{ background:rgba(180,200,215,.5); color:#5c7488; }
+.run-sub.run-shut{ opacity:.45; font-style:italic; }
 
 .run-mid{ flex:1 1 auto; min-width:0; }
 .run-name{ font-weight:800; font-size:clamp(15px,2.3vw,18px); }
