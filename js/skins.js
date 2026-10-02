@@ -41,29 +41,7 @@ var SKINS = [
     accent: '#e0483c', accessory: 'scarf'
   },
   {
-    id: 'compass', name: 'Compass', price: 850, currency: 'fish',
-    blurb: 'Knows where the shoals are.',
-    perkText: 'Finds far more shoals, and bigger ones.',
-    perk: { shoal: 1.6 },
-    body: ['#415d76', '#24384a', '#111f29'],
-    flipper: ['#4d6b85', '#284057', '#13222c'],
-    trim: '#ffc247', trimEdge: 'rgba(185,120,20,.45)',
-    shape: 'penguin',
-    accent: '#f0b429', accessory: 'cap'
-  },
-  {
-    id: 'bubbles', name: 'Bubbles', price: 300, currency: 'fish',
-    blurb: 'Never leaves home unwrapped.',
-    perkText: 'Starts every run already inside a bubble.',
-    perk: { startShield: 1 },
-    body: ['#4d7183', '#274751', '#13262d'],
-    flipper: ['#587e91', '#2c4f5a', '#152a32'],
-    trim: '#ffd08a', trimEdge: 'rgba(180,120,50,.45)',
-    shape: 'penguin',
-    accent: '#9fe8ff', accessory: 'glow'
-  },
-  {
-    id: 'seal', name: 'Seal', price: 1500, currency: 'fish',
+    id: 'seal', name: 'Seal', price: 450, currency: 'fish',
     blurb: 'Spent her whole life under this ice.',
     perkText: 'Sniffs out the golden fish, far more of them.',
     perk: { goldRate: 2.4 },
@@ -75,10 +53,67 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'walrus', name: 'Walrus', price: 2600, currency: 'fish',
+    id: 'bubbles', name: 'Bubbles', price: 700, currency: 'fish',
+    blurb: 'Never leaves home unwrapped.',
+    perkText: 'Starts every run already inside a bubble.',
+    perk: { startShield: 1 },
+    body: ['#4d7183', '#274751', '#13262d'],
+    flipper: ['#587e91', '#2c4f5a', '#152a32'],
+    trim: '#ffd08a', trimEdge: 'rgba(180,120,50,.45)',
+    shape: 'penguin',
+    accent: '#9fe8ff', accessory: 'glow'
+  },
+  {
+    /* A perk nobody else has: it changes the SHAPE of a run rather than one
+       interaction in it. The gentler the ramp, the longer the hill stays
+       readable — which is exactly what a beginner is short of. */
+    id: 'hare', name: 'Arctic Hare', price: 900, currency: 'fish',
+    blurb: 'Paces herself. The hill never gets away from her.',
+    perkText: 'The run speeds up far more gently.',
+    perk: { slowRamp: 0.72 },
+    shape: 'hare',
+    /* Her summer coat, not her winter one. A white hare on pale ice is the
+       mistake this game already made once with an arctic fox and a polar
+       bear: no amount of drawing rescued them. Taupe reads from the top of
+       the screen, and the white muzzle and black ear tips do the rest. */
+    body: ['#f0e9df', '#c0b1a0', '#8f8070'],
+    flipper: ['#e6ded3', '#c2b4a4', '#8d7e6e'],
+    mark: '#f7f2ea', nose: '#2b3139', outline: 'rgba(72,62,52,.45)',
+    trim: '#e8f1f9', trimEdge: 'rgba(90,110,130,.35)',
+    accent: null, accessory: null
+  },
+  {
+    id: 'compass', name: 'Compass', price: 1300, currency: 'fish',
+    blurb: 'Knows where the shoals are.',
+    perkText: 'Finds far more shoals, and bigger ones.',
+    perk: { shoal: 1.6 },
+    body: ['#415d76', '#24384a', '#111f29'],
+    flipper: ['#4d6b85', '#284057', '#13222c'],
+    trim: '#ffc247', trimEdge: 'rgba(185,120,20,.45)',
+    shape: 'penguin',
+    accent: '#f0b429', accessory: 'cap'
+  },
+  {
+    id: 'owl', name: 'Snowy Owl', price: 1700, currency: 'fish',
+    blurb: 'Sees the line before the line is there.',
+    perkText: 'Always knows where the next opening is.',
+    perk: { foresight: 1 },
+    shape: 'owl',
+    /* He stays white, which is what a snowy owl is — so the barring has to
+       do the reading for him. Pale grey bars on a pale body left a blank
+       oval on the ice; slate ones break the silhouette up, and the wings
+       are a clear step darker than the back. */
+    body: ['#f7fbff', '#dde7f1', '#aabbcd'],
+    flipper: ['#c7d4e1', '#9fb1c4', '#73879b'],
+    mark: '#54657a', nose: '#39414b', outline: 'rgba(52,66,82,.55)',
+    trim: '#eaf2fa', trimEdge: 'rgba(90,110,130,.35)',
+    accent: '#f2b733', accessory: null
+  },
+  {
+    id: 'walrus', name: 'Walrus', price: 2000, currency: 'fish',
     blurb: 'Goes through things, not round them.',
-    perkText: 'Reads the blue ice — triple from every tongue of it.',
-    perk: { gateBonus: 3 },
+    perkText: 'Reads the blue ice — it runs wider for him, and pays triple.',
+    perk: { gateBonus: 3, gateWide: 1.55 },
     shape: 'walrus',
     body: ['#b07e66', '#824f3d', '#512f23'],
     flipper: ['#9c6a52', '#6e4433', '#452720'],
@@ -87,10 +122,30 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'reindeer', name: 'Reindeer', price: 4200, currency: 'fish',
+    /* Same lesson the walrus taught: make the risky thing less risky, not
+       just better paid. The ramp over a crevasse is simply wider for him. */
+    id: 'narwhal', name: 'Narwhal', price: 2500, currency: 'fish',
+    blurb: 'Knows every hole in this ice, and how to clear it.',
+    perkText: 'The ramp over a crevasse runs much wider for him.',
+    perk: { rampWide: 1.6 },
+    shape: 'orca',
+    body: ['#e4ecf5', '#b6c6d8', '#8396ab'],
+    flipper: ['#d4dfeb', '#a7b8cb', '#7a8ca2'],
+    mark: '#e8f0f8', nose: '#2f3842', outline: 'rgba(45,58,72,.45)',
+    trim: '#aebfd2', trimEdge: 'rgba(70,88,106,.4)',
+    accent: '#f0e6d2', accessory: 'tusk'
+  },
+  {
+    id: 'reindeer', name: 'Reindeer', price: 2800, currency: 'fish',
     blurb: 'Knows every inch of this hill.',
-    perkText: 'Sure-footed — the glacier cannot swing him wide.',
-    perk: { grip: 1.45 },
+    perkText: 'Sure-footed — tucks in tight, and the glacier cannot swing him wide.',
+    /* The grip alone was worth nothing, and measurably so: the spawner
+       already sizes every row against the grip of the stretch it sits on,
+       so a glacier row is reachable at 0.62 and turning faster buys no
+       ground (-0.8 standard errors over 70 runs held on the glacier).
+       `slim` is the part that pays — it is the dearest skin on the fish
+       ladder and it has to be worth the climb. */
+    perk: { grip: 1.45, slim: 0.78 },
     shape: 'reindeer',
     body: ['#a07a57', '#6d4e36', '#432f20'],
     flipper: ['#8d6a4a', '#5a402c', '#382718'],
@@ -113,7 +168,6 @@ var SKINS = [
     trim: '#1b212a', trimEdge: 'rgba(4,6,10,.5)',
     accent: null, accessory: null
   }
-
 ];
 
 var SKIN_BY_ID = {};

@@ -39,6 +39,7 @@
              totSaves: 0, bestDist: 0, bestRunFish: 0,
              /* spare lives bought at the market, and unopened finds */
              lives: 0, finds: 0, totRevives: 0,
+             totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
              /* stars earned per marked run, by id */
              courses: {} };
   }
@@ -67,7 +68,7 @@
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
-       'totRevives']
+       'totRevives','totFinds','totRushes','totSmashed','totForks']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
@@ -188,6 +189,15 @@
     show('revive');
   }
 
+  /* Back into a paused run, carrying whatever was bought while it waited.
+     The menu is where lives and animals come from, so a run you can pause
+     and shop from has to pick up what you did there. */
+  function carryOn() {
+    if (Game.syncFromSave) Game.syncFromSave(save.lives || 0, save.equipped);
+    showGame();
+    Game.resume();
+  }
+
   var tickT = null;
   function useLife() {
     if ((save.lives || 0) <= 0) { noLife(); return; }
@@ -239,6 +249,9 @@
     save.bestRunFish = Math.max(save.bestRunFish, res.fish || 0);
     save.finds = Math.min(99, (save.finds || 0) + (res.finds || 0));
     save.totRevives += res.revives || 0;
+    save.totRushes  += res.rushes  || 0;
+    save.totSmashed += res.smashed || 0;
+    save.totForks   += res.forks   || 0;
     var won = achCheck(save);                        // pays out into save.fish
     store();
     showWon(won);
@@ -249,6 +262,22 @@
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
+    /* What you are carrying into the next one. Spare lives were invisible
+       everywhere except the market and the moment you spent one. */
+    var lv = $('over-lives'), nLives = save.lives || 0;
+    lv.classList.toggle('hidden', nLives <= 0);
+    if (nLives > 0) {
+      lv.textContent = '';
+      for (var li = 0; li < Math.min(5, nLives); li++) {
+        var hh = document.createElement('span');
+        hh.className = 'heart';
+        lv.appendChild(hh);
+      }
+      var lab = document.createElement('span');
+      lab.className = 'over-lives-txt';
+      lab.textContent = t('over.lives', { n: nLives });
+      lv.appendChild(lab);
+    }
     document.querySelector('#screen-over .panel-title-text').textContent =
       t(res.finished ? 'over.finish' : 'over.title');
     var st = $('over-stars');
@@ -281,9 +310,13 @@
     if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 140);
   }
 
+  var opening = false;
   function openFind() {
-    if ((save.finds || 0) <= 0) return;
+    if ((save.finds || 0) <= 0 || opening) return;
     save.finds--;
+    /* Counted when it is cracked open, not when it is picked up: the
+       trophy is for opening them. */
+    save.totFinds = (save.totFinds || 0) + 1;
     var total = 0, i;
     for (i = 0; i < FIND_PRIZES.length; i++) total += FIND_PRIZES[i].w;
     var roll = Math.random() * total, pick = FIND_PRIZES[0];
@@ -299,15 +332,31 @@
       if ((save.lives || 0) < LIFE_CAP) { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
       else { save.fish += LIFE_PRICE; msg = t('find.lifefull', { n: LIFE_PRICE }); }
     }
-    var p = $('find-prize');
-    p.textContent = msg;
-    p.classList.remove('hidden');
-    /* restart the reveal even when the same prize comes up twice */
-    p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
-    Sfx.gold();
+    /* The prize is decided here and banked here; the engine only plays the
+       opening. Hold the words back until the shell actually breaks — the
+       whole point is the moment, and text that appears on the click gives
+       the answer away before anything happens. */
+    var p = $('find-prize'), btn = $('over-finds').querySelector('[data-action="open-find"]');
+    p.classList.add('hidden');
+    opening = true;
+    if (btn) btn.disabled = true;
     achCheck(save);
     store();
-    buildFinds(false);
+    Sfx.bubble();
+    var kind = pick.kind;
+    setTimeout(function () { Sfx.gold(); }, 560);
+    if (Game.playFindOpen) {
+      Game.playFindOpen($('find-art'), 140, kind, function () { finish(); });
+    } else { finish(); }
+
+    function finish() {
+      opening = false;
+      p.textContent = msg;
+      p.classList.remove('hidden');
+      /* restart the reveal even when the same prize comes up twice */
+      p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
+      buildFinds(false);
+    }
   }
 
   /* -------------------------- actions ------------------------ */
@@ -334,8 +383,21 @@
             (shopBack === 'over' || shopBack === 'pause')) {
           var back = shopBack; shopBack = null; show(back); break;
         }
+        /* A paused run is never thrown away by walking around the menus.
+           The market is where lives and animals come from, so pausing in
+           order to go shopping has to be a normal thing to do — and the
+           first version of this guard only checked the pause screen, so
+           pause -> Menu -> Market -> Back still destroyed the run.
+           Nothing ends a run but finishing it, crashing out of it, or
+           starting another. */
+        if (Game.isRunning() && Game.isPaused()) {
+          shopBack = null; show('title'); break;
+        }
         shopBack = null; Game.stop(); show('title'); break;
-      case 'resume':     Sfx.click(); showGame(); Game.resume(); break;
+      case 'resume':     Sfx.click(); carryOn(); break;
+      case 'continue':
+        if (!Game.isRunning()) { show('title'); break; }
+        Sfx.click(); carryOn(); break;
     }
   }
   document.addEventListener('click', function (e) {
@@ -520,6 +582,12 @@
   function freeUnlocked() { return (save.courses[COURSES[0].id] || 0) > 0; }
 
   function refreshModes() {
+    /* The .hidden class, not the hidden attribute: .btn-row sets
+       display:flex, which beats the browser's own [hidden] rule, so the
+       attribute did nothing and Continue sat there permanently. Everything
+       else in this file hides things the same way. */
+    var row = $('resume-row');
+    if (row) row.classList.toggle('hidden', !(Game.isRunning() && Game.isPaused()));
     var b = $('btn-free'), open = freeUnlocked();
     if (!b) return;
     b.disabled = !open;
@@ -559,10 +627,15 @@
       mid.appendChild(nm);
       var sub = document.createElement('div');
       sub.className = 'run-sub';
+      /* Only the next one says HOW to open it. Five rows all repeating
+         "Finish the one before" was five lines of the same sentence, and
+         the one that mattered did not stand out among them. */
+      var nextUp = !open && (i === 0 || (save.courses[COURSES[i - 1].id] || 0) > 0);
       sub.textContent = open
         ? t('biome.' + cd.biome) + '  ·  ' +
           t('runs.len', { n: Math.round(parseCourse(cd, 300).length * cd.step / 8) })
-        : t('runs.locked');
+        : (nextUp ? t('runs.locked') : t('runs.shut'));
+      if (!open && !nextUp) sub.classList.add('run-shut');
       mid.appendChild(sub);
       row.appendChild(mid);
 
@@ -616,7 +689,7 @@
       row.className = 'ach-row' + (got ? ' got' : '');
 
       var ico = document.createElement('div');
-      ico.className = 'ach-ico'; ico.textContent = a.icon;
+      ico.className = 'ach-ico' + (got ? ' got' : '');
       row.appendChild(ico);
 
       var mid = document.createElement('div');

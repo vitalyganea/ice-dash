@@ -17,6 +17,11 @@
        $     a nodule of ice with something frozen inside it
        T     a snow bridge arches over the run here
        R     a ball of packed powder: take it and nothing can stop you
+       w     a patch of deep soft snow: it costs pace, never a life
+       ^     a meltwater geyser, standing clear of the racing line
+       -     a cold draught: the hill runs slow for a few seconds
+       >     a clear sight of the next three openings
+       &     every fish on the hill bends towards you
        |     a tongue of polished blue ice
        !     opening a little tighter than the course's norm
        ~     opening a little wider
@@ -27,7 +32,7 @@
 
    Anything written here still has to be POSSIBLE. A hand-made course
    can ask for a turn nobody could make just as easily as a generated
-   one, so scratchpad/pine/courses.js replays every row of every course
+   one, so test/courses.js replays every row of every course
    against the same reachability proof the spawner uses.
    =========================================================== */
 
@@ -37,34 +42,34 @@
 var COURSES = [
   {
     id: 'firstlight', biome: 0, step: 278, gapW: [250, 228],
-    script: '5 5* 4 4 4* 5 5| 6 6* 7T 7 6 5| 5* 4 3 3 4* 5 5| ' +
+    script: '5 5* 4 4 4* 5 5| 6 6* 7T 7 6 5| 5*- 4 3 3 4* 5 5| ' +
             '6 6* 5 5'
   },
   {
     id: 'narrows', biome: 2, step: 262, gapW: [228, 198],
-    script: '5 5 6 7* 8 8 7! 6 5| 4 3 2* 2 3! 4 5 6 7 8! 8 7* 6 ' +
+    script: '5 5 6 7* 8 8w 7! 6 5| 4 3 2* 2 3! 4 5 6 7 8! 8 7*w 6 ' +
             '5| 4 4! 3 3 4* 5 5'
   },
   {
     id: 'gapteeth', biome: 7, step: 256, gapW: [222, 194],
-    script: '5 5 5* 4 4 5C 5 5* 6 7 7| 7 6 5 4 4C 4 4* 3 3 4 5| ' +
-            '6 6 7* 7 7C 7 6 5 5* 5 5'
+    script: '5 5 5* 4 4^ 5C 5 5* 6 7 7| 7^ 6 5 4 4C 4 4* 3 3w 4 5| ' +
+            '6 6 7* 7^ 7C 7 6 5 5* 5 5'
   },
   {
     id: 'glassrun', biome: 3, step: 250, gapW: [204, 176],
-    script: '5 5 4 4* 3 3 3 4 5 6 7 7* 8 8 8| 7 6 5 4 3 2 2* 2 ' +
-            '3 4 5 6 7 8 8| 8 7 6* 5 5 5'
+    script: '5 5 4 4* 3 3w 3 4 5 6> 7 7* 8 8 8| 7 6 5 4 3 2 2* 2 ' +
+            '3 4w 5 6 7 8 8| 8 7 6* 5 5 5'
   },
   {
     id: 'nightfall', biome: 9, step: 244, gapW: [206, 172],
-    script: '5 5 6 6* 7 7! 6 5 4| 3 3! 3T 4 5 6* 7 8 8! 7 6 5 4 ' +
-            '3! 2 2 3* 4 5| 6 7 7! 8$ 8 7 6* 5 4 4! 3 3 4 5C 5 5'
+    script: '5 5 6 6* 7 7! 6 5 4| 3 3! 3T 4 5 6* 7w 8 8! 7 6 5 4 ' +
+            '3! 2 2 3*& 4 5| 6 7 7! 8$ 8^ 7 6* 5 4w 4! 3 3 4 5C 5 5'
   },
   {
     id: 'cornice', biome: 8, step: 234, gapW: [198, 156],
-    script: '5 5* 6 7 8! 8 7 6 5C 5 4 3! 2 2* 3 4 5| 6 7! 8 8 7 ' +
-            '6C 6 5 4! 3 2 2 3* 4 5 6! 7 8 8| 7 6 5C 5 4 3! 3 ' +
-            '2 3 4*R 5 6 7! 8T 8 7 6 5| 4 4C 4$ 4* 5 5'
+    script: '5 5* 6 7 8! 8w 7 6 5C 5 4 3!- 2 2* 3 4 5| 6 7! 8 8 7 ' +
+            '6C 6 5 4! 3 2 2 3*> 4 5 6! 7 8^ 8| 7 6 5C 5 4 3! 3 ' +
+            '2 3 4*R 5 6 7!w 8T 8 7 6 5| 4 4C 4$ 4* 5 5'
   }
 ];
 
@@ -91,6 +96,14 @@ function parseCourse(cd, CHUTE) {
       find: tk.indexOf('$') >= 0,
       tunnel: tk.indexOf('T') >= 0,
       rush: tk.indexOf('R') >= 0,
+      /* The hazards and bonuses the open hill grows on its own, so a
+         marked line can be written with them too. w deep snow, ^ a
+         geyser, - the slow-down, > the far sight, & the fish call. */
+      drift: tk.indexOf('w') >= 0,
+      geyser: tk.indexOf('^') >= 0,
+      chill: tk.indexOf('-') >= 0,
+      sight: tk.indexOf('>') >= 0,
+      call: tk.indexOf('&') >= 0,
       gate: tk.indexOf('|') >= 0
     });
   }
