@@ -4418,96 +4418,113 @@ var Game = (function () {
 
     var u = Math.max(13, Math.min(22, Math.min(CSS_W, CSS_H) / 26));
     var padL = 12, padT = 12;
-    var w = Math.max(152, u * 9.8), rowH = u * 2.1;
-    var h = rowH * 2 + u * 1.5;
+    var FONT = 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
 
-    /* one panel, three readouts, all left-aligned to the same edge */
-    ctx.fillStyle = 'rgba(16,52,84,.34)';
-    rr(ctx, padL, padT, w, h, u * 0.9); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = Math.max(1, u * 0.09);
-    rr(ctx, padL, padT, w, h, u * 0.9); ctx.stroke();
+    /* ---- everything you are reading, in one place ----
+       Score, metres, the catch, spare lives and the best used to be three
+       separate things: a dark score card, a BEST pill of another style
+       that collided with it on a phone, and the lives on a chip of their
+       own. They are one slab of the same ice as the menus now, sized to
+       what it holds, so nothing can run into anything else. */
+    var pad = u * 0.75, gap = u * 0.5;
+    var fS = Math.round(u * 1.75), fM = Math.round(u * 1.05), fB = Math.round(u * 0.78);
+    var score = String(Math.floor(W.score));
+    var scoreLab = tr('hud.score', 'SCORE');
+    var distTxt = String(Math.floor(W.dist / 8)) + ' ' + tr('hud.m', 'M');
+    /* The catch as the purse counts it — the same number the results card
+       adds to your fish — and not the count of fish swallowed, which a
+       creature's perk makes a different number. */
+    var fishTxt = String(W.coins);
+    var lifeTxt = W.lives > 0 ? String(W.lives) : '';
+    /* The best is a Freeride number. On a marked run it is another game's
+       score, so it is not shown there at all. */
+    var bestTxt = (W.best > 0 && !W.course) ? tr('hud.best', 'BEST') + '  ' + W.best : '';
 
-    var x0 = padL + u * 0.85;
+    var wScore = measureAt(score, fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62));
+    var icon = u * 1.5, sep = u * 0.9;
+    var wDist = measureAt(distTxt, fM), wFish = icon + measureAt(fishTxt, fM);
+    var wLife = lifeTxt ? icon + measureAt(lifeTxt, fM) : 0;
+    var wRow2 = wDist + sep + wFish + (lifeTxt ? sep + wLife : 0);
+    var wBest = bestTxt ? measureAt(bestTxt, fB) : 0;
+    var w = Math.max(u * 7.5, wScore, wRow2, wBest) + pad * 2;
+    var h = pad + fS * 0.95 + gap + fM * 0.95 + (bestTxt ? gap * 0.8 + fB * 0.95 : 0) + pad;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(3,28,70,.28)'; ctx.shadowBlur = u * 0.6; ctx.shadowOffsetY = u * 0.2;
+    ctx.fillStyle = '#062a78';                                   // the edge, for thickness
+    rr(ctx, padL, padT + u * 0.22, w, h, u * 0.8); ctx.fill();
+    ctx.restore();
+    var pg = ctx.createLinearGradient(0, padT, 0, padT + h);
+    pg.addColorStop(0, 'rgba(255,255,255,.95)'); pg.addColorStop(1, 'rgba(218,240,252,.93)');
+    ctx.fillStyle = pg;
+    rr(ctx, padL, padT, w, h, u * 0.8); ctx.fill();
+    ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.14);
+    rr(ctx, padL, padT, w, h, u * 0.8); ctx.stroke();
+
+    var x0 = padL + pad;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
 
     /* score, the big one */
-    ctx.font = '800 ' + Math.round(u * 1.7) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.fillStyle = '#ffd83d';
-    ctx.fillText(String(Math.floor(W.score)), x0, padT + u * 2.0);
-    ctx.font = '700 ' + Math.round(u * 0.62) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,.72)';
-    ctx.fillText(tr('hud.score', 'SCORE'),
-                 x0 + measureAt(String(Math.floor(W.score)), Math.round(u * 1.7)) + u * 0.45,
-                 padT + u * 2.0);
+    var y1 = padT + pad + fS * 0.82;
+    ctx.font = '800 ' + fS + FONT;
+    ctx.fillStyle = '#0b3d7a';
+    ctx.fillText(score, x0, y1);
+    ctx.font = '800 ' + Math.round(u * 0.62) + FONT;
+    ctx.fillStyle = 'rgba(11,61,122,.55)';
+    ctx.fillText(scoreLab, x0 + measureAt(score, fS) + u * 0.4, y1);
 
-    /* metres and the catch, side by side on the second line */
-    var y2 = padT + rowH + u * 1.5;
-    ctx.font = '800 ' + Math.round(u * 1.05) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.fillStyle = '#eaf7ff';
-    ctx.fillText(String(Math.floor(W.dist / 8)) + ' ' + tr('hud.m', 'M'), x0, y2);
-
-    /* The catch was only ever shown on the results screen, so during a run
-       there was no way to know how the purse was doing. */
-    var fx = x0 + w * 0.55;
-    drawFish(fx + u * 0.5, y2 - u * 0.36, { r: u * 0.62, ph: W.t * 0.05 }, false);
-    ctx.font = '800 ' + Math.round(u * 1.05) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.fillStyle = '#eaf7ff';
-    ctx.fillText(String(W.fish + W.gold), fx + u * 1.5, y2);
-
-    /* Best, along the top and out of the way. Centred on the screen it
-       tucked under the corner of the score panel on a phone — at 390 css
-       px the panel reaches 164 and the pill wanted to start at 148 — so it
-       is centred only where there is room for that, and pushed clear of
-       the panel where there is not. */
-    if (W.best > 0) {
-      ctx.font = '800 ' + Math.round(u * 0.78) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-      var bt = tr('hud.best', 'BEST') + '  ' + W.best;
-      var bw = ctx.measureText(bt).width + u * 1.6;
-      var bx = Math.max(CSS_W / 2, padL + w + u * 0.7 + bw / 2);
-      if (bx + bw / 2 <= CSS_W - padL) {
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(16,52,84,.30)';
-        rr(ctx, bx - bw / 2, padT, bw, u * 1.6, u * 0.8); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.88)';
-        ctx.fillText(bt, bx, padT + u * 1.15);
-        ctx.textAlign = 'left';
-      }
+    /* metres · the catch · spare lives */
+    var y2 = y1 + gap + fM * 0.95;
+    ctx.font = '800 ' + fM + FONT;
+    ctx.fillStyle = '#1d4f7c';
+    ctx.fillText(distTxt, x0, y2);
+    var fx = x0 + wDist + sep;
+    hudFish(fx + icon * 0.42, y2 - fM * 0.34, u * 0.5);
+    ctx.fillStyle = '#1d4f7c';
+    ctx.fillText(fishTxt, fx + icon, y2);
+    if (lifeTxt) {
+      var lx = fx + wFish + sep;
+      drawHeart(lx + icon * 0.42, y2 - fM * 0.32, u * 0.46);
+      ctx.font = '800 ' + fM + FONT;
+      ctx.fillStyle = '#b8304a';
+      ctx.fillText(lifeTxt, lx + icon, y2);
     }
 
-    /* Lives in hand. One heart and a number: three or four small shapes in
-       a row at this size read as a smear of circles rather than as hearts,
-       and the count is what you actually want to know. */
-    if (W.lives > 0) {
-      ctx.textAlign = 'left';
-      var hx = padL + u * 1.0, hy = padT + h + u * 1.15;
-      ctx.fillStyle = 'rgba(16,52,84,.34)';
-      rr(ctx, padL, padT + h + u * 0.3, u * 3.4, u * 1.7, u * 0.85); ctx.fill();
-      drawHeart(hx, hy, u * 0.56);
-      ctx.font = '800 ' + Math.round(u * 1.0) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-      ctx.fillStyle = '#ffe3e8';
-      ctx.fillText(String(W.lives), hx + u * 0.9, hy + u * 0.36);
+    /* and the best, small, underneath */
+    if (bestTxt) {
+      var y3 = y2 + gap * 0.8 + fB * 0.95;
+      ctx.font = '800 ' + fB + FONT;
+      ctx.fillStyle = '#a86a00';
+      ctx.fillText(bestTxt, x0, y3);
     }
+
+    /* The right-hand corner holds the timed things. In the tutorial the
+       Skip button lives there, so they sit below it. */
+    var rY = padT + ((W.course && W.course.tut) ? 56 : 0);
 
     /* How much rush is left, as metres rather than a bar: the player is
        already reading metres, and a bar says nothing about the hill. */
     if (W.rushT > 0) {
       var leftM = (W.rushT / 60).toFixed(1);
       ctx.textAlign = 'center';
-      ctx.font = '800 ' + Math.round(u * 1.0) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
+      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
       var rt = leftM + tr('hud.s', 'S');
       var rw = ctx.measureText(rt).width + u * 2.2;
-      var ry = padT + (W.best > 0 ? u * 2.2 : 0);
-      ctx.fillStyle = 'rgba(255,255,255,.88)';
-      rr(ctx, CSS_W / 2 - rw / 2, ry, rw, u * 1.8, u * 0.9); ctx.fill();
+      var rx = CSS_W - padL - rw / 2;
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      rr(ctx, rx - rw / 2, rY, rw, u * 1.8, u * 0.9); ctx.fill();
+      ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.12);
+      rr(ctx, rx - rw / 2, rY, rw, u * 1.8, u * 0.9); ctx.stroke();
       ctx.fillStyle = '#1d5f8e';
-      ctx.fillText(rt, CSS_W / 2, ry + u * 1.3);
+      ctx.fillText(rt, rx, rY + u * 1.3);
       ctx.textAlign = 'left';
+      rY += u * 2.3;
     }
 
     if (W.shield > 0) {
       ctx.save();
-      ctx.translate(CSS_W - u * 2.4, padT + u * 1.2);
+      ctx.translate(CSS_W - padL - u * 1.0, rY + u * 1.0);
       var g = ctx.createRadialGradient(-u * 0.22, -u * 0.26, 1, 0, 0, u * 0.85);
       g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(140,220,255,.35)');
       ctx.fillStyle = g;
@@ -4533,6 +4550,29 @@ var Game = (function () {
       ctx.fillText(zone, CSS_W / 2, CSS_H * 0.2);
       ctx.restore();
     }
+    ctx.restore();
+  }
+
+  /* The fish on the readout: still, and drawn for its size. The swimming
+     fish off the hill, shrunk into the panel, flicked its tail and bobbed
+     beside a number that was trying to be read. */
+  function hudFish(x, y, r) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();                                  // tail
+    ctx.moveTo(-r * 0.7, 0); ctx.lineTo(-r * 1.45, -r * 0.7); ctx.lineTo(-r * 1.45, r * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = '#2f8fd0'; ctx.fill();
+    ctx.lineWidth = Math.max(1, r * 0.16); ctx.strokeStyle = '#062a78'; ctx.stroke();
+    var g = ctx.createLinearGradient(0, -r * 0.7, 0, r * 0.7);
+    g.addColorStop(0, '#8fd6ff'); g.addColorStop(1, '#2f8fd0');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.0, r * 0.66, 0, 0, 6.2832); ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(r * 0.45, -r * 0.12, r * 0.2, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#062a78';
+    ctx.beginPath(); ctx.arc(r * 0.5, -r * 0.12, r * 0.1, 0, 6.2832); ctx.fill();
     ctx.restore();
   }
 
