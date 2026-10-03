@@ -337,6 +337,10 @@
     if (reset) $('find-prize').classList.add('hidden');
     var btn = box.querySelector('[data-action="open-find"]');
     btn.textContent = t(reset ? 'find.open' : 'find.again');
+    /* openFind() disables the button for the length of the animation and
+       nothing ever turned it back on, so with two or more finds the second
+       could never be opened. */
+    btn.disabled = opening;
     if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 140);
   }
 

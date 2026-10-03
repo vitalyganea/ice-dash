@@ -143,7 +143,7 @@ async function walk(cdp, sid, P) {
       best: 4200, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,
       owned: ['snowcap', 'mitten', 'seal'], equipped: 'seal', lang: 'en',
       ach: ['first'], totFish: 900, totGold: 4, totGates: 20, totJumps: 3,
-      totSaves: 1, bestDist: 980, bestRunFish: 60, lives: 2, finds: 1,
+      totSaves: 1, bestDist: 980, bestRunFish: 60, lives: 2, finds: 2,
       totRevives: 0, totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
       courses: { firstlight: 2 }
     })) + ")}catch(e){}" }, sid);
@@ -392,17 +392,33 @@ async function walk(cdp, sid, P) {
   ok(/\d/.test(shown), 'which shows a score (' + shown + ')');
   await shot('12-over');
 
-  /* ---- the find, if the seeded save still has one ---- */
+  /* ---- the finds: the save is seeded with two, and BOTH must open ----
+     Opening one used to leave the button disabled for good, so the second
+     find sat there and could never be cracked. Opening only one would not
+     have seen it. */
+  function finds() {
+    return ev("(JSON.parse(localStorage.getItem('icedash-save-v1')||'{}').finds)||0");
+  }
   if (await visible('#over-finds')) {
-    await click('[data-action="open-find"]');
-    /* The words are deliberately held back until the shell breaks, so this
-       waits for the animation rather than for a fixed moment. */
-    var prize = '';
-    for (var fi = 0; fi < 60 && !prize; fi++) {
+    var opened = 0, prize = '';
+    for (var round = 0; round < 2 && await visible('#over-finds'); round++) {
+      var before = await finds();
+      if (before <= 0) break;
+      await click('[data-action="open-find"]');
+      /* The words are held back until the shell breaks, so wait for the
+         prize line to come back rather than for a fixed moment. */
+      var shown = false;
+      for (var fi = 0; fi < 60 && !shown; fi++) {
+        shown = await ev("!document.querySelector('#find-prize').classList.contains('hidden')" +
+                         " && (JSON.parse(localStorage.getItem('icedash-save-v1')||'{}').finds||0) < " + before);
+        if (!shown) await sleep(100);
+      }
+      if (!shown) break;
       prize = await ev("document.querySelector('#find-prize').textContent.trim()");
-      if (!prize) await sleep(100);
+      opened++;
     }
-    ok(prize.length > 0, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');
+    ok(opened >= 1, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');
+    ok(opened >= 2, 'and the second one opens too, not just the first (' + opened + ' opened)');
     await shot('13-find');
   }
 
