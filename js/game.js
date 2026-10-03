@@ -1519,37 +1519,118 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* Players new to the hill read the old bridge as a wall: a flat band of
+     the banks' own snow laid straight across the screen, edge to edge, with
+     nothing to say the run carries on beneath it. It now has the shape of a
+     snow bridge seen from above:
+       - each mouth is an ARCH over the run, the snow thinning where the
+         channel passes and anchored deep into the banks on either side;
+       - under the near arch the ice falls into shadow, a dark opening you
+         can see into before you reach it;
+       - icicles hang off the near lip, which only an overhang has;
+       - the run's own edges show faintly through the roof, so the way on
+         is visible the whole way across.
+     Nothing in it is built: it is snow, ice and shadow, like the rest. */
+  var ARCH = 104;                          // how far the mouth bows back over the run
+  function archAt(x, my, dir, ph) {
+    /* The edge of the roof at screen x. Over the banks it sits on the mouth
+       line; over the run it bows back by ARCH, flat-topped and steep-sided
+       so it reads as an opening rather than as a wave. dir is +1 for the
+       near mouth (bows up the screen), -1 for the far one. */
+    var d = W.dist + (PLAYER_Y - my);
+    var cx = VIEW_W / 2 + chuteAt(d) - chuteAt(W.dist);
+    var t = (x - cx) / (CHUTE * 0.94);
+    var t2 = t * t, s = Math.abs(t) < 1 ? 1 - t2 * t2 * t2 : 0;
+    return my - dir * ARCH * s + Math.sin(x * 0.045 + ph) * 3;
+  }
+  function archPath(my, dir, ph, x0, x1) {
+    var pts = [], n = 40;
+    for (var k = 0; k <= n; k++) {
+      var x = x0 + (x1 - x0) * k / n;
+      pts.push([x, archAt(x, my, dir, ph)]);
+    }
+    return pts;
+  }
+  function tracePts(pts, dy) {
+    ctx.beginPath();
+    for (var q = 0; q < pts.length; q++) {
+      if (q) ctx.lineTo(pts[q][0], pts[q][1] + (dy || 0));
+      else ctx.moveTo(pts[q][0], pts[q][1] + (dy || 0));
+    }
+  }
+  /* The run's two edges between two screen heights, as a closed path. */
+  function traceRun(top, bot) {
+    var y, d;
+    ctx.beginPath();
+    for (y = top; y <= bot; y += 10) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, -1), y); }
+    for (y = bot; y >= top; y -= 10) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, 1), y); }
+    ctx.closePath();
+  }
+
   function drawBridges() {
     var B = pal(), ink = null;
     for (var i = 0; i < W.objects.length; i++) {
       var o = W.objects[i];
       if (o.t !== 'tunnel') continue;
       var yIn = scrY(o.d), yOut = scrY(o.d + o.span);
-      if (yOut > VIEW_H + 40 || yIn < -40) continue;
+      if (yOut > VIEW_H + 120 || yIn < -120) continue;
       if (ink === null) ink = roofInk(B);
+      var k, sh;
 
-      var top = Math.max(yOut, -40), bot = Math.min(yIn, VIEW_H + 40);
-      var soft = 46;                       // the lip is a thin edge, not a fade
+      var near = archPath(yIn, 1, o.ph, -20, VIEW_W + 20);
+      var far = archPath(yOut, -1, o.ph + 2, -20, VIEW_W + 20);
 
-      /* the snow itself */
+      /* ---- the opening: shadow on the ice under the near arch ----
+         Laid down first, under the roof. Clipped to the run so the banks
+         are never smudged, and darkest right under the lip. */
+      ctx.save();
+      traceRun(yIn - ARCH - 20, yIn + 100);
+      ctx.clip();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = 8;
+      for (sh = 0; sh < 18; sh++) {
+        ctx.strokeStyle = 'rgba(' + ROOF_RGB + ',' +
+          Math.min(0.9, ink * 1.5 * Math.pow(1 - sh / 18, 1.5)).toFixed(3) + ')';
+        tracePts(near, 3 + sh * 5);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* ---- the roof ---- */
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, top, VIEW_W, bot - top);
-      ctx.clip();
+      for (k = 0; k < far.length; k++) {
+        if (k) ctx.lineTo(far[k][0], far[k][1]); else ctx.moveTo(far[k][0], far[k][1]);
+      }
+      for (k = near.length - 1; k >= 0; k--) ctx.lineTo(near[k][0], near[k][1]);
+      ctx.closePath();
+      /* lifted off the hill: a soft shadow falling towards you */
+      ctx.save();
+      ctx.shadowColor = 'rgba(' + ROOF_RGB + ',' + (ink * 0.9).toFixed(3) + ')';
+      ctx.shadowBlur = 18; ctx.shadowOffsetY = 10;
       ctx.fillStyle = B.snowA;
-      ctx.fillRect(0, top - 20, VIEW_W, bot - top + 40);
+      ctx.fill();
+      ctx.restore();
+      ctx.clip();
 
-      /* shaded at both mouths, where the drift overhangs the run */
-      /* Only right at the mouths. A 150px fade from each end covered most
-         of the span on a phone and turned the whole bridge grey; from above
-         it is a snowfield, and a snowfield is bright. */
-      [[yIn, 1], [yOut, -1]].forEach(function (m) {
-        var g = ctx.createLinearGradient(0, m[0], 0, m[0] - m[1] * 72);
-        g.addColorStop(0, 'rgba(' + ROOF_RGB + ',' + (ink * 0.70).toFixed(3) + ')');
-        g.addColorStop(1, 'rgba(' + ROOF_RGB + ',0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, Math.min(m[0], m[0] - m[1] * 72), VIEW_W, 72);
-      });
+      /* Shaded into each mouth, where the drift curls over: the roof is
+         rounded, not a card. */
+      ctx.lineWidth = 10;
+      for (sh = 0; sh < 5; sh++) {
+        ctx.strokeStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.42 * (1 - sh / 5)).toFixed(3) + ')';
+        tracePts(near, -(5 + sh * 9)); ctx.stroke();
+        tracePts(far, 5 + sh * 9); ctx.stroke();
+      }
+
+      /* The run showing through: its two edges, faint, the whole way
+         across. This is what says the way on is under here. */
+      var top = Math.max(yOut - ARCH, -60), bot = Math.min(yIn + 10, VIEW_H + 60);
+      traceRun(top, bot);
+      ctx.fillStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.2).toFixed(3) + ')';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.55).toFixed(3) + ')';
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
       /* wind grain across it, pinned to distance */
       ctx.strokeStyle = B.bankShade; ctx.lineCap = 'round';
@@ -1568,7 +1649,7 @@ var Game = (function () {
 
       /* and him underneath, as light scattering up through the snow */
       var py = PLAYER_Y, pxx = scrX(W.px);
-      if (py < yIn + 8 && py > yOut - 8) {
+      if (py < archAt(pxx, yIn, 1, o.ph) + 8 && py > archAt(pxx, yOut, -1, o.ph + 2) - 8) {
         var gl = ctx.createRadialGradient(pxx, py, 4, pxx, py, 92);
         gl.addColorStop(0, 'rgba(176,214,242,.52)');
         gl.addColorStop(0.5, 'rgba(192,222,246,.28)');
@@ -1579,19 +1660,30 @@ var Game = (function () {
       }
       ctx.restore();
 
-      /* the lip: a bright edge of drift at each mouth */
-      [yIn, yOut].forEach(function (my) {
-        if (my < -60 || my > VIEW_H + 60) return;
+      /* ---- the lips, and icicles off the near one ---- */
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = B.lip || 'rgba(255,255,255,.95)';
+      tracePts(near); ctx.stroke();
+      tracePts(far); ctx.stroke();
+      /* Only over the run: an overhang drips; snow lying on a bank does not. */
+      var cxIn = scrX(chuteAt(o.d)), n = 0;
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.9).toFixed(3) + ')';
+      for (var ix = cxIn - CHUTE * 0.86; ix < cxIn + CHUTE * 0.86; ix += 31) {
+        n++;
+        var len = 15 + ((n * 7) % 5) * 5, w = 6 + (n % 3) * 1.5;
+        var iy = archAt(ix, yIn, 1, o.ph) + 2;
+        if (iy < -40 || iy > VIEW_H + 40) continue;
         ctx.beginPath();
-        for (var k = 0; k <= 26; k++) {
-          var t = k / 26, lx = VIEW_W * t;
-          var ly = my + Math.sin(t * 8.3 + o.ph) * 7 + Math.sin(t * 21) * 3;
-          k ? ctx.lineTo(lx, ly) : ctx.moveTo(lx, ly);
-        }
-        ctx.lineWidth = 7; ctx.lineCap = 'round';
-        ctx.strokeStyle = B.lip || 'rgba(255,255,255,.95)';
+        ctx.moveTo(ix - w, iy); ctx.lineTo(ix + w, iy); ctx.lineTo(ix + 1, iy + len);
+        ctx.closePath();
+        var ig = ctx.createLinearGradient(0, iy, 0, iy + len);
+        ig.addColorStop(0, 'rgba(255,255,255,.98)');
+        ig.addColorStop(1, 'rgba(150,205,236,.85)');
+        ctx.fillStyle = ig; ctx.fill();
         ctx.stroke();
-      });
+      }
     }
   }
 
@@ -3555,6 +3647,53 @@ var Game = (function () {
     else if (kind === 'heart')  drawHeart(c, c, 17);
     else if (kind === 'crevasse') hintCrevasse(c, c, B);
     else if (kind === 'fork')     hintFork(c, c, B);
+    else if (kind === 'bridge')   hintBridge(c, c, B);
+    ctx.restore();
+  }
+
+  /* The snow bridge, small: a strip of the run, the roof across it with
+     its arched mouth, dark beneath and icicles off the lip. The same marks
+     the hill uses, so the picture in the panel is the thing you meet. */
+  function hintBridge(x, y, B) {
+    ctx.save(); ctx.translate(x, y);
+    /* the run, top to bottom, with banks either side */
+    ctx.fillStyle = B ? B.bankShade : '#a8cfe6';
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(-27, -27, 54, 54);
+    ctx.globalAlpha = 1;
+    var ice = ctx.createLinearGradient(0, -27, 0, 27);
+    ice.addColorStop(0, B ? B.iceTop : '#b6e2f7'); ice.addColorStop(1, B ? B.iceBot : '#8ccbec');
+    ctx.fillStyle = ice;
+    ctx.fillRect(-15, -27, 30, 54);
+    /* the opening's shadow, soft, under the arch */
+    var sh = ctx.createLinearGradient(0, -4, 0, 10);
+    sh.addColorStop(0, 'rgba(18,22,28,.42)'); sh.addColorStop(1, 'rgba(18,22,28,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(-15, -6, 30, 16);
+    /* the roof: straight across the far side, arched over the run on the
+       near side, and dropped onto the banks like snow, not a beam */
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(-27, -21); ctx.lineTo(27, -21); ctx.lineTo(27, 2); ctx.lineTo(16, 2);
+    ctx.bezierCurveTo(14, -9, -14, -9, -16, 2); ctx.lineTo(-27, 2);
+    ctx.closePath();
+    ctx.shadowColor = 'rgba(18,22,28,.35)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 2;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(70,110,140,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    /* three thin icicles off the arch */
+    ctx.fillStyle = 'rgba(190,226,248,.95)';
+    [-7, 0, 7].forEach(function (ix, n) {
+      var iy = -5.6 + Math.abs(ix) * 0.18, len = 3 + (n % 2) * 2;
+      ctx.beginPath(); ctx.moveTo(ix - 1.3, iy); ctx.lineTo(ix + 1.3, iy); ctx.lineTo(ix, iy + len);
+      ctx.closePath(); ctx.fill();
+    });
+    /* and a penguin heading in underneath */
+    if (typeof SKINS !== 'undefined') {
+      ctx.save(); ctx.translate(0, 17);
+      paintCreature(ctx, SKINS[0], { ang: 0, wag: 0, scale: 0.3, shield: -1, still: true });
+      ctx.restore();
+    }
     ctx.restore();
   }
 

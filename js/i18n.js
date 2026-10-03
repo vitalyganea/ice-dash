@@ -72,6 +72,8 @@ var STRINGS = {
                  ru: '<b>Глубокий снег</b> не убивает — он только вязнет под тобой, а скорость это и есть очки' },
   'help.geyser': { en: 'Meltwater breaks through the ice in bursts. It stands clear of the middle of an opening, so there is always a way round',
                    ru: 'Талая вода пробивает лёд толчками. Она никогда не стоит посреди проёма — обойти можно всегда' },
+  'help.bridge': { en: 'A <b>snow bridge</b> arches over the run. Slide straight under it — nothing waits beneath, and the way on is clear when you come out',
+                   ru: '<b>Снежный мост</b> нависает над трассой. Просто скользи под ним — внутри ничего нет, а на выходе путь свободен' },
   'help.fork': { en: 'Where bare rock splits the run, both ways past are open. The tighter one is the one with the gold down it',
                  ru: 'Там, где голая скала делит трассу, открыты оба пути. Золото лежит на том, что поуже' },
   'help.chill': { en: 'A <b>cold draught</b> runs the whole hill slow for three seconds',
