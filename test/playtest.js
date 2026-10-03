@@ -49,8 +49,21 @@ function serve() {
 }
 
 /* ---------------------------------------------------------- chrome */
+/* `google-chrome` is only on the PATH on Linux. Elsewhere Chrome sits at a
+   fixed install path; $CHROME overrides all of them. */
+function chromeBin() {
+  if (process.env.CHROME) return process.env.CHROME;
+  var known = {
+    win32: [path.join(process.env['PROGRAMFILES'] || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
+            path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe')],
+    darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+  }[process.platform] || [];
+  for (var i = 0; i < known.length; i++) if (fs.existsSync(known[i])) return known[i];
+  return 'google-chrome';
+}
 function chrome(profile) {
-  return cp.spawn('google-chrome', [
+  return cp.spawn(chromeBin(), [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--mute-audio',
     '--no-first-run', '--no-default-browser-check',
     '--remote-debugging-port=' + DPORT,

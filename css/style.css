@@ -292,37 +292,98 @@ body{
 @keyframes pop2{ from{ transform:scale(0) rotate(-40deg) } to{ transform:none } }
 
 /* ------------------- BUTTONS ------------------- */
-.btn-row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
+/* Row gap is taller than it is wide: every button carries a cap of snow
+   that stands above its top edge, and it must not touch the ice block of
+   the row above. */
+.btn-row{ display:flex; flex-wrap:wrap; gap:18px 10px; justify-content:center; margin-top:16px; }
 
+/* ---- blocks of ice ----
+   The buttons are cut from the same ice as the logo: a navy outline, a
+   deep-blue edge for the block's thickness, a pale face with two bands of
+   light across it, and snow lying on top. They were plain candy pills
+   before, the one part of the screen that looked like any other game.
+   Each colour only sets the five variables; shape and press are shared. */
 .btn{
+  --hi:#b4ebff; --face:#55bdf0; --lo:#2789d8; --edge:#0450b8;
+  --line:#062a78;
+  position:relative;
   font:inherit;
   font-size:clamp(15px,2.4vw,20px);
   font-weight:800;
+  letter-spacing:.01em;
   color:#fff;
   padding:12px 26px;
-  border:none;
-  border-radius:999px;
+  border:3px solid var(--line);
+  border-radius:16px;
   cursor:pointer;
-  background:var(--blue);
-  box-shadow:0 6px 0 var(--blue-dark), 0 10px 18px rgba(0,0,0,.22);
+  background:
+    linear-gradient(112deg, transparent 0 16%, rgba(255,255,255,.34) 16% 22%,
+                    transparent 22% 64%, rgba(255,255,255,.2) 64% 67%, transparent 67%),
+    linear-gradient(180deg, var(--hi) 0%, var(--face) 46%, var(--lo) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.55),
+    inset 0 -3px 0 rgba(0,36,110,.16),
+    0 5px 0 var(--edge),
+    0 8px 0 var(--line),
+    0 13px 18px rgba(3,28,70,.32);
+  text-shadow:
+    -1.5px -1.5px 0 var(--line), 1.5px -1.5px 0 var(--line),
+    -1.5px 1.5px 0 var(--line),  1.5px 1.5px 0 var(--line),
+    0 3px 0 var(--line);
   transition:transform .08s ease, box-shadow .08s ease, filter .15s ease;
 }
-.btn:hover{ filter:brightness(1.07); }
-.btn:active{ transform:translateY(5px); box-shadow:0 1px 0 var(--blue-dark), 0 4px 10px rgba(0,0,0,.22); }
+/* Snow lying along the top, lumpy, outlined in navy all the way round the
+   way the logo's snow is. With a line only underneath, the half standing
+   above the button was white on the white panel and vanished, leaving a
+   dotted stitch. */
+.btn::after{
+  content:'';
+  position:absolute; left:7px; right:7px; top:-8px; height:17px;
+  pointer-events:none;
+  --snow:#ffffff;
+  background:
+    /* drifts: uneven sizes and heights, so it reads as snow, not beads */
+    radial-gradient(ellipse 14% 7px at 12% 9px, var(--snow) 95%, transparent),
+    radial-gradient(ellipse 20% 9px at 36% 9px, var(--snow) 95%, transparent),
+    radial-gradient(ellipse 12% 6px at 58% 9px, var(--snow) 95%, transparent),
+    radial-gradient(ellipse 18% 8px at 79% 9px, var(--snow) 95%, transparent),
+    /* two drops sliding off the front */
+    radial-gradient(ellipse 3px 4px at 22% 12px, var(--snow) 95%, transparent),
+    radial-gradient(ellipse 3px 4px at 68% 12px, var(--snow) 95%, transparent),
+    linear-gradient(180deg, #fff 0%, #fff 55%, #d6eefc 100%) 0 6px / 100% 9px no-repeat;
+  border-radius:0 0 8px 8px;
+  filter:
+    drop-shadow(0 -1.5px 0 var(--line)) drop-shadow(1.5px 0 0 var(--line))
+    drop-shadow(-1.5px 0 0 var(--line)) drop-shadow(0 1.5px 0 var(--line));
+}
+.btn:hover{ filter:brightness(1.07) saturate(1.05); }
+.btn:active{
+  transform:translateY(5px);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.55),
+    inset 0 -3px 0 rgba(0,36,110,.16),
+    0 1px 0 var(--edge),
+    0 3px 0 var(--line),
+    0 5px 9px rgba(3,28,70,.3);
+}
+.btn:focus-visible{ outline:3px solid #ffd84a; outline-offset:4px; }
 .btn-big{ font-size:clamp(18px,3.1vw,26px); padding:15px 40px; }
 
-.btn-green { background:var(--green);  box-shadow:0 6px 0 var(--green-dark), 0 10px 18px rgba(0,0,0,.22); }
-.btn-green:active { box-shadow:0 1px 0 var(--green-dark); }
-.btn-purple{ background:var(--purple); box-shadow:0 6px 0 var(--purple-dark),0 10px 18px rgba(0,0,0,.22); }
-.btn-purple:active{ box-shadow:0 1px 0 var(--purple-dark); }
-.btn-red   { background:#ef4b5e; box-shadow:0 6px 0 #c22b3d, 0 10px 18px rgba(0,0,0,.22); }
-.btn-red:active   { box-shadow:0 1px 0 #c22b3d; }
+.btn-blue  { --hi:#b4ebff; --face:#55bdf0; --lo:#2789d8; --edge:#0450b8; }
+.btn-green { --hi:#c6f8e6; --face:#45d3a2; --lo:#1ea27c; --edge:#0b7560; }
+.btn-purple{ --hi:#ddd4ff; --face:#9a86f4; --lo:#6c55d8; --edge:#4430a6; }
+.btn-red   { --hi:#ffcbd2; --face:#f1667c; --lo:#cf3a53; --edge:#991d35; }
+/* Gold is the colour of the golden fish, so it marks the Market. */
+.btn-gold  { --hi:#fff2b8; --face:#ffcd3a; --lo:#f0a000; --edge:#ad6800; }
+/* Frost: the quiet buttons. Pale ice with dark letters, and no snow, so
+   they sit a step below the coloured ones. */
 .btn-ghost {
-  background:#efe7f7; color:var(--ink-soft);
-  box-shadow:0 6px 0 #cfc2e0, 0 10px 18px rgba(0,0,0,.14);
+  --hi:#ffffff; --face:#eaf7fd; --lo:#cbe8f6; --edge:#8dbcd9; --line:#2b5d86;
+  color:var(--ink);
+  text-shadow:0 1px 0 #fff;
   font-size:clamp(13px,2vw,16px); padding:10px 20px;
 }
-.btn-ghost:active{ box-shadow:0 1px 0 #cfc2e0; }
+.btn-ghost::after{ display:none; }
 
 .toggles{ display:flex; gap:10px; justify-content:center; margin-top:16px; }
 .chip{
@@ -427,7 +488,7 @@ body{
 /* ------------------- SHORT SCREENS ------------------- */
 @media (max-height:640px){
   .panel      { padding:18px 20px 16px; }
-  .btn-row    { margin-top:7px; gap:8px; }
+  .btn-row    { margin-top:12px; gap:16px 8px; }
   .hero-emoji { font-size:clamp(34px,7vw,52px); }
   .win-emoji  { font-size:clamp(32px,7vw,48px); }
   .game-title { width:min(440px, 88%); margin-bottom:26px; }
@@ -504,6 +565,16 @@ body{
   min-height:2.6em;
 }
 .btn-sm{ font-size:clamp(13px,2vw,16px); padding:9px 18px; }
+/* A full drift lay across the words on a button this short ("Wear",
+   "700 fish"). A thin skin of snow instead: shallower, no drops. */
+.btn-sm::after{
+  top:-6px; height:10px; left:6px; right:6px;
+  background:
+    radial-gradient(ellipse 16% 5px at 18% 6px, #fff 95%, transparent),
+    radial-gradient(ellipse 20% 6px at 50% 6px, #fff 95%, transparent),
+    radial-gradient(ellipse 16% 5px at 82% 6px, #fff 95%, transparent),
+    linear-gradient(180deg, #fff 0%, #fff 50%, #d6eefc 100%) 0 5px / 100% 5px no-repeat;
+}
 .btn-sm:disabled{ cursor:default; filter:none; }
 .btn-sm:disabled:active{ transform:none; }
 
@@ -795,6 +866,16 @@ body{
 
 /* The panel needs room under the icicles hanging off its lip. */
 .panel-title{ padding-top:34px; }
+/* The title panel is a slab of the same ice as the logo and the buttons:
+   navy rim, a deep-blue edge for its thickness. */
+.panel.panel-title{
+  border:3px solid #062a78;
+  box-shadow:
+    inset 0 0 0 4px rgba(255,255,255,.9),
+    0 9px 0 #0450b8,
+    0 12px 0 #062a78,
+    0 28px 46px rgba(0,0,0,.38);
+}
 
 @media (prefers-reduced-motion: reduce){
   .peng, .shard, .pine, .berg, .float{ animation:none; }
@@ -858,11 +939,12 @@ body{
 }
 
 /* ------------------- MODES AND MARKED RUNS ------------------- */
-.modes{ flex-direction:column; align-items:stretch; gap:9px; }
+.modes{ flex-direction:column; align-items:stretch; gap:18px; }
 .mode-btn{ display:block; text-align:center; line-height:1.15; padding:12px 22px; }
 .mode-btn b{ display:block; font-size:1em; }
 .mode-btn small{
-  display:block; font-weight:700; font-size:.6em; opacity:.88; margin-top:2px;
+  display:block; font-weight:700; font-size:.6em; opacity:.95; margin-top:2px;
+  text-shadow:0 1px 0 var(--line), 0 0 3px var(--line);   /* a full outline clogs letters this small */
 }
 
 .runs-list{ display:flex; flex-direction:column; gap:9px; margin:4px 0 6px; }
@@ -880,13 +962,19 @@ body{
    it is the one that tells you how to open the thing. Keep the panel pale
    and put dark ink on it instead of dimming the whole button. */
 .mode-btn.locked{
-  background:rgba(206,221,232,.95);
+  --hi:#e4edf3; --face:#d3e0e9; --lo:#bccdd9; --edge:#90a8ba; --line:#5f7d94;
   color:#44647c;
+  text-shadow:0 1px 0 rgba(255,255,255,.7);
   cursor:default;
-  box-shadow:0 4px 0 rgba(140,165,185,.5);
+  filter:none;
 }
+/* Frozen shut: no snow on it, just frost. */
+.mode-btn.locked::after{ display:none; }
 .mode-btn.locked small{ color:#44647c; opacity:.9; }
-.mode-btn.locked:active{ transform:none; }
+.mode-btn.locked:active{
+  transform:none;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55), 0 5px 0 var(--edge), 0 8px 0 var(--line), 0 13px 18px rgba(3,28,70,.2);
+}
 /* No icon at all. The emoji padlock went with the rest of them, and the
    shackle drawn in its place read as a stray arc at button size — the grey
    button and the line underneath already say it is shut. */
