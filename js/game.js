@@ -258,6 +258,10 @@ var Game = (function () {
     w.zoneT = w.hold ? 0 : ZONE_SHOW;
     w.px = chuteAt(0);
     if (perk().startShield) w.shield = 1;
+    /* The combo perks: one starts the run of catches already at ten (x2),
+       the other carries a token that forgives a single missed fish. */
+    w.combo = perk().comboStart || 0;
+    w.comboKeep = perk().comboKeep ? 1 : 0;
     var i;
     var nStreak = Math.round(46 * Math.max(1, LOOK / 620));
     for (i = 0; i < nStreak; i++)
@@ -1053,7 +1057,7 @@ var Game = (function () {
         }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
         else if (o.t === 'clock') {
-          W.timeT += CLOCK_GAIN; W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10; fx('clock');
+          W.timeT += clockGain(); W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10; fx('clock');
         }
         else if (o.t === 'chill') {
           W.chillT = CHILL_FRAMES; Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
@@ -1190,15 +1194,19 @@ var Game = (function () {
         }
         if (dy < -20) {
           o.nearDone = true;
-          if (o.near !== undefined && o.near >= 0 && o.near < CLOSE_GAP &&
+          if (o.near !== undefined && o.near >= 0 && o.near < CLOSE_GAP * (perk().closeWide || 1) &&
               W.state === 'run' && !airborne() && !rushing() && W.grace <= 0) {
-            W.closes++; W.score += 15 * comboMult(); W.closeT = 55; W.closeX = o.x;
+            W.closes++; W.score += Math.round(15 * (perk().closeBonus || 1)) * comboMult(); W.closeT = 55; W.closeX = o.x;
             fx('close');
           }
         }
       }
       /* a fish that went by uncaught breaks the run of catches */
-      if (o.t === 'fish' && !o.got && !o.missed && dy < -30) { o.missed = true; W.combo = 0; }
+      if (o.t === 'fish' && !o.got && !o.missed && dy < -30) {
+        o.missed = true;
+        if (W.comboKeep > 0) W.comboKeep = 0;        // the puffin shrugs one off
+        else W.combo = 0;
+      }
       if (solid(o) && W.invuln <= 0 && !rushing() && !airborne() &&
           dx * dx + dy * dy < hitR(o) * hitR(o)) {
         if (W.shield > 0) {
@@ -1329,7 +1337,13 @@ var Game = (function () {
   /* The run of catches. Every ten in a row lifts the multiplier on POINTS,
      up to three — fish in the purse are untouched, so the shop is priced
      exactly as before. A missed fish or a crash starts it again. */
-  function comboUp() { W.combo++; if (W.combo > W.comboBest) W.comboBest = W.combo; }
+  function comboUp() {
+    W.combo++; if (W.combo > W.comboBest) W.comboBest = W.combo;
+    /* a spent forgiveness comes back after ten more catches */
+    if (perk().comboKeep && !W.comboKeep && W.combo % 10 === 0) W.comboKeep = 1;
+  }
+  /* What a time bubble gives, for whoever is wearing what. */
+  function clockGain() { return Math.round(CLOCK_GAIN * (perk().clockGain || 1)); }
   function comboMult() { return 1 + Math.min(2, Math.floor(W.combo / 10)); }
   /* How close a boulder has to be before it counts. `slim` tucks the
      creature in; it touches this and nothing else, so it cannot double as
@@ -1340,7 +1354,7 @@ var Game = (function () {
   /* Slower is always safe: every row was proved against the hill's own
      pace, and moving under it only ever buys more time to turn. */
   function slowmo() { return W.chillT > 0 ? CHILL_FACTOR : 1; }
-  function bogged() { return W.bog > 0 ? BOG_FACTOR : 1; }
+  function bogged() { return (W.bog > 0 && !perk().bogImmune) ? BOG_FACTOR : 1; }
   /* How far through its cycle a geyser is. Keyed to how far down the hill
      the player has come, not to the frame count: by frames the same geyser
      on the same marked line was up on one run and down on the next,
@@ -2926,9 +2940,10 @@ var Game = (function () {
     ctx.font = '800 ' + Math.round(r * 0.95) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3.2; ctx.strokeStyle = '#ffffff';
-    ctx.strokeText('+' + Math.round(CLOCK_GAIN / 60), 0, 1);
+    var gainTxt = '+' + Math.round(clockGain() / 60);
+    ctx.strokeText(gainTxt, 0, 1);
     ctx.fillStyle = '#1f6a24';
-    ctx.fillText('+' + Math.round(CLOCK_GAIN / 60), 0, 1);
+    ctx.fillText(gainTxt, 0, 1);
     ctx.restore();
   }
 
@@ -3139,6 +3154,42 @@ var Game = (function () {
         c.stroke();
       }
       c.restore();
+    } else if (S.accessory === 'puffin') {
+      /* A puffin from above is a black back and a face: white cheeks
+         either side of the head and the beak, banded and far too big. */
+      c.fillStyle = '#f4f7fa';
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); c.ellipse(k * 8.5, -27, 5.6, 6.6, k * 0.3, 0, 6.2832); c.fill();
+      });
+      c.save();
+      c.beginPath();
+      c.moveTo(-7.5, -32); c.quadraticCurveTo(0, -36, 7.5, -32);
+      c.lineTo(2.4, -47); c.quadraticCurveTo(0, -49, -2.4, -47);
+      c.closePath();
+      c.fillStyle = S.accent; c.fill();
+      c.clip();
+      c.fillStyle = '#ffd23a';                        // the yellow band
+      c.fillRect(-9, -41, 18, 3.4);
+      c.fillStyle = '#7d8ea3';                        // the grey base
+      c.fillRect(-9, -35.5, 18, 3.6);
+      c.restore();
+      c.strokeStyle = 'rgba(90,30,10,.55)'; c.lineWidth = 1.1;
+      c.beginPath();
+      c.moveTo(-7.5, -32); c.quadraticCurveTo(0, -36, 7.5, -32);
+      c.lineTo(2.4, -47); c.quadraticCurveTo(0, -49, -2.4, -47);
+      c.closePath(); c.stroke();
+    } else if (S.accessory === 'collar') {
+      /* The emperor's mark: a blaze of gold either side of the neck. */
+      [-1, 1].forEach(function (k) {
+        var cg = c.createLinearGradient(k * 6, -28, k * 16, -14);
+        cg.addColorStop(0, '#fff1b0'); cg.addColorStop(1, S.accent);
+        c.fillStyle = cg;
+        c.beginPath();
+        c.moveTo(k * 7, -30);
+        c.quadraticCurveTo(k * 17, -26, k * 16, -13);
+        c.quadraticCurveTo(k * 11, -16, k * 6, -20);
+        c.closePath(); c.fill();
+      });
     } else if (S.accessory === 'glow') {
       var gg = c.createRadialGradient(0, -4, 10, 0, -4, 34);
       gg.addColorStop(0, 'rgba(159,232,255,0)');
@@ -3675,7 +3726,16 @@ var Game = (function () {
            len * 0.56, w0 + (w1 - w0) * t, ang);
     }
   }
+  /* Which headgear the reindeer body is wearing: antlers, or the musk
+     ox's horns — a heavy boss across the brow, each horn sweeping out and
+     down past the cheek. Set by bodyReindeer before it builds. */
+  var hornKind = 'deer';
   function antler(cc, k) {
+    if (hornKind === 'ox') {
+      beam(cc, [[k * 1, -38], [k * 7, -40], [k * 14, -38]], 4.6, 4.2);            // the boss
+      beam(cc, [[k * 13, -38], [k * 19, -36], [k * 20, -29], [k * 16, -24]], 4.0, 1.8);  // the sweep
+      return;
+    }
     var main = [[k * 6, -37], [k * 12, -46], [k * 21, -48], [k * 28, -43], [k * 32, -35]];
     beam(cc, main, 3.6, 2.2);
     beam(cc, [[k * 11, -45], [k * 9, -54], [k * 11, -61]], 2.6, 1.6);   // brow tine
@@ -3684,6 +3744,7 @@ var Game = (function () {
   }
 
   function bodyReindeer(c, S, ang, wag, o) {
+    hornKind = S.horns ? 'ox' : 'deer';
     var sw = -ang * 0.18;
     /* Diagonal pairs move together, which is what a trot looks like from
        above: front-right with hind-left, and the other two opposite. */
@@ -3712,7 +3773,7 @@ var Game = (function () {
     }
 
     var bg = c.createLinearGradient(-16, -40, 18, 38);
-    bg.addColorStop(0, '#b78d66');
+    bg.addColorStop(0, S.bodyTop || '#b78d66');
     bg.addColorStop(0.5, S.body[1]);
     bg.addColorStop(1, S.body[2]);
     oneSilhouette(c, S, build, bg);
@@ -3824,6 +3885,34 @@ var Game = (function () {
      of the seal. */
   function bodyHare(c, S, ang, wag, o) {
     var k, lean;
+    /* The same compact body carries the snow leopard and the lemming
+       (S.cat): short round ears in place of the long ones, and a tail —
+       long and thick for the leopard, a stub for the lemming. */
+    if (S.cat && !S.stub) {                           // the leopard's tail, swinging
+      var tsw = swing(o, 0.6, 0.35) - ang * 0.5;
+      c.save();
+      c.lineCap = 'round';
+      c.strokeStyle = S.body[2]; c.lineWidth = 10;
+      c.beginPath(); c.moveTo(0, 24);
+      c.quadraticCurveTo(14 * Math.sin(tsw) + 4, 44, 22 * Math.sin(tsw + 0.6), 58);
+      c.stroke();
+      c.strokeStyle = S.body[1]; c.lineWidth = 7;
+      c.beginPath(); c.moveTo(0, 24);
+      c.quadraticCurveTo(14 * Math.sin(tsw) + 4, 44, 22 * Math.sin(tsw + 0.6), 58);
+      c.stroke();
+      if (S.spot) {                                   // rings down the tail
+        c.fillStyle = S.spot;
+        for (k = 1; k <= 3; k++) {
+          var tt = k / 3.4, tx = (1 - tt) * (1 - tt) * 0 + 2 * (1 - tt) * tt * (14 * Math.sin(tsw) + 4) + tt * tt * 22 * Math.sin(tsw + 0.6);
+          var ty = (1 - tt) * (1 - tt) * 24 + 2 * (1 - tt) * tt * 44 + tt * tt * 58;
+          c.beginPath(); c.ellipse(tx, ty, 4, 2.6, 0, 0, 6.2832); c.fill();
+        }
+      }
+      c.restore();
+    } else if (S.cat && S.stub) {                     // the lemming's stub
+      c.fillStyle = S.body[2];
+      c.beginPath(); c.ellipse(0, 30, 4.5, 5, 0, 0, 6.2832); c.fill();
+    }
     [-1, 1].forEach(function (kk) {                   // hind legs, bunched
       c.save();
       c.translate(kk * 13, 20);
@@ -3851,12 +3940,44 @@ var Game = (function () {
     c.bezierCurveTo(-17, -6, -12, -23, 0, -22);
     c.closePath(); c.fill();
 
+    if (S.stripe) {                                   // the lemming's dark back
+      c.fillStyle = S.stripe;
+      c.beginPath(); c.ellipse(0, 2, 4.5, 21, 0, 0, 6.2832); c.fill();
+    }
+    if (S.spot) {                                     // the leopard's rosettes
+      var ROS = [[-8, -12, 3.6], [7, -9, 3.2], [-10, 4, 3.4], [9, 6, 3.8], [-2, -2, 3],
+                 [-6, 16, 3.4], [6, 19, 3.2], [1, 10, 2.6], [-12, -4, 2.4], [12, -2, 2.4]];
+      /* A rosette is a broken ring of three or four dark blots round a
+         slightly darker middle, each one turned its own way — drawn as one
+         unbroken arc every time, they all opened the same way and read as a
+         row of letter Cs. */
+      ROS.forEach(function (r, ri) {
+        c.fillStyle = 'rgba(70,76,88,.35)';
+        c.beginPath(); c.arc(r[0], r[1], r[2] * 0.8, 0, 6.2832); c.fill();
+        c.fillStyle = S.spot;
+        var nb = 3 + (ri % 2), a0 = ri * 1.9;
+        for (var bi = 0; bi < nb; bi++) {
+          var ba = a0 + bi / nb * 6.2832;
+          c.beginPath();
+          c.ellipse(r[0] + Math.cos(ba) * r[2], r[1] + Math.sin(ba) * r[2],
+                    r[2] * 0.42, r[2] * 0.3, ba, 0, 6.2832);
+          c.fill();
+        }
+      });
+    }
+
     var hg = c.createRadialGradient(-4, -30, 2, 0, -26, 15);   // head
     hg.addColorStop(0, S.body[0]); hg.addColorStop(1, S.body[1]);
     c.fillStyle = hg;
     c.beginPath(); c.ellipse(0, -26, 12, 11, 0, 0, 6.2832); c.fill();
 
-    [-1, 1].forEach(function (kk) {                   // the ears, laid back
+    if (S.cat) [-1, 1].forEach(function (kk) {       // short round ears
+      c.fillStyle = S.body[2];
+      c.beginPath(); c.arc(kk * 8.5, -34, 4.6, 0, 6.2832); c.fill();
+      c.fillStyle = S.mark;
+      c.beginPath(); c.arc(kk * 8.5, -34, 2.3, 0, 6.2832); c.fill();
+    });
+    if (!S.cat) [-1, 1].forEach(function (kk) {      // the ears, laid back
       lean = kk * (0.26 + swing(o, kk > 0 ? 1.1 : 2.2, 0.07)) - ang * 0.4 * kk;
       c.save();
       c.translate(kk * 5, -29);
@@ -3889,6 +4010,7 @@ var Game = (function () {
     c.beginPath(); c.ellipse(0, -24, 8.5, 7, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -31, 2.6, 2.1, 0, 0, 6.2832); c.fill();
+    if (S.cat) eyes(c, -29, 6.2, 0, 1.9, '#1d2228');
   }
 
   function bodyOwl(c, S, ang, wag, o) {

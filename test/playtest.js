@@ -322,7 +322,8 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="shop"]', '#screen-shop');
   ok(await waitFor('#screen-shop'), 'the Market opens');
   var cards = await ev("document.querySelectorAll('#shop-grid [data-skin]').length");
-  ok(cards === 11, 'every creature is on the shelf (' + cards + ')');
+  var nSkins = await ev("SKINS.length");
+  ok(cards === nSkins && nSkins >= 17, 'every creature is on the shelf (' + cards + ' of ' + nSkins + ')');
   await shot('05-market');
   /* The way out of the Market must not be a scroll away. The arrow is
      checked where it is, at the top of the window, with the shelf scrolled

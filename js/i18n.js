@@ -371,6 +371,25 @@ var STRINGS = {
   'skin.reindeer.perk': { en: 'Sure-footed — the glacier cannot swing him wide.',
                           ru: 'Твёрдое копыто — ледник его уже не заносит.' },
   'skin.orca.name':     { en: 'Orca', ru: 'Косатка' },
+  'skin.puffin.name':  { en: 'Puffin', ru: 'Тупик' },
+  'skin.puffin.perk':  { en: 'Shrugs off one missed fish without losing the run of catches.',
+                         ru: 'Прощает одну упущенную рыбу — серия уловов не сбрасывается.' },
+  'skin.lemming.name': { en: 'Lemming', ru: 'Лемминг' },
+  'skin.lemming.perk': { en: 'Every star on the Daily Line pays 25 fish more.',
+                         ru: 'Каждая звезда линии дня приносит ещё 25 рыб.' },
+  'skin.muskox.name':  { en: 'Musk Ox', ru: 'Овцебык' },
+  'skin.muskox.perk':  { en: 'Deep snow does not slow him down at all.',
+                         ru: 'Глубокий снег его совсем не замедляет.' },
+  'skin.otter.name':   { en: 'Sea Otter', ru: 'Калан' },
+  'skin.otter.perk':   { en: 'Time bubbles give her four seconds instead of three.',
+                         ru: 'Пузыри времени дают ей четыре секунды вместо трёх.' },
+  'skin.leopard.name': { en: 'Snow Leopard', ru: 'Снежный барс' },
+  'skin.leopard.perk': { en: 'Close calls pay double, and count from further away.',
+                         ru: 'Проезд впритирку приносит вдвое больше и засчитывается дальше.' },
+  'skin.emperor.name': { en: 'Emperor Penguin', ru: 'Императорский пингвин' },
+  'skin.emperor.perk': { en: 'Every run starts with the combo already at x2.',
+                         ru: 'Каждый заезд начинается с комбо x2.' },
+  'over.starpay':      { en: '+{n} fish for the stars', ru: '+{n} рыб за звёзды' },
   'skin.orca.perk':     { en: 'Hits a ramp so hard she clears half the hill — and starts shielded.',
                           ru: 'Бьёт по трамплину так, что пролетает полсклона — и стартует под щитом.' }
 };
@@ -651,7 +670,20 @@ var RO = {
   'skin.reindeer.name': 'Ren',
   'skin.reindeer.perk': 'Pas sigur — ghețarul nu-l poate arunca larg.',
   'skin.orca.name': 'Orcă',
-  'skin.orca.perk': 'Lovește rampa atât de tare încât trece jumătate de pârtie — și pornește protejată.'
+  'skin.orca.perk': 'Lovește rampa atât de tare încât trece jumătate de pârtie — și pornește protejată.',
+  'skin.puffin.name': 'Pufin',
+  'skin.puffin.perk': 'Iartă un pește ratat fără să piardă șirul de capturi.',
+  'skin.lemming.name': 'Leming',
+  'skin.lemming.perk': 'Fiecare stea din Linia zilei aduce încă 25 de pești.',
+  'skin.muskox.name': 'Bou moscat',
+  'skin.muskox.perk': 'Zăpada adâncă nu-l încetinește deloc.',
+  'skin.otter.name': 'Vidră de mare',
+  'skin.otter.perk': 'Bulele de timp îi dau patru secunde în loc de trei.',
+  'skin.leopard.name': 'Leopard al zăpezilor',
+  'skin.leopard.perk': 'Trecerile la mustață plătesc dublu și se prind de mai departe.',
+  'skin.emperor.name': 'Pinguin imperial',
+  'skin.emperor.perk': 'Fiecare cursă pornește cu combo deja la x2.',
+  'over.starpay': '+{n} pești pentru stele'
 };
 for (var roKey in RO) if (STRINGS[roKey]) STRINGS[roKey].ro = RO[roKey];
 

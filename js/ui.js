@@ -383,8 +383,10 @@
     var stars = cd ? courseStars(cd, res) : 0;
     /* The Daily Line keeps its own stars, for today only, and a streak of
        days finished; it never touches the marked lines' board. */
-    var streakNow = 0;
+    var streakNow = 0, starPay = 0;
     if (cd && cd.daily) {
+      starPay = dailyStarPay(save.equipped, stars, res.finished);
+      save.fish += starPay;
       var today = dailyKey();
       if (!save.daily || save.daily.key !== today) save.daily = { key: today, stars: 0 };
       if (stars > save.daily.stars) save.daily.stars = stars;
@@ -428,6 +430,7 @@
     var earned = $('over-earned');
     var bits = [];
     if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
+    if (starPay) bits.push(t('over.starpay', { n: starPay }));
     if (res.gold)  bits.push('+' + res.gold + ' ' + t('cur.gold'));
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);

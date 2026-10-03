@@ -21,6 +21,9 @@ var ALLOWED = { reach: 'up', shoal: 'up', startShield: 'flag',
                 goldRate: 'up', gateBonus: 'up', fogRelief: 'up', grip: 'up',
                 rampBoost: 'up', gateWide: 'up', rampWide: 'up',
                 foresight: 'flag',
+                /* the newest six: each only ever adds, or forgives */
+                comboKeep: 'flag', bogImmune: 'flag', clockGain: 'up',
+                closeBonus: 'up', closeWide: 'up', dailyStar: 'up', comboStart: 'up',
                 /* the ramp is GENTLER, so smaller is the generous way */
                 slowRamp: 'down',
                 /* shrinks his hitbox, so smaller is the generous way */

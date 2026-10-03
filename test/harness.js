@@ -33,7 +33,7 @@ global.Math.random=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7f
 eval(fs.readFileSync(DIR+'biomes.js','utf8')); global.BIOMES=BIOMES; global.BIOME_LEN=BIOME_LEN;
 eval(fs.readFileSync(DIR+'skins.js','utf8'));
 global.SKINS=SKINS; global.SKIN_BY_ID=SKIN_BY_ID;
-global.skinById=skinById; global.coinsFor=coinsFor; global.FIRST_CATCH=FIRST_CATCH;
+global.skinById=skinById; global.coinsFor=coinsFor; global.FIRST_CATCH=FIRST_CATCH; global.dailyStarPay=dailyStarPay;
 eval(fs.readFileSync(DIR+'courses.js','utf8'));
 global.COURSES=COURSES; global.parseCourse=parseCourse;
 global.courseById=courseById; global.courseStars=courseStars; global.TUTORIAL=TUTORIAL;

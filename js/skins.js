@@ -41,6 +41,18 @@ var SKINS = [
     accent: '#e0483c', accessory: 'scarf'
   },
   {
+    /* Black back, white face, a beak far too big for him: the one sea bird
+       that reads from straight above at this size. */
+    id: 'puffin', name: 'Puffin', price: 400, currency: 'fish',
+    blurb: 'All beak, and in no hurry to explain it.',
+    perkText: 'Shrugs off one missed fish without losing the run of catches.',
+    perk: { comboKeep: 1 },
+    body: ['#3a3f4c', '#1d212a', '#0c0e13'],
+    flipper: ['#434956', '#22262f', '#101318'],
+    trim: '#ff6a24', trimEdge: 'rgba(170,60,10,.5)',
+    shape: 'penguin', accent: '#ff5a1f', accessory: 'puffin'
+  },
+  {
     id: 'seal', name: 'Seal', price: 450, currency: 'fish',
     blurb: 'Spent her whole life under this ice.',
     perkText: 'Sniffs out the golden fish, far more of them.',
@@ -53,6 +65,38 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
+    /* Small and orange-brown with a dark stripe down the back: the summer
+       coat, for the same reason as the hare's. */
+    id: 'lemming', name: 'Lemming', price: 500, currency: 'fish',
+    blurb: 'Comes back every single day, whatever the hill does.',
+    perkText: 'Every star on the Daily Line pays 25 fish more.',
+    perk: { dailyStar: 25 },
+    shape: 'hare', cat: true, stub: true,
+    body: ['#e8a868', '#b8702f', '#7a4318'],
+    flipper: ['#d9975a', '#a5602c', '#6e3b18'],
+    stripe: '#4a2a14',
+    mark: '#f4dcc0', nose: '#2a1a10', outline: 'rgba(70,40,20,.45)',
+    trim: '#e8a868', trimEdge: 'rgba(90,50,20,.4)',
+    accent: null, accessory: null
+  },
+  {
+    /* Dark shaggy brown with pale horns, built low and wide: deep snow is
+       where a musk ox lives, not something it wades through. */
+    id: 'muskox', name: 'Musk Ox', price: 600, currency: 'fish',
+    blurb: 'Deep snow is just the floor to him.',
+    perkText: 'Deep snow does not slow him down at all.',
+    perk: { bogImmune: 1 },
+    shape: 'reindeer', horns: true,
+    bodyTop: '#6e5440',
+    body: ['#5b4130', '#3a291e', '#22170f'],
+    flipper: ['#4d3727', '#30221a', '#1d140e'],
+    mark: '#cbb79a', nose: '#1a120c', outline: 'rgba(30,20,12,.85)',
+    paw: '#2c2018', pawDark: '#1d150f', claw: '#140e0a',
+    antler: '#efe4cc',
+    trim: '#5b4130', trimEdge: 'rgba(30,20,12,.45)',
+    accent: null, accessory: null
+  },
+  {
     id: 'bubbles', name: 'Bubbles', price: 700, currency: 'fish',
     blurb: 'Never leaves home unwrapped.',
     perkText: 'Starts every run already inside a bubble.',
@@ -62,6 +106,20 @@ var SKINS = [
     trim: '#ffd08a', trimEdge: 'rgba(180,120,50,.45)',
     shape: 'penguin',
     accent: '#9fe8ff', accessory: 'glow'
+  },
+  {
+    /* Warm brown with a pale face, flat on her back on the water usually;
+       on the ice she simply never wastes a moment. */
+    id: 'otter', name: 'Sea Otter', price: 800, currency: 'fish',
+    blurb: 'Always knows exactly how long she has left.',
+    perkText: 'Time bubbles give her four seconds instead of three.',
+    perk: { clockGain: 1.34 },
+    shape: 'seal',
+    body: ['#a8764e', '#76492b', '#4a2b17'],
+    flipper: ['#966443', '#663e25', '#3f2615'],
+    mark: '#e8d6bc', nose: '#20140c', outline: 'rgba(50,30,16,.5)',
+    trim: '#9a6a46', trimEdge: 'rgba(60,36,20,.4)',
+    accent: null, accessory: null
   },
   {
     /* A perk nobody else has: it changes the SHAPE of a run rather than one
@@ -80,6 +138,21 @@ var SKINS = [
     flipper: ['#e6ded3', '#c2b4a4', '#8d7e6e'],
     mark: '#f7f2ea', nose: '#2b3139', outline: 'rgba(72,62,52,.45)',
     trim: '#e8f1f9', trimEdge: 'rgba(90,110,130,.35)',
+    accent: null, accessory: null
+  },
+  {
+    /* Grey, not white, with dark rosettes and a tail as long as she is:
+       the pale cat on pale ice would have been the fox all over again. */
+    id: 'leopard', name: 'Snow Leopard', price: 1100, currency: 'fish',
+    blurb: 'Lives on the edge of things, and likes it there.',
+    perkText: 'Close calls pay double, and count from further away.',
+    perk: { closeBonus: 2, closeWide: 1.6 },
+    shape: 'hare', cat: true,
+    body: ['#c4c8cf', '#8f969f', '#5f6670'],
+    flipper: ['#b4b9c1', '#858c96', '#59606a'],
+    spot: '#2c3038',
+    mark: '#e6e8ec', nose: '#3a2e2e', outline: 'rgba(40,44,52,.55)',
+    trim: '#c4c8cf', trimEdge: 'rgba(60,66,76,.4)',
     accent: null, accessory: null
   },
   {
@@ -156,6 +229,18 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
+    /* The largest penguin there is, black with a blaze of gold at the neck.
+       Gold-priced, like the orca: something for the golden fish to buy. */
+    id: 'emperor', name: 'Emperor Penguin', price: 6, currency: 'gold',
+    blurb: 'Starts every run as if he had already been at it a while.',
+    perkText: 'Every run starts with the combo already at x2.',
+    perk: { comboStart: 10 },
+    body: ['#3c4558', '#1e2430', '#0d1017'],
+    flipper: ['#465065', '#242b38', '#11151d'],
+    trim: '#f5a524', trimEdge: 'rgba(170,100,10,.5)',
+    shape: 'penguin', accent: '#f5b82e', accessory: 'collar'
+  },
+  {
     id: 'orca', name: 'Orca', price: 8, currency: 'gold',
     blurb: 'Should not be up here at all, and does not care.',
     perkText: 'Hits a ramp so hard she clears half the hill — and starts shielded.',
@@ -174,6 +259,13 @@ var SKIN_BY_ID = {};
 for (var _s = 0; _s < SKINS.length; _s++) SKIN_BY_ID[SKINS[_s].id] = SKINS[_s];
 
 function skinById(id) { return SKIN_BY_ID[id] || SKINS[0]; }
+
+/* The lemming's perk, here rather than in the UI so a test can read it:
+   fish paid on top for each star of a finished Daily Line. */
+function dailyStarPay(skinId, stars, finished) {
+  var per = (skinById(skinId).perk || {}).dailyStar || 0;
+  return finished ? per * (stars || 0) : 0;
+}
 
 /* What a run's catch is worth in the shop. */
 function coinsFor(fishCount) {
