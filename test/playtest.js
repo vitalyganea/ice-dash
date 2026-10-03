@@ -334,6 +334,11 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-runs'), 'Known Lines opens');
   var lines = await ev("document.querySelectorAll('#runs-list > *').length");
   ok(lines === 6, 'all six marked runs are listed (' + lines + ')');
+  /* The seed has First Light done, so The Narrows is open and Gap Teeth is
+     the next one locked: that row must say which line opens it. */
+  var hint = await ev("Array.from(document.querySelectorAll('#runs-list .run-sub')).map(e=>e.textContent).join('|')");
+  ok(/Finish The Narrows/.test(hint), 'the next locked line says which one to finish (' +
+     (hint.split('|').filter(function (x) { return /Finish/.test(x); })[0] || 'none') + ')');
   await shot('07-lines');
   await clickFor('#screen-runs [data-action="back-title"]', '#screen-title');
 

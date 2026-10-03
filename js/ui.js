@@ -747,11 +747,16 @@
       /* Only the next one says HOW to open it. Five rows all repeating
          "Finish the one before" was five lines of the same sentence, and
          the one that mattered did not stand out among them. */
-      var nextUp = !open && (i === 0 || (save.courses[COURSES[i - 1].id] || 0) > 0);
+      /* The next one up is the locked line whose predecessor is OPEN. This
+         used to test that the predecessor was finished — which is the very
+         thing that unlocks this one — so it could never be true, and every
+         locked row said "Locked". It now names the line to finish. */
+      var nextUp = !open && i > 0 && runUnlocked(i - 1);
       sub.textContent = open
         ? t('biome.' + cd.biome) + '  ·  ' +
           t('runs.len', { n: Math.round(parseCourse(cd, 300).length * cd.step / 8) })
-        : (nextUp ? t('runs.locked') : t('runs.shut'));
+        : (nextUp ? t('runs.locked', { n: t('course.' + COURSES[i - 1].id + '.name') })
+                  : t('runs.shut'));
       if (!open && !nextUp) sub.classList.add('run-shut');
       mid.appendChild(sub);
       row.appendChild(mid);

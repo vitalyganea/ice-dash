@@ -262,7 +262,7 @@ var STRINGS = {
   'runs.title':     { en: 'Known Lines',   ru: 'Знакомые линии' },
   'runs.note':      { en: 'Nothing here is shuffled — learn a line and it stays learnt.',
                       ru: 'Здесь ничего не перемешивается: выучил линию — она такой и останется.' },
-  'runs.locked':    { en: 'Finish the one before', ru: 'Пройди предыдущую' },
+  'runs.locked':    { en: 'Finish {n} to open it', ru: 'Пройди «{n}», чтобы открыть' },
   'runs.shut':      { en: 'Locked',                ru: 'Закрыто' },
   'mode.free.locked': { en: 'Finish {n} to open this up',
                         ru: 'Пройди «{n}», чтобы открыть' },
