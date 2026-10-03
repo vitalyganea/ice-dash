@@ -1188,3 +1188,13 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 #new-best.hidden{ display:none; }
 @keyframes badgePop{ from{ transform:scale(.3); opacity:0 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion: reduce){ #new-best{ animation:none; } }
+
+/* The logo sizes itself off the height as well as the width. On a
+   1280x800 laptop the title panel ran past the bottom of the window and
+   the best score — the one thing on it that is yours — was below the fold. */
+.game-title{ width:min(560px, 86%, 44vh); }
+@media (max-height:860px){
+  .game-title{ margin-bottom:22px; }
+  .panel-title .subtitle{ margin:2px 0 8px; }
+  .panel-title .big-score{ margin:8px 0 0; font-size:clamp(22px,3.6vh,32px); }
+}
