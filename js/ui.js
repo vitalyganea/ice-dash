@@ -477,6 +477,12 @@
   function act(name) {
     switch (name) {
       case 'play':
+        /* "Give up and start over" from the pause screen starts over the
+           thing you were riding. It always started Freeride, so giving up
+           on First Light dropped you onto a different hill — and in the
+           tutorial, with Freeride still shut, into the Known Lines list
+           with the lesson left hanging behind it. */
+        if (currentScreen === 'pause' && lastCourse) { Sfx.click(); ride(lastCourse); break; }
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null); break;
       case 'use-life':   useLife(); break;

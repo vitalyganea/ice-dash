@@ -482,6 +482,14 @@ async function walk(cdp, sid, P) {
   ok(asked, 'the first opening asks for a tap, with an arrow the way it will send him');
   await shot('15-tut-tap');
 
+  /* Giving up from the pause screen starts the lesson over — it used to
+     start Freeride, which a new player does not have yet. */
+  await clickFor('#btn-menu', '#screen-pause');
+  await clickFor('#screen-pause [data-action="play"]', '#tut-card');
+  var again = await ev("(Game.debug()&&Game.debug().course&&Game.debug().course.id)+'|'+document.getElementById('tut-text').textContent");
+  ok(/^tutorial\|.*tap anywhere/i.test(again), 'giving up from pause starts the tutorial over (' + again.split('|')[0] + ')');
+  await tapHill();
+
   if (P.name.indexOf('desktop') === 0) {
     /* Ride it to the end the way a new player would: tap when the ring
        asks, otherwise leave it alone — the crashes that follow are part of
