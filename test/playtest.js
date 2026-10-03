@@ -295,6 +295,14 @@ async function walk(cdp, sid, P) {
   ok(/[Ѐ-ӿ]/.test(ruTitle), 'switching language changes the text on screen (' + ruTitle + ')');
   await shot('04-settings-ru');
   await click('#lang-row button:first-child');
+  /* The sound switch: it has to flip what it shows AND what is saved. */
+  var sfx0 = await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).sfx");
+  await click('#t-sfx');
+  var sfx1 = await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).sfx");
+  var shows = await ev("document.getElementById('t-sfx').classList.contains('on')");
+  ok(sfx1 === !sfx0 && shows === sfx1, 'the Sounds switch turns sound ' + (sfx1 ? 'on' : 'off') +
+     ' and shows it (' + sfx0 + ' -> ' + sfx1 + ')');
+  await click('#t-sfx');
   await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
   ok(await waitFor('#screen-title'), 'Back returns to the title');
 
