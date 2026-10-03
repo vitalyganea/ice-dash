@@ -295,7 +295,7 @@ body{
 /* Row gap is taller than it is wide: every button carries a cap of snow
    that stands above its top edge, and it must not touch the ice block of
    the row above. */
-.btn-row{ display:flex; flex-wrap:wrap; gap:18px 10px; justify-content:center; margin-top:16px; }
+.btn-row{ display:flex; flex-wrap:wrap; gap:22px 10px; justify-content:center; margin-top:20px; }
 
 /* ---- blocks of ice ----
    The buttons are cut from the same ice as the logo: a navy outline, a
@@ -332,29 +332,36 @@ body{
     0 3px 0 var(--line);
   transition:transform .08s ease, box-shadow .08s ease, filter .15s ease;
 }
-/* Snow lying along the top, lumpy, outlined in navy all the way round the
-   way the logo's snow is. With a line only underneath, the half standing
-   above the button was white on the white panel and vanished, leaving a
-   dotted stitch. */
-.btn::after{
+/* ---- snow on the buttons ----
+   Drawn the way the logo's snow is: one thick cap that wraps over the top
+   corners, white on top, shading to a cold blue underneath, with a softly
+   scalloped lower edge and a navy outline all round. Two attempts with
+   radial gradients read as beads and then as a torn strip — round blobs
+   are not what snow on the letters looks like.
+   It is three pieces so it fits any width without stretching: the two
+   ends (::after) and a middle that repeats (::before). `round` fits a
+   whole number of scallops between the ends, so the seams always meet. */
+:root{
+  --snow-l:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 22'%3E%3ClinearGradient id='g' x2='0' y2='1'%3E%3Cstop offset='.38' stop-color='%23fff'/%3E%3Cstop offset='.72' stop-color='%23e2f0fa'/%3E%3Cstop offset='1' stop-color='%23a9cbe5'/%3E%3C/linearGradient%3E%3Cpath d='M26.5 3Q20 1.2 13 2Q2 3 1.8 11Q1.6 18.6 7.2 19Q11.6 19.3 13.6 16Q18 12.6 26.5 15Z' fill='url(%23g)'/%3E%3Cpath d='M26.5 3Q20 1.2 13 2Q2 3 1.8 11Q1.6 18.6 7.2 19Q11.6 19.3 13.6 16Q18 12.6 26.5 15' fill='none' stroke='%23062a78' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M9 5.2Q5 6 4.6 10' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  --snow-r:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 22'%3E%3ClinearGradient id='g' x2='0' y2='1'%3E%3Cstop offset='.38' stop-color='%23fff'/%3E%3Cstop offset='.72' stop-color='%23e2f0fa'/%3E%3Cstop offset='1' stop-color='%23a9cbe5'/%3E%3C/linearGradient%3E%3Cg transform='translate(26 0) scale(-1 1)'%3E%3Cpath d='M26.5 3Q20 1.2 13 2Q2 3 1.8 11Q1.6 18.6 7.2 19Q11.6 19.3 13.6 16Q18 12.6 26.5 15Z' fill='url(%23g)'/%3E%3Cpath d='M26.5 3Q20 1.2 13 2Q2 3 1.8 11Q1.6 18.6 7.2 19Q11.6 19.3 13.6 16Q18 12.6 26.5 15' fill='none' stroke='%23062a78' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E");
+  --snow-m:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 22' preserveAspectRatio='none'%3E%3ClinearGradient id='g' x2='0' y2='1'%3E%3Cstop offset='.38' stop-color='%23fff'/%3E%3Cstop offset='.72' stop-color='%23e2f0fa'/%3E%3Cstop offset='1' stop-color='%23a9cbe5'/%3E%3C/linearGradient%3E%3Cpath d='M-.5 15Q5 14 9 18Q15 23 22 18.5Q27 15 32 16Q41 18 46 21Q51 23.5 56.5 15L56.5 3Q42 1 28 3Q14 .4 -.5 3Z' fill='url(%23g)'/%3E%3Cpath d='M-.5 3Q14 .4 28 3Q42 1 56.5 3' fill='none' stroke='%23062a78' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M-.5 15Q5 14 9 18Q15 23 22 18.5Q27 15 32 16Q41 18 46 21Q51 23.5 56.5 15' fill='none' stroke='%23062a78' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.btn::before, .btn::after{
   content:'';
-  position:absolute; left:7px; right:7px; top:-8px; height:17px;
+  position:absolute; top:-11px; height:22px;
   pointer-events:none;
-  --snow:#ffffff;
+  filter:drop-shadow(0 2px 0 rgba(6,42,120,.22));
+}
+.btn::after{
+  left:-5px; right:-5px;
   background:
-    /* drifts: uneven sizes and heights, so it reads as snow, not beads */
-    radial-gradient(ellipse 14% 7px at 12% 9px, var(--snow) 95%, transparent),
-    radial-gradient(ellipse 20% 9px at 36% 9px, var(--snow) 95%, transparent),
-    radial-gradient(ellipse 12% 6px at 58% 9px, var(--snow) 95%, transparent),
-    radial-gradient(ellipse 18% 8px at 79% 9px, var(--snow) 95%, transparent),
-    /* two drops sliding off the front */
-    radial-gradient(ellipse 3px 4px at 22% 12px, var(--snow) 95%, transparent),
-    radial-gradient(ellipse 3px 4px at 68% 12px, var(--snow) 95%, transparent),
-    linear-gradient(180deg, #fff 0%, #fff 55%, #d6eefc 100%) 0 6px / 100% 9px no-repeat;
-  border-radius:0 0 8px 8px;
-  filter:
-    drop-shadow(0 -1.5px 0 var(--line)) drop-shadow(1.5px 0 0 var(--line))
-    drop-shadow(-1.5px 0 0 var(--line)) drop-shadow(0 1.5px 0 var(--line));
+    var(--snow-l) left top / 26px 22px no-repeat,
+    var(--snow-r) right top / 26px 22px no-repeat;
+}
+.btn::before{
+  left:20px; right:20px;
+  background:var(--snow-m) 0 0 / 88px 22px;
+  background-repeat:round no-repeat;
 }
 .btn:hover{ filter:brightness(1.07) saturate(1.05); }
 .btn:active{
@@ -383,7 +390,7 @@ body{
   text-shadow:0 1px 0 #fff;
   font-size:clamp(13px,2vw,16px); padding:10px 20px;
 }
-.btn-ghost::after{ display:none; }
+.btn-ghost::before, .btn-ghost::after{ display:none; }
 
 .toggles{ display:flex; gap:10px; justify-content:center; margin-top:16px; }
 .chip{
@@ -488,7 +495,7 @@ body{
 /* ------------------- SHORT SCREENS ------------------- */
 @media (max-height:640px){
   .panel      { padding:18px 20px 16px; }
-  .btn-row    { margin-top:12px; gap:16px 8px; }
+  .btn-row    { margin-top:16px; gap:20px 8px; }
   .hero-emoji { font-size:clamp(34px,7vw,52px); }
   .win-emoji  { font-size:clamp(32px,7vw,48px); }
   .game-title { width:min(440px, 88%); margin-bottom:26px; }
@@ -565,16 +572,14 @@ body{
   min-height:2.6em;
 }
 .btn-sm{ font-size:clamp(13px,2vw,16px); padding:9px 18px; }
-/* A full drift lay across the words on a button this short ("Wear",
-   "700 fish"). A thin skin of snow instead: shallower, no drops. */
+/* A full cap lay across the words on a button this short ("Wear",
+   "700 fish"). The same snow, scaled down. */
+.btn-sm::before, .btn-sm::after{ top:-8px; height:15px; }
 .btn-sm::after{
-  top:-6px; height:10px; left:6px; right:6px;
-  background:
-    radial-gradient(ellipse 16% 5px at 18% 6px, #fff 95%, transparent),
-    radial-gradient(ellipse 20% 6px at 50% 6px, #fff 95%, transparent),
-    radial-gradient(ellipse 16% 5px at 82% 6px, #fff 95%, transparent),
-    linear-gradient(180deg, #fff 0%, #fff 50%, #d6eefc 100%) 0 5px / 100% 5px no-repeat;
+  left:-4px; right:-4px;
+  background-size:18px 15px, 18px 15px;
 }
+.btn-sm::before{ left:13px; right:13px; background-size:52px 15px; }
 .btn-sm:disabled{ cursor:default; filter:none; }
 .btn-sm:disabled:active{ transform:none; }
 
@@ -939,7 +944,7 @@ body{
 }
 
 /* ------------------- MODES AND MARKED RUNS ------------------- */
-.modes{ flex-direction:column; align-items:stretch; gap:18px; }
+.modes{ flex-direction:column; align-items:stretch; gap:22px; }
 .mode-btn{ display:block; text-align:center; line-height:1.15; padding:12px 22px; }
 .mode-btn b{ display:block; font-size:1em; }
 .mode-btn small{
@@ -969,7 +974,7 @@ body{
   filter:none;
 }
 /* Frozen shut: no snow on it, just frost. */
-.mode-btn.locked::after{ display:none; }
+.mode-btn.locked::before, .mode-btn.locked::after{ display:none; }
 .mode-btn.locked small{ color:#44647c; opacity:.9; }
 .mode-btn.locked:active{
   transform:none;
