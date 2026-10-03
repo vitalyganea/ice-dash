@@ -86,6 +86,17 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   back on the hill without spending a life. It can be skipped at any
   moment, replayed from How to play, and ends on a "you're ready" card that
   leads into First Light. English and Russian, like every other string.
+- **Time Rush** — asked for by the user: the open hill against a clock.
+  Twenty seconds to start; clock bubbles (+3 s) sit off the safe line, so
+  time is earned by leaning out for it. A crash costs five seconds instead
+  of the run. The score is the distance; it has its own best.
+- **Daily Line** — a marked line written fresh each day from the date, the
+  same for everyone on that day, with stars like the others and a streak
+  for finishing on consecutive days.
+- **Three more stretches** — Frozen Jungle, Cosmic Ice and Crystal Caves,
+  each with a marked line of its own. Still nothing built: leaves, stars
+  and crystal, all under ice.
+- **Trophies** for the new modes, the new lines and the streak.
 - **Languages** — English and Russian.
 
 ## Explicit non-goals

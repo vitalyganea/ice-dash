@@ -43,7 +43,9 @@
              /* stars earned per marked run, by id */
              courses: {},
              /* the first-run tutorial has been finished or skipped */
-             tutDone: false };
+             tutDone: false,
+             /* Time Rush keeps its own best, in metres, and the clocks taken */
+             bestRush: 0, totClocks: 0 };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -70,7 +72,7 @@
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
-       'totRevives','totFinds','totRushes','totSmashed','totForks']
+       'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
@@ -193,16 +195,19 @@
   function showGame() { show('game'); }
 
   /* --------------------------- game -------------------------- */
-  var lastCourse = null;
-  function ride(courseId) {
+  var lastCourse = null, lastMode = null;
+  function ride(courseId, mode) {
     pendingRes = null;
     if (tickT) { clearInterval(tickT); tickT = null; }
     lastCourse = courseId || null;
+    lastMode = (!courseId && mode) || null;
     showGame();
     Sfx.unlock();
     hideLesson(); waitingFor = null;
-    Game.start(save.best, { hud: function () {}, over: onOver, lesson: onLesson },
-               save.equipped, lastCourse, save.lives || 0);
+    /* Each mode is measured against its own best: Time Rush in metres. */
+    Game.start(lastMode === 'rush' ? save.bestRush : save.best,
+               { hud: function () {}, over: onOver, lesson: onLesson },
+               save.equipped, lastCourse, save.lives || 0, { mode: lastMode });
     tutChrome();
   }
 
@@ -346,8 +351,15 @@
     if (cd) {
       if (stars > (save.courses[cd.id] || 0)) save.courses[cd.id] = stars;
     }
-    var beat = !cd && res.score > save.best;
+    var rushRun = res.mode === 'rush';
+    var beat = !cd && !rushRun && res.score > save.best;
     if (beat) save.best = res.score;
+    /* Time Rush is scored in metres, on a board of its own. */
+    if (rushRun) {
+      beat = res.dist > (save.bestRush || 0);
+      if (beat) save.bestRush = res.dist;
+      save.totClocks = (save.totClocks || 0) + (res.clocks || 0);
+    }
     save.fish += res.coins || 0;
     save.gold += res.gold || 0;
     save.totFish  += res.fish  || 0;
@@ -389,19 +401,21 @@
       lv.appendChild(lab);
     }
     document.querySelector('#screen-over .panel-title-text').textContent =
-      t(res.finished ? 'over.finish' : 'over.title');
+      t(rushRun ? 'over.timeup' : res.finished ? 'over.finish' : 'over.title');
     var st = $('over-stars');
     st.classList.toggle('hidden', !cd);
     if (cd) st.textContent = '★★★☆☆☆'.slice(3 - stars, 6 - stars);
     /* Retry re-runs the same course; on freeride it is a fresh hill. */
     var again = document.querySelector('#screen-over [data-action="play"], #screen-over [data-action="retry"]');
-    again.setAttribute('data-action', cd ? 'retry' : 'play');
+    again.setAttribute('data-action', (cd || rushRun) ? 'retry' : 'play');
     again.textContent = t(cd ? 'btn.retry' : 'btn.again');
-    $('over-score').textContent = t('over.points', { n: res.score });
+    $('over-score').textContent = rushRun ? res.dist + ' ' + t('unit.m')
+                                          : t('over.points', { n: res.score });
     var bits = [res.dist + ' ' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
+    if (rushRun) bits[0] = t('unit.clocks') + ': ' + (res.clocks || 0);
     $('over-detail').textContent = bits.join('  ·  ');
     buildFinds(true);
     Game.pause();
@@ -482,7 +496,9 @@
            on First Light dropped you onto a different hill — and in the
            tutorial, with Freeride still shut, into the Known Lines list
            with the lesson left hanging behind it. */
-        if (currentScreen === 'pause' && lastCourse) { Sfx.click(); ride(lastCourse); break; }
+        if (currentScreen === 'pause' && (lastCourse || lastMode)) {
+          Sfx.click(); ride(lastCourse, lastMode); break;
+        }
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null); break;
       case 'use-life':   useLife(); break;
@@ -490,13 +506,16 @@
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
       case 'tutorial':   Sfx.click(); ride('tutorial'); break;
+      case 'rush':
+        if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
+        Sfx.click(); ride(null, 'rush'); break;
       case 'tut-skip':   Sfx.click(); skipTutorial(); break;
       case 'tut-first':  Sfx.click(); ride(COURSES[0].id); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
-      case 'retry':      Sfx.click(); ride(lastCourse); break;
+      case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'back-title':
         Sfx.click();
         /* Leaving the market puts you back where you opened it from, so
@@ -711,16 +730,23 @@
        else in this file hides things the same way. */
     var row = $('resume-row');
     if (row) row.classList.toggle('hidden', !(Game.isRunning() && Game.isPaused()));
-    var b = $('btn-free'), open = freeUnlocked();
-    if (!b) return;
-    b.disabled = !open;
-    b.classList.toggle('locked', !open);
-    var sub = $('free-sub');
-    if (open) { sub.setAttribute('data-i18n', 'mode.free.sub'); sub.textContent = t('mode.free.sub'); }
-    else {
-      sub.removeAttribute('data-i18n');
-      sub.textContent = t('mode.free.locked', { n: t('course.' + COURSES[0].id + '.name') });
-    }
+    /* Every mode but the marked lines opens with the first of them: one
+       line is what teaches you what a tap does. */
+    var open = freeUnlocked();
+    [['btn-free', 'free-sub', 'mode.free.sub'],
+     ['btn-rush', 'rush-sub', 'mode.rush.sub'],
+     ['btn-daily', 'daily-sub', 'mode.daily.sub']].forEach(function (m) {
+      var b = $(m[0]), sub = $(m[1]);
+      if (!b || !sub) return;
+      b.disabled = !open;
+      b.classList.toggle('locked', !open);
+      if (open) { sub.setAttribute('data-i18n', m[2]); sub.textContent = t(m[2]); }
+      else {
+        sub.removeAttribute('data-i18n');
+        sub.textContent = t('mode.free.locked', { n: t('course.' + COURSES[0].id + '.name') });
+      }
+    });
+    if (window.refreshDaily) window.refreshDaily();
   }
 
   function buildRuns() {

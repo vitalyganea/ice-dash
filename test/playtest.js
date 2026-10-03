@@ -454,6 +454,30 @@ async function walk(cdp, sid, P) {
   var saved = await ev("localStorage.getItem('icedash-save-v1')");
   ok(saved && saved.length > 100, 'the run was written to the save (' + (saved || '').length + ' bytes)');
 
+  /* ---- Time Rush ---- */
+  ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from the title');
+  ok(await ev("Game.debug().mode") === 'rush', 'as a timed run');
+  var tA = await ev("Game.debug().timeT");
+  for (var rr = 0; rr < 40; rr++) {
+    if ((await ev(WANT_TAP)) === 1) await tapHill();
+    await sleep(60);
+  }
+  var tB = await ev("Game.debug()&&Game.debug().timeT");
+  ok(tB !== null && tB < tA, 'and the clock runs down while you ride (' + (tA / 60).toFixed(1) + 's -> ' + (tB / 60).toFixed(1) + 's)');
+  await shot('17-rush');
+  await ev("Game.debug().timeT = 2; 1");
+  ok(await waitFor('#screen-over', 8000), 'when the time runs out the results come up');
+  var rTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
+  var rScore = await ev("document.getElementById('over-score').textContent");
+  ok(/time is up/i.test(rTitle) && / m$/.test(rScore), 'saying the time is up, scored in metres (' + rScore + ')');
+  ok((await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).bestRush")) > 0, 'and Time Rush has a best of its own');
+  await shot('18-rush-over');
+  ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
+     (await ev("Game.debug().mode")) === 'rush', 'Ride again is another Time Rush');
+  await clickFor('#btn-menu', '#screen-pause');
+  await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');
+  await ev("Game.stop();1");
+
   /* ---- a brand-new player: the tutorial ----
      Everything above ran on a save with runs in it, and the tutorial never
      appeared — which is itself the check that an existing player is not

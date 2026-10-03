@@ -23,6 +23,9 @@ var Game = (function () {
 
   var SPEED0 = 3.0, SPEED_MAX = 6.4, SPEED_RAMP = 0.000155;
   var ZONE_SHOW = 110;         // frames the stretch's name stays up
+  /* Time Rush: the clock you start with, what a clock bubble gives back,
+     and what a crash takes away instead of the run. */
+  var RUSH_START = 20 * 60, CLOCK_GAIN = 3 * 60, CRASH_COST = 5 * 60;
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
 
@@ -87,6 +90,7 @@ var Game = (function () {
   function perk() { return (skin && skin.perk) || {}; }
   var rafId = null, lastT = 0, accT = 0, paused = false, suspended = false;
   var hooks = { hud: null, over: null };
+  var pendingMode = null;
   var drawK = 1;
 
   /* The canvas draws its own words. i18n.js may not be there — the engine
@@ -211,6 +215,7 @@ var Game = (function () {
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
+      mode: 'free', timeT: 0, clocks: 0, penT: 0,
       lives: 0, revives: 0, finds: 0
     };
     W = w;
@@ -227,6 +232,8 @@ var Game = (function () {
        hill also stands still until the very first tap. */
     w.lessons = []; w.tutWait = null; w.tutRead = 0;
     w.hold = !!(w.course && w.course.tut);
+    /* Time Rush is the open hill against a clock. */
+    if (pendingMode === 'rush' && !w.course) { w.mode = 'rush'; w.timeT = RUSH_START; }
     /* The name of the stretch you are on, once as the run begins. Not in
        the tutorial, whose own words sit in that same place. */
     w.zoneT = w.hold ? 0 : ZONE_SHOW;
@@ -578,6 +585,17 @@ var Game = (function () {
                                       -CHUTE + 24, CHUTE - 24), gd),
                        d: gd, r: 19, got: false, ph: goldPh });
     }
+    /* Clock bubbles, in Time Rush only — and the dice for them are only
+       rolled there, so the open hill draws exactly the same random numbers
+       it always did and every Freeride check sees the same hills. Off the
+       line like the golden fish: time is earned by leaning out for it.
+       Thinner as the hill hardens, so a run cannot go on for ever. */
+    if (W.mode === 'rush' && Math.random() < lerp(0.5, 0.1, hard)) {
+      var cside = Math.random() < 0.5 ? -1 : 1, cdd = d + 60;
+      W.objects.push({ t: 'clock',
+                       x: place(clamp(gap + cside * rnd(60, 130), -CHUTE + 26, CHUTE - 26), cdd),
+                       d: cdd, r: 27, got: false, ph: rnd(0, 6.28) });
+    }
     if (Math.random() < 0.055 && W.dist > 1800 && !W.shield) {
       var bd = d + 90;
       W.objects.push({ t: 'bubble', x: place(gap + rnd(-16, 16), bd), d: bd, r: 24,
@@ -901,6 +919,13 @@ var Game = (function () {
       /* Nothing ends the tutorial but its finish line: a crash puts him
          back on the hill a beat later, the row that got him cleared, and
          no life is spent — a lesson you can fail out of is a bad lesson. */
+      /* In Time Rush a crash is paid for in seconds, not with the run. */
+      if (W.state === 'crash' && W.mode === 'rush' && W.endT === 30) {
+        W.lives++; revive(); W.revives--;
+        W.timeT = Math.max(0, W.timeT - CRASH_COST); W.penT = 70;
+        if (W.timeT <= 0) { W.state = 'timeup'; W.endT = 0; }
+        return;
+      }
       if (W.state === 'crash' && W.course && W.course.tut && W.endT === 30) {
         W.lives++; revive(); W.revives--;
         lesson({ key: 'tut.oops' });
@@ -911,6 +936,7 @@ var Game = (function () {
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
+                     mode: W.mode, clocks: W.clocks,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
@@ -973,7 +999,8 @@ var Game = (function () {
       }
       var grab = (o.r + PR) * (perk().reach || 1);
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble' || o.t === 'find' ||
-           o.t === 'rush' || o.t === 'chill' || o.t === 'sight' || o.t === 'call') && !o.got &&
+           o.t === 'rush' || o.t === 'chill' || o.t === 'sight' || o.t === 'call' ||
+           o.t === 'clock') && !o.got &&
           Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
@@ -984,6 +1011,9 @@ var Game = (function () {
         }
         else if (o.t === 'gold') { W.gold++; W.score += 150; Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12; }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; }
+        else if (o.t === 'clock') {
+          W.timeT += CLOCK_GAIN; W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10;
+        }
         else if (o.t === 'chill') {
           W.chillT = CHILL_FRAMES; Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
         }
@@ -1148,6 +1178,13 @@ var Game = (function () {
     }
 
     tutorial();
+    if (W.mode === 'rush' && W.state === 'run') {
+      if (--W.timeT <= 0) {
+        W.timeT = 0; W.state = 'timeup'; W.endT = 0; W.rushT = 0;
+        Sfx.excite(false); Sfx.zone();
+      }
+    }
+    if (W.penT > 0) W.penT--;
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
@@ -1521,6 +1558,7 @@ var Game = (function () {
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
       else if (o.t === 'find')   { if (!o.got) drawFind(x, y, o); }
+      else if (o.t === 'clock')  { if (!o.got) drawClock(x, y, o); }
       else if (o.t === 'rush')   { if (!o.got) drawRushBall(x, y, o); }
       else if (o.t === 'chill' || o.t === 'sight' || o.t === 'call') {
         if (!o.got) drawFind3(x, y, o);
@@ -2710,6 +2748,36 @@ var Game = (function () {
         ctx.fill();
       }
     }
+    ctx.restore();
+  }
+
+  /* Time, in Time Rush: a bubble of green-gold light with what it gives
+     written in it. No clock face — nothing on this hill is made — just
+     the seconds, and a glint running round the rim like a sweep hand. */
+  function drawClock(x, y, o) {
+    var r = o.r, bob = Math.sin(W.t * 0.08 + o.ph) * 2.5;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    var halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.7);
+    halo.addColorStop(0, 'rgba(200,255,150,.45)'); halo.addColorStop(1, 'rgba(200,255,150,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.7, 0, 6.2832); ctx.fill();
+    var g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 2, 0, 0, r);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, '#e2ffc0'); g.addColorStop(1, '#7fd65a');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
+    ctx.lineWidth = 2.6; ctx.strokeStyle = '#2f7d32';
+    ctx.stroke();
+    /* the sweep: a bright arc going round */
+    var a0 = W.t * 0.09 + o.ph;
+    ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    ctx.beginPath(); ctx.arc(0, 0, r - 4, a0, a0 + 1.3); ctx.stroke();
+    ctx.font = '800 ' + Math.round(r * 0.95) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3.2; ctx.strokeStyle = '#ffffff';
+    ctx.strokeText('+' + Math.round(CLOCK_GAIN / 60), 0, 1);
+    ctx.fillStyle = '#1f6a24';
+    ctx.fillText('+' + Math.round(CLOCK_GAIN / 60), 0, 1);
     ctx.restore();
   }
 
@@ -4428,19 +4496,24 @@ var Game = (function () {
        what it holds, so nothing can run into anything else. */
     var pad = u * 0.75, gap = u * 0.5;
     var fS = Math.round(u * 1.75), fM = Math.round(u * 1.05), fB = Math.round(u * 0.78);
-    var score = String(Math.floor(W.score));
-    var scoreLab = tr('hud.score', 'SCORE');
+    /* Time Rush reads the clock where the score would be: it is the thing
+       you are racing, and the score there is the distance underneath. */
+    var timed = W.mode === 'rush';
+    var score = timed ? (W.timeT / 60).toFixed(1) : String(Math.floor(W.score));
+    var scoreLab = timed ? tr('hud.time', 'TIME') : tr('hud.score', 'SCORE');
     var distTxt = String(Math.floor(W.dist / 8)) + ' ' + tr('hud.m', 'M');
     /* The catch as the purse counts it — the same number the results card
        adds to your fish — and not the count of fish swallowed, which a
        creature's perk makes a different number. */
     var fishTxt = String(W.coins);
-    var lifeTxt = W.lives > 0 ? String(W.lives) : '';
+    var lifeTxt = (W.lives > 0 && !timed) ? String(W.lives) : '';
     /* The best is a Freeride number. On a marked run it is another game's
        score, so it is not shown there at all. */
-    var bestTxt = (W.best > 0 && !W.course) ? tr('hud.best', 'BEST') + '  ' + W.best : '';
+    var bestTxt = (W.best > 0 && !W.course)
+                ? tr('hud.best', 'BEST') + '  ' + W.best + (timed ? ' ' + tr('hud.m', 'M') : '') : '';
 
-    var wScore = measureAt(score, fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62));
+    var wScore = measureAt(score, fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
+                 (timed ? u * 2.6 : 0);
     var icon = u * 1.5, sep = u * 0.9;
     var wDist = measureAt(distTxt, fM), wFish = icon + measureAt(fishTxt, fM);
     var wLife = lifeTxt ? icon + measureAt(lifeTxt, fM) : 0;
@@ -4468,11 +4541,24 @@ var Game = (function () {
     /* score, the big one */
     var y1 = padT + pad + fS * 0.82;
     ctx.font = '800 ' + fS + FONT;
-    ctx.fillStyle = '#0b3d7a';
+    var secs = W.timeT / 60;
+    ctx.fillStyle = !timed ? '#0b3d7a' : secs < 5 ? '#d22b3f' : secs < 8 ? '#d9730d' : '#0b3d7a';
+    if (timed && secs < 5) ctx.globalAlpha = 0.65 + 0.35 * Math.abs(Math.sin(W.t * 0.15));
     ctx.fillText(score, x0, y1);
+    ctx.globalAlpha = 1;
     ctx.font = '800 ' + Math.round(u * 0.62) + FONT;
     ctx.fillStyle = 'rgba(11,61,122,.55)';
-    ctx.fillText(scoreLab, x0 + measureAt(score, fS) + u * 0.4, y1);
+    var labX = x0 + measureAt(score, fS) + u * 0.4;
+    ctx.fillText(scoreLab, labX, y1);
+    /* what the last crash cost, for a moment */
+    if (timed && W.penT > 0) {
+      ctx.globalAlpha = Math.min(1, W.penT / 20);
+      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
+      ctx.fillStyle = '#d22b3f';
+      ctx.fillText('-' + Math.round(CRASH_COST / 60) + tr('hud.s', 's'),
+                   labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.5, y1);
+      ctx.globalAlpha = 1;
+    }
 
     /* metres · the catch · spare lives */
     var y2 = y1 + gap + fM * 0.95;
@@ -4707,12 +4793,13 @@ var Game = (function () {
     /* `lives` is how many spares the player is carrying into this run.
        It comes in from the save rather than being read here, so the engine
        stays free of storage. */
-    start: function (best, cbs, skinId, courseId, lives) {
+    start: function (best, cbs, skinId, courseId, lives, opts) {
       if (!ctx) setup();
       if (typeof SKINS !== 'undefined') skin = skinById(skinId);
       pendingCourse = (courseId && typeof courseById === 'function')
                     ? courseById(courseId) : null;
       hooks.hud = cbs.hud; hooks.over = cbs.over; hooks.lesson = cbs.lesson || null;
+      pendingMode = (opts && opts.mode) || null;
       newRun();
       if (W.hold) lesson({ key: 'tut.start', wait: true });
       W.best = best || 0;
