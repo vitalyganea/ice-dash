@@ -139,6 +139,7 @@
        whenever a run started before loadData() came back, taking away the
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
+    if (name === 'help') buildHints();
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
     if (name === 'ach') buildAch();
@@ -150,6 +151,35 @@
       el.classList.toggle('hidden', save.best <= 0);
     }
   }
+  /* The pictures in How to play: the actual objects off the hill, painted
+     by the game's own painters into a canvas on each line. Built when the
+     panel opens rather than at boot, for two reasons — a hidden panel has
+     no layout, so there is nothing to measure the canvas against, and
+     applyI18n writes innerHTML over these same elements on every language
+     change, which would throw the canvases away. */
+  function buildHints() {
+    if (!window.Game || !Game.drawHint) return;
+    var els = document.querySelectorAll('#screen-help li[data-hint]');
+    for (var i = 0; i < els.length; i++) {
+      var li = els[i], kind = li.getAttribute('data-hint');
+      if (li.firstChild && li.firstChild.className === 'hint-ico') continue;
+      var txt = document.createElement('span');
+      txt.className = 'hint-txt';
+      txt.innerHTML = li.innerHTML;
+      var cv = document.createElement('canvas');
+      cv.className = 'hint-ico';
+      cv.setAttribute('aria-hidden', 'true');
+      li.textContent = '';
+      li.appendChild(cv);
+      li.appendChild(txt);
+      /* Sized by the stylesheet, which knows about small screens; read
+         back rather than guessed at. */
+      var box = Math.round(cv.getBoundingClientRect().width) || 50;
+      if (kind === 'skin') Game.drawSkinPreview(cv, save.equipped, box);
+      else Game.drawHint(cv, kind, box);
+    }
+  }
+
   function showGame() { show('game'); }
 
   /* --------------------------- game -------------------------- */

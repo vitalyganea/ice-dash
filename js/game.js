@@ -402,7 +402,8 @@ var Game = (function () {
       }
     }
     if (cr.gold)
-      W.objects.push({ t: 'gold', x: place(clamp(cr.gap + 120, -CHUTE + 24, CHUTE - 24), d + 20),
+      W.objects.push({ t: 'gold',
+                       x: place(clamp(cr.gap + 120, -CHUTE + 24, CHUTE - 24), d + 20),
                        d: d + 20, r: 19, got: false, ph: 1.4 });
     if (cr.bubble)
       W.objects.push({ t: 'bubble', x: place(cr.gap, d + 90), d: d + 90, r: 24,
@@ -524,30 +525,44 @@ var Game = (function () {
     /* Mostly MORE strings, only a little longer: scaling both by the same
        factor multiplied out to nearly four times the fish, which is far more
        than one 850-fish skin should be worth. */
+    /* ---- a perk may not change the HILL ----------------------------
+       Everything below draws its random numbers BEFORE asking whether the
+       thing it is placing exists, and always draws the same count. It
+       reads oddly and it matters: a perk that gates a spawn used to change
+       how many numbers came out of the stream on that row, so every row
+       after it came out differently. Two skins were never riding the same
+       hill, which is exactly what `economy.js` and `ladder.js` set out to
+       compare. The seal looked 20% short of the free skin over twenty
+       runs; most of that was the two of them being measured on different
+       mountains. */
     var shoal = perk().shoal || 1;
     var longer = 1 + (shoal - 1) * 0.45;
-    if (Math.random() < Math.min(0.85, 0.3 * shoal)) {
-      var n = 2 + ((Math.random() * 3 * longer) | 0);
+    var shoalRoll = Math.random(), lenRoll = Math.random();
+    var phase = rnd(0, 6.28), fishPh = [];
+    for (var fp = 0; fp < 8; fp++) fishPh.push(rnd(0, 6.28));
+    if (shoalRoll < Math.min(0.85, 0.3 * shoal)) {
+      var n = Math.min(8, 2 + ((lenRoll * 3 * longer) | 0));
       /* The shoal weaves across the lane instead of sitting on the racing
          line. On the line it was free score that asked nothing of you — and
          it made the reach perk worthless, because you already passed within
          a few units of every fish. The sweep is kept inside the opening so
          chasing one never walks you into a boulder. */
       var sweep = Math.min(58, gapW / 2 + 8);
-      var phase = rnd(0, 6.28);
       for (var i = 0; i < n; i++) {
         var fd = d + i * 46 - 44;
         W.objects.push({ t: 'fish',
                          x: place(gap + Math.sin(phase + i * 0.85) * sweep, fd), d: fd,
-                         r: 15, got: false, ph: rnd(0, 6.28) });
+                         r: 15, got: false, ph: fishPh[i] });
       }
     }
-    if (Math.random() < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && W.dist > 1200) {
+    var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
+    var goldOff = rnd(90, 150), goldPh = rnd(0, 6.28);
+    if (goldRoll < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && W.dist > 1200) {
       var gd = d + 20;
       W.objects.push({ t: 'gold',
-                       x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(90, 150),
+                       x: place(clamp(gap + goldSide * goldOff,
                                       -CHUTE + 24, CHUTE - 24), gd),
-                       d: gd, r: 19, got: false, ph: rnd(0, 6.28) });
+                       d: gd, r: 19, got: false, ph: goldPh });
     }
     if (Math.random() < 0.055 && W.dist > 1800 && !W.shield) {
       var bd = d + 90;
@@ -1293,7 +1308,7 @@ var Game = (function () {
     drawEmberGlow();
     drawSightLine();
     drawObjects();
-    drawRush();
+    drawSpeedStreaks();
     drawAurora();
     drawHaze();
     drawFog();
@@ -1433,7 +1448,7 @@ var Game = (function () {
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
       else if (o.t === 'find')   { if (!o.got) drawFind(x, y, o); }
-      else if (o.t === 'rush')   { if (!o.got) drawRush(x, y, o); }
+      else if (o.t === 'rush')   { if (!o.got) drawRushBall(x, y, o); }
       else if (o.t === 'chill' || o.t === 'sight' || o.t === 'call') {
         if (!o.got) drawFind3(x, y, o);
       }
@@ -1728,7 +1743,7 @@ var Game = (function () {
   }
 
   /* A ball of packed powder, still spinning where the wind rolled it. */
-  function drawRush(x, y, o) {
+  function drawRushBall(x, y, o) {
     var r = o.r, a = W.t * 0.05 + o.ph, k;
     ctx.save();
     ctx.translate(x, y);
@@ -1781,45 +1796,6 @@ var Game = (function () {
 
 
   /* A ball of packed powder, still spinning where the wind rolled it. */
-  function drawRush(x, y, o) {
-    var r = o.r, a = W.t * 0.05 + o.ph, k;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(60,120,166,.22)';
-    ctx.beginPath(); ctx.ellipse(4, 7, r * 1.05, r * 0.92, 0, 0, 6.2832); ctx.fill();
-
-    var g = ctx.createRadialGradient(-r * 0.3, -r * 0.34, r * 0.1, 0, 0, r);
-    g.addColorStop(0, '#ffffff');
-    g.addColorStop(0.62, '#e8f5ff');
-    g.addColorStop(1, '#b9d9ef');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-
-    /* packed layers, turning: this is a ball that has been rolling */
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip();
-    ctx.strokeStyle = 'rgba(150,196,226,.55)'; ctx.lineWidth = 2.2;
-    for (k = 0; k < 3; k++) {
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a + k * 2.1) * r * 0.3, Math.sin(a + k * 2.1) * r * 0.3,
-                  r * 0.78, r * 0.34, a * 0.6 + k, 0, 6.2832);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.6;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
-
-    /* loose powder flicking off it */
-    ctx.fillStyle = 'rgba(255,255,255,.8)';
-    for (k = 0; k < 6; k++) {
-      var fa = a * 1.6 + k * 1.047, fr = r * (1.18 + 0.16 * Math.sin(a * 2 + k));
-      ctx.beginPath();
-      ctx.arc(Math.cos(fa) * fr, Math.sin(fa) * fr, 2.4 + (k % 3), 0, 6.2832);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
 
   
   /* A nodule of glacier ice with something caught inside it, still turning
@@ -2696,162 +2672,11 @@ var Game = (function () {
 
      Kept as type 'gate' in the code because that is what it is to the
      rules: a thing you steer through for a bonus. */
-  function drawGate(x, y, o) {
-    var hw = o.w / 2, hh = 26;
-    ctx.save();
-    ctx.translate(x, y);
-
-    var lit = o.scored, gone = o.passed && !o.scored;
-
-    /* polished ice, sunk very slightly into the run */
-    var g = ctx.createLinearGradient(0, -hh, 0, hh);
-    if (lit) { g.addColorStop(0, 'rgba(150,246,214,.85)'); g.addColorStop(1, 'rgba(60,198,160,.6)'); }
-    else if (gone) { g.addColorStop(0, 'rgba(186,200,212,.4)'); g.addColorStop(1, 'rgba(150,168,184,.3)'); }
-    else { g.addColorStop(0, 'rgba(86,196,238,.72)'); g.addColorStop(1, 'rgba(36,138,196,.62)'); }
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.fill();
-
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,.4)';        // scour lines, down the fall line
-    ctx.lineWidth = 1.6;
-    for (var i = -3; i <= 3; i++) {
-      var sx = i * hw * 0.26;
-      ctx.beginPath();
-      ctx.moveTo(sx - 3, -hh);
-      ctx.quadraticCurveTo(sx, 0, sx + 3, hh);
-      ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,255,255,.3)';          // the glassy sheen
-    ctx.beginPath(); ctx.ellipse(-hw * 0.3, -hh * 0.4, hw * 0.44, hh * 0.3, -0.2, 0, 6.2832); ctx.fill();
-    ctx.restore();
-
-    ctx.strokeStyle = lit ? 'rgba(120,240,196,.95)'
-                    : (gone ? 'rgba(170,186,200,.5)' : 'rgba(190,238,255,.9)');
-    ctx.lineWidth = lit ? 3.4 : 2.4;
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.stroke();
-
-    if (lit) {                                       // a scatter of frost thrown up
-      ctx.fillStyle = 'rgba(210,255,238,.85)';
-      for (i = 0; i < 6; i++) {
-        var a2 = i / 6 * 6.2832 + 0.4;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a2) * hw * 1.1, Math.sin(a2) * hh * 1.25, 2.2, 0, 6.2832);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
 
   /* A fish, not a fish-shaped lozenge. The body flexes in an S that runs
      from the nose back to the tail, the tail follows a beat behind it, and
      the fins trail. A golden one is the same fish with everything turned
      up: longer fins, a brighter flank, and sparks coming off it. */
-  function drawFish(x, y, o, gold) {
-    var ph = W.t * 0.24 + o.ph;
-    var tail = Math.sin(ph) * 0.42;
-    var bend = Math.sin(ph - 0.8) * 0.3;             // the body trails the tail
-    var L = gold ? 25 : 18, Hh = gold ? 13 : 10;
-
-    ctx.save();
-    ctx.translate(x, y + Math.sin(W.t * 0.07 + o.ph) * 3);
-    ctx.rotate(Math.PI / 2 + bend * 0.3);
-
-    var halo = gold ? 0.3 + 0.16 * Math.sin(W.t * 0.13 + o.ph) : 0.22;
-    ctx.fillStyle = gold ? 'rgba(255,205,60,' + halo.toFixed(2) + ')'
-                         : 'rgba(150,215,255,.22)';
-    ctx.beginPath(); ctx.arc(0, 0, L * 1.35, 0, 6.2832); ctx.fill();
-
-    ctx.save(); ctx.rotate(tail);                    // tail fin
-    var tg = ctx.createLinearGradient(L * 0.4, 0, L * 1.2, 0);
-    tg.addColorStop(0, gold ? '#f0b52a' : '#6bb6e0');
-    tg.addColorStop(1, gold ? '#c8850a' : '#3d84b8');
-    ctx.fillStyle = tg;
-    ctx.beginPath();
-    ctx.moveTo(L * 0.42, 0);
-    ctx.quadraticCurveTo(L * 0.9, -Hh * 0.5, L * (gold ? 1.3 : 1.12), -Hh * 1.1);
-    ctx.quadraticCurveTo(L * 0.95, 0, L * (gold ? 1.3 : 1.12), Hh * 1.1);
-    ctx.quadraticCurveTo(L * 0.9, Hh * 0.5, L * 0.42, 0);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-
-    [-1, 1].forEach(function (k) {                   // pectoral fins, trailing
-      ctx.save();
-      ctx.translate(-L * 0.12, k * Hh * 0.62);
-      ctx.rotate(k * (0.5 + Math.sin(ph - 1.2) * 0.26));
-      ctx.fillStyle = gold ? 'rgba(240,186,48,.85)' : 'rgba(110,180,220,.85)';
-      ctx.beginPath();
-      ctx.ellipse(L * 0.16, 0, L * 0.26, Hh * 0.28, 0, 0, 6.2832);
-      ctx.fill();
-      ctx.restore();
-    });
-
-    ctx.save();                                      // dorsal fin
-    ctx.rotate(Math.sin(ph - 0.4) * 0.12);
-    ctx.fillStyle = gold ? '#e8a318' : '#5aa9d8';
-    ctx.beginPath();
-    ctx.moveTo(-L * 0.28, -Hh * 0.75);
-    ctx.quadraticCurveTo(L * 0.08, -Hh * (gold ? 1.9 : 1.6), L * 0.36, -Hh * 0.7);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-
-    var g = ctx.createLinearGradient(0, -Hh, 0, Hh);  // the body
-    if (gold) { g.addColorStop(0, '#fff0b4'); g.addColorStop(0.45, '#ffc531');
-                g.addColorStop(1, '#c9820a'); }
-    else      { g.addColorStop(0, '#eaf7ff'); g.addColorStop(0.45, '#8fcdf0');
-                g.addColorStop(1, '#3f82b4'); }
-    ctx.fillStyle = g;
-    ctx.beginPath();                                 // flexing, not an ellipse
-    ctx.moveTo(-L, 0);
-    ctx.quadraticCurveTo(-L * 0.2, -Hh * (1 + bend), L * 0.45, -Hh * 0.42);
-    ctx.quadraticCurveTo(L * 0.5, 0, L * 0.45, Hh * 0.42);
-    ctx.quadraticCurveTo(-L * 0.2, Hh * (1 - bend), -L, 0);
-    ctx.closePath(); ctx.fill();
-
-    ctx.strokeStyle = gold ? 'rgba(255,245,200,.75)' : 'rgba(236,250,255,.6)';
-    ctx.lineWidth = 1.6;                             // the light along its flank
-    ctx.beginPath();
-    ctx.moveTo(-L * 0.72, -Hh * 0.12 - bend * 2);
-    ctx.quadraticCurveTo(-L * 0.1, -Hh * 0.44 - bend * 4, L * 0.4, -Hh * 0.1);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(40,74,104,.28)'; ctx.lineWidth = 1.3;
-    ctx.beginPath();                                 // gill
-    ctx.moveTo(-L * 0.42, -Hh * 0.62);
-    ctx.quadraticCurveTo(-L * 0.3, 0, -L * 0.42, Hh * 0.62);
-    ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(-L * 0.6, -Hh * 0.22, Hh * 0.3, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = '#23304a';
-    ctx.beginPath(); ctx.arc(-L * 0.62, -Hh * 0.22, Hh * 0.15, 0, 6.2832); ctx.fill();
-
-    if (gold) {                                      // sparks coming off it
-      ctx.fillStyle = 'rgba(255,248,200,.9)';
-      for (var sp = 0; sp < 3; sp++) {
-        var sa = W.t * 0.06 + o.ph + sp * 2.1;
-        var sr = L * (1.1 + 0.16 * Math.sin(W.t * 0.11 + sp));
-        var ss = 1.4 + 1.1 * Math.abs(Math.sin(W.t * 0.09 + sp * 1.7));
-        ctx.beginPath();
-        ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr * 0.62, ss, 0, 6.2832);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
-
-  function drawBubble(x, y, o) {
-    var r = o.r + Math.sin(W.t * 0.08 + o.ph) * 2;
-    var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
-    g.addColorStop(0, 'rgba(255,255,255,.85)');
-    g.addColorStop(0.55, 'rgba(160,230,255,.35)');
-    g.addColorStop(1, 'rgba(110,200,245,.2)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = 'rgba(210,245,255,.9)'; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.95)';
-    ctx.beginPath(); ctx.ellipse(x - r * 0.35, y - r * 0.42, r * 0.26, r * 0.14, -0.5, 0, 6.2832); ctx.fill();
-  }
 
   /* ---- the penguin, flat on its belly, seen from directly above ---- */
   /* What tells one penguin from another when you are looking straight down
@@ -3705,6 +3530,103 @@ var Game = (function () {
                  reindeer: bodyReindeer, orca: bodyOrca,
                  hare: bodyHare, owl: bodyOwl };
 
+  /* The dispatch behind drawHint. Everything is drawn at the size it has
+     on the hill and then scaled to the box, so the proportions between one
+     icon and the next are the proportions between the things themselves —
+     a fish really is smaller than a boulder. */
+  function paintHint(kind, size) {
+    var B = (typeof BIOMES !== 'undefined') ? BIOMES[0] : null;
+    var c = size / 2, s = size / 62;
+    var pts = [0.92, 0.78, 1.04, 0.86, 1.10, 0.80, 0.98, 0.88, 1.02];
+    ctx.save();
+    ctx.translate(c, c); ctx.scale(s, s); ctx.translate(-c, -c);
+    if (kind === 'fish')        drawFish(c, c, { r: 15, ph: 0.6 }, false);
+    else if (kind === 'gold')   drawFish(c, c, { r: 19, ph: 0.6 }, true);
+    else if (kind === 'bubble') drawBubble(c, c, { r: 21, ph: 1.2 });
+    else if (kind === 'gate')   drawGate(c, c, { w: 54, d: 0, passed: false, scored: false });
+    else if (kind === 'find')   drawFind(c, c, { r: 21, ph: 0.4 });
+    else if (kind === 'rush')   drawRushBall(c, c, { r: 22, ph: 1.4 });
+    else if (kind === 'chill' || kind === 'sight' || kind === 'call')
+                                drawFind3(c, c, { t: kind, r: 21, ph: 0.5 });
+    else if (kind === 'drift')  drawDrift(c, c, { r: 26, ph: 1.0 }, B);
+    else if (kind === 'geyser') hintGeyser(c, c, B);
+    else if (kind === 'rock')   drawRock(c, c, { r: 22, rot: 0.4, d: 0, pts: pts }, B);
+    else if (kind === 'tree')   drawTree(c, c, { r: 22, rot: 0.2, d: 0, pts: pts }, B);
+    else if (kind === 'heart')  drawHeart(c, c, 17);
+    else if (kind === 'crevasse') hintCrevasse(c, c, B);
+    else if (kind === 'fork')     hintFork(c, c, B);
+    ctx.restore();
+  }
+
+  /* The two that span the run rather than sitting at a point. Drawn small
+     on purpose: a crevasse is a slot with the ramp in front of it, a fork
+     is a ridge with a way past on either side. */
+  function hintCrevasse(x, y, B) {
+    ctx.save(); ctx.translate(x, y);
+    var g = ctx.createLinearGradient(0, -17, 0, 0);
+    g.addColorStop(0, '#2a4a66'); g.addColorStop(0.5, '#10243a'); g.addColorStop(1, '#081626');
+    ctx.fillStyle = g;
+    ctx.beginPath(); rr(ctx, -23, -17, 46, 17, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(214,238,255,.75)';          // the near lip, catching light
+    ctx.beginPath(); rr(ctx, -23, -2, 46, 4, 2); ctx.fill();
+    drawRamp(0, 15, { w: 26, used: false }, B);
+    ctx.restore();
+  }
+  /* The geyser gets its own small drawing rather than a frozen frame of
+     the real one. Caught mid-eruption and shrunk to 44px the plume spreads
+     into a round white puff, which is exactly what the deep snow icon
+     above it already is — two different hazards, one picture. A narrow
+     column out of a dark hole cannot be mistaken for a drift. */
+  function hintGeyser(x, y, B) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#0d2438';                        // the hole it comes out of
+    ctx.beginPath(); ctx.ellipse(0, 16, 15, 7, 0, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(206,234,252,.8)'; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.ellipse(0, 16, 15, 7, 0, 0, 6.2832); ctx.stroke();
+
+    var g = ctx.createLinearGradient(0, -26, 0, 16);  // the column
+    g.addColorStop(0, 'rgba(255,255,255,.28)');
+    g.addColorStop(0.45, 'rgba(236,250,255,.92)');
+    g.addColorStop(1, '#bfe4f8');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-5, 16);
+    ctx.bezierCurveTo(-9, -2, -7, -16, -3, -27);
+    ctx.bezierCurveTo(-1, -30, 2, -30, 4, -27);
+    ctx.bezierCurveTo(8, -16, 10, -2, 6, 16);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,.9)';           // thrown clear of it
+    [[-12, -14, 2.6], [11, -9, 2.2], [-9, 2, 2.0], [13, 3, 2.4], [0, -31, 2.2]]
+      .forEach(function (p) {
+        ctx.beginPath(); ctx.arc(p[0], p[1], p[2], 0, 6.2832); ctx.fill();
+      });
+    ctx.restore();
+  }
+
+  function hintFork(x, y, B) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = B && B.cap ? B.cap : '#ffffff';
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    ctx.moveTo(0, -27); ctx.lineTo(13, 0); ctx.lineTo(0, 27); ctx.lineTo(-13, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = B ? B.rockDark : '#6b5a48';
+    ctx.beginPath();
+    ctx.moveTo(0, -24); ctx.lineTo(9, 0); ctx.lineTo(0, 24); ctx.lineTo(-9, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = B ? B.rock : '#8d7a63';
+    ctx.beginPath();
+    ctx.moveTo(0, -24); ctx.lineTo(-9, 0); ctx.lineTo(0, 24); ctx.lineTo(-2, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(52,72,92,.4)'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, -24); ctx.lineTo(9, 0); ctx.lineTo(0, 24); ctx.lineTo(-9, 0);
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+
   /* One painter, two callers: the creature on the hill and the little
      portrait on each shop card. Everything it needs comes in through `o`,
      so the preview does not have to fake a world to borrow the drawing. */
@@ -4055,7 +3977,7 @@ var Game = (function () {
 
   /* Wind along the sides, and only once he is really moving. Kept off the
      middle third so it never competes with the line he is reading. */
-  function drawRush() {
+  function drawSpeedStreaks() {
     var sp = pace();
     if (sp < 0.10) return;
     var k = clamp((sp - 0.10) / 0.45, 0, 1);
@@ -4682,6 +4604,30 @@ var Game = (function () {
       }
       frame();
       return function () { if (raf != null) cancelAnimationFrame(raf); };
+    },
+    /* One thing off the hill, painted into a little canvas for the How to
+       play panel. It borrows the game's OWN painters rather than drawing
+       the same objects a second time in a second style — change the bubble
+       on the hill and the bubble in the panel changes with it. The module's
+       canvas context and world are swapped out and put back, so nothing
+       else in here knows it happened. */
+    drawHint: function (cv, kind, size) {
+      if (!cv || !cv.getContext || typeof BIOMES === 'undefined') return;
+      size = size || 54;
+      var k = Math.min(window.devicePixelRatio || 1, 2.5);
+      cv.width = Math.round(size * k); cv.height = Math.round(size * k);
+      cv.style.width = size + 'px'; cv.style.height = size + 'px';
+      var keepCtx = ctx, keepW = W;
+      ctx = cv.getContext('2d');
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      /* A still frame. The painters read W.t to breathe and there is no run
+         behind a menu, so they are handed a world that is not moving. */
+      if (!W) W = { t: 0, dist: 0, px: 0, speed: 0, objects: [], rows: [],
+                    biome: 0, biomeT: 0 };
+      try { paintHint(kind, size); } catch (e) { /* a missing icon is not a crash */ }
+      ctx = keepCtx; W = keepW;
     },
     drawSkinPreview: function (cv, skinId, size) {
       if (!cv || !cv.getContext || typeof SKINS === 'undefined') return;
