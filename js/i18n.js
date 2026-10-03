@@ -189,6 +189,9 @@ var STRINGS = {
   'biome.7': { en: 'Emberflow',    ru: 'Огненная река' },
   'biome.8': { en: 'Hollyfrost',   ru: 'Рябина в снегу' },
   'biome.9': { en: 'Everwinter',   ru: 'Вечная зима' },
+  'biome.10': { en: 'Frozen Jungle', ru: 'Замёрзшие джунгли' },
+  'biome.11': { en: 'Cosmic Ice',    ru: 'Космический лёд' },
+  'biome.12': { en: 'Crystal Caves', ru: 'Хрустальные пещеры' },
 
 
   'btn.trophies': { en: 'Trophies',      ru: 'Награды' },
@@ -216,7 +219,7 @@ var STRINGS = {
   'ach.lines1.name':   { en: 'Line Learnt',  ru: 'Линия выучена' },
   'ach.lines1.desc':   { en: 'Finish a marked run', ru: 'Пройти знакомую линию' },
   'ach.linesAll.name': { en: 'Every Line',   ru: 'Все линии' },
-  'ach.linesAll.desc': { en: 'Finish all six of them', ru: 'Пройти все шесть' },
+  'ach.linesAll.desc': { en: 'Finish every marked line', ru: 'Пройти все размеченные линии' },
   'ach.stars18.name':  { en: 'Nothing Left to Learn', ru: 'Больше нечему учиться' },
   'ach.stars18.desc':  { en: 'Three stars on every marked run',
                          ru: 'По три звезды на каждой линии' },
@@ -290,6 +293,9 @@ var STRINGS = {
   'course.glassrun.name':   { en: 'Glass Run',    ru: 'Стеклянный спуск' },
   'course.nightfall.name':  { en: 'Nightfall',    ru: 'Сумерки' },
   'course.cornice.name':    { en: 'The Cornice',  ru: 'Карниз' },
+  'course.canopy.name':     { en: 'Canopy',       ru: 'Полог' },
+  'course.starfall.name':   { en: 'Starfall',     ru: 'Звездопад' },
+  'course.geode.name':      { en: 'Geode',        ru: 'Жеода' },
 
   'skin.snowcap.name': { en: 'Snowcap', ru: 'Снежок' },
   'skin.snowcap.perk': { en: 'No bonus — the honest baseline.',

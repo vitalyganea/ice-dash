@@ -192,6 +192,9 @@ var Game = (function () {
     out.streak = (t < 0.5 ? prev : cur).streak;
     out.capShade = (t < 0.5 ? prev : cur).capShade;
     out.shadow = (t < 0.5 ? prev : cur).shadow;
+    /* What grows on the hill is a shape, not a colour: it changes over at
+       the midpoint of the fade, like the shade washes. */
+    out.flora = (t < 0.5 ? prev : cur).flora;
     if (prev.aurora || cur.aurora) {
       out.aurora = mixTriplet(prev.aurora, cur.aurora, t);
       out.auroraA = (prev.aurora ? 1 : 0) + ((cur.aurora ? 1 : 0) - (prev.aurora ? 1 : 0)) * t;
@@ -2362,7 +2365,74 @@ var Game = (function () {
   /* A conifer from directly overhead: rings of needles stepping inward and
      catching more light as they near the tip, with snow settled along the
      upper branches. Nothing sits dead centre — a dot there reads as an eye. */
+  /* ---- what grows where it is not pine ----
+     Same radius as the pine it stands in for, so a row is exactly as hard
+     as it was; only what it looks like changes. */
+
+  /* The frozen jungle: a broad-leaved plant seen from above, its leaves
+     fanned out from the middle, each with its vein and a rim of frost. */
+  function drawLeafPlant(x, y, o, B) {
+    var r = o.r, n = 6 + formOf(o, 3), k;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(30,80,70,.26)';
+    ctx.beginPath(); ctx.ellipse(6, 9, r * 1.0, r * 0.92, 0, 0, 6.2832); ctx.fill();
+    ctx.rotate(o.rot);
+    for (k = 0; k < n; k++) {
+      ctx.save();
+      ctx.rotate(k / n * 6.2832 + (k % 2) * 0.18);
+      var L = r * (k % 2 ? 0.92 : 1.02), Wd = r * 0.34;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(Wd, -L * 0.45, 0, -L);
+      ctx.quadraticCurveTo(-Wd, -L * 0.45, 0, 0);
+      ctx.fillStyle = k % 2 ? B.treeDark : B.tree;
+      ctx.fill();
+      ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(235,255,250,.75)';   // frost on the rim
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -L * 0.08); ctx.lineTo(0, -L * 0.9);  // the vein
+      ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.fillStyle = B.trunk;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.16, 0, 6.2832); ctx.fill();
+    ctx.restore();
+  }
+
+  /* Crystal caves and cosmic ice: a cluster of crystals grown up out of
+     the ice, faceted, catching the light on one face. */
+  function drawCrystalSpire(x, y, o, B) {
+    var r = o.r, n = 5 + formOf(o, 3), k;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(40,20,70,.28)';
+    ctx.beginPath(); ctx.ellipse(6, 9, r * 0.98, r * 0.9, 0, 0, 6.2832); ctx.fill();
+    ctx.rotate(o.rot);
+    ctx.lineJoin = 'round';
+    for (k = 0; k < n; k++) {
+      ctx.save();
+      ctx.rotate(k / n * 6.2832 + (k % 2) * 0.35);
+      var L = r * (0.72 + 0.3 * ((k * 7) % 4) / 3), Wd = r * 0.24;
+      /* lit face, shaded face, and an edge between them */
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-Wd, -L * 0.55); ctx.lineTo(0, -L); ctx.closePath();
+      ctx.fillStyle = B.tree; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Wd, -L * 0.55); ctx.lineTo(0, -L); ctx.closePath();
+      ctx.fillStyle = B.treeDark; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-Wd, -L * 0.55); ctx.lineTo(0, -L);
+      ctx.lineTo(Wd, -L * 0.55); ctx.closePath();
+      ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
+      ctx.restore();
+    }
+    var g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 0.4);
+    g.addColorStop(0, 'rgba(255,255,255,.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, 6.2832); ctx.fill();
+    ctx.restore();
+  }
+
   function drawTree(x, y, o, B) {
+    if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
+    if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
     var r = o.r, k, a, rad, ri;
     ctx.save();
     ctx.translate(x, y);

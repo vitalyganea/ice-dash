@@ -333,7 +333,8 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="runs"]', '#screen-runs');
   ok(await waitFor('#screen-runs'), 'Known Lines opens');
   var lines = await ev("document.querySelectorAll('#runs-list > *').length");
-  ok(lines === 6, 'all six marked runs are listed (' + lines + ')');
+  var nLines = await ev("COURSES.length");
+  ok(lines === nLines && nLines >= 9, 'every marked line is listed (' + lines + ' of ' + nLines + ')');
   /* The seed has First Light done, so The Narrows is open and Gap Teeth is
      the next one locked: that row must say which line opens it. */
   var hint = await ev("Array.from(document.querySelectorAll('#runs-list .run-sub')).map(e=>e.textContent).join('|')");
@@ -362,6 +363,7 @@ async function walk(cdp, sid, P) {
   await ensureRunning();
   await steerFor(1200);
 
+  await waitFor('#btn-menu', 4000);
   await clickFor('#btn-menu', '#screen-pause');
   ok(await waitFor('#screen-pause'), 'the pause button pauses');
   await shot('09-pause');
@@ -493,6 +495,7 @@ async function walk(cdp, sid, P) {
   await shot('18-rush-over');
   ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
      (await ev("Game.debug().mode")) === 'rush', 'Ride again is another Time Rush');
+  await waitFor('#btn-menu', 4000);
   await clickFor('#btn-menu', '#screen-pause');
   await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');
   await ev("Game.stop();1");
@@ -527,6 +530,7 @@ async function walk(cdp, sid, P) {
 
   /* Giving up from the pause screen starts the lesson over — it used to
      start Freeride, which a new player does not have yet. */
+  await waitFor('#btn-menu', 4000);
   await clickFor('#btn-menu', '#screen-pause');
   await clickFor('#screen-pause [data-action="play"]', '#tut-card');
   var again = await ev("(Game.debug()&&Game.debug().course&&Game.debug().course.id)+'|'+document.getElementById('tut-text').textContent");

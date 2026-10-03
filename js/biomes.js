@@ -166,5 +166,56 @@ var BIOMES = [
     fog:   0.26, fogRGB: '32,48,84',
     air:   { rgb: '226,240,255', a: 0.55, r: 1.3, rise: 0, drift: 0.5, n: 0.35 },
     sparkle: 1                // frost catching the moon
+  },
+  {
+    /* A jungle the cold came for overnight. The great leaves are still
+       green under a rim of frost, the air is wet and warm-looking, and the
+       fruit is still on the branches. All of it grew there. */
+    name: 'Frozen Jungle',
+    sky:   ['#7fe0c4', '#e4fff4'],
+    hazeRGB: '214,250,236',
+    snowA: '#eafff6', iceTop: '#a8ead8', iceBot: '#5fc7b0', bankEdge: '#d2f5e8', bankShade: '#8fd1bd',
+    far:   '#6fb9a0', edge: '#3f9c80',
+    tree:  '#1f9a5e', treeDark: '#0f6a40', trunk: '#5b4a2a',
+    rock:  '#7f9c8a', rockDark: '#566f60',
+    flora: 'leaf',            // broad leaves, not pine
+    grip:  1,
+    fog:   0.16, fogRGB: '206,250,232',
+    air:   { rgb: '210,255,236', a: 0.7, r: 1.8, rise: 0, drift: 0.7, n: 0.6 },
+    berries: 0.9              // the fruit, still on the branches
+  },
+  {
+    /* Ice out past the sky: a frozen comet's tail, violet-black, with the
+       stars showing up through it and a band of light overhead. */
+    name: 'Cosmic Ice',
+    sky:   ['#0b0620', '#3a1a6e'],
+    hazeRGB: '44,24,96',
+    snowA: '#dcd4ff', iceTop: '#7e6cd8', iceBot: '#3a2a8a', bankEdge: '#bdb2f2', bankShade: '#8f80d0',
+    far:   '#24124e', edge: '#5a44b0',
+    tree:  '#b9a8ff', treeDark: '#6f5ad6', trunk: '#3c2e7a',
+    rock:  '#6c6290', rockDark: '#463e66',
+    cap:   '#e8e2ff', capShade: 'rgba(60,40,140,.45)', shadow: 'rgba(10,4,40,.45)',
+    flora: 'crystal',         // spires of ice, not trees
+    grip:  1,
+    fog:   0.32, fogRGB: '20,10,56',
+    air:   { rgb: '255,255,255', a: 0.9, r: 1.2, rise: 0, drift: 0.15, n: 0.5 },
+    aurora: '200,140,255',
+    sparkle: 1.2              // stars caught in the ice
+  },
+  {
+    /* Underground, where the ice grew crystal instead of snow: amethyst
+       walls, rose-coloured floor and a drift of glowing motes in the dark. */
+    name: 'Crystal Caves',
+    sky:   ['#2a1038', '#7a3a8a'],
+    hazeRGB: '120,60,140',
+    snowA: '#f6e6ff', iceTop: '#e2b8f2', iceBot: '#b07ad6', bankEdge: '#ecd2fa', bankShade: '#c99ae0',
+    far:   '#4a2058', edge: '#8a4aa4',
+    tree:  '#d58cf0', treeDark: '#8e44b4', trunk: '#5a2a70',
+    rock:  '#a986c9', rockDark: '#73559a',
+    flora: 'crystal',
+    grip:  1,
+    fog:   0.22, fogRGB: '90,40,110',
+    air:   { rgb: '255,236,170', a: 0.8, r: 2.0, rise: 0.6, drift: 1.2, hot: 0.4, n: 0.4 },
+    sparkle: 0.8
   }
 ];
