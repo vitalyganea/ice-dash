@@ -23,14 +23,27 @@ Opened this way the game runs standalone: the Playables SDK is not present, so
 the best score goes to `localStorage` instead of the cloud save, and the
 platform pause and audio hooks are simply inactive.
 
-## Two ways down
+## Four ways down
+
+**Time Rush** is the open hill against a clock: twenty seconds to start,
+green-gold bubbles off the safe line give three back, and a crash costs
+five seconds instead of the run. It keeps its own best, in metres.
+
+**The Daily Line** is a marked line written fresh each day from the date,
+the same for everyone on that day, with stars and a streak for finishing
+on consecutive days. A whole year of dates is run through the same
+reachability proof as the hand-written lines (`test/daily.js`).
+
+The other two are below.
+
+## Freeride and Known Lines
 
 **Freeride** is the endless one: the hill is built as you ride it and it never
 stops. Distance and points are the scoreboard.
 
-**Known Lines** are six routes that are written down rather than generated —
-*First Light*, *The Narrows*, *Gap Teeth*, *Glass Run*, *Nightfall* and *The
-Cornice*. Every opening, boulder and crevasse is in `js/courses.js`, so the
+**Known Lines** are nine routes that are written down rather than generated —
+*First Light*, *The Narrows*, *Gap Teeth*, *Glass Run*, *Nightfall*, *The
+Cornice*, and in the three newest stretches *Canopy*, *Starfall* and *Geode*. Every opening, boulder and crevasse is in `js/courses.js`, so the
 run is the same on your fortieth attempt as on your first; you can learn a
 line and have it stay learnt. Each has a finish, one to three stars, and
 unlocks the next. They keep their own scoreboard, so a short course can never

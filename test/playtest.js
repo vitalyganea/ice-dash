@@ -326,7 +326,10 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="trophies"]', '#screen-ach');
   ok(await waitFor('#screen-ach'), 'Trophies opens');
   var trophies = await ev("document.querySelectorAll('#ach-list > *').length");
-  ok(trophies === 24, 'every trophy is listed (' + trophies + ')');
+  var nAch = await ev("ACHIEVEMENTS.length");
+  ok(trophies === nAch && nAch >= 30, 'every trophy is listed (' + trophies + ' of ' + nAch + ')');
+  var raw = await ev("Array.from(document.querySelectorAll('#ach-list .ach-name')).filter(e=>e.textContent.indexOf('ach.')===0).length");
+  ok(raw === 0, 'and every one has a name, not a key (' + raw + ' untranslated)');
   await shot('06-trophies');
   await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
 
@@ -471,6 +474,7 @@ async function walk(cdp, sid, P) {
      'which start a streak and keep today\'s stars (streak ' + dsv.dailyStreak + ', ' + (dsv.daily && dsv.daily.stars) + ' star)');
   ok(!(dsv.courses && dsv.courses.daily), 'without touching the marked lines\' board');
   ok(/streak/i.test(await ev("document.getElementById('over-detail').textContent")), 'and the results show the streak');
+  ok((dsv.ach || []).indexOf('daily1') >= 0, 'and the first one earns its trophy');
   await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
   var dsub = await ev("document.getElementById('daily-sub').textContent");
   ok(/★/.test(dsub) && /1/.test(dsub), 'the title button now shows today\'s stars and the streak ("' + dsub + '")');

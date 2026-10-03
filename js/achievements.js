@@ -40,7 +40,16 @@ var ACHIEVEMENTS = [
      game that has a finish line */
   { id: 'lines1',   reward: 120, goal: 1,    stat: function (s) { return linesDone(s); } },
   { id: 'linesAll', reward: 700, goal: 0,    stat: function (s) { return linesDone(s); } },
-  { id: 'stars18',  reward: 1200, goal: 0,   stat: function (s) { return starsTotal(s); } }
+  { id: 'stars18',  reward: 1200, goal: 0,   stat: function (s) { return starsTotal(s); } },
+  /* Time Rush and the Daily Line, so the two newest ways to play each
+     have something to reach for: distance against the clock, time
+     earned back, and coming back day after day. */
+  { id: 'rush500',  reward: 120, goal: 500,  stat: function (s) { return s.bestRush; } },
+  { id: 'rush2000', reward: 400, goal: 2000, stat: function (s) { return s.bestRush; } },
+  { id: 'clocks50', reward: 220, goal: 50,   stat: function (s) { return s.totClocks; } },
+  { id: 'daily1',   reward: 100, goal: 1,    stat: function (s) { return s.dailyDays; } },
+  { id: 'streak3',  reward: 250, goal: 3,    stat: function (s) { return s.dailyBest; } },
+  { id: 'streak7',  reward: 700, goal: 7,    stat: function (s) { return s.dailyBest; } }
 ];
 
 /* How many marked runs have been finished at all, and how many stars in
