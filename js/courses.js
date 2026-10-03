@@ -73,6 +73,36 @@ var COURSES = [
   }
 ];
 
+/* The first-run tutorial. A marked line like the six above, so it is the
+   same every time and test/courses.js proves every row of it, but kept out
+   of COURSES: it has no stars, never shows in Known Lines and never counts
+   towards the line that opens Freeride.
+
+   Openings are wide and sit at 3 and 7, a short slide either side of
+   centre, so the lesson is the tap and not the turn. `lessons` is keyed by
+   row index:
+     key   the line to show (i18n), as the row comes into view
+     want  the direction the player must be sliding to go through it,
+           -1 left / 1 right. Until he is, the hill slows almost to a stop
+           and the line stays up, so the first taps are taught, not hoped for.
+     hint  the icon beside the line, drawn by the hill's own painter */
+var TUTORIAL = {
+  id: 'tutorial', biome: 0, step: 320, gapW: [300, 276], tutorial: true,
+  script: '3 7 3 7 4* 5* 6+ 5 5o 5 5| 5 5T 5 5 5C 5 5',
+  lessons: {
+    0:  { key: 'tut.left',     want: -1 },
+    1:  { key: 'tut.right',    want: 1 },
+    2:  { key: 'tut.weave' },
+    4:  { key: 'tut.fish',     hint: 'fish' },
+    6:  { key: 'tut.gold',     hint: 'gold' },
+    8:  { key: 'tut.bubble',   hint: 'bubble' },
+    10: { key: 'tut.gate',     hint: 'gate' },
+    12: { key: 'tut.bridge',   hint: 'bridge' },
+    15: { key: 'tut.crevasse', hint: 'crevasse' },
+    17: { key: 'tut.finish' }
+  }
+};
+
 /* Rows come out with everything already decided: nothing here is left
    for the spawner to make up. */
 function parseCourse(cd, CHUTE) {
@@ -112,6 +142,7 @@ function parseCourse(cd, CHUTE) {
 
 function courseById(id) {
   for (var i = 0; i < COURSES.length; i++) if (COURSES[i].id === id) return COURSES[i];
+  if (id === TUTORIAL.id) return TUTORIAL;
   return null;
 }
 

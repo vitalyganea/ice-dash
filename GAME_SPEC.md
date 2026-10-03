@@ -75,6 +75,17 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   holds a declared direction for each one and fails on any that does not.
 - **Extra lives** — a crash with a spare in hand offers a 3-2-1 revive from
   where you fell. Nothing is banked until the player chooses.
+- **First-run tutorial** — added at the user's request: a brand-new player
+  (no runs in the save) is dropped straight into a short written line that
+  teaches by playing it. The hill holds still until the first tap, then
+  slows almost to a stop at the first two openings until the player taps
+  the right way (left, then right). After that each thing on the hill is
+  introduced as it comes into view — fish, the golden fish, the bubble,
+  blue ice, the snow bridge, the crevasse and its ramp — with its own icon
+  and one line. Nothing in it can end the run: a crash puts you straight
+  back on the hill without spending a life. It can be skipped at any
+  moment, replayed from How to play, and ends on a "you're ready" card that
+  leads into First Light. English and Russian, like every other string.
 - **Languages** — English and Russian.
 
 ## Explicit non-goals

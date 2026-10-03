@@ -22,6 +22,7 @@ var Game = (function () {
   var LOOK   = 620;            // how far up the hill objects are kept alive (set by resize)
 
   var SPEED0 = 3.0, SPEED_MAX = 6.4, SPEED_RAMP = 0.000155;
+  var ZONE_SHOW = 110;         // frames the stretch's name stays up
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
 
@@ -209,16 +210,26 @@ var Game = (function () {
       roofTo: -1e9, forkTo: -1e9, forceGap: null, forceGapW: 0, forks: 0,
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
-      state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0,
+      state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
       lives: 0, revives: 0, finds: 0
     };
     W = w;
     if (pendingCourse) {
       w.course = { id: pendingCourse.id, step: pendingCourse.step, i: 0,
-                   rows: parseCourse(pendingCourse, CHUTE) };
+                   rows: parseCourse(pendingCourse, CHUTE),
+                   tut: !!pendingCourse.tutorial,
+                   lessons: pendingCourse.lessons || null };
       w.biome = pendingCourse.biome;
       w.clearUntil = 0;
     }
+    /* The tutorial: lessons waiting for their row, the one that is holding
+       the hill until he taps, and a short slow while a line is read. The
+       hill also stands still until the very first tap. */
+    w.lessons = []; w.tutWait = null; w.tutRead = 0;
+    w.hold = !!(w.course && w.course.tut);
+    /* The name of the stretch you are on, once as the run begins. Not in
+       the tutorial, whose own words sit in that same place. */
+    w.zoneT = w.hold ? 0 : ZONE_SHOW;
     w.px = chuteAt(0);
     if (perk().startShield) w.shield = 1;
     var i;
@@ -350,6 +361,9 @@ var Game = (function () {
     W.rows.push({ d: d, gap: cr.gap, gapW: cr.gapW,
                   reach: reachOver(prevStep, hardness(), d), step: prevStep });
     while (W.rows.length && W.rows[0].d < W.dist - BEHIND - 80) W.rows.shift();
+    var ls = C.lessons && C.lessons[C.i - 1];
+    if (ls) W.lessons.push({ d: d, key: ls.key, want: ls.want || 0, hint: ls.hint || null,
+                             shown: false });
 
     function place(rel, dd) { return chuteAt(dd) + rel; }
 
@@ -855,6 +869,9 @@ var Game = (function () {
   /* --------------------------- input -------------------------- */
   function tap() {
     if (!W || W.state !== 'run') return;
+    /* The tutorial's first tap only lets the hill go; it does not turn him,
+       or the very first lesson would be answered before it was asked. */
+    if (W.hold) { W.hold = false; lesson({ key: null }); return; }
     W.dir = -W.dir;
     W.tapFlash = 8;
     Sfx.turn();
@@ -878,8 +895,17 @@ var Game = (function () {
 
     if (W.state !== 'run') {
       W.endT++;
+      if (W.zoneT > 0) W.zoneT--;
       if (W.crashAt) W.crashAt.spin += 0.22;
       updPuffs(); updFlakes();
+      /* Nothing ends the tutorial but its finish line: a crash puts him
+         back on the hill a beat later, the row that got him cleared, and
+         no life is spent — a lesson you can fail out of is a bad lesson. */
+      if (W.state === 'crash' && W.course && W.course.tut && W.endT === 30) {
+        W.lives++; revive(); W.revives--;
+        lesson({ key: 'tut.oops' });
+        return;
+      }
       if (W.endT === 46 && hooks.over)
         hooks.over({ score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
@@ -895,9 +921,11 @@ var Game = (function () {
       return;
     }
 
+    if (W.hold) { updPuffs(); updFlakes(); hud(); return; }
+
     var B = biome();
     W.speed = Math.min(SPEED_MAX, SPEED0 + W.dist * SPEED_RAMP * rampOf())
-              * slowmo() * bogged();
+              * slowmo() * bogged() * tutPace();
     if (W.bog > 0) W.bog--;
     W.dist += W.speed;
     W.score += W.speed * 0.25;
@@ -1119,6 +1147,8 @@ var Game = (function () {
                        life: 34, max: 34, s: rnd(5, 14), tint: '#ffe08a' });
     }
 
+    tutorial();
+    if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
     if (W.grace > 0) W.grace--;
@@ -1131,11 +1161,54 @@ var Game = (function () {
        puts gripAt() in the wrong biome when it places a row near a border.
        A marked run never changes zone at all. */
     if (!W.course && W.biomeT >= zoneLen()) {
-      W.biomeT -= zoneLen(); W.biome++; Sfx.zone(); W.tapFlash = 14;
+      W.biomeT -= zoneLen(); W.biome++; Sfx.zone(); W.tapFlash = 14; W.zoneT = ZONE_SHOW;
     }
 
     updPuffs(); updFlakes();
     hud();
+  }
+
+  /* ---- the tutorial ----
+     Each lesson belongs to a row. A line is shown as its row comes into
+     view; a lesson that wants a direction is raised earlier — as soon as
+     the row before it is behind him — so there is room left to make the
+     turn once he has tapped. */
+  function lesson(msg) { if (hooks.lesson) hooks.lesson(msg); }
+  function tutorial() {
+    var C = W.course;
+    if (!C || !C.tut) return;
+    for (var i = 0; i < W.lessons.length; i++) {
+      var L = W.lessons[i];
+      if (L.shown) continue;
+      var at = L.want ? Math.min(C.step * 0.95, PLAYER_Y + 60) : PLAYER_Y - 30;
+      if (L.d - W.dist > at) continue;
+      L.shown = true;
+      if (L.want && W.dir !== L.want) {
+        W.tutWait = L;
+        lesson({ key: L.key, want: L.want, wait: true });
+      } else if (L.want) {
+        /* Already going the right way, by luck or by the bank turning him:
+           say so instead of asking for a tap that would turn him wrong. */
+        lesson({ key: 'tut.going', want: L.want });
+        W.tutRead = 90;
+      } else {
+        lesson({ key: L.key, hint: L.hint });
+        W.tutRead = 150;
+      }
+    }
+    if (W.tutWait && W.dir === W.tutWait.want) {
+      W.tutWait = null;
+      lesson({ key: 'tut.nice', ok: true });
+    }
+    if (W.tutRead > 0) W.tutRead--;
+  }
+  /* Slower is always safe — every row is proved at full pace — so the
+     tutorial may slow the hill as much as it likes: almost to a stop while
+     it waits for a tap, a little while a line is being read. */
+  function tutPace() {
+    if (!W.course || !W.course.tut) return 1;
+    if (W.tutWait) return 0.1;
+    return W.tutRead > 0 ? 0.6 : 1;
   }
 
   function solid(o) { return o.t === 'rock' || o.t === 'tree'; }
@@ -2552,56 +2625,88 @@ var Game = (function () {
 
      Kept as type 'gate' in the code because that is what it is to the
      rules: a thing you steer through for a bonus. */
+  /* A ring of ice crystals standing up out of the run, with the way
+     through it clear in the middle. It replaced an oval of polished blue
+     ice that players read as one more round thing on a hill full of round
+     things, with nothing to say "go through here". The ring is the same
+     size and shape as the oval was, so where it pays is exactly where it
+     always paid. It lights gold when you take it and goes dull when you
+     pass it by. */
   function drawGate(x, y, o) {
     var hw = o.w / 2, hh = 26;
     ctx.save();
     ctx.translate(x, y);
 
     var lit = o.scored, gone = o.passed && !o.scored;
+    var hi = lit ? '#fff4c8' : gone ? '#dde4ea' : '#f4fcff';
+    var lo = lit ? '#efae22' : gone ? '#a9b6c1' : '#6cbfea';
+    var rim = lit ? 'rgba(140,86,0,.85)' : gone ? 'rgba(110,126,140,.6)' : 'rgba(26,92,146,.8)';
+    if (gone) ctx.globalAlpha = 0.6;
 
-    /* polished ice, sunk very slightly into the run */
-    var g = ctx.createLinearGradient(0, -hh, 0, hh);
-    if (lit) { g.addColorStop(0, 'rgba(150,246,214,.85)'); g.addColorStop(1, 'rgba(60,198,160,.6)'); }
-    else if (gone) { g.addColorStop(0, 'rgba(186,200,212,.4)'); g.addColorStop(1, 'rgba(150,168,184,.3)'); }
-    else { g.addColorStop(0, 'rgba(86,196,238,.72)'); g.addColorStop(1, 'rgba(36,138,196,.62)'); }
-    ctx.fillStyle = g;
+    /* the light held inside it: this is the part you aim for */
+    var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, hw);
+    glow.addColorStop(0, lit ? 'rgba(255,224,120,.55)' : gone ? 'rgba(200,210,220,.12)'
+                                                         : 'rgba(170,232,255,.42)');
+    glow.addColorStop(1, 'rgba(170,232,255,0)');
+    ctx.fillStyle = glow;
     ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.fill();
 
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,.4)';        // scour lines, down the fall line
-    ctx.lineWidth = 1.6;
-    for (var i = -3; i <= 3; i++) {
-      var sx = i * hw * 0.26;
-      ctx.beginPath();
-      ctx.moveTo(sx - 3, -hh);
-      ctx.quadraticCurveTo(sx, 0, sx + 3, hh);
-      ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,255,255,.3)';          // the glassy sheen
-    ctx.beginPath(); ctx.ellipse(-hw * 0.3, -hh * 0.4, hw * 0.44, hh * 0.3, -0.2, 0, 6.2832); ctx.fill();
-    /* A band of light travelling across it, the way polished ice catches
-       the sun as you come over it. */
-    var sh = ((W.t * 0.018 + (o.d % 97) / 97) % 1) * 2.6 - 0.8;
-    var sg = ctx.createLinearGradient((sh - 0.3) * hw, 0, (sh + 0.3) * hw, 0);
-    sg.addColorStop(0, 'rgba(255,255,255,0)');
-    sg.addColorStop(0.5, 'rgba(255,255,255,.4)');
-    sg.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sg;
-    ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
-    ctx.restore();
-
-    ctx.strokeStyle = lit ? 'rgba(120,240,196,.95)'
-                    : (gone ? 'rgba(170,186,200,.5)' : 'rgba(190,238,255,.9)');
-    ctx.lineWidth = lit ? 3.4 : 2.4;
+    /* The hoop itself, under the crystals: a band of clear ice, so it
+       reads as a ring to go through and not as a crown of spikes. */
+    ctx.lineWidth = 7; ctx.strokeStyle = rim;
+    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.stroke();
+    ctx.lineWidth = 4.2; ctx.strokeStyle = hi;
     ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.stroke();
 
-    if (lit) {                                       // a scatter of frost thrown up
-      ctx.fillStyle = 'rgba(210,255,238,.85)';
-      for (i = 0; i < 6; i++) {
-        var a2 = i / 6 * 6.2832 + 0.4;
+    /* the crystals set into it: short and blunt, gems rather than thorns */
+    var per = Math.PI * (3 * (hw + hh) - Math.sqrt((3 * hw + hh) * (hw + 3 * hh)));
+    var n = Math.max(7, Math.round(per / 22));
+    var sz = clamp(hw * 0.12, 5, 9);
+    var twinkle = Math.floor(W.t * 0.09 + (o.d % 31)) % n;
+    ctx.lineJoin = 'round';
+    for (var i = 0; i < n; i++) {
+      var a = i / n * 6.2832;
+      var cx = Math.cos(a) * hw, cy = Math.sin(a) * hh;
+      var nrm = Math.atan2(Math.sin(a) * hw, Math.cos(a) * hh);   // outward
+      var s2 = sz * (i % 2 ? 0.82 : 1.05);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(nrm + Math.PI / 2);
+      /* a six-sided gem: a lit face and a shaded face */
+      var tp = -s2 * 1.05, sd = s2 * 0.62, bt = s2 * 0.62;
+      ctx.beginPath();
+      ctx.moveTo(0, tp); ctx.lineTo(-sd, tp * 0.35); ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(0, bt);
+      ctx.closePath(); ctx.fillStyle = hi; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
+      ctx.closePath(); ctx.fillStyle = lo; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
+      ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(-sd, tp * 0.35); ctx.closePath();
+      ctx.strokeStyle = rim; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.restore();
+
+      /* light running round the ring, one crystal at a time */
+      if (i === twinkle && !gone) {
+        ctx.save();
+        ctx.translate(cx + Math.cos(nrm) * s2, cy + Math.sin(nrm) * s2);
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(Math.cos(a2) * hw * 1.1, Math.sin(a2) * hh * 1.25, 2.2, 0, 6.2832);
+        var k = sz * 0.9;
+        ctx.moveTo(0, -k); ctx.lineTo(k * 0.22, -k * 0.22); ctx.lineTo(k, 0);
+        ctx.lineTo(k * 0.22, k * 0.22); ctx.lineTo(0, k); ctx.lineTo(-k * 0.22, k * 0.22);
+        ctx.lineTo(-k, 0); ctx.lineTo(-k * 0.22, -k * 0.22); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    if (lit) {                                       // sparks thrown off as it is taken
+      ctx.fillStyle = 'rgba(255,236,160,.9)';
+      for (i = 0; i < 8; i++) {
+        var a2 = i / 8 * 6.2832 + 0.4;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a2) * hw * 1.22, Math.sin(a2) * hh * 1.5, 2.4, 0, 6.2832);
         ctx.fill();
       }
     }
@@ -4412,9 +4517,13 @@ var Game = (function () {
       ctx.restore();
     }
 
-    if (W.tapFlash > 0 && W.biomeT < 120) {
+    /* Its own clock. It used to ride on tapFlash — the flash every tap and
+       every pickup sets — gated on being near the start of a zone; a marked
+       run never leaves its first zone, so on every course the name came
+       back on every single tap. */
+    if (W.zoneT > 0) {
       ctx.save();
-      ctx.globalAlpha = Math.min(1, W.tapFlash / 10);
+      ctx.globalAlpha = Math.min(1, W.zoneT / 20);
       ctx.textAlign = 'center';
       ctx.font = '800 ' + Math.round(u * 1.5) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
       ctx.lineWidth = u * 0.34; ctx.strokeStyle = 'rgba(255,255,255,.92)';
@@ -4544,9 +4653,12 @@ var Game = (function () {
     }
     accT += dt;
     var n = 0;
-    while (accT >= STEP_MS && n < 5) { step(); accT -= STEP_MS; n++; }
+    /* A hook called from inside step() may end the run there and then —
+       the tutorial's finish goes straight to its own card and stops the
+       engine — so the world can be gone by the next line. */
+    while (W && accT >= STEP_MS && n < 5) { step(); accT -= STEP_MS; n++; }
     if (accT > 400) accT = 0;
-    render();
+    if (W) render();
   }
 
   if (typeof document !== 'undefined' && document.getElementById('game')) setup();
@@ -4560,8 +4672,9 @@ var Game = (function () {
       if (typeof SKINS !== 'undefined') skin = skinById(skinId);
       pendingCourse = (courseId && typeof courseById === 'function')
                     ? courseById(courseId) : null;
-      hooks.hud = cbs.hud; hooks.over = cbs.over;
+      hooks.hud = cbs.hud; hooks.over = cbs.over; hooks.lesson = cbs.lesson || null;
       newRun();
+      if (W.hold) lesson({ key: 'tut.start', wait: true });
       W.best = best || 0;
       W.lives = Math.max(0, lives | 0);
       /* A run always begins at the hill's own tempo, whatever the last one

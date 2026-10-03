@@ -139,7 +139,9 @@ async function walk(cdp, sid, P) {
   /* A save with something in it, so the market, the revive and the trophy
      list all have something to show. Written before the page exists. */
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source:
-    "try{localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify({
+    /* ...unless this tab has been told to come up as a brand-new player,
+       which is how the tutorial is reached at the end of the walk. */
+    "try{if(!sessionStorage.getItem('fresh'))localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify({
       best: 4200, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,
       owned: ['snowcap', 'mitten', 'seal'], equipped: 'seal', lang: 'en',
       ach: ['first'], totFish: 900, totGold: 4, totGates: 20, totJumps: 3,
@@ -438,6 +440,63 @@ async function walk(cdp, sid, P) {
 
   var saved = await ev("localStorage.getItem('icedash-save-v1')");
   ok(saved && saved.length > 100, 'the run was written to the save (' + (saved || '').length + ' bytes)');
+
+  /* ---- a brand-new player: the tutorial ----
+     Everything above ran on a save with runs in it, and the tutorial never
+     appeared — which is itself the check that an existing player is not
+     dropped into it. Now the same page as somebody who has never played. */
+  async function readSave() {
+    return ev("JSON.parse(localStorage.getItem('icedash-save-v1')||'{}')");
+  }
+  await ev("sessionStorage.setItem('fresh','1');localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  ok(await waitFor('#tut-card', 8000), 'a brand-new player is dropped straight into the tutorial');
+  ok(!(await visible('#screen-title')) && await visible('#tut-skip'),
+     'with no menu in the way, and a Skip button on screen');
+  var first = await ev("document.getElementById('tut-text').textContent");
+  ok(/tap anywhere/i.test(first), 'it asks for a tap before anything moves ("' + first + '")');
+  var d0 = await ev("Game.debug().dist");
+  await sleep(1200);
+  ok((await ev("Game.debug().dist")) === d0, 'and the hill really is holding still');
+  await shot('14-tut-start');
+  await tapHill();
+  var asked = false;
+  for (var ti = 0; ti < 60 && !asked; ti++) {
+    asked = await ev("(function(){var t=document.getElementById('tut-tap');" +
+      "return !t.classList.contains('hidden')&&(t.classList.contains('to-left')||t.classList.contains('to-right'));})()");
+    if (!asked) await sleep(150);
+  }
+  ok(asked, 'the first opening asks for a tap, with an arrow the way it will send him');
+  await shot('15-tut-tap');
+
+  if (P.name.indexOf('desktop') === 0) {
+    /* Ride it to the end the way a new player would: tap when the ring
+       asks, otherwise leave it alone — the crashes that follow are part of
+       what is being checked, since nothing in here may end the run. */
+    var done = false, taps = 0;
+    for (var tw = 0; tw < 2400 && !done; tw++) {
+      if (await visible('#screen-tutdone')) { done = true; break; }
+      if (await ev("!document.getElementById('tut-tap').classList.contains('hidden')")) {
+        await tapHill(); taps++; await sleep(250);
+      } else await sleep(100);
+    }
+    ok(done, 'riding it through ends on the "you are ready" card (' + taps + ' asked-for taps)');
+    var sv = await readSave();
+    ok(sv.tutDone === true, 'and the save remembers it was done');
+    await shot('16-tut-done');
+    ok(await clickFor('#tutdone-go', '#hud') >= 0, 'the card leads straight into a real line');
+    ok(await ev("Game.debug()&&Game.debug().course&&Game.debug().course.id") === 'firstlight',
+       'which is First Light');
+    ok(!(await visible('#tut-skip')), 'with no tutorial chrome left over');
+  } else {
+    ok(await clickFor('#tut-skip', '#screen-title') >= 0, 'Skip leaves it for the title');
+    ok((await readSave()).tutDone === true, 'and the save remembers it was skipped');
+  }
+  await ev("Game.stop&&Game.stop();1");
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  for (var tr = 0; tr < 60 && !(await visible('#screen-title')); tr++) await sleep(200);
+  ok(await visible('#screen-title') && !(await visible('#tut-card')),
+     'and coming back, it is not shown again');
 
   ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   ok(retries <= 3, 'the interface answers the first tap (' + retries +

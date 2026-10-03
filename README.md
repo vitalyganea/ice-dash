@@ -43,6 +43,15 @@ ramp. Writing it by hand does not make it fair, so
 reachability proof the generator uses, rides each one to the finish, and
 checks that two different random seeds produce an identical hill.
 
+## First run
+
+Someone who has never played is not shown a menu. They land in a short
+tutorial line that teaches by playing it: the hill waits for the first
+tap, then all but stops at the first two openings until they tap the way
+through, and introduces each thing on the hill as it comes into view.
+Nothing in it can end the run. It can be skipped at any time and replayed
+from How to play; a save with runs in it never sees it unasked.
+
 ## The one control
 
 The penguin slides down an ice chute on his belly and is **always** drifting to

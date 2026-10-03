@@ -36,7 +36,7 @@ global.SKINS=SKINS; global.SKIN_BY_ID=SKIN_BY_ID;
 global.skinById=skinById; global.coinsFor=coinsFor; global.FIRST_CATCH=FIRST_CATCH;
 eval(fs.readFileSync(DIR+'courses.js','utf8'));
 global.COURSES=COURSES; global.parseCourse=parseCourse;
-global.courseById=courseById; global.courseStars=courseStars;
+global.courseById=courseById; global.courseStars=courseStars; global.TUTORIAL=TUTORIAL;
 eval(fs.readFileSync(DIR+'game.js','utf8'));   global.Game=Game;
 let T=0;
 module.exports={ setSeed:s=>{seed=s;}, byId,

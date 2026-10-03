@@ -41,7 +41,9 @@
              lives: 0, finds: 0, totRevives: 0,
              totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
              /* stars earned per marked run, by id */
-             courses: {} };
+             courses: {},
+             /* the first-run tutorial has been finished or skipped */
+             tutDone: false };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -73,6 +75,7 @@
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
       save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
+      save.tutDone = o.tutDone === true;
       save.finds = Math.max(0, Math.min(99, parseInt(o.finds, 10) || 0));
       save.courses = {};
       if (o.courses && typeof o.courses === 'object')
@@ -127,7 +130,7 @@
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
                   ach: $('screen-ach'), runs: $('screen-runs'),
-                  revive: $('screen-revive') };
+                  revive: $('screen-revive'), tutdone: $('screen-tutdone') };
   var hud = $('hud');
   var currentScreen = 'title';
 
@@ -143,6 +146,9 @@
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
     $('btn-back').classList.toggle('hidden', !BACKABLE[name]);
+    tutChrome();
+    if (name === 'tutdone')
+      $('tutdone-go').textContent = t('tut.done.go', { n: t('course.' + COURSES[0].id + '.name') });
     if (name === 'help') buildHints();
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
@@ -194,8 +200,77 @@
     lastCourse = courseId || null;
     showGame();
     Sfx.unlock();
-    Game.start(save.best, { hud: function () {}, over: onOver }, save.equipped,
-               lastCourse, save.lives || 0);
+    hideLesson(); waitingFor = null;
+    Game.start(save.best, { hud: function () {}, over: onOver, lesson: onLesson },
+               save.equipped, lastCourse, save.lives || 0);
+    tutChrome();
+  }
+
+  /* ------------------------ the tutorial ---------------------- */
+  /* A brand-new player is dropped straight into it; anyone can ride it
+     again from How to play. The engine says what to teach and when; this
+     only puts the words on screen. */
+  function inTutorial() { return lastCourse === 'tutorial' && Game.hasRun(); }
+  function tutChrome() {
+    var on = currentScreen === 'game' && inTutorial();
+    $('tut-skip').classList.toggle('hidden', !on);
+    if (!on) $('tut').classList.add('hidden');
+    /* Back from the pause screen with the hill still waiting for a tap:
+       the line that asked for it has to come back too, or the player is
+       left looking at a frozen hill with no idea why. */
+    else if (waitingFor) onLesson(waitingFor);
+  }
+  var tutHideT = null, waitingFor = null;
+  function hideLesson() {
+    if (tutHideT) { clearTimeout(tutHideT); tutHideT = null; }
+    $('tut').classList.add('hidden');
+  }
+  function onLesson(m) {
+    waitingFor = (m && m.wait) ? m : null;
+    if (!m || !m.key) { hideLesson(); return; }
+    if (tutHideT) { clearTimeout(tutHideT); tutHideT = null; }
+    var box = $('tut'), card = $('tut-card'), ico = $('tut-ico'), tap = $('tut-tap');
+    $('tut-text').innerHTML = t(m.key);           // our own strings, some with <b>
+    var hint = m.hint && Game.drawHint;
+    ico.classList.toggle('hidden', !hint);
+    if (hint) Game.drawHint(ico, m.hint, 52);
+    card.classList.toggle('tut-ok', !!m.ok);
+    /* The hand only while the hill is waiting for a tap, with an arrow the
+       way the tap will send him. */
+    tap.classList.toggle('hidden', !m.wait);
+    tap.classList.toggle('to-left', m.want < 0);
+    tap.classList.toggle('to-right', m.want > 0);
+    box.classList.remove('hidden');
+    card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+    if (!m.wait) tutHideT = setTimeout(hideLesson, m.ok ? 1200 : m.key === 'tut.oops' ? 1800 : 4200);
+  }
+  /* Done is done, finished or skipped: it is never forced on anyone twice. */
+  function endTutorial() {
+    save.tutDone = true;
+    waitingFor = null;
+    hideLesson();
+    store();
+  }
+  function finishTutorial(res) {
+    /* The fish he picked up on the way are his. Nothing else is counted:
+       a lesson is not a run, so no best, no trophies, no stars. */
+    save.fish += res.coins || 0;
+    save.gold += res.gold || 0;
+    endTutorial();
+    var bits = [];
+    if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
+    if (res.gold)  bits.push('+' + res.gold + ' ' + t('cur.gold'));
+    $('tutdone-earned').textContent = bits.join('   ');
+    $('tutdone-earned').classList.toggle('hidden', !bits.length);
+    Game.stop();
+    lastCourse = null;
+    show('tutdone');
+  }
+  function skipTutorial() {
+    Game.stop();
+    lastCourse = null;
+    endTutorial();
+    show('title');
   }
 
   /* A crash with a life in hand is not the end of the run, so nothing may be
@@ -203,6 +278,7 @@
      and rolling back afterwards would double-count fish and trophies. */
   var pendingRes = null;
   function onOver(res) {
+    if (res.course === 'tutorial') { finishTutorial(res); return; }
     if (res.canRevive) { pendingRes = res; showRevive(); return; }
     commitRun(res);
   }
@@ -407,6 +483,9 @@
       case 'open-find':  openFind(); break;
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
+      case 'tutorial':   Sfx.click(); ride('tutorial'); break;
+      case 'tut-skip':   Sfx.click(); skipTutorial(); break;
+      case 'tut-first':  Sfx.click(); ride(COURSES[0].id); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
@@ -888,7 +967,11 @@
       achCheck(save);               // anything the loaded save already earned
       syncToggles();
       Sfx.sound(save.sfx);
-      show(currentScreen === 'title' ? 'title' : currentScreen);
+      /* Someone who has never ridden at all goes straight into the
+         tutorial instead of a menu of things they have no words for yet.
+         An existing save with runs in it never sees it unasked. */
+      if (!save.tutDone && !save.runs && currentScreen === 'title') ride('tutorial');
+      else show(currentScreen === 'title' ? 'title' : currentScreen);
       pushScore();
       announce('gameReady');
     });

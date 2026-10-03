@@ -1034,3 +1034,71 @@ body{
 .run-sub{ font-size:clamp(11px,1.8vw,13px); color:var(--ink-soft); }
 .run-stars{ flex:0 0 auto; font-size:clamp(14px,2.2vw,18px); letter-spacing:1px; color:var(--gold-dark); }
 p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:3px; }
+
+/* ------------------- FIRST-RUN TUTORIAL -------------------
+   The words sit on a slab of the same ice as the title panel, high on the
+   screen and clear of the score, and let every touch fall through to the
+   steering underneath. Only Skip takes a tap for itself. */
+.tut{
+  position:fixed; inset:0; z-index:40;
+  pointer-events:none;
+}
+.tut-card{
+  position:absolute; left:50%; transform:translateX(-50%);
+  top:max(124px, calc(15vh + env(safe-area-inset-top,0px)));
+  width:min(560px, calc(100% - 32px));
+  display:flex; align-items:center; gap:12px;
+  padding:12px 18px;
+  text-align:left;
+  font-size:clamp(16px, 2.5vw, 21px); font-weight:800; line-height:1.3;
+  color:var(--ink);
+  background:linear-gradient(180deg, #ffffff 0%, #e4f4fc 100%);
+  border:3px solid #062a78; border-radius:18px;
+  box-shadow:0 6px 0 #0450b8, 0 9px 0 #062a78, 0 16px 26px rgba(3,28,70,.35);
+  animation:tutIn .32s cubic-bezier(.2,1.5,.4,1) both;
+}
+.tut-card p{ margin:0; flex:1 1 auto; text-align:center; }
+.tut-card b{ color:#0b5fc0; }
+.tut-card.tut-ok{ border-color:#0b7560; box-shadow:0 6px 0 #1ea27c, 0 9px 0 #0b7560, 0 16px 26px rgba(3,28,70,.3); }
+.tut-card.tut-ok p{ color:#0b7560; font-size:1.2em; }
+.tut-ico{ width:52px; height:52px; flex:0 0 auto; }
+@keyframes tutIn{ from{ transform:translateX(-50%) scale(.85); opacity:0 } to{ transform:translateX(-50%); opacity:1 } }
+
+/* The hand: a ring breathing where a thumb would go, with an arrow the way
+   the tap will send him. With no direction (the very first tap) it is
+   just the ring. */
+.tut-tap{
+  position:absolute; left:50%; top:44%;
+  width:104px; height:104px; margin-left:-52px;
+  display:grid; place-items:center;
+}
+.tut-ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:5px solid rgba(255,255,255,.95);
+  box-shadow:0 0 0 3px rgba(6,42,120,.55), inset 0 0 0 3px rgba(6,42,120,.35);
+  animation:tutPulse 1.1s ease-in-out infinite;
+}
+.tut-arrow{ width:58px; height:58px; display:none; filter:drop-shadow(0 3px 0 rgba(6,42,120,.4)); }
+.tut-tap.to-right .tut-arrow{ display:block; animation:tutNudgeR 1.1s ease-in-out infinite; }
+.tut-tap.to-left  .tut-arrow{ display:block; animation:tutNudgeL 1.1s ease-in-out infinite; }
+@keyframes tutPulse{ 0%,100%{ transform:scale(.86); opacity:.75 } 50%{ transform:scale(1.06); opacity:1 } }
+@keyframes tutNudgeR{ 0%,100%{ transform:translateX(-6px) } 50%{ transform:translateX(8px) } }
+@keyframes tutNudgeL{ 0%,100%{ transform:scaleX(-1) translateX(-6px) } 50%{ transform:scaleX(-1) translateX(8px) } }
+@media (prefers-reduced-motion: reduce){
+  .tut-ring, .tut-arrow{ animation:none !important; }
+  .tut-tap.to-left .tut-arrow{ transform:scaleX(-1); }
+}
+
+.tut-skip{
+  position:fixed; z-index:45;
+  top:calc(12px + env(safe-area-inset-top,0px));
+  right:calc(12px + env(safe-area-inset-right,0px));
+  min-height:44px; padding:8px 16px;
+  font:inherit; font-size:15px; font-weight:800; color:var(--ink);
+  background:rgba(255,255,255,.9);
+  border:2px solid rgba(6,42,120,.55); border-radius:999px;
+  box-shadow:0 3px 0 rgba(6,42,120,.35);
+  cursor:pointer;
+}
+.tut-skip:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(6,42,120,.35); }
+.tut-skip:focus-visible{ outline:3px solid #ffd84a; outline-offset:3px; }

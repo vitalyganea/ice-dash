@@ -112,7 +112,7 @@ var SKINS = [
   {
     id: 'walrus', name: 'Walrus', price: 2000, currency: 'fish',
     blurb: 'Goes through things, not round them.',
-    perkText: 'Reads the blue ice — it runs wider for him, and pays triple.',
+    perkText: 'Reads the crystal rings — they open wider for him, and pay triple.',
     perk: { gateBonus: 3, gateWide: 1.55 },
     shape: 'walrus',
     body: ['#b07e66', '#824f3d', '#512f23'],

@@ -36,6 +36,21 @@
   </svg>
 </button>
 
+<!-- The first-run tutorial's words, over the live hill. Never in the way
+     of a tap: the card lets every touch through to the steering, and only
+     the Skip button takes one for itself. -->
+<div id="tut" class="tut hidden" aria-live="polite">
+  <div id="tut-card" class="tut-card">
+    <canvas id="tut-ico" class="tut-ico hidden" aria-hidden="true"></canvas>
+    <p id="tut-text"></p>
+  </div>
+  <div id="tut-tap" class="tut-tap hidden" aria-hidden="true">
+    <span class="tut-ring"></span>
+    <svg class="tut-arrow" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="#062a78" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 5l7 7-7 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+</div>
+<button id="tut-skip" class="tut-skip hidden" data-action="tut-skip" data-i18n="tut.skip">Skip tutorial</button>
+
 <section id="screen-title" class="screen">
   <div class="sky-deco" aria-hidden="true">
     <div class="eaves">
@@ -148,7 +163,10 @@
       <li data-i18n-html="help.9"></li>
       <li data-i18n-html="help.12"></li>
     </ul>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.gotit">Got it!</button></div>
+    <div class="btn-row">
+      <button class="btn btn-blue" data-action="tutorial" data-i18n="help.replay">Play the tutorial</button>
+      <button class="btn btn-green" data-action="back-title" data-i18n="btn.gotit">Got it!</button>
+    </div>
   </div>
 </section>
 
@@ -198,6 +216,16 @@
 
 <!-- Shown in place of the results when a crash happened and a spare life
      is in hand. Nothing is banked until the player decides. -->
+<section id="screen-tutdone" class="screen hidden">
+  <div class="panel">
+    <h2 class="panel-title-text" data-i18n="tut.done.title">You're ready!</h2>
+    <p class="subtitle" data-i18n="tut.done.text">That is the whole game.</p>
+    <p id="tutdone-earned" class="earned hidden"></p>
+    <div class="btn-row"><button class="btn btn-big btn-green" id="tutdone-go" data-action="tut-first">Ride First Light</button></div>
+    <div class="btn-row"><button class="btn btn-ghost" data-action="back-title" data-i18n="btn.menu">Menu</button></div>
+  </div>
+</section>
+
 <section id="screen-revive" class="screen hidden">
   <div class="panel">
     <h2 class="panel-title-text" data-i18n="revive.title">That was close</h2>
