@@ -454,6 +454,25 @@ async function walk(cdp, sid, P) {
   var saved = await ev("localStorage.getItem('icedash-save-v1')");
   ok(saved && saved.length > 100, 'the run was written to the save (' + (saved || '').length + ' bytes)');
 
+  /* ---- the Daily Line ---- */
+  ok(await clickFor('#btn-daily', '#hud') >= 0, 'the Daily Line starts from the title');
+  var dl = await ev("Game.debug().course.id");
+  ok(dl === 'daily', 'as today\'s written line (' + dl + ')');
+  await sleep(800);
+  await shot('19-daily');
+  /* Crossing the line is forced: riding all of it here would take minutes
+     of headless frames and prove nothing courses.js has not. */
+  await ev("(function(){var W=Game.debug();W.state='finish';W.endT=0;})();1");
+  ok(await waitFor('#screen-over', 8000), 'finishing it brings up the results');
+  var dsv = await ev("JSON.parse(localStorage.getItem('icedash-save-v1'))");
+  ok(dsv.dailyStreak === 1 && dsv.daily && dsv.daily.stars >= 1,
+     'which start a streak and keep today\'s stars (streak ' + dsv.dailyStreak + ', ' + (dsv.daily && dsv.daily.stars) + ' star)');
+  ok(!(dsv.courses && dsv.courses.daily), 'without touching the marked lines\' board');
+  ok(/streak/i.test(await ev("document.getElementById('over-detail').textContent")), 'and the results show the streak');
+  await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+  var dsub = await ev("document.getElementById('daily-sub').textContent");
+  ok(/★/.test(dsub) && /1/.test(dsub), 'the title button now shows today\'s stars and the streak ("' + dsub + '")');
+
   /* ---- Time Rush ---- */
   ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from the title');
   ok(await ev("Game.debug().mode") === 'rush', 'as a timed run');

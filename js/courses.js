@@ -103,6 +103,68 @@ var TUTORIAL = {
   }
 };
 
+/* ---- the Daily Line ----
+   A marked line written fresh each day out of the date, so everyone who
+   plays on a given day rides the same one, and tomorrow there is another.
+   It is written in the same tokens as the six above and goes through the
+   same proof in test/courses.js — for a whole year of dates — so a day
+   can never hand out a turn nobody could make. Kept out of COURSES like
+   the tutorial: it has stars, but its own, and a streak. */
+function dailyKey(d) {
+  d = d || new Date();
+  var m = d.getMonth() + 1, day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+}
+function dailyPrevKey(key) {
+  var p = key.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+  d.setDate(d.getDate() - 1);
+  return dailyKey(d);
+}
+/* Its own little generator, seeded from the date: the game's Math.random
+   is nobody's business here, and a hill that depended on it would differ
+   from one phone to the next. */
+function dailyRng(key) {
+  var h = 2166136261;
+  for (var i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return function () {
+    h = (h + 0x6D2B79F5) | 0;
+    var t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function dailyCourse(key) {
+  key = key || dailyKey();
+  var R = dailyRng(key);
+  var biome = Math.floor(R() * BIOMES.length);
+  /* On slippery ice the turn is wider, so the line asks for less of one. */
+  var maxStep = (BIOMES[biome].grip || 1) < 1 ? 1 : 2;
+  var n = 34, pos = 5, toks = [], crevAt = -9, bridged = false, found = false;
+  for (var i = 0; i < n; i++) {
+    if (i >= 2) {
+      var dlt = Math.round((R() * 2 - 1) * maxStep);
+      pos = Math.max(2, Math.min(8, pos + dlt));
+    }
+    var t = String(pos);
+    var late = i >= 4 && i < n - 2;
+    if (late && i - crevAt >= 7 && R() < 0.22) { t += 'C'; crevAt = i; }
+    else {
+      if (R() < 0.42) t += '*';
+      if (late && R() < 0.10) t += '|';
+      if (late && R() < 0.06) t += '+';
+      if (late && R() < 0.06) t += 'w';
+      if (i >= 6 && late && R() < 0.05) t += '^';
+      if (late && R() < 0.07) t += '!';
+      if (!bridged && i > n * 0.4 && R() < 0.12) { t += 'T'; bridged = true; }
+      if (!found && late && R() < 0.04) { t += '$'; found = true; }
+      if (late && R() < 0.035) t += ['-', '>', '&'][Math.floor(R() * 3)];
+    }
+    toks.push(t);
+  }
+  return { id: 'daily', key: key, daily: true, biome: biome,
+           step: 262, gapW: [236, 196], script: toks.join(' ') };
+}
+
 /* Rows come out with everything already decided: nothing here is left
    for the spawner to make up. */
 function parseCourse(cd, CHUTE) {
@@ -143,6 +205,7 @@ function parseCourse(cd, CHUTE) {
 function courseById(id) {
   for (var i = 0; i < COURSES.length; i++) if (COURSES[i].id === id) return COURSES[i];
   if (id === TUTORIAL.id) return TUTORIAL;
+  if (id === 'daily') return dailyCourse();
   return null;
 }
 

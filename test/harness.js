@@ -37,6 +37,7 @@ global.skinById=skinById; global.coinsFor=coinsFor; global.FIRST_CATCH=FIRST_CAT
 eval(fs.readFileSync(DIR+'courses.js','utf8'));
 global.COURSES=COURSES; global.parseCourse=parseCourse;
 global.courseById=courseById; global.courseStars=courseStars; global.TUTORIAL=TUTORIAL;
+global.dailyKey=dailyKey; global.dailyCourse=dailyCourse; global.dailyPrevKey=dailyPrevKey;
 eval(fs.readFileSync(DIR+'game.js','utf8'));   global.Game=Game;
 let T=0;
 module.exports={ setSeed:s=>{seed=s;}, byId,

@@ -45,7 +45,10 @@
              /* the first-run tutorial has been finished or skipped */
              tutDone: false,
              /* Time Rush keeps its own best, in metres, and the clocks taken */
-             bestRush: 0, totClocks: 0 };
+             bestRush: 0, totClocks: 0,
+             /* the Daily Line: today's stars, and the run of days finished */
+             daily: { key: '', stars: 0 }, dailyLast: '', dailyStreak: 0,
+             dailyBest: 0, dailyDays: 0 };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -72,12 +75,17 @@
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
-       'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks']
+       'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks',
+       'dailyStreak','dailyBest','dailyDays']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
       save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
       save.tutDone = o.tutDone === true;
+      save.dailyLast = typeof o.dailyLast === 'string' ? o.dailyLast : '';
+      save.daily = (o.daily && typeof o.daily.key === 'string')
+                 ? { key: o.daily.key, stars: Math.max(0, Math.min(3, parseInt(o.daily.stars, 10) || 0)) }
+                 : { key: '', stars: 0 };
       save.finds = Math.max(0, Math.min(99, parseInt(o.finds, 10) || 0));
       save.courses = {};
       if (o.courses && typeof o.courses === 'object')
@@ -348,7 +356,21 @@
        a bad run forever. */
     var cd = res.course ? courseById(res.course) : null;
     var stars = cd ? courseStars(cd, res) : 0;
-    if (cd) {
+    /* The Daily Line keeps its own stars, for today only, and a streak of
+       days finished; it never touches the marked lines' board. */
+    var streakNow = 0;
+    if (cd && cd.daily) {
+      var today = dailyKey();
+      if (!save.daily || save.daily.key !== today) save.daily = { key: today, stars: 0 };
+      if (stars > save.daily.stars) save.daily.stars = stars;
+      if (res.finished && save.dailyLast !== today) {
+        save.dailyStreak = save.dailyLast === dailyPrevKey(today) ? (save.dailyStreak || 0) + 1 : 1;
+        save.dailyLast = today;
+        save.dailyDays = (save.dailyDays || 0) + 1;
+        save.dailyBest = Math.max(save.dailyBest || 0, save.dailyStreak);
+      }
+      streakNow = save.dailyLast === today ? save.dailyStreak : 0;
+    } else if (cd) {
       if (stars > (save.courses[cd.id] || 0)) save.courses[cd.id] = stars;
     }
     var rushRun = res.mode === 'rush';
@@ -416,6 +438,7 @@
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
     if (rushRun) bits[0] = t('unit.clocks') + ': ' + (res.clocks || 0);
+    if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
     $('over-detail').textContent = bits.join('  ·  ');
     buildFinds(true);
     Game.pause();
@@ -506,6 +529,9 @@
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
       case 'tutorial':   Sfx.click(); ride('tutorial'); break;
+      case 'daily':
+        if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
+        Sfx.click(); ride('daily'); break;
       case 'rush':
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null, 'rush'); break;
@@ -746,7 +772,22 @@
         sub.textContent = t('mode.free.locked', { n: t('course.' + COURSES[0].id + '.name') });
       }
     });
-    if (window.refreshDaily) window.refreshDaily();
+    refreshDaily();
+  }
+
+  /* The Daily Line's button says how today is going and how long the
+     streak is, so the reason to come back is on the title screen. */
+  function refreshDaily() {
+    var sub = $('daily-sub');
+    if (!sub || !freeUnlocked()) return;
+    var today = dailyKey(), st = save.daily && save.daily.key === today ? save.daily.stars : 0;
+    /* A streak only counts if it reaches yesterday or today. */
+    var streak = (save.dailyLast === today || save.dailyLast === dailyPrevKey(today))
+               ? (save.dailyStreak || 0) : 0;
+    sub.removeAttribute('data-i18n');
+    sub.textContent = st
+      ? t('mode.daily.today', { s: '★★★☆☆☆'.slice(3 - st, 6 - st), n: streak })
+      : (streak ? t('mode.daily.wait', { n: streak }) : t('mode.daily.sub'));
   }
 
   function buildRuns() {

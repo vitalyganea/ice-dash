@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # several minutes. Run it by name when the catalogue changes.
 # playtest is not in here either: it needs Chrome on the machine. Run it
 # with `node playtest.js` — it is the only check that touches the real page.
-SUITES="lint-colors viewport persist zonename gates themes courses tutorial timerush crevasse revive skinsafe rush fork mech economy"
+SUITES="lint-colors viewport persist zonename gates themes courses daily tutorial timerush crevasse revive skinsafe rush fork mech economy"
 [ $# -gt 0 ] && SUITES="$*"
 fail=0
 for t in $SUITES; do
