@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#000}#stage{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#out{position:fixed;left:0;top:0;color:#fff;font:12px monospace;background:#000;z-index:9}
+</style></head><body>
+<div id="stage"><canvas id="game"></canvas></div><div id="hud"></div><pre id="out"></pre>
+<script>window.Sfx=new Proxy({},{get:()=>()=>{}});
+var seed=20260928;Math.random=function(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};</script>
+<script src="../js/biomes.js"></script><script src="../js/skins.js"></script>
+<script src="../js/courses.js"></script><script src="../js/game.js"></script>
+<script>
+/* How far does a boulder actually stand out from the ice AS DRAWN — shadow,
+   outline, snow cap and fog included? Flat palette numbers said Glacier was
+   invisible and it plainly is not, so read the pixels instead. */
+var q = new URLSearchParams(location.search), lines = [];
+var cv = document.getElementById('game'), ctx = cv.getContext('2d');
+function lumAt(d) { return 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2]; }
+function measure(bi) {
+  Game.start(0, {}, 'snowcap');
+  var W = Game.debug(); W.biome = bi; W.biomeT = 6000;   // sit deep inside the stretch
+  var worst = 1e9, n = 0, sum = 0, faint = 0;
+  /* Two or three boulders in one frame is not a measurement. Walk the hill
+     and keep sampling: the number only settles past a couple of dozen. */
+  for (var pass = 0; pass < 26; pass++) {
+    W.biome = bi; W.biomeT = 6000;
+    Game._step(46); Game._render();
+    sample();
+  }
+  return { name: BIOMES[bi].name, n: n, worst: worst, avg: n ? sum / n : 0,
+           faint: faint };
+  function sample() {
+  var W2 = Game.debug();
+  for (var i = 0; i < W2.objects.length; i++) {
+    var o = W2.objects[i];
+    if (o.t !== 'rock') continue;
+    var p = Game._screen(o.x, o.d), r = (o.r || 26);
+    if (p.y < 60 || p.y > cv.height / (cv.width / 760) - 40) continue;
+    var k = cv.width / 760;                              // backing-store scale
+    var px = p.x * k, py = p.y * k, rr = r * k;
+    if (px - rr * 2.6 < 0 || px + rr * 2.6 > cv.width) continue;
+    var inn = 0, ic = 0, out = 0, oc = 0;
+    var box = ctx.getImageData(px - rr * 2.6, py - rr * 2.6, rr * 5.2, rr * 5.2).data;
+    var side = Math.round(rr * 5.2);
+    for (var yy = 0; yy < side; yy++) for (var xx = 0; xx < side; xx++) {
+      var dx = xx - side / 2, dy = yy - side / 2, dd = Math.sqrt(dx * dx + dy * dy);
+      var L = lumAt(box.slice((yy * side + xx) * 4, (yy * side + xx) * 4 + 3));
+      if (dd < rr * 0.62) { inn += L; ic++; }
+      else if (dd > rr * 1.75 && dd < rr * 2.45) { out += L; oc++; }
+    }
+    if (!ic || !oc) continue;
+    var diff = Math.abs(inn / ic - out / oc);
+    sum += diff; n++;
+    if (diff < 12) faint++;                            // one a player could miss
+    if (diff < worst) worst = diff;
+  }
+  }
+}
+for (var b = 0; b < BIOMES.length; b++) {
+  var m = measure(b);
+  lines.push(m.name.padEnd(15) + String(m.n).padStart(4) + ' boulders   average ' +
+             m.avg.toFixed(1).padStart(6) + '   faintest ' + m.worst.toFixed(1).padStart(6) +
+             '   hard to see: ' + (m.n ? (100 * m.faint / m.n).toFixed(0) : '-') + '%');
+}
+document.getElementById('out').textContent = lines.join('\n');
+</script></body></html>

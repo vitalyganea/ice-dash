@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#000}#stage{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#out{position:fixed;left:0;top:0;color:#fff;font:12px monospace;background:#000;z-index:9;white-space:pre}
+</style></head><body>
+<div id="stage"><canvas id="game"></canvas></div><div id="hud"></div><pre id="out"></pre>
+<script>window.Sfx=new Proxy({},{get:()=>()=>{}});
+var seed=20260928;Math.random=function(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};</script>
+<script src="../js/biomes.js"></script><script src="../js/skins.js"></script>
+<script src="../js/courses.js"></script><script src="../js/game.js"></script>
+<script>
+/* Is the bridge shadow the right darkness on EVERY stretch of hill? One
+   fixed grey cannot be: it would vanish on the night run and sit on the
+   lava field like fog. Measure the luminance it actually takes away. */
+var cv = document.getElementById('game'), c2 = cv.getContext('2d'), lines = [];
+/* The median, not the mean: embers and snowflakes are drawn after the
+   shadow and are far brighter than the ground, so a handful of them pulled
+   the average back up and made the shadow look as if it had not applied. */
+function lumRow(yCss, k) {
+  var y = Math.round(yCss * k), v = [];
+  var d = c2.getImageData(Math.round(cv.width * 0.3), y, Math.round(cv.width * 0.4), 1).data;
+  for (var i = 0; i < d.length; i += 4)
+    v.push(0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]);
+  v.sort(function (a, b) { return a - b; });
+  return v[v.length >> 1];
+}
+lines.push('zone              lit   shaded   drop    share');
+/* The control is the SAME row of the SAME frame rendered without the
+   bridge. Comparing a row inside the shadow against a row somewhere else
+   on the screen measured the haze gradient instead, and reported the
+   glacier as getting BRIGHTER under a shadow. */
+function frame(b, withBridge) {
+  Game.start(0, {}, 'snowcap');
+  var W = Game.debug();
+  W.biome = b; W.biomeT = 6000;
+  Game._step(220);
+  W = Game.debug(); W.biome = b; W.biomeT = 6000;
+  var d0 = W.dist + 300, span = 620, i;
+  for (i = W.objects.length - 1; i >= 0; i--) {
+    var o = W.objects[i];
+    if ((o.t === 'rock' || o.t === 'tree') && o.d > d0 - 80 && o.d < d0 + span + 80)
+      W.objects.splice(i, 1);
+  }
+  if (withBridge)
+    W.objects.push({ t: 'tunnel', x: Game._chuteAt(d0), d: d0, span: span, ph: 1.1 });
+  Game._render();
+  var k = cv.width / 680;
+  var pY = Game._screen(0, W.dist).y;
+  var v = lumRow(pY - 460, k);
+  Game.stop();
+  return v;
+}
+for (var b = 0; b < BIOMES.length; b++) {
+  var lit = frame(b, false), shaded = frame(b, true);
+  var drop = lit - shaded;
+  lines.push(BIOMES[b].name.padEnd(15) + lit.toFixed(0).padStart(6) +
+             shaded.toFixed(0).padStart(8) + drop.toFixed(0).padStart(7) +
+             (100 * drop / Math.max(1, lit)).toFixed(0).padStart(7) + '%');
+}
+document.getElementById('out').textContent = lines.join('\n');
+</script></body></html>

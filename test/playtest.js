@@ -1,0 +1,433 @@
+/* ===========================================================
+   playtest.js — the game, in a real browser, driven by real input
+   -----------------------------------------------------------
+   Everything else in test/ runs the engine headless with the DOM stubbed
+   out. This does not: it starts Chrome, serves the actual page, and walks
+   through it with mouse and touch events dispatched by the browser itself,
+   on both declared platforms. What it is looking for is the half of the
+   game the other suites cannot see — screens that do not open, buttons
+   that do nothing, state lost between screens, and anything the page
+   writes to the console.
+
+   No dependencies: Chrome is driven over the DevTools protocol through
+   node's own WebSocket.
+
+     node test/playtest.js            both platforms
+     node test/playtest.js desktop    just the one
+   =========================================================== */
+var http = require('http'), fs = require('fs'), path = require('path');
+var cp = require('child_process'), os = require('os');
+
+var ROOT = path.join(__dirname, '..');
+var SHOTS = path.join(os.tmpdir(), 'icedash-playtest');
+var PORT = 8824, DPORT = 9333;
+var fail = 0, notes = [];
+function ok(c, m) {
+  console.log((c ? '  ok   ' : '  FAIL ') + m);
+  notes.push({ ok: !!c, m: m });
+  if (!c) fail++;
+}
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* ---------------------------------------------------------- server */
+var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+             '.png': 'image/png', '.webp': 'image/webp' };
+function serve() {
+  return new Promise(function (res) {
+    var s = http.createServer(function (q, r) {
+      var p = decodeURIComponent(q.url.split('?')[0]);
+      if (p === '/') p = '/index.html';
+      var f = path.join(ROOT, p);
+      if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) {
+        r.writeHead(404); r.end('no'); return;
+      }
+      r.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' });
+      fs.createReadStream(f).pipe(r);
+    });
+    s.listen(PORT, function () { res(s); });
+  });
+}
+
+/* ---------------------------------------------------------- chrome */
+function chrome(profile) {
+  return cp.spawn('google-chrome', [
+    '--headless=new', '--disable-gpu', '--hide-scrollbars', '--mute-audio',
+    '--no-first-run', '--no-default-browser-check',
+    '--remote-debugging-port=' + DPORT,
+    '--user-data-dir=' + profile, 'about:blank'
+  ], { stdio: 'ignore' });
+}
+function getJSON(url) {
+  return new Promise(function (res, rej) {
+    http.get(url, function (r) {
+      var b = ''; r.on('data', function (c) { b += c; });
+      r.on('end', function () { try { res(JSON.parse(b)); } catch (e) { rej(e); } });
+    }).on('error', rej);
+  });
+}
+async function wsTarget() {
+  for (var i = 0; i < 80; i++) {
+    try { var v = await getJSON('http://127.0.0.1:' + DPORT + '/json/version');
+          if (v.webSocketDebuggerUrl) return v.webSocketDebuggerUrl; } catch (e) {}
+    await sleep(250);
+  }
+  throw new Error('chrome never came up');
+}
+
+/* A very small CDP client. */
+function CDP(url) {
+  var ws = new WebSocket(url), id = 0, waits = {}, listeners = [];
+  var ready = new Promise(function (r) { ws.onopen = r; });
+  ws.onmessage = function (e) {
+    var m = JSON.parse(e.data);
+    if (m.id && waits[m.id]) { waits[m.id](m); delete waits[m.id]; }
+    else if (m.method) listeners.forEach(function (f) { f(m); });
+  };
+  return {
+    ready: ready,
+    on: function (f) { listeners.push(f); },
+    close: function () { ws.close(); },
+    send: function (method, params, sessionId) {
+      var n = ++id;
+      return new Promise(function (res, rej) {
+        waits[n] = function (m) { m.error ? rej(new Error(method + ': ' + m.error.message)) : res(m.result); };
+        ws.send(JSON.stringify({ id: n, method: method, params: params || {}, sessionId: sessionId }));
+      });
+    }
+  };
+}
+
+/* ---------------------------------------------------------- the walk */
+var PLATFORMS = {
+  desktop: { w: 1280, h: 800, mobile: false, touch: 0, name: 'desktop 1280x800' },
+  mobile:  { w: 390,  h: 844, mobile: true,  touch: 1, name: 'phone 390x844' }
+};
+
+async function walk(cdp, sid, P) {
+  var errs = [];
+  cdp.on(function (m) {
+    if (m.sessionId !== sid) return;
+    if (m.method === 'Runtime.exceptionThrown')
+      errs.push('exception: ' + (m.params.exceptionDetails.exception || {}).description ||
+                m.params.exceptionDetails.text);
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error')
+      errs.push('console.error: ' + m.params.args.map(function (a) { return a.value; }).join(' '));
+    if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error')
+      errs.push('log: ' + m.params.entry.text);
+  });
+  await cdp.send('Runtime.enable', {}, sid);
+  await cdp.send('Log.enable', {}, sid);
+  await cdp.send('Page.enable', {}, sid);
+  await cdp.send('Emulation.setDeviceMetricsOverride',
+    { width: P.w, height: P.h, deviceScaleFactor: P.mobile ? 3 : 1, mobile: P.mobile }, sid);
+  await cdp.send('Emulation.setTouchEmulationEnabled',
+    { enabled: !!P.touch, maxTouchPoints: P.touch || 1 }, sid);
+
+  /* A save with something in it, so the market, the revive and the trophy
+     list all have something to show. Written before the page exists. */
+  await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source:
+    "try{localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify({
+      best: 4200, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,
+      owned: ['snowcap', 'mitten', 'seal'], equipped: 'seal', lang: 'en',
+      ach: ['first'], totFish: 900, totGold: 4, totGates: 20, totJumps: 3,
+      totSaves: 1, bestDist: 980, bestRunFish: 60, lives: 2, finds: 1,
+      totRevives: 0, totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
+      courses: { firstlight: 2 }
+    })) + ")}catch(e){}" }, sid);
+
+  async function ev(expr) {
+    var r = await cdp.send('Runtime.evaluate',
+      { expression: expr, returnByValue: true, awaitPromise: true }, sid);
+    if (r.exceptionDetails) throw new Error(expr + ' -> ' + r.exceptionDetails.text);
+    return r.result.value;
+  }
+  async function shot(tag) {
+    var r = await cdp.send('Page.captureScreenshot', { format: 'png' }, sid);
+    fs.writeFileSync(path.join(SHOTS, P.name.split(' ')[0] + '-' + tag + '.png'),
+                     Buffer.from(r.data, 'base64'));
+  }
+  /* A real click: the page is hit with the same events a finger sends.
+     The panel is scrolled to the button first — the Market is eleven
+     creatures long and its Back button starts below the fold, so a click
+     at its page coordinates landed outside the window and did nothing. */
+  async function click(sel) {
+    var box = await ev("(function(){var e=document.querySelector(" + JSON.stringify(sel) +
+      ");if(!e)return {miss:'no such element'};" +
+      "try{e.scrollIntoView({block:'center'});}catch(x){}" +
+      "var r=e.getBoundingClientRect();" +
+      "if(r.width<1||r.height<1)return {miss:'zero size'};" +
+      "var vw=innerWidth,vh=innerHeight;" +
+      "if(r.right<0||r.bottom<0||r.left>vw||r.top>vh)" +
+      "  return {miss:'off screen '+JSON.stringify(r)+' in '+vw+'x'+vh};" +
+      /* Aim at the middle of the part that IS on screen, so a button
+         sitting half off the bottom edge is still hit where it is. */
+      "var x=(Math.max(0,r.left)+Math.min(vw,r.right))/2;" +
+      "var y=(Math.max(0,r.top)+Math.min(vh,r.bottom))/2;" +
+      "return {x:x,y:y,w:r.width,h:r.height};})()");
+    if (!box || box.miss) throw new Error('not clickable: ' + sel + ' (' +
+                                          ((box && box.miss) || 'null') + ')');
+    await tapAt(Math.round(box.x), Math.round(box.y));
+    await sleep(180);
+    return box;
+  }
+  /* Synthesised touch does not always turn into a click: Chrome decides
+     whether a touchStart/touchEnd pair was a tap, and now and again it
+     decides it was not. Retried rather than ignored, and the retries are
+     counted and reported — a button that needs them every time is a real
+     problem, not a flaky harness. */
+  var retries = 0;
+  async function clickFor(sel, expect, tries) {
+    tries = tries || 3;
+    for (var i = 0; i < tries; i++) {
+      await click(sel);
+      if (!expect || await waitFor(expect, 2500)) return i;
+      retries++;
+    }
+    return -1;
+  }
+  async function tapAt(x, y) {
+    var p = { x: x, y: y, button: 'left', clickCount: 1 };
+    if (P.touch) {
+      await cdp.send('Input.dispatchTouchEvent',
+        { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] }, sid);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, sid);
+    } else {
+      await cdp.send('Input.dispatchMouseEvent', Object.assign({ type: 'mousePressed' }, p), sid);
+      await cdp.send('Input.dispatchMouseEvent', Object.assign({ type: 'mouseReleased' }, p), sid);
+    }
+  }
+  async function tapHill() {
+    await tapAt(Math.round(P.w / 2), Math.round(P.h * 0.35));
+  }
+  /* Tapping on a timer is not playing: a run died inside a couple of
+     hundred metres and the pause button was gone before it could be
+     pressed. The decision of WHETHER to tap is read off the same
+     prediction the headless bots use; the tap itself is still a real
+     touch on the real page, which is the part under test. */
+  var WANT_TAP = "(function(){var W=Game.debug();if(!W||W.state!=='run')return -1;" +
+    "var r=null;for(var i=0;i<W.rows.length;i++)if(W.rows[i].d>W.dist+30){r=W.rows[i];break;}" +
+    "if(!r)return 0;var t=Game._chuteAt(r.d)+r.gap;" +
+    "var fr=Math.max(1,Math.round((r.d-W.dist)/W.speed));" +
+    "function m(d){var x=W.px,v=W.vx,tr=Game._turnRate();" +
+    "for(var k=0;k<fr;k++){v+=(d*0.82*W.speed-v)*tr;x+=v;}return Math.abs(x-t);}" +
+    "return m(-W.dir)<m(W.dir)-6?1:0;})()";
+  async function steerFor(ms) {
+    var t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+      var want = await ev(WANT_TAP);
+      if (want < 0) return false;                    // the run is over
+      if (want) await tapHill();
+      await sleep(30);
+    }
+    return true;
+  }
+  /* Whatever screen the hill left him on, get back to a live run. */
+  async function ensureRunning() {
+    if (await ev("Game.isRunning() && Game.debug() && Game.debug().state==='run'")) return;
+    if (await visible('#screen-revive')) await clickFor('[data-action="no-life"]', '#screen-over');
+    if (await visible('#screen-over')) await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+    if (!(await visible('#screen-title'))) await waitFor('#screen-title', 4000);
+    await clickFor('#btn-free', null);
+    await sleep(400);
+  }
+  /* offsetParent is null for anything position:fixed, which every screen
+     in this game is — the first version of this helper called the whole
+     interface invisible while screenshotting it perfectly happily. */
+  function visible(sel) {
+    return ev("(function(){var e=document.querySelector(" + JSON.stringify(sel) +
+              ");if(!e)return false;var st=getComputedStyle(e);" +
+              "if(st.display==='none'||st.visibility==='hidden')return false;" +
+              "var r=e.getBoundingClientRect();return r.width>1&&r.height>1;})()");
+  }
+  async function waitFor(sel, ms) {
+    for (var i = 0; i < (ms || 4000) / 100; i++) {
+      if (await visible(sel)) return true;
+      await sleep(100);
+    }
+    return false;
+  }
+
+  console.log('\n--- ' + P.name + ' ---\n');
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  for (var i = 0; i < 60 && !(await visible('#screen-title')); i++) await sleep(200);
+  ok(await visible('#screen-title'), 'the title screen comes up');
+  ok(await ev("!!(window.Game && Game.isRunning)"), 'the engine is on the page');
+  await shot('01-title');
+
+  /* The bug that was reported: Continue sitting there with nothing to
+     continue. */
+  ok(!(await visible('#resume-row')),
+     'Continue is not offered when there is no run to continue');
+
+  /* ---- the panels ---- */
+  await clickFor('[data-action="help"]', '#screen-help');
+  ok(await waitFor('#screen-help'), 'How to play opens');
+  ok(await ev("document.querySelectorAll('#screen-help li').length >= 14"),
+     'and it covers the hill (' + (await ev("document.querySelectorAll('#screen-help li').length")) + ' entries)');
+  await shot('02-help');
+  await cdp.send('Input.dispatchKeyEvent',
+    { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, sid);
+  await sleep(250);
+  ok(await waitFor('#screen-title'), 'Esc closes it');
+
+  await clickFor('[data-action="settings"]', '#screen-settings');
+  ok(await waitFor('#screen-settings'), 'Settings opens');
+  await shot('03-settings');
+  var langs = await ev("Array.from(document.querySelectorAll('#lang-row button')).map(b=>b.textContent.trim())");
+  ok(langs.length >= 2, 'both languages are offered (' + langs.join(', ') + ')');
+  await click('#lang-row button:last-child');
+  var ruTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
+  ok(/[Ѐ-ӿ]/.test(ruTitle), 'switching language changes the text on screen (' + ruTitle + ')');
+  await shot('04-settings-ru');
+  await click('#lang-row button:first-child');
+  await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+  ok(await waitFor('#screen-title'), 'Back returns to the title');
+
+  await clickFor('[data-action="shop"]', '#screen-shop');
+  ok(await waitFor('#screen-shop'), 'the Market opens');
+  var cards = await ev("document.querySelectorAll('#shop-grid [data-skin]').length");
+  ok(cards === 11, 'every creature is on the shelf (' + cards + ')');
+  await shot('05-market');
+  await clickFor('#screen-shop [data-action="back-title"]', '#screen-title');
+
+  await clickFor('[data-action="trophies"]', '#screen-ach');
+  ok(await waitFor('#screen-ach'), 'Trophies opens');
+  var trophies = await ev("document.querySelectorAll('#ach-list > *').length");
+  ok(trophies === 24, 'every trophy is listed (' + trophies + ')');
+  await shot('06-trophies');
+  await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+
+  await clickFor('[data-action="runs"]', '#screen-runs');
+  ok(await waitFor('#screen-runs'), 'Known Lines opens');
+  var lines = await ev("document.querySelectorAll('#runs-list > *').length");
+  ok(lines === 6, 'all six marked runs are listed (' + lines + ')');
+  await shot('07-lines');
+  await clickFor('#screen-runs [data-action="back-title"]', '#screen-title');
+
+  /* ---- actually riding ---- */
+  await click('#btn-free');
+  await sleep(400);
+  ok(await ev("Game.isRunning()"), 'Freeride starts');
+  ok(await visible('#btn-menu'), 'and the pause button is on screen');
+  /* Headless Chrome runs rAF well under sixty a second, so seven seconds
+     of wall clock is not seven seconds of hill. What is being asked here
+     is whether the taps steer — whether he is still going — not how fast
+     the browser managed to animate. */
+  var stillUp = await steerFor(7000);
+  var dist = await ev("Game.debug() ? Math.round(Game.debug().dist/8) : -1");
+  ok(stillUp && dist > 100,
+     'tapping steers a real run (' + dist + 'm covered, ' +
+     (stillUp ? 'still going' : 'ended early') + ')');
+  await shot('08-run');
+
+  /* ---- pause, menu, and back into the same run ---- */
+  await ensureRunning();
+  await steerFor(1200);
+
+  await clickFor('#btn-menu', '#screen-pause');
+  ok(await waitFor('#screen-pause'), 'the pause button pauses');
+  await shot('09-pause');
+  var atPause = await ev("Game.debug() ? Math.round(Game.debug().dist) : -1");
+  await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');
+  ok(await waitFor('#screen-title'), 'Menu from the pause screen reaches the title');
+  ok(await visible('#resume-row'), 'and NOW Continue is offered');
+  await clickFor('[data-action="shop"]', '#screen-shop');
+  await clickFor('#screen-shop [data-action="back-title"]', '#screen-title');
+  await clickFor('[data-action="continue"]', null);
+  await sleep(300);
+  var back = await ev("Game.debug() ? Math.round(Game.debug().dist) : -1");
+  /* A range, not a point: the run is moving again by the time it can be
+     read, so the thing to check is that it carried on from where it was
+     rather than starting over. */
+  ok(back >= atPause && back < atPause + 600,
+     'Continue picks the run up where it was left, not from the top (' +
+     atPause + ' -> ' + back + ')');
+  ok(await ev("!Game.isPaused()"), 'and it is running again, not still paused');
+
+  /* ---- crash, and the life in hand ---- */
+  /* No more steering: he runs out of hill on his own. */
+  for (var c = 0; c < 900 && (await ev("Game.isRunning() && Game.debug() && Game.debug().state==='run'")); c++)
+    await sleep(20);
+  for (var w = 0; w < 50 && !(await visible('#screen-revive')) && !(await visible('#screen-over')); w++)
+    await sleep(100);
+  ok(await visible('#screen-revive'), 'a crash with a life in hand offers the revive');
+  await shot('10-revive');
+  await click('[data-action="use-life"]');
+  for (var r2 = 0; r2 < 60 && !(await ev("Game.debug() && Game.debug().state==='run'")); r2++)
+    await sleep(100);
+  ok(await ev("Game.debug() && Game.debug().state==='run'"), 'the life puts him back on the hill');
+  ok(await ev("Game.debug().grace > 0 || Game.debug().invuln > 0"),
+     'and he cannot be killed the instant he lands');
+  await shot('11-revived');
+
+  /* ---- all the way to the end ---- */
+  /* The seeded save carries two lives, so the next crash offers the second
+     one. Turning it down is the other half of that screen and has to be
+     walked too. */
+  for (var c2 = 0; c2 < 1500; c2++) {
+    if (await visible('#screen-over')) break;
+    if (await visible('#screen-revive')) {
+      await click('[data-action="no-life"]');
+      ok(await waitFor('#screen-over', 6000),
+         'turning the second life down ends the run');
+      break;
+    }
+    await sleep(20);
+  }
+  ok(await waitFor('#screen-over', 8000), 'the run ends on the results screen');
+  var shown = await ev("document.querySelector('#over-score').textContent.trim()");
+  ok(/\d/.test(shown), 'which shows a score (' + shown + ')');
+  await shot('12-over');
+
+  /* ---- the find, if the seeded save still has one ---- */
+  if (await visible('#over-finds')) {
+    await click('[data-action="open-find"]');
+    /* The words are deliberately held back until the shell breaks, so this
+       waits for the animation rather than for a fixed moment. */
+    var prize = '';
+    for (var fi = 0; fi < 60 && !prize; fi++) {
+      prize = await ev("document.querySelector('#find-prize').textContent.trim()");
+      if (!prize) await sleep(100);
+    }
+    ok(prize.length > 0, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');
+    await shot('13-find');
+  }
+
+  await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+  ok(await waitFor('#screen-title'), 'and back to the title');
+  ok(!(await visible('#resume-row')), 'with Continue gone again, the run being over');
+
+  var saved = await ev("localStorage.getItem('icedash-save-v1')");
+  ok(saved && saved.length > 100, 'the run was written to the save (' + (saved || '').length + ' bytes)');
+
+  ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
+  ok(retries <= 3, 'the interface answers the first tap (' + retries +
+                   ' tap(s) had to be repeated)');
+  return errs;
+}
+
+(async function main() {
+  fs.mkdirSync(SHOTS, { recursive: true });
+  var only = process.argv[2];
+  var server = await serve();
+  var profile = fs.mkdtempSync(path.join(os.tmpdir(), 'icedash-chrome-'));
+  var br = chrome(profile);
+  var cdp = null;
+  try {
+    var url = await wsTarget();
+    cdp = CDP(url); await cdp.ready;
+    for (var key in PLATFORMS) {
+      if (only && key !== only) continue;
+      var t = await cdp.send('Target.createTarget', { url: 'about:blank' });
+      var at = await cdp.send('Target.attachToTarget', { targetId: t.targetId, flatten: true });
+      await walk(cdp, at.sessionId, PLATFORMS[key]);
+      await cdp.send('Target.closeTarget', { targetId: t.targetId });
+    }
+  } finally {
+    if (cdp) cdp.close();
+    br.kill(); server.close();
+  }
+  console.log('\nscreenshots in ' + SHOTS);
+  if (fail) { console.log('\n' + fail + ' FAILURE(S)'); process.exit(1); }
+  console.log('\nplaytest passed');
+})().catch(function (e) { console.error('playtest blew up: ' + e.message); process.exit(1); });
