@@ -156,6 +156,31 @@ remember that, run `./build.sh`: it builds `icedash.zip` from a list of the
 thirteen files the game needs and fails if any of the above turns up inside
 the archive.
 
+## The Android app
+
+The same game, packaged with [Capacitor](https://capacitorjs.com) so it runs
+offline inside the app. `build-android.sh` builds `www/` from exactly the
+files `build.sh` ships to Playables, minus the YouTube SDK tag, plus
+`js/native.js` (the Android back button as the Esc key, haptics through the
+native plugin, the status bar hidden). The game code itself is unchanged.
+
+Needs JDK 21 (Microsoft OpenJDK 21) and the Android SDK (platform 36,
+build-tools 36). Android Studio's bundled Java is 25, which this Gradle
+does not support yet — point `JAVA_HOME` at the JDK 21.
+
+```bash
+npm install
+npm run android:sync                 # www/ + copy into android/
+cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+cd android && ./gradlew bundleRelease    # app/build/outputs/bundle/release/app-release.aab
+```
+
+A release build is signed with the upload key named in
+`android/keystore.properties`, which is git-ignored and points at a key kept
+outside the repository. Without that file the release is left unsigned.
+The application id is `com.vitaliy.icedash`; it cannot change after the
+first upload to Play.
+
 ## Checking it
 
 ```bash

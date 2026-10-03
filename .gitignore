@@ -1,0 +1,12 @@
+# Android build (Capacitor)
+node_modules/
+www/
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/release/
+*.keystore
+*.jks
+keystore.properties

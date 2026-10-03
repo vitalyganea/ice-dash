@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ice Dash</string>
+    <string name="title_activity_main">Ice Dash</string>
+    <string name="package_name">com.vitaliy.icedash</string>
+    <string name="custom_url_scheme">com.vitaliy.icedash</string>
+</resources>
