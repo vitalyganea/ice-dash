@@ -131,6 +131,9 @@
   var hud = $('hud');
   var currentScreen = 'title';
 
+  /* The screens that carry the always-visible back arrow. Every one of
+     them already has a Back button; on the long ones it is a scroll away. */
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1 };
   function show(name) {
     currentScreen = name;
     for (var k in screens) screens[k].classList.toggle('hidden', k !== name);
@@ -139,6 +142,7 @@
        whenever a run started before loadData() came back, taking away the
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
+    $('btn-back').classList.toggle('hidden', !BACKABLE[name]);
     if (name === 'help') buildHints();
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
@@ -827,7 +831,7 @@
   /* Esc is never swallowed: Design req. 2 forbids preventDefault() on it. */
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-      if (currentScreen === 'help') { Sfx.click(); act('back-title'); }
+      if (BACKABLE[currentScreen]) { act('back-title'); }
       else if (currentScreen === 'pause') act('resume');
       else if (Game.isRunning() && !Game.isPaused()) { Game.pause(); show('pause'); }
       return;

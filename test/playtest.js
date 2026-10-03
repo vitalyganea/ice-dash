@@ -301,7 +301,17 @@ async function walk(cdp, sid, P) {
   var cards = await ev("document.querySelectorAll('#shop-grid [data-skin]').length");
   ok(cards === 11, 'every creature is on the shelf (' + cards + ')');
   await shot('05-market');
-  await clickFor('#screen-shop [data-action="back-title"]', '#screen-title');
+  /* The way out of the Market must not be a scroll away. The arrow is
+     checked where it is, at the top of the window, with the shelf scrolled
+     to the middle the way a player looking at one animal leaves it. */
+  await ev("(function(){var s=document.querySelector('#screen-shop');s.scrollTop=s.scrollHeight/2;})()");
+  var arrow = await ev("(function(){var e=document.querySelector('#btn-back');" +
+    "if(!e||e.classList.contains('hidden'))return null;var r=e.getBoundingClientRect();" +
+    "return {top:r.top,w:r.width};})()");
+  ok(arrow && arrow.top >= 0 && arrow.top < 80 && arrow.w >= 44,
+     'the back arrow is on screen in the Market without scrolling (' + JSON.stringify(arrow) + ')');
+  ok(await clickFor('#btn-back', '#screen-title') >= 0, 'and it leaves the Market');
+  ok(!(await visible('#btn-back')), 'and it is gone again on the title');
 
   await clickFor('[data-action="trophies"]', '#screen-ach');
   ok(await waitFor('#screen-ach'), 'Trophies opens');
