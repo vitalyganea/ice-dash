@@ -34,6 +34,9 @@ Status values: `pending` / `building` / `testing` / `done`.
 | #  | System | Status | Test notes |
 |----|--------|--------|------------|
 | 17 | Test harness lives in the repo | done | Moved to `test/`, paths made relative to the file so the suite travels with the repo. All 13 suites re-run and pass from the new location; the browser check `test/shade.html` too. `test/run.sh` runs the lot, or one by name |
+| 30 | The catalogue after the three new creatures | done | `ladder.js` extended: section A now walks every skin bought to survive, not just the dearest one, and a new section C measures the two perks that only pay at distance (the hare's gentler ramp, the narwhal's wider ramp) against a player who actually gets that far — a first-timer dies around 850m and never reaches either. The owl is deliberately left out of both: its perk is that you can SEE the next openings, and the simulated player reads the row list directly, so it already has perfect foresight and cannot feel the thing being sold. That is a limit of the measurement, not a verdict on the perk. The run also found the seal — see below |
+| 31 | Four painters defined twice, and one of them invisible | done | `drawRush`, `drawGate`, `drawFish` and `drawBubble` each had two definitions at module level, and JavaScript keeps the last one. Worse, the speed streaks were ALSO called `drawRush`, with no arguments — so the call that was meant to paint the snow rush pickup was reaching the streak painter instead and **the pickup was never drawn at all**. The invincibility bonus could only be taken by accident. Split into `drawRushBall` and `drawSpeedStreaks`, and the duplicates removed — the surviving `drawGate` and `drawBubble` are the richer of each pair, so the blue ice got its travelling band of light back and the bubble its turning film, motes and sliding catchlight |
+| 32 | How to play, with pictures | done | Nineteen identical boxes of text was where a new player stopped reading, and the panel had nothing visual since the emoji came out. Each line that describes a thing now carries that thing, drawn by the game's **own** painters through `Game.drawHint` — change the bubble on the hill and the bubble in the panel changes with it. Sixteen icons, checked side by side at 110px: the geyser needed its own small drawing (a frozen frame of the real one, shrunk to 44px, spread into a round white puff indistinguishable from the deep snow above it), and the two lines about the glacier and the dark kept no icon, because a boulder does not explain "he turns lazily" |
 | 18 | Skin price / order balance | done | Re-priced so cost tracks worth, and the catalogue reordered into a ladder. Two new guards in `economy.js`: the earning skins must improve with price, and the dearest one must buy distance. The second caught a real fault — see below. Casual grind 105 -> 76 runs; Reindeer 39 -> 26 |
 | 19 | Upload package | done | Built by `build.sh` from an **allowlist** of the 13 files the game needs, because the previous package was built the other way round — as a set of excludes — and shipped `README.md` and `PLAYABLES.md` inside it while the README said it did not. The script fails if any planning doc, the testing page or `test/` turns up in the archive, so the claim is checked on every build rather than made once |
 | 21 | Speed made visible | done | Streaks stretch 5.2x and brighten 2.8x from the top of the hill to terminal velocity, wind tears past the margins, the belly spray lengthens, and the frame closes in. Tuned for pace 0.3-0.9, where a run actually lives — the first pass scaled to arrive at 1.0 and so was at a tenth strength everywhere it mattered |
@@ -46,6 +49,25 @@ Status values: `pending` / `building` / `testing` / `done`.
 | 28 | The content batch | done | Three bonuses (a cold draught, a lens, a fish call), three creatures (Arctic Hare, Snowy Owl, Narwhal) and three hazards (deep snow, meltwater geysers, the fork). `fork.js`, new: 50+ forks over 8 runs, both lanes never under 102px against a 48px penguin, nothing standing in either, the plain aiming bot killed by none of them, the gold line never inside the rock when held exactly, and 50/52 tap-by-tap attempts at it coming out the far end with 50/50 making the opening that closes the fork. Two faults found on the way — see below |
 | 29 | Playtest harness | done | `test/playtest.js` drives the real page in Chrome over the DevTools protocol with no library in between, on desktop 1280×800 and phone 390×844, hitting every button with a real mouse or touch event. 35 checks, both platforms clean, nothing on the console. Findings in `PLAYTEST.md` |
 | 20 | Full playtest | done | Both declared platforms walked end to end, logged in `PLAYTEST.md`. One real fault came out of looking at the screenshots rather than the assertions: the BEST pill tucked under the score panel on a 390px phone |
+
+## What row 31 turned up
+
+Grepping for a painter to borrow for the help icons turned up four of them
+defined twice. Identical copies in two cases, so only dead weight; in the
+other two the **first** of the pair was the richer drawing and the second,
+plainer one was the one running. That had already cost time once this
+project — two attempts to make the snow bridge opaque changed nothing,
+because there were two `drawTunnel`s and the translucent one won.
+
+The third collision was not dead code. The speed streaks that tear past
+the margins are `drawRush()`, no arguments, defined last; the snow rush
+pickup is `drawRush(x, y, o)`, defined earlier. Every frame a pickup was
+on screen, `drawObjects` called the streak painter with three arguments it
+ignores — so the ball of packed powder, the bonus that makes you
+untouchable for six seconds, **was not drawn on the hill**. You could only
+run into it by accident. Nothing in `test/` could see this: the suites
+assert on state, and `rush.js` hands the bonus over directly rather than
+looking for it on screen.
 
 ## What row 28 turned up
 
@@ -84,6 +106,31 @@ stays white and the barring down his back does the reading for him, in
 slate rather than in a lighter shade of himself. Her ears were also running
 off the top of the shop portrait, which is how the whole thing came to be
 looked at.
+
+**A perk could change the hill, so two skins were never compared on the
+same one.** The seal appeared to be a skin you pay 450 fish to earn less:
+52 coins a run against the free skin's 71. Chasing it turned up something
+larger. Her perk gates a spawn — `if (Math.random() < 0.13 * goldRate)` —
+and the body of that `if` draws three more numbers. Spawn more golden
+fish and you pull more numbers out of the stream, and every row after
+that comes out somewhere else. The seal was not having a worse run down
+the same mountain; she was riding a different mountain. The shoal perk
+does the same thing, and `economy.js` and `ladder.js` exist precisely to
+compare skins against each other.
+
+Every perk-gated spawn now draws its numbers BEFORE asking whether the
+thing exists, and always draws the same count — eight fish phases whether
+or not there is a shoal, the golden fish's side and offset whether or not
+there is a golden fish. It reads oddly and it is the point. Measured
+again on the same hill, the seal's deficit halved.
+
+And the half that was left is not a fault at all: a golden fish pays
+`W.gold`, the hard currency the orca is bought with, and pays **nothing**
+into `W.coins`. Trading fish-time for gold is the whole of what she is
+for, and reading her in coins was reading the wrong purse. The fix I had
+already written for her — pulling the gold in towards the safe line — was
+reverted: it gave her 5.55 golden fish a run against the baseline's 1.40,
+which would have put the eight-gold orca two runs away.
 
 **The fork had to be rebuilt once.** The first version hung the rock off
 the edge of the row's own opening, with the far lane beyond it. Crossing to

@@ -31,7 +31,7 @@ zip -q -X icedash.zip $FILES
 echo "icedash.zip  $(unzip -l icedash.zip | tail -1 | awk '{print $2}') files, $(du -h icedash.zip | cut -f1)"
 
 # And say out loud what is NOT in it, so the claim is checked rather than made.
-for f in README.md PLAYABLES.md GAME_SPEC.md SYSTEMS.md PLAYTEST.md unlock.html shot.html shot2.html build.sh; do
+for f in README.md PLAYABLES.md GAME_SPEC.md SYSTEMS.md PLAYTEST.md unlock.html build.sh; do
   if unzip -l icedash.zip | grep -q " $f\$"; then echo "LEAKED: $f"; exit 1; fi
 done
 if unzip -l icedash.zip | grep -q "test/"; then echo "LEAKED: test/"; exit 1; fi
