@@ -94,5 +94,30 @@ for (var s = 0; s < 8; s++) {
 ok(fin === tried, 'finished ' + fin + ' of ' + tried + ' days');
 ok(fishOk === tried, 'and every one holds enough fish for its stars (' + fishOk + '/' + tried + ')');
 
+/* ---- D. today's tasks ------------------------------------------ */
+console.log('\nD. today\'s tasks');
+var fs = require('fs');
+eval(fs.readFileSync(require('path').join(__dirname, '..', 'js', 'achievements.js'), 'utf8'));
+var kindsOk = true, sameOk = true;
+keys.forEach(function (k) {
+  var t1 = tasksFor(k), t2 = tasksFor(k);
+  if (t1.map(function (x) { return x.id; }).join() !== t2.map(function (x) { return x.id; }).join()) sameOk = false;
+  var kinds = t1.map(function (x) { return x.id.replace(/\d+$/, ''); });
+  if (t1.length !== 3 || kinds.some(function (x, i) { return kinds.indexOf(x) !== i; })) kindsOk = false;
+});
+ok(sameOk, 'a day always has the same three tasks');
+ok(kindsOk, 'always three, never two of the same kind, all year');
+var day = keys[100], tk = tasksFor(day);
+var sv = { fish: 0, tasks: null };
+/* a result that does everything any task could ask for */
+var big = { fish: 99, gates: 9, dist: 3000, gold: 5, jumps: 5, clocks: 9, smashed: 9,
+            mode: 'free', course: null, finished: false };
+var won = tasksCheck(sv, big, day);
+var expect = tk.filter(function (t) { return (t.test(big) || 0) >= t.n; }).length;
+ok(won.length === expect && sv.fish === expect * TASK_PAY + (expect === 3 ? TASK_BONUS : 0),
+   'a run pays for what it did (' + won.length + ' done, ' + sv.fish + ' fish)');
+ok(tasksCheck(sv, big, day).length === 0, 'and the same task never pays twice');
+ok(tasksCheck(sv, big, keys[101]).length >= 0 && sv.tasks.key === keys[101], 'tomorrow starts afresh');
+
 console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'daily line checks passed'));
 process.exit(fail ? 1 : 0);

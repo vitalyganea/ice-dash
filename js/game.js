@@ -23,6 +23,7 @@ var Game = (function () {
 
   var SPEED0 = 3.0, SPEED_MAX = 6.4, SPEED_RAMP = 0.000155;
   var ZONE_SHOW = 110;         // frames the stretch's name stays up
+  var CLOSE_GAP = 14;          // a pass this near the edge of a hit is a close call
   /* Time Rush: the clock you start with, what a clock bubble gives back,
      and what a crash takes away instead of the run. */
   var RUSH_START = 20 * 60, CLOCK_GAIN = 3 * 60, CRASH_COST = 5 * 60;
@@ -89,7 +90,10 @@ var Game = (function () {
   var pendingCourse = null;
   function perk() { return (skin && skin.perk) || {}; }
   var rafId = null, lastT = 0, accT = 0, paused = false, suspended = false;
-  var hooks = { hud: null, over: null };
+  var hooks = { hud: null, over: null, fx: null };
+  /* Moments worth feeling in the hand: the UI turns these into a buzz on
+     a phone, if the player has it on. The engine only says what happened. */
+  function fx(e) { if (hooks.fx) { try { hooks.fx(e); } catch (x) {} } }
   var pendingMode = null;
   var drawK = 1;
 
@@ -230,6 +234,7 @@ var Game = (function () {
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
       mode: 'free', timeT: 0, clocks: 0, penT: 0,
+      combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
     W = w;
@@ -496,7 +501,12 @@ var Game = (function () {
     var reach = reachOver(prevStep, hard, d);
 
     var step = lerp(ROW_GAP0, ROW_GAP1, hard);
-    if (Math.random() < lerp(0, 0.3, hard)) step *= 0.62;    // rows doubling up
+    /* Past full difficulty the hill used to stop getting harder at all, and
+       a good player could ride on for many minutes. The rows keep doubling
+       up a little more often over the next stretch instead. Same single
+       draw as before, so the dice are not disturbed — only the odds. */
+    var past = clamp((at - HARD_OVER) / HARD_OVER, 0, 1);
+    if (Math.random() < lerp(0, 0.3, hard) + 0.14 * past) step *= 0.62;    // rows doubling up
     W.lastStep = step;
     W.nextRowD += step;
     var lo = Math.max(-CHUTE + gapW / 2, W.lastGap - reach);
@@ -963,7 +973,7 @@ var Game = (function () {
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
-                     mode: W.mode, clocks: W.clocks,
+                     mode: W.mode, clocks: W.clocks, closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
@@ -1032,14 +1042,18 @@ var Game = (function () {
         o.got = true;
         var tone = '#bfe4ff';
         if (o.t === 'fish')      {
-          W.fish++; W.score += 25;
+          comboUp();
+          W.fish++; W.score += 25 * comboMult();
           W.coins += (W.fish <= FIRST_CATCH) ? 2 : 1;      // early catch pays double
           Sfx.berry();
         }
-        else if (o.t === 'gold') { W.gold++; W.score += 150; Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12; }
-        else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; }
+        else if (o.t === 'gold') {
+          comboUp(); W.gold++; W.score += 150 * comboMult(); Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12;
+          fx('gold');
+        }
+        else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
         else if (o.t === 'clock') {
-          W.timeT += CLOCK_GAIN; W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10;
+          W.timeT += CLOCK_GAIN; W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10; fx('clock');
         }
         else if (o.t === 'chill') {
           W.chillT = CHILL_FRAMES; Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
@@ -1051,7 +1065,7 @@ var Game = (function () {
           W.callT = CALL_FRAMES; Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
         }
         else if (o.t === 'rush') {
-          W.rushT = RUSH_FRAMES; W.rushes++;
+          W.rushT = RUSH_FRAMES; W.rushes++; fx('rush');
           Sfx.excite(true);
           Sfx.bubble(); tone = '#ffffff'; W.tapFlash = 18; W.shake = Math.max(W.shake, 10);
         }
@@ -1109,9 +1123,10 @@ var Game = (function () {
           var gb = perk().gateBonus || 1;
           o.scored = true;                   // green means you took it,
           W.gates++;                         // not merely that it is behind you
-          W.score += Math.round(50 * gb);
+          comboUp();
+          W.score += Math.round(50 * gb) * comboMult();
           W.coins += Math.round(2 * gb);       // gates pay the shop as well
-          Sfx.gate(); W.tapFlash = 10;
+          Sfx.gate(); W.tapFlash = 10; fx('ring');
         }
       }
       /* plain circle overlap, in the very pixels being drawn */
@@ -1166,11 +1181,29 @@ var Game = (function () {
         W.objects.splice(i, 1);
         continue;
       }
+      /* A close call: how near he came, kept while the thing is beside
+         him, and paid out once it is behind him untouched. */
+      if (solid(o) && !o.nearDone) {
+        if (Math.abs(dy) < 70) {
+          var nd = Math.sqrt(dx * dx + dy * dy) - hitR(o);
+          if (o.near === undefined || nd < o.near) o.near = nd;
+        }
+        if (dy < -20) {
+          o.nearDone = true;
+          if (o.near !== undefined && o.near >= 0 && o.near < CLOSE_GAP &&
+              W.state === 'run' && !airborne() && !rushing() && W.grace <= 0) {
+            W.closes++; W.score += 15 * comboMult(); W.closeT = 55; W.closeX = o.x;
+            fx('close');
+          }
+        }
+      }
+      /* a fish that went by uncaught breaks the run of catches */
+      if (o.t === 'fish' && !o.got && !o.missed && dy < -30) { o.missed = true; W.combo = 0; }
       if (solid(o) && W.invuln <= 0 && !rushing() && !airborne() &&
           dx * dx + dy * dy < hitR(o) * hitR(o)) {
         if (W.shield > 0) {
           W.shield = 0; W.saved++; W.invuln = 80; W.shake = 16; W.tapFlash = 12;
-          Sfx.pop();
+          Sfx.pop(); fx('save');
           for (var q = 0; q < 20; q++)
             W.puffs.push({ x: W.px + frnd(-16, 16), d: W.dist + frnd(-12, 12),
                            life: 26, max: 26, s: frnd(5, 13), tint: '#9fe8ff' });
@@ -1188,7 +1221,7 @@ var Game = (function () {
          units of run every time — the landing lane is for looks now, and
          this is what actually makes the landing fair. */
       W.invuln = Math.max(W.invuln, 30);
-      Sfx.land();
+      Sfx.land(); fx('land');
       W.shake = Math.max(W.shake, 9);
       for (var lp = 0; lp < 16; lp++)
         W.puffs.push({ x: W.px + frnd(-20, 20), d: W.dist - frnd(0, 18),
@@ -1198,7 +1231,7 @@ var Game = (function () {
 
     if (W.course && W.finishD > 0 && W.dist >= W.finishD && W.state === 'run') {
       W.state = 'finish'; W.endT = 0; W.rushT = 0; Sfx.excite(false);
-      Sfx.zone();
+      Sfx.zone(); fx('finish');
       for (var fp = 0; fp < 22; fp++)
         W.puffs.push({ x: W.px + frnd(-26, 26), d: W.dist + frnd(-16, 16),
                        life: 34, max: 34, s: frnd(5, 14), tint: '#ffe08a' });
@@ -1208,10 +1241,11 @@ var Game = (function () {
     if (W.mode === 'rush' && W.state === 'run') {
       if (--W.timeT <= 0) {
         W.timeT = 0; W.state = 'timeup'; W.endT = 0; W.rushT = 0;
-        Sfx.excite(false); Sfx.zone();
+        Sfx.excite(false); Sfx.zone(); fx('timeup');
       }
     }
     if (W.penT > 0) W.penT--;
+    if (W.closeT > 0) W.closeT--;
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
@@ -1226,6 +1260,7 @@ var Game = (function () {
        A marked run never changes zone at all. */
     if (!W.course && W.biomeT >= zoneLen()) {
       W.biomeT -= zoneLen(); W.biome++; Sfx.zone(); W.tapFlash = 14; W.zoneT = ZONE_SHOW;
+      if (Sfx.mood) Sfx.mood(biome().mood || 'base');
     }
 
     updPuffs(); updFlakes();
@@ -1275,7 +1310,27 @@ var Game = (function () {
     return W.tutRead > 0 ? 0.6 : 1;
   }
 
+  function drawCloseCall() {
+    if (!W.closeT) return;
+    var a = Math.min(1, W.closeT / 18), rise = (55 - W.closeT) * 0.9;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.font = '800 26px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = '#062a78';
+    var tx = scrX(W.px), ty = PLAYER_Y - 62 - rise;
+    var word = tr('hud.close', 'CLOSE!');
+    ctx.strokeText(word, tx, ty);
+    ctx.fillStyle = '#ffe066';
+    ctx.fillText(word, tx, ty);
+    ctx.restore();
+  }
   function solid(o) { return o.t === 'rock' || o.t === 'tree'; }
+  /* The run of catches. Every ten in a row lifts the multiplier on POINTS,
+     up to three — fish in the purse are untouched, so the shop is priced
+     exactly as before. A missed fish or a crash starts it again. */
+  function comboUp() { W.combo++; if (W.combo > W.comboBest) W.comboBest = W.combo; }
+  function comboMult() { return 1 + Math.min(2, Math.floor(W.combo / 10)); }
   /* How close a boulder has to be before it counts. `slim` tucks the
      creature in; it touches this and nothing else, so it cannot double as
      a reach perk and cannot let him ride inside the bank. */
@@ -1363,6 +1418,7 @@ var Game = (function () {
 
   function crash(o) {
     W.state = 'crash'; W.endT = 0; W.shake = 24;
+    W.combo = 0; fx('crash');
     W.rushT = 0; Sfx.excite(false);
     W.crashAt = { x: o.x, d: o.d, r: o.r, spin: 0 };
     Sfx.crash();
@@ -1450,6 +1506,7 @@ var Game = (function () {
     drawHaze();
     drawFog();
     drawPenguin();
+    drawCloseCall();
     drawChill();
     drawPaceVignette();
     drawBridges();        /* after him: he is UNDER the bridge */
@@ -4606,8 +4663,9 @@ var Game = (function () {
     var bestTxt = (W.best > 0 && !W.course)
                 ? tr('hud.best', 'BEST') + '  ' + W.best + (timed ? ' ' + tr('hud.m', 'M') : '') : '';
 
+    var mult = comboMult();
     var wScore = measureAt(score, fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
-                 (timed ? u * 2.6 : 0);
+                 (timed ? u * 2.6 : 0) + (mult > 1 ? u * 2.4 : 0);
     var icon = u * 1.5, sep = u * 0.9;
     var wDist = measureAt(distTxt, fM), wFish = icon + measureAt(fishTxt, fM);
     var wLife = lifeTxt ? icon + measureAt(lifeTxt, fM) : 0;
@@ -4616,17 +4674,16 @@ var Game = (function () {
     var w = Math.max(u * 7.5, wScore, wRow2, wBest) + pad * 2;
     var h = pad + fS * 0.95 + gap + fM * 0.95 + (bestTxt ? gap * 0.8 + fB * 0.95 : 0) + pad;
 
-    ctx.save();
-    ctx.shadowColor = 'rgba(3,28,70,.28)'; ctx.shadowBlur = u * 0.6; ctx.shadowOffsetY = u * 0.2;
-    ctx.fillStyle = '#062a78';                                   // the edge, for thickness
-    rr(ctx, padL, padT + u * 0.22, w, h, u * 0.8); ctx.fill();
-    ctx.restore();
-    var pg = ctx.createLinearGradient(0, padT, 0, padT + h);
-    pg.addColorStop(0, 'rgba(255,255,255,.95)'); pg.addColorStop(1, 'rgba(218,240,252,.93)');
-    ctx.fillStyle = pg;
-    rr(ctx, padL, padT, w, h, u * 0.8); ctx.fill();
-    ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.14);
-    rr(ctx, padL, padT, w, h, u * 0.8); ctx.stroke();
+    /* The slab itself — blurred shadow, gradient, rim — only changes when
+       its size does, so it is drawn once into a canvas of its own and then
+       stamped. A blurred shadow redrawn sixty times a second is the single
+       most expensive thing a low-end phone's canvas does. Widths are
+       snapped so a score ticking over does not redraw it every frame. */
+    var wq = Math.ceil(w / 8) * 8;
+    var slab = hudSlab(wq, h, u);
+    if (slab) ctx.drawImage(slab, padL - u, padT - u, slab.width / hudK, slab.height / hudK);
+    else paintSlab(ctx, padL, padT, wq, h, u);
+    w = wq;
 
     var x0 = padL + pad;
     ctx.textAlign = 'left';
@@ -4644,6 +4701,18 @@ var Game = (function () {
     ctx.fillStyle = 'rgba(11,61,122,.55)';
     var labX = x0 + measureAt(score, fS) + u * 0.4;
     ctx.fillText(scoreLab, labX, y1);
+    /* the run of catches, as a multiplier on points */
+    if (mult > 1) {
+      var mx = labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.45;
+      ctx.fillStyle = '#ffcd3a';
+      rr(ctx, mx, y1 - u * 1.05, u * 2.0, u * 1.2, u * 0.5); ctx.fill();
+      ctx.strokeStyle = '#ad6800'; ctx.lineWidth = Math.max(1.5, u * 0.1);
+      rr(ctx, mx, y1 - u * 1.05, u * 2.0, u * 1.2, u * 0.5); ctx.stroke();
+      ctx.font = '800 ' + Math.round(u * 0.85) + FONT;
+      ctx.fillStyle = '#7a4a00'; ctx.textAlign = 'center';
+      ctx.fillText('x' + mult, mx + u * 1.0, y1 - u * 0.15);
+      ctx.textAlign = 'left';
+    }
     /* what the last crash cost, for a moment */
     if (timed && W.penT > 0) {
       ctx.globalAlpha = Math.min(1, W.penT / 20);
@@ -4731,6 +4800,37 @@ var Game = (function () {
       ctx.restore();
     }
     ctx.restore();
+  }
+
+  function paintSlab(c, x, y, w, h, u) {
+    c.save();
+    c.shadowColor = 'rgba(3,28,70,.28)'; c.shadowBlur = u * 0.6; c.shadowOffsetY = u * 0.2;
+    c.fillStyle = '#062a78';                                   // the edge, for thickness
+    rr(c, x, y + u * 0.22, w, h, u * 0.8); c.fill();
+    c.restore();
+    var pg = c.createLinearGradient(0, y, 0, y + h);
+    pg.addColorStop(0, 'rgba(255,255,255,.95)'); pg.addColorStop(1, 'rgba(218,240,252,.93)');
+    c.fillStyle = pg;
+    rr(c, x, y, w, h, u * 0.8); c.fill();
+    c.strokeStyle = '#062a78'; c.lineWidth = Math.max(2, u * 0.14);
+    rr(c, x, y, w, h, u * 0.8); c.stroke();
+  }
+  var slabCv = null, slabKey = '';
+  function hudSlab(w, h, u) {
+    if (typeof document === 'undefined' || !document.createElement) return null;
+    var key = w + '|' + h + '|' + u + '|' + hudK;
+    if (slabCv && slabKey === key) return slabCv;
+    if (!slabCv) slabCv = document.createElement('canvas');
+    if (!slabCv.getContext) return null;
+    slabCv.width = Math.ceil((w + u * 2) * hudK);
+    slabCv.height = Math.ceil((h + u * 2.6) * hudK);
+    var c = slabCv.getContext('2d');
+    if (!c) return null;
+    c.setTransform(hudK, 0, 0, hudK, 0, 0);
+    c.clearRect(0, 0, w + u * 2, h + u * 2.6);
+    paintSlab(c, u, u, w, h, u);
+    slabKey = key;
+    return slabCv;
   }
 
   /* The fish on the readout: still, and drawn for its size. The swimming
@@ -4893,9 +4993,11 @@ var Game = (function () {
       pendingCourse = (courseId && typeof courseById === 'function')
                     ? courseById(courseId) : null;
       hooks.hud = cbs.hud; hooks.over = cbs.over; hooks.lesson = cbs.lesson || null;
+      hooks.fx = cbs.fx || null;
       pendingMode = (opts && opts.mode) || null;
       newRun();
       if (W.hold) lesson({ key: 'tut.start', wait: true });
+      if (Sfx.mood) Sfx.mood(biome().mood || 'base');   // the stretch it starts in
       W.best = best || 0;
       W.lives = Math.max(0, lives | 0);
       /* A run always begins at the hill's own tempo, whatever the last one

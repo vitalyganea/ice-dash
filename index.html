@@ -118,8 +118,9 @@
       </button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-gold" data-action="shop" data-i18n="btn.market">Market</button>
+      <button class="btn btn-gold market-btn" data-action="shop"><span data-i18n="btn.market">Market</span><span id="market-badge" class="badge hidden" aria-hidden="true">!</span></button>
     </div>
+    <button id="title-tasks" class="tasks-chip hidden" data-action="trophies"></button>
     <div class="btn-row row-three">
       <button class="btn btn-ghost" data-action="help" data-i18n="btn.help">How to play</button>
       <button class="btn btn-ghost" data-action="trophies" data-i18n="btn.trophies">Trophies</button>
@@ -205,6 +206,8 @@
     <div id="over-detail" class="total-stars">0 m · 0 berries · 0 gates</div>
     <p id="over-stars" class="run-stars hidden"></p>
     <p id="over-earned" class="earned hidden">+0</p>
+    <div id="over-unlock" class="unlock-box hidden"></div>
+    <div id="over-goals" class="goals hidden"></div>
     <p id="over-lives" class="over-lives hidden"></p>
     <div id="over-won" class="won-box hidden"></div>
     <!-- Nodules picked up on the hill, cracked open here. -->
@@ -272,6 +275,11 @@
 <section id="screen-ach" class="screen hidden">
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="ach.title">Trophies</h2>
+    <div id="tasks-box" class="tasks-box">
+      <h3 class="set-head" data-i18n="tasks.title">Today's tasks</h3>
+      <div id="tasks-list" class="tasks-list"></div>
+      <p id="tasks-note" class="shop-note"></p>
+    </div>
     <p id="ach-count" class="wallet"></p>
     <div id="ach-list" class="ach-list"></div>
     <p class="shop-note" data-i18n="ach.note">Every one of them pays out in fish.</p>
@@ -287,6 +295,7 @@
     <div class="toggles">
       <button class="switch" id="t-sfx"><span data-i18n="set.sounds">Sounds</span><span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span></button>
       <button class="switch" id="t-music"><span data-i18n="set.music">Music</span><span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span></button>
+      <button class="switch" id="t-vib"><span data-i18n="set.vibrate">Vibration</span><span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span></button>
     </div>
 
     <h3 class="set-head" data-i18n="set.language">Language</h3>

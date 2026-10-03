@@ -273,6 +273,11 @@ async function walk(cdp, sid, P) {
      continue. */
   ok(!(await visible('#resume-row')),
      'Continue is not offered when there is no run to continue');
+  /* The seed holds 3000 fish and three creatures, so the shelf has
+     something on it the purse can pay for. */
+  ok(await visible('#market-badge'), 'the Market button says something on the shelf is affordable');
+  var chip = await ev("document.getElementById('title-tasks').textContent");
+  ok(/of 3|all done/.test(chip), 'and the title shows how today\'s tasks are going ("' + chip + '")');
 
   /* ---- the panels ---- */
   await clickFor('[data-action="help"]', '#screen-help');
@@ -290,11 +295,19 @@ async function walk(cdp, sid, P) {
   await shot('03-settings');
   var langs = await ev("Array.from(document.querySelectorAll('#lang-row button')).map(b=>b.textContent.trim())");
   ok(langs.length >= 2, 'both languages are offered (' + langs.join(', ') + ')');
-  await click('#lang-row button:last-child');
+  await click('#lang-row [data-lang="ru"]');
   var ruTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
   ok(/[Ѐ-ӿ]/.test(ruTitle), 'switching language changes the text on screen (' + ruTitle + ')');
   await shot('04-settings-ru');
-  await click('#lang-row button:first-child');
+  await click('#lang-row [data-lang="ro"]');
+  var roTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
+  ok(roTitle === 'Setări', 'Romanian is there too (' + roTitle + ')');
+  /* ă, ș and ț come from their own cut of the font: it has to be the
+     game's font that draws them, not whatever the device falls back to. */
+  var roFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ăȘț').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ăȘț');})");
+  ok(roFont === true, 'and the game font has its own ă, ș and ț');
+  await shot('04b-settings-ro');
+  await click('#lang-row [data-lang="en"]');
   /* The sound switch: it has to flip what it shows AND what is saved. */
   var sfx0 = await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).sfx");
   await click('#t-sfx');
@@ -326,6 +339,8 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="trophies"]', '#screen-ach');
   ok(await waitFor('#screen-ach'), 'Trophies opens');
   var trophies = await ev("document.querySelectorAll('#ach-list > *').length");
+  var nTasks = await ev("document.querySelectorAll('#tasks-list .task-row').length");
+  ok(nTasks === 3, 'today\'s three tasks head the trophy list (' + nTasks + ')');
   var nAch = await ev("ACHIEVEMENTS.length");
   ok(trophies === nAch && nAch >= 30, 'every trophy is listed (' + trophies + ' of ' + nAch + ')');
   var raw = await ev("Array.from(document.querySelectorAll('#ach-list .ach-name')).filter(e=>e.textContent.indexOf('ach.')===0).length");
@@ -420,6 +435,8 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-over', 8000), 'the run ends on the results screen');
   var shown = await ev("document.querySelector('#over-score').textContent.trim()");
   ok(/\d/.test(shown), 'which shows a score (' + shown + ')');
+  var goals = await ev("Array.from(document.querySelectorAll('#over-goals .goal-txt')).map(e=>e.textContent).join(' | ')");
+  ok(goals.length > 0, 'and what to go back for (' + goals + ')');
   await shot('12-over');
 
   /* ---- the finds: the save is seeded with two, and BOTH must open ----
@@ -483,9 +500,13 @@ async function walk(cdp, sid, P) {
   ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from the title');
   ok(await ev("Game.debug().mode") === 'rush', 'as a timed run');
   var tA = await ev("Game.debug().timeT");
-  for (var rr = 0; rr < 40; rr++) {
+  /* Headless Chrome can run at a handful of frames a second when the
+     machine is busy, and a crash pauses the clock while it plays out — so
+     wait until it has visibly moved rather than for a fixed time. */
+  for (var rr = 0; rr < 100; rr++) {
     if ((await ev(WANT_TAP)) === 1) await tapHill();
     await sleep(60);
+    if (rr > 30 && (await ev("Game.debug()&&Game.debug().timeT")) < tA - 60) break;
   }
   var tB = await ev("Game.debug()&&Game.debug().timeT");
   ok(tB !== null && tB < tA, 'and the clock runs down while you ride (' + (tA / 60).toFixed(1) + 's -> ' + (tB / 60).toFixed(1) + 's)');
@@ -560,6 +581,15 @@ async function walk(cdp, sid, P) {
     ok(await ev("Game.debug()&&Game.debug().course&&Game.debug().course.id") === 'firstlight',
        'which is First Light');
     ok(!(await visible('#tut-skip')), 'with no tutorial chrome left over');
+    /* Finishing First Light opens the other modes, and says so. */
+    await ev("(function(){var W=Game.debug();W.state='finish';W.endT=0;})();1");
+    ok(await waitFor('#over-unlock', 8000), 'finishing First Light announces the modes it opens (' +
+       (await ev("document.getElementById('over-unlock').textContent")) + ')');
+    await shot('16b-unlocked');
+    await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+    ok(await ev("document.getElementById('btn-rush').classList.contains('just-opened') && !document.getElementById('btn-rush').disabled"),
+       'and on the title the new modes light up, open');
+    await shot('16c-title-opened');
   } else {
     ok(await clickFor('#tut-skip', '#screen-title') >= 0, 'Skip leaves it for the title');
     ok((await readSave()).tutDone === true, 'and the save remembers it was skipped');

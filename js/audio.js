@@ -116,6 +116,69 @@ var Sfx = (function () {
   /* a dry tick on the off-eighths, just enough to feel a pulse */
   var TICK = [0,1,0,1,0,1,0,1];
 
+  /* ---------- moods ----------
+     The three newest stretches each get a tune of their own, so arriving in
+     one is heard as well as seen. Everywhere else keeps the hill's own.
+     A mood swaps the harmony, the line over it and how the line sounds;
+     the gaits (calm and rushing) work the same over all of them. */
+  var LEAD = 'triangle', LEAD_DUR = 0.22, LEAD_VOL = 0.075;
+  var MOODS = {
+    base: { chords: CHORDS, bass: BASS, mel: MEL, hot: MEL_HOT,
+            lead: 'triangle', dur: 0.22, vol: 0.075 },
+    /* D dorian, plucked short like a marimba: warm and busy */
+    jungle: {
+      chords: [[146.83,174.61,220.00], [130.81,164.81,196.00],
+               [116.54,146.83,174.61], [130.81,164.81,196.00]],
+      bass:   [[ 73.42,110.00,146.83], [ 65.41, 98.00,130.81],
+               [ 58.27, 87.31,116.54], [ 65.41, 98.00,130.81]],
+      mel: [587.33,0,698.46,0,783.99,0,698.46,587.33,
+            0,523.25,0,587.33,0,698.46,0,0,
+            880.00,0,783.99,0,698.46,0,587.33,0,
+            523.25,0,587.33,0,0,698.46,587.33,0],
+      hot: [587.33,698.46,783.99,698.46,880.00,783.99,698.46,587.33,
+            523.25,587.33,698.46,587.33,523.25,0,587.33,0,
+            880.00,783.99,880.00,1046.50,880.00,783.99,698.46,587.33,
+            523.25,587.33,698.46,783.99,698.46,587.33,523.25,0],
+      lead: 'triangle', dur: 0.12, vol: 0.085 },
+    /* open, high and slow: long sine notes with room between them */
+    cosmic: {
+      chords: [[261.63,329.63,493.88], [220.00,293.66,440.00],
+               [196.00,246.94,392.00], [174.61,261.63,349.23]],
+      bass:   [[130.81,196.00,261.63], [110.00,164.81,220.00],
+               [ 98.00,146.83,196.00], [ 87.31,130.81,174.61]],
+      mel: [987.77,0,0,0,0,0,880.00,0,
+            0,0,783.99,0,0,0,0,0,
+            1174.66,0,0,0,987.77,0,0,0,
+            880.00,0,0,0,0,0,0,0],
+      hot: [987.77,0,880.00,0,783.99,0,880.00,0,
+            987.77,0,1174.66,0,987.77,0,880.00,0,
+            1318.51,0,1174.66,0,987.77,0,880.00,0,
+            783.99,0,880.00,0,987.77,0,0,0],
+      lead: 'sine', dur: 0.62, vol: 0.06 },
+    /* E minor, struck like small bells that ring on in the dark */
+    caves: {
+      chords: [[164.81,196.00,246.94], [130.81,164.81,196.00],
+               [146.83,185.00,220.00], [123.47,155.56,185.00]],
+      bass:   [[ 82.41,123.47,164.81], [ 65.41, 98.00,130.81],
+               [ 73.42,110.00,146.83], [ 61.74, 92.50,123.47]],
+      mel: [659.25,0,0,783.99,0,0,987.77,0,
+            0,880.00,0,0,783.99,0,0,0,
+            659.25,0,0,587.33,0,0,659.25,0,
+            0,0,493.88,0,0,0,0,0],
+      hot: [659.25,0,783.99,0,987.77,0,880.00,0,
+            783.99,0,659.25,0,587.33,0,659.25,0,
+            987.77,0,880.00,0,783.99,0,659.25,0,
+            587.33,0,493.88,0,587.33,0,659.25,0],
+      lead: 'sine', dur: 0.5, vol: 0.07 }
+  };
+  var mood = 'base';
+  function setMood(name) {
+    var m = MOODS[name] || MOODS.base;
+    mood = MOODS[name] ? name : 'base';
+    CHORDS = m.chords; BASS = m.bass; MEL = m.mel; MEL_HOT = m.hot;
+    LEAD = m.lead; LEAD_DUR = m.dur; LEAD_VOL = m.vol;
+  }
+
   function playNote(freq, time, dur, type, vol) {
     var osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = type; osc.frequency.setValueAtTime(freq, time);
@@ -140,7 +203,7 @@ var Sfx = (function () {
           CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 0.14, 'triangle', 0.045); });
         playNote(BASS[bar][BASS_FIG[beat]], nextTime, 0.17, 'triangle', 0.095);
         var mh = MEL_HOT[step % 32];
-        if (mh) playNote(mh, nextTime, 0.19, 'triangle', 0.072);
+        if (mh) playNote(mh, nextTime, Math.min(0.19, LEAD_DUR), LEAD, LEAD_VOL * 0.96);
         if (TICK[beat]) playNote(2093.00, nextTime, 0.035, 'square', 0.012);
       } else {
         if (beat === 0)                                   // sustained chord
@@ -148,7 +211,7 @@ var Sfx = (function () {
         if (beat % 2 === 0)                               // bass, half time
           playNote(BASS[bar][0], nextTime, 0.26, 'triangle', 0.10);
         var m = MEL[step % 32];
-        if (m) playNote(m, nextTime, 0.22, 'triangle', 0.075);
+        if (m) playNote(m, nextTime, LEAD_DUR, LEAD, LEAD_VOL);
       }
 
       nextTime += (hot ? STEP_HOT : STEP_CALM);
@@ -185,6 +248,8 @@ var Sfx = (function () {
      LOOKAHEAD, a quarter of a second, because notes are scheduled ahead —
      which is about as sharp as it should be anyway. */
   api.excite = function (on) { hot = !!on; };
+  /* The stretch of hill decides the tune. Takes effect on the next note. */
+  api.mood = function (name) { if ((MOODS[name] ? name : 'base') !== mood) setMood(name); };
 
   /* Driven by ytgame.system.isAudioEnabled / onAudioEnabledChange.
      When YouTube has audio off nothing may be output, whatever the in-game

@@ -48,7 +48,11 @@
              bestRush: 0, totClocks: 0,
              /* the Daily Line: today's stars, and the run of days finished */
              daily: { key: '', stars: 0 }, dailyLast: '', dailyStreak: 0,
-             dailyBest: 0, dailyDays: 0 };
+             dailyBest: 0, dailyDays: 0,
+             /* today's three tasks and which are done */
+             tasks: { key: '', done: [] },
+             /* a short buzz on a phone for the big moments */
+             vibrate: true };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -62,6 +66,7 @@
       save.runs  = Math.max(0, parseInt(o.runs, 10) || 0);
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
+      save.vibrate = o.vibrate !== false;
       save.fish  = Math.max(0, parseInt(o.fish, 10) || 0);
       save.gold  = Math.max(0, parseInt(o.gold, 10) || 0);
       /* Only ids this build actually knows about survive the load, so a save
@@ -83,6 +88,9 @@
       save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
       save.tutDone = o.tutDone === true;
       save.dailyLast = typeof o.dailyLast === 'string' ? o.dailyLast : '';
+      save.tasks = (o.tasks && typeof o.tasks.key === 'string' && o.tasks.done && o.tasks.done.length !== undefined)
+                 ? { key: o.tasks.key, done: o.tasks.done.filter(function (x) { return typeof x === 'string'; }).slice(0, 3) }
+                 : { key: '', done: [] };
       save.daily = (o.daily && typeof o.daily.key === 'string')
                  ? { key: o.daily.key, stars: Math.max(0, Math.min(3, parseInt(o.daily.stars, 10) || 0)) }
                  : { key: '', stars: 0 };
@@ -147,6 +155,7 @@
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
   var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1 };
+  var justOpened = false;
   function show(name) {
     currentScreen = name;
     for (var k in screens) screens[k].classList.toggle('hidden', k !== name);
@@ -162,10 +171,25 @@
     if (name === 'help') buildHints();
     if (name === 'shop') buildShop();
     if (name === 'settings') buildSettings();
-    if (name === 'ach') buildAch();
+    if (name === 'ach') { buildTasks(); buildAch(); }
     if (name === 'runs') buildRuns();
     if (name === 'title') {
       refreshModes();
+      $('market-badge').classList.toggle('hidden', !canBuyCreature());
+      /* today's tasks, as a line on the title that opens the list */
+      var tchip = $('title-tasks'), nd = todaysDone().length;
+      tchip.classList.toggle('hidden', !freeUnlocked());
+      tchip.textContent = nd >= 3 ? t('tasks.chip.all') : t('tasks.chip', { a: nd, b: 3 });
+      tchip.classList.toggle('all-done', nd >= 3);
+      /* The first time the modes open, they say so on the title too. */
+      if (justOpened) {
+        justOpened = false;
+        ['btn-free', 'btn-rush', 'btn-daily'].forEach(function (id) {
+          var b = $(id); if (!b) return;
+          b.classList.remove('just-opened'); void b.offsetWidth; b.classList.add('just-opened');
+          setTimeout(function () { b.classList.remove('just-opened'); }, 4200);
+        });
+      }
       var el = $('title-best');
       el.textContent = t('title.best', { n: save.best });
       el.classList.toggle('hidden', save.best <= 0);
@@ -214,7 +238,7 @@
     hideLesson(); waitingFor = null;
     /* Each mode is measured against its own best: Time Rush in metres. */
     Game.start(lastMode === 'rush' ? save.bestRush : save.best,
-               { hud: function () {}, over: onOver, lesson: onLesson },
+               { hud: function () {}, over: onOver, lesson: onLesson, fx: onFx },
                save.equipped, lastCourse, save.lives || 0, { mode: lastMode });
     tutChrome();
   }
@@ -350,6 +374,7 @@
   }
 
   function commitRun(res) {
+    var wasOpen = freeUnlocked();
     save.runs++;
     /* A marked run has its own scoreboard: stars, not distance. The freeride
        best must not be moved by a course, or a short course would look like
@@ -396,9 +421,10 @@
     save.totRushes  += res.rushes  || 0;
     save.totSmashed += res.smashed || 0;
     save.totForks   += res.forks   || 0;
+    var taskWon = (res.course === 'tutorial') ? [] : tasksCheck(save, res, dailyKey());
     var won = achCheck(save);                        // pays out into save.fish
     store();
-    showWon(won);
+    showWon(won, taskWon);
     var earned = $('over-earned');
     var bits = [];
     if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
@@ -441,8 +467,54 @@
     if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
     $('over-detail').textContent = bits.join('  ·  ');
     buildFinds(true);
+    /* Opening the modes is the biggest thing that happens to a new player
+       after the tutorial, and it used to be silent: three buttons quietly
+       changed colour behind the results. */
+    var opened = !wasOpen && freeUnlocked();
+    $('over-unlock').classList.toggle('hidden', !opened);
+    if (opened) { $('over-unlock').textContent = t('over.unlocked.modes'); justOpened = true; }
+    buildGoals(res, cd, stars, beat, rushRun);
     Game.pause();
     show('over');
+  }
+
+  /* ------------------------ what is next ---------------------- */
+  /* One or two things to go back for, with how close you are: the best you
+     did not beat, the star you did not get, the creature you are saving
+     for. A results card that only says what happened gives no reason to
+     press Ride again. */
+  function buildGoals(res, cd, stars, beat, rushRun) {
+    var box = $('over-goals'), goals = [];
+    if (cd && stars < 3 && res.fishTotal) {
+      var need = Math.round(res.fishTotal * (stars < 2 ? 0.40 : 0.75));
+      if (!res.finished) goals.push({ txt: t('goal.finish'), p: 0 });
+      else if (need > res.fish) goals.push({ txt: t('goal.star', { n: need - res.fish }), p: res.fish / need });
+    } else if (!cd && !beat) {
+      var bestV = rushRun ? save.bestRush : save.best, cur = rushRun ? res.dist : res.score;
+      if (bestV > 0 && cur < bestV)
+        goals.push({ txt: t(rushRun ? 'goal.bestm' : 'goal.best', { n: bestV - cur }), p: cur / bestV });
+    }
+    var sk = nextSkin();
+    if (sk) {
+      var have = sk.currency === 'gold' ? save.gold : save.fish;
+      var nm = t('skin.' + sk.id + '.name', null, sk.name);
+      if (have >= sk.price) goals.push({ txt: t('goal.canbuy', { s: nm }), p: 1, buy: true });
+      else goals.push({ txt: t(sk.currency === 'gold' ? 'goal.skingold' : 'goal.skin',
+                               { n: sk.price - have, s: nm }), p: have / sk.price });
+    }
+    box.textContent = '';
+    box.classList.toggle('hidden', !goals.length);
+    goals.slice(0, 2).forEach(function (g) {
+      var row = document.createElement('div');
+      row.className = 'goal' + (g.buy ? ' goal-buy' : '');
+      var tx = document.createElement('div'); tx.className = 'goal-txt'; tx.textContent = g.txt;
+      var bar = document.createElement('div'); bar.className = 'goal-bar';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(Math.max(0.04, Math.min(1, g.p)) * 100) + '%';
+      bar.appendChild(fill);
+      row.appendChild(tx); row.appendChild(bar);
+      box.appendChild(row);
+    });
   }
 
   /* ------------------------ frozen finds --------------------- */
@@ -580,7 +652,8 @@
 
   /* ----------------------- audio toggles --------------------- */
   function syncToggles() {
-    [['t-sfx', 't-sfx2', save.sfx], ['t-music', 't-music2', save.music]].forEach(function (g) {
+    [['t-sfx', 't-sfx2', save.sfx], ['t-music', 't-music2', save.music],
+     ['t-vib', 't-vib2', save.vibrate]].forEach(function (g) {
       [$(g[0]), $(g[1])].forEach(function (el) {
         if (!el) return;
         el.classList.toggle('on', g[2]);
@@ -592,6 +665,31 @@
   function toggleMusic(){ save.music = !save.music; store(); Sfx.unlock(); Sfx.music(save.music); syncToggles(); }
   ['t-sfx','t-sfx2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleSfx); });
   ['t-music','t-music2'].forEach(function (id) { var e = $(id); if (e) e.addEventListener('click', toggleMusic); });
+  function toggleVib() { save.vibrate = !save.vibrate; store(); syncToggles(); if (save.vibrate) buzz(30); }
+  var tv = $('t-vib');
+  if (tv) {
+    tv.addEventListener('click', toggleVib);
+    /* No vibration motor to drive (an iPhone, a desktop without one): no
+       switch for it either, rather than a switch that does nothing. */
+    if (!canBuzz()) tv.classList.add('hidden');
+  }
+
+  /* ------------------------- vibration ----------------------- */
+  function canBuzz() { return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'; }
+  var lastBuzz = 0;
+  function buzz(pattern) {
+    if (!save.vibrate || !canBuzz()) return;
+    var now = Date.now();
+    if (now - lastBuzz < 70) return;              // never a continuous rattle
+    lastBuzz = now;
+    try { navigator.vibrate(pattern); } catch (e) {}
+  }
+  /* What each moment feels like: a crash is the heaviest, a ring the
+     lightest. Short on purpose — a tap game is held for minutes. */
+  var BUZZ = { crash: [60, 40, 90], gold: 28, find: [20, 30, 20], rush: [30, 20, 30],
+               clock: 16, ring: 12, save: [40, 30, 40], land: 24, close: 18,
+               finish: [30, 40, 60], timeup: [80] };
+  function onFx(e) { if (BUZZ[e] !== undefined) buzz(BUZZ[e]); }
 
   /* ---------------------------- shop ------------------------- */
   var shopBack = null;
@@ -775,6 +873,29 @@
     refreshDaily();
   }
 
+  /* The creature the purse is saving towards: the cheapest one not owned
+     yet, in the money it is priced in. */
+  function nextSkin() {
+    var best = null;
+    for (var i = 0; i < SKINS.length; i++) {
+      var s = SKINS[i];
+      if (!s.price || save.owned.indexOf(s.id) >= 0) continue;
+      if (!best || (s.currency === 'fish' && (best.currency !== 'fish' || s.price < best.price))) best = s;
+    }
+    return best;
+  }
+  /* Something on the Market shelf can be bought right now. Spare lives do
+     not count: once the purse holds 250 they always could, and a badge that
+     is always lit says nothing. */
+  function canBuyCreature() {
+    for (var i = 0; i < SKINS.length; i++) {
+      var s = SKINS[i];
+      if (!s.price || save.owned.indexOf(s.id) >= 0) continue;
+      if ((s.currency === 'gold' ? save.gold : save.fish) >= s.price) return true;
+    }
+    return false;
+  }
+
   /* The Daily Line's button says how today is going and how long the
      streak is, so the reason to come back is on the title screen. */
   function refreshDaily() {
@@ -851,16 +972,48 @@
   });
 
   /* -------------------------- trophies ----------------------- */
-  function showWon(won) {
+  function showWon(won, tasks) {
     var box = $('over-won');
+    tasks = tasks || [];
     box.textContent = '';
-    box.classList.toggle('hidden', !won.length);
+    box.classList.toggle('hidden', !won.length && !tasks.length);
+    tasks.forEach(function (tk) {
+      var row = document.createElement('div');
+      row.className = 'won-row won-task';
+      row.textContent = t('tasks.done', { s: taskText(tk) }) + '   +' + TASK_PAY + ' ' + t('cur.fish');
+      box.appendChild(row);
+    });
+    if (tasks.length && save.tasks.done.length === 3) {
+      var all = document.createElement('div');
+      all.className = 'won-row won-task';
+      all.textContent = t('tasks.all') + '   +' + TASK_BONUS + ' ' + t('cur.fish');
+      box.appendChild(all);
+    }
     won.forEach(function (a) {
       var row = document.createElement('div');
       row.className = 'won-row';
       row.textContent = t('ach.' + a.id + '.name') + '   +' + a.reward + ' ' + t('cur.fish');
       box.appendChild(row);
     });
+  }
+  function taskText(tk) { return t('task.' + tk.id, { n: tk.n }); }
+  function todaysDone() {
+    return (save.tasks && save.tasks.key === dailyKey()) ? save.tasks.done : [];
+  }
+  function buildTasks() {
+    var list = $('tasks-list'), done = todaysDone();
+    list.textContent = '';
+    tasksFor(dailyKey()).forEach(function (tk) {
+      var row = document.createElement('div');
+      var got = done.indexOf(tk.id) >= 0;
+      row.className = 'task-row' + (got ? ' got' : '');
+      var tick = document.createElement('span'); tick.className = 'task-tick'; tick.textContent = got ? '✓' : '';
+      var tx = document.createElement('span'); tx.className = 'task-txt'; tx.textContent = taskText(tk);
+      var pay = document.createElement('span'); pay.className = 'task-pay'; pay.textContent = '+' + TASK_PAY;
+      row.appendChild(tick); row.appendChild(tx); row.appendChild(pay);
+      list.appendChild(row);
+    });
+    $('tasks-note').textContent = t('tasks.note', { n: TASK_BONUS });
   }
 
   function buildAch() {

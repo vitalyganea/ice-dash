@@ -172,6 +172,7 @@ var BIOMES = [
        green under a rim of frost, the air is wet and warm-looking, and the
        fruit is still on the branches. All of it grew there. */
     name: 'Frozen Jungle',
+    mood:  'jungle',           // its own tune (audio.js)
     sky:   ['#7fe0c4', '#e4fff4'],
     hazeRGB: '214,250,236',
     snowA: '#eafff6', iceTop: '#a8ead8', iceBot: '#5fc7b0', bankEdge: '#d2f5e8', bankShade: '#8fd1bd',
@@ -188,6 +189,7 @@ var BIOMES = [
     /* Ice out past the sky: a frozen comet's tail, violet-black, with the
        stars showing up through it and a band of light overhead. */
     name: 'Cosmic Ice',
+    mood:  'cosmic',           // its own tune (audio.js)
     sky:   ['#0b0620', '#3a1a6e'],
     hazeRGB: '44,24,96',
     snowA: '#dcd4ff', iceTop: '#7e6cd8', iceBot: '#3a2a8a', bankEdge: '#bdb2f2', bankShade: '#8f80d0',
@@ -206,6 +208,7 @@ var BIOMES = [
     /* Underground, where the ice grew crystal instead of snow: amethyst
        walls, rose-coloured floor and a drift of glowing motes in the dark. */
     name: 'Crystal Caves',
+    mood:  'caves',           // its own tune (audio.js)
     sky:   ['#2a1038', '#7a3a8a'],
     hazeRGB: '120,60,140',
     snowA: '#f6e6ff', iceTop: '#e2b8f2', iceBot: '#b07ad6', bankEdge: '#ecd2fa', bankShade: '#c99ae0',

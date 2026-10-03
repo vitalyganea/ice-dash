@@ -52,6 +52,49 @@ var ACHIEVEMENTS = [
   { id: 'streak7',  reward: 700, goal: 7,    stat: function (s) { return s.dailyBest; } }
 ];
 
+/* ---- today's tasks ----
+   Three small things to do today, picked from the date like the Daily
+   Line, so everyone has the same three. Each is judged on one run's
+   results; each pays when it is done, and all three pay a bonus. */
+var TASK_POOL = [
+  { id: 'fish30',  n: 30,   test: function (r) { return r.fish; } },
+  { id: 'fish60',  n: 60,   test: function (r) { return r.fish; } },
+  { id: 'rings5',  n: 5,    test: function (r) { return r.gates || 0; } },
+  { id: 'dist1000',n: 1000, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; } },
+  { id: 'dist2500',n: 2500, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; } },
+  { id: 'gold2',   n: 2,    test: function (r) { return r.gold || 0; } },
+  { id: 'jump3',   n: 3,    test: function (r) { return r.jumps || 0; } },
+  { id: 'rush400', n: 400,  test: function (r) { return r.mode === 'rush' ? r.dist : 0; } },
+  { id: 'clocks6', n: 6,    test: function (r) { return r.clocks || 0; } },
+  { id: 'daily',   n: 1,    test: function (r) { return r.course === 'daily' && r.finished ? 1 : 0; } },
+  { id: 'line',    n: 1,    test: function (r) { return r.course && r.course !== 'daily' && r.course !== 'tutorial' && r.finished ? 1 : 0; } },
+  { id: 'smash5',  n: 5,    test: function (r) { return r.smashed || 0; } }
+];
+var TASK_PAY = 50, TASK_BONUS = 100;
+function tasksFor(key) {
+  var R = dailyRng('tasks:' + key), pool = TASK_POOL.slice(), out = [];
+  /* never two of the same kind (two fish counts, two distances) on one day */
+  while (out.length < 3 && pool.length) {
+    var t = pool.splice(Math.floor(R() * pool.length), 1)[0];
+    var kind = t.id.replace(/\d+$/, '');
+    if (out.some(function (o) { return o.id.replace(/\d+$/, '') === kind; })) continue;
+    out.push(t);
+  }
+  return out;
+}
+/* Mark off whatever this run did. Returns the tasks newly done, and pays
+   for them (and the bonus) into the purse. */
+function tasksCheck(save, res, key) {
+  if (!save.tasks || save.tasks.key !== key) save.tasks = { key: key, done: [] };
+  var won = [];
+  tasksFor(key).forEach(function (t) {
+    if (save.tasks.done.indexOf(t.id) >= 0) return;
+    if ((t.test(res) || 0) >= t.n) { save.tasks.done.push(t.id); save.fish += TASK_PAY; won.push(t); }
+  });
+  if (won.length && save.tasks.done.length === 3) save.fish += TASK_BONUS;
+  return won;
+}
+
 /* How many marked runs have been finished at all, and how many stars in
    total. Both read straight off the save like every other goal. */
 function linesDone(s) {

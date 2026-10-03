@@ -714,6 +714,70 @@ body{
 .ach-right small{ display:block; font-weight:800; color:var(--gold-dark); font-size:.92em; }
 
 .won-box{ display:flex; flex-direction:column; gap:4px; margin:6px 0 2px; }
+.won-row.won-task{ color:#0b5fc0; background:rgba(214,238,255,.9); }
+
+/* ---- today's tasks ---- */
+.tasks-box{ margin:0 0 12px; padding:8px 12px 2px; border-radius:16px;
+            background:rgba(214,238,255,.55); border:2px solid rgba(43,93,134,.25); }
+.tasks-list{ display:flex; flex-direction:column; gap:6px; }
+.task-row{ display:flex; align-items:center; gap:10px; text-align:left;
+           padding:7px 12px; border-radius:12px; background:rgba(255,255,255,.85);
+           font-weight:800; font-size:clamp(13px,2.1vw,15px); color:var(--ink); }
+.task-row.got{ background:rgba(214,245,225,.95); color:#0b7560; }
+.task-tick{ flex:0 0 auto; width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+            border:2px solid rgba(43,93,134,.45); color:#fff; font-size:14px; }
+.task-row.got .task-tick{ background:#21c48a; border-color:#0b7560; }
+.task-txt{ flex:1 1 auto; }
+.task-pay{ flex:0 0 auto; color:var(--gold-dark); }
+.tasks-chip{
+  display:block; margin:14px auto 0; padding:7px 16px; min-height:40px;
+  font:inherit; font-size:14px; font-weight:800; color:#0b5fc0;
+  background:rgba(214,238,255,.8); border:2px solid rgba(11,95,192,.45); border-radius:999px;
+  cursor:pointer;
+}
+.tasks-chip.all-done{ color:#0b7560; background:rgba(214,245,225,.9); border-color:rgba(11,117,96,.5); }
+.tasks-chip:focus-visible{ outline:3px solid #ffd84a; outline-offset:3px; }
+
+/* ---- what is next, on the results ---- */
+.goals{ display:flex; flex-direction:column; gap:8px; margin:10px auto 2px; width:min(380px, 100%); }
+.goal{ text-align:left; }
+.goal-txt{ font-size:clamp(13px,2.1vw,15px); font-weight:800; color:var(--ink-soft); margin:0 0 4px 2px; }
+.goal-bar{ height:10px; border-radius:99px; background:rgba(43,93,134,.16);
+           box-shadow:inset 0 1px 2px rgba(0,0,0,.15); overflow:hidden; }
+.goal-bar i{ display:block; height:100%; border-radius:99px;
+             background:linear-gradient(90deg,#55bdf0,#2789d8); }
+.goal-buy .goal-txt{ color:#a86a00; }
+.goal-buy .goal-bar i{ background:linear-gradient(90deg,#ffd84a,#f0a000); }
+
+/* ---- the modes opening for the first time ---- */
+.unlock-box{
+  margin:8px auto 2px; padding:8px 16px; width:fit-content; max-width:100%;
+  font-weight:800; font-size:clamp(14px,2.3vw,17px); color:#fff;
+  background:linear-gradient(180deg,#9a86f4,#6c55d8);
+  border:2px solid #062a78; border-radius:14px; box-shadow:0 3px 0 #4430a6;
+  text-shadow:0 1px 0 #062a78;
+  animation:badgePop .5s cubic-bezier(.2,1.8,.4,1) both;
+}
+.mode-btn.just-opened{ animation:justOpened 1.3s ease-in-out 3; }
+@keyframes justOpened{
+  0%,100%{ filter:none; transform:none; }
+  50%{ filter:brightness(1.25) drop-shadow(0 0 10px rgba(255,255,255,.9)); transform:scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce){ .mode-btn.just-opened, .unlock-box{ animation:none; } }
+
+/* ---- something on the Market shelf is affordable ---- */
+.market-btn{ position:relative; }
+.badge{
+  position:absolute; top:-10px; right:-10px; z-index:2;
+  width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center;
+  font-size:16px; font-weight:800; line-height:1; color:#fff; text-shadow:none;
+  background:#e8384f; border:3px solid #062a78;
+  box-shadow:0 2px 0 rgba(6,42,120,.4);
+  animation:badgeBob 1.6s ease-in-out infinite;
+}
+@keyframes badgeBob{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-3px) } }
+@media (prefers-reduced-motion: reduce){ .badge{ animation:none; } }
 .won-row{
   font-weight:800; font-size:clamp(13px,2.1vw,16px);
   color:var(--gold-dark);
