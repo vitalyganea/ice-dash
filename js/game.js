@@ -102,6 +102,17 @@ var Game = (function () {
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function lerp(a, b, t) { return a + (b - a) * t; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  /* Everything you only LOOK at draws from a generator of its own: puffs,
+     falling snow, streaks, the shake, the shape of a boulder, the scenery
+     out past the banks. They used to share Math.random with the spawner,
+     so the hill itself depended on them — catching a fish a frame earlier
+     threw a different puff and every row after it came out different, and
+     the scenery's count followed the width of the screen, so the same seed
+     was a different hill on a phone and on a laptop. The hill now depends
+     on the seed and on what the player does, and on nothing else. */
+  var fxS = 0x2f6b9d;
+  function frand() { fxS = (Math.imul(fxS, 1664525) + 1013904223) >>> 0; return fxS / 4294967296; }
+  function frnd(a, b) { return a + frand() * (b - a); }
   function rr(c, x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
     c.beginPath();
@@ -245,23 +256,32 @@ var Game = (function () {
     var i;
     var nStreak = Math.round(46 * Math.max(1, LOOK / 620));
     for (i = 0; i < nStreak; i++)
-      /* No stray rnd() calls in here. A `lane` field was added and never
-         read, and that one extra draw per streak shifted the whole random
-         stream — every generated hill changed, and a mechanics check that
-         had nothing to do with the look started failing. */
-      w.streaks.push({ x: rnd(-CHUTE, CHUTE), d: rnd(0, LOOK), len: rnd(40, 130),
-                       a: rnd(0.05, 0.22) });
+      /* Drawn from the look's own generator (frnd). Once these shared the
+         hill's: a `lane` field added and never read took one extra draw per
+         streak, every generated hill changed, and a mechanics check that had
+         nothing to do with the look started failing. */
+      w.streaks.push({ x: frnd(-CHUTE, CHUTE), d: frnd(0, LOOK), len: frnd(40, 130),
+                       a: frnd(0.05, 0.22) });
     /* The pool is sized for the thickest weather on the hill; a clear
        stretch simply draws less of it (air.n). */
     var nFlake = Math.round(120 * Math.max(1, (VIEW_W * VIEW_H) / (960 * 540)));
     for (i = 0; i < Math.min(nFlake, 300); i++)
-      w.flakes.push({ x: rnd(-VIEW_W, VIEW_W), y: rnd(0, VIEW_H), v: rnd(0.4, 1.5),
-                      r: rnd(1, 2.6), ph: rnd(0, 6.2832), sw: rnd(0.6, 1.5) });
+      w.flakes.push({ x: frnd(-VIEW_W, VIEW_W), y: frnd(0, VIEW_H), v: frnd(0.4, 1.5),
+                      r: frnd(1, 2.6), ph: frnd(0, 6.2832), sw: frnd(0.6, 1.5) });
     while (w.nextRowD < LOOK) spawnRow();
     return w;
   }
 
   function hardness() { return clamp(W.dist / HARD_OVER, 0, 1); }
+  /* What the spawner decides about a row is keyed to where the ROW is, as
+     if it were laid a fixed distance ahead of the player. It used to read
+     the player's own distance at the moment the row was laid — and rows
+     are laid as far ahead as the screen can see, so a tall phone laid the
+     same row earlier, easier, and with different dice than a laptop did.
+     SPAWN_LEAD is the stock look-ahead, so on an ordinary screen nothing
+     moves by more than a few metres. */
+  var SPAWN_LEAD = 620;
+  function hardAt(d) { return clamp((d - SPAWN_LEAD) / HARD_OVER, 0, 1); }
 
   /* How far sideways the penguin can actually get while covering `step` of
      hill — simulated honestly from the worst case: already drifting the wrong
@@ -306,7 +326,7 @@ var Game = (function () {
     for (var i = 0; i < frames; i++) { vx += (DRIFT * speed - vx) * t; x += vx; }
     return Math.max(0, x) * lerp(0.60, 0.93, hard);
   }
-  function reachBetweenRows() { return W ? reachOver(W.lastStep, hardness(), W.nextRowD) : 0; }
+  function reachBetweenRows() { return W ? reachOver(W.lastStep, hardAt(W.nextRowD), W.nextRowD) : 0; }
 
   /* One stable number per (row, column). A marked run has to come out the
      same every time, so the sides cannot be random — but keying them to the
@@ -331,7 +351,7 @@ var Game = (function () {
 
   function rockPts() {
     var p = [];
-    for (var k = 0; k < 9; k++) p.push(0.70 + Math.random() * 0.44);
+    for (var k = 0; k < 9; k++) p.push(0.70 + frand() * 0.44);
     return p;
   }
 
@@ -369,7 +389,7 @@ var Game = (function () {
     }
     W.lastGap = cr.gap;
     W.rows.push({ d: d, gap: cr.gap, gapW: cr.gapW,
-                  reach: reachOver(prevStep, hardness(), d), step: prevStep });
+                  reach: reachOver(prevStep, hardAt(d), d), step: prevStep });
     while (W.rows.length && W.rows[0].d < W.dist - BEHIND - 80) W.rows.shift();
     var ls = C.lessons && C.lessons[C.i - 1];
     if (ls) W.lessons.push({ d: d, key: ls.key, want: ls.want || 0, hint: ls.hint || null,
@@ -470,7 +490,7 @@ var Game = (function () {
   function spawnRow() {
     var d = W.nextRowD;
     if (W.course) return spawnCourseRow(d);
-    var hard = hardness();
+    var hard = hardAt(d), at = d - SPAWN_LEAD;
     var gapW = lerp(215, 84, hard);
     var prevStep = W.lastStep;
     var reach = reachOver(prevStep, hard, d);
@@ -523,7 +543,7 @@ var Game = (function () {
        free score: the line that gets you through the row alive is the
        middle, and a gate on the middle is taken without deciding anything.
        Shifted over, it costs you the safest line to collect it. */
-    if (Math.random() < 0.15 && W.dist > 900) {
+    if (Math.random() < 0.15 && at > 900) {
       /* The walrus reads the blue ice, so for him the tongue of it is
          broader — he does not have to leave the safe line as far to be on
          it. Tripling what a gate pays without this made the perk a trap:
@@ -581,7 +601,7 @@ var Game = (function () {
     }
     var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
     var goldOff = rnd(90, 150), goldPh = rnd(0, 6.28);
-    if (goldRoll < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && W.dist > 1200) {
+    if (goldRoll < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && at > 1200) {
       var gd = d + 20;
       W.objects.push({ t: 'gold',
                        x: place(clamp(gap + goldSide * goldOff,
@@ -599,14 +619,17 @@ var Game = (function () {
                        x: place(clamp(gap + cside * rnd(60, 130), -CHUTE + 26, CHUTE - 26), cdd),
                        d: cdd, r: 27, got: false, ph: rnd(0, 6.28) });
     }
-    if (Math.random() < 0.055 && W.dist > 1800 && !W.shield) {
+    /* Offered whether or not he is already carrying one: whether he is
+       depends on when the row happens to be laid, which depends on the
+       screen. Taking a second one simply keeps the one he has. */
+    if (Math.random() < 0.055 && at > 1800) {
       var bd = d + 90;
       W.objects.push({ t: 'bubble', x: place(gap + rnd(-16, 16), bd), d: bd, r: 24,
                        got: false, ph: rnd(0, 6.28) });
     }
     /* A patch of deep soft snow. Never on the racing line's centre — it is
        a cost, not a wall, and it should be something you choose to clip. */
-    if (Math.random() < 0.038 && W.dist > 900) {
+    if (Math.random() < 0.038 && at > 900) {
       var bd2 = d + rnd(-40, 60);
       W.objects.push({ t: 'drift',
                        x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(55, 150),
@@ -615,7 +638,7 @@ var Game = (function () {
     }
 
     /* A meltwater geyser, standing off to one side of the opening. */
-    if (Math.random() < 0.040 && W.dist > 2600) {
+    if (Math.random() < 0.040 && at > 2600) {
       var side2 = Math.random() < 0.5 ? -1 : 1;
       var gx2 = gap + geyserOff(gapW, side2);
       /* If that side has run out of chute, try the other one, and if
@@ -629,7 +652,7 @@ var Game = (function () {
 
     /* The three readable finds. Each sits off the racing line like the
        golden fish does, so taking one costs you the safe line. */
-    if (Math.random() < 0.030 && W.dist > 1400) {
+    if (Math.random() < 0.030 && at > 1400) {
       var pk = ['chill', 'sight', 'call'][(Math.random() * 3) | 0];
       var kd = d + 50;
       W.objects.push({ t: pk,
@@ -640,8 +663,9 @@ var Game = (function () {
 
     /* A drift of loose powder packed into a ball. Take it and he gathers
        it as he goes, and for a while nothing on the hill can stop him. */
-    if (Math.random() < 0.013 && W.dist > 2000 && W.dist > W.lastRush + 2600) {
+    if (Math.random() < 0.013 && at > 2000 && at > W.lastRush + 2600) {
       var rd = d + 70;
+      W.lastRush = d;               // spaced from the last one OFFERED, row by row
       W.objects.push({ t: 'rush',
                        x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(50, 120),
                                       -CHUTE + 30, CHUTE - 30), rd),
@@ -652,7 +676,7 @@ var Game = (function () {
        chute and frozen there. You pass underneath it. It is not a hazard —
        it darkens the stretch it covers, so the line is harder to read
        without ever being hidden. */
-    if (Math.random() < 0.035 && W.dist > 2400 && d > W.tunnelTo + 900) {
+    if (Math.random() < 0.035 && at > 2400 && d > W.tunnelTo + 900) {
       var tspan = rnd(300, 520);
       W.objects.push({ t: 'tunnel', x: place(0, d), d: d, span: tspan, ph: rnd(0, 6.28) });
       W.tunnelTo = d + tspan;
@@ -670,7 +694,7 @@ var Game = (function () {
        roughly one every eighty rows, so a long run turns up one or two and
        a short one usually turns up none. It sits off the racing line, like
        the golden fish, so finding one costs you something. */
-    if (Math.random() < 0.012 && W.dist > 1200) {
+    if (Math.random() < 0.012 && at > 1200) {
       var nd = d + 60;
       W.objects.push({ t: 'find',
                        x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(70, 140),
@@ -759,10 +783,10 @@ var Game = (function () {
            stop the rock from reading as one clean leaf dropped on the
            ice. */
         for (var fb = 0; fb < 3; fb++) {
-          var fbd = fd0 + (fb === 0 ? rnd(-54, -16) : rnd(fspan + 10, fspan + 56));
-          W.objects.push({ t: 'deco', kind: Math.random() < 0.8 ? 'rock' : 'tree',
-                           x: place(gap + rnd(-26, 26), fbd), d: fbd,
-                           r: rnd(14, 26), rot: rnd(0, 6.28), pts: rockPts() });
+          var fbd = fd0 + (fb === 0 ? frnd(-54, -16) : frnd(fspan + 10, fspan + 56));
+          W.objects.push({ t: 'deco', kind: frand() < 0.8 ? 'rock' : 'tree',
+                           x: place(gap + frnd(-26, 26), fbd), d: fbd,
+                           r: frnd(14, 26), rot: frnd(0, 6.28), pts: rockPts() });
         }
         spawnScenery(fd0 + fspan * 0.4);
         spawnScenery(fd0 + fspan * 0.85);
@@ -873,12 +897,12 @@ var Game = (function () {
     if (room < 60) return;
     var n = Math.min(5, 1 + Math.round(room / 230));
     for (var i = 0; i < n; i++) {
-      var side = Math.random() < 0.5 ? -1 : 1;
-      var dd = d + rnd(-95, 95);
+      var side = frand() < 0.5 ? -1 : 1;
+      var dd = d + frnd(-95, 95);
       W.objects.push({
-        t: 'deco', kind: Math.random() < 0.62 ? 'tree' : 'rock',
-        x: chuteAt(dd) + side * (CHUTE + 80 + Math.random() * room),
-        d: dd, r: rnd(19, 37), rot: rnd(0, 6.28), pts: rockPts()
+        t: 'deco', kind: frand() < 0.62 ? 'tree' : 'rock',
+        x: chuteAt(dd) + side * (CHUTE + 80 + frand() * room),
+        d: dd, r: frnd(19, 37), rot: frnd(0, 6.28), pts: rockPts()
       });
     }
   }
@@ -897,7 +921,7 @@ var Game = (function () {
     W.tapFlash = 8;
     Sfx.turn();
     for (var i = 0; i < 4; i++)
-      W.puffs.push({ x: W.px - W.dir * 8, d: W.dist - 6, life: 18, max: 18, s: rnd(5, 11) });
+      W.puffs.push({ x: W.px - W.dir * 8, d: W.dist - 6, life: 18, max: 18, s: frnd(5, 11) });
   }
 
   /* Two fingers pause, and the first of them has already turned him. Put
@@ -1027,13 +1051,13 @@ var Game = (function () {
           W.callT = CALL_FRAMES; Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
         }
         else if (o.t === 'rush') {
-          W.rushT = RUSH_FRAMES; W.lastRush = W.dist; W.rushes++;
+          W.rushT = RUSH_FRAMES; W.rushes++;
           Sfx.excite(true);
           Sfx.bubble(); tone = '#ffffff'; W.tapFlash = 18; W.shake = Math.max(W.shake, 10);
         }
         else                     { W.shield = 1; Sfx.bubble(); tone = '#9fe8ff'; W.tapFlash = 12; }
         for (var b = 0; b < (o.t === 'fish' ? 7 : 15); b++)
-          W.puffs.push({ x: o.x, d: o.d, life: 22, max: 22, s: rnd(4, 11), tint: tone });
+          W.puffs.push({ x: o.x, d: o.d, life: 22, max: 22, s: frnd(4, 11), tint: tone });
       }
       if (o.t === 'ramp' && !o.used && o.d <= W.dist) {
         o.used = true;
@@ -1044,8 +1068,8 @@ var Game = (function () {
           W.shake = Math.max(W.shake, 5);
           Sfx.jump();
           for (var j = 0; j < 12; j++)
-            W.puffs.push({ x: W.px + rnd(-14, 14), d: W.dist - rnd(0, 16),
-                           life: 24, max: 24, s: rnd(5, 12) });
+            W.puffs.push({ x: W.px + frnd(-14, 14), d: W.dist - frnd(0, 16),
+                           life: 24, max: 24, s: frnd(5, 12) });
         }
       }
       if (o.t === 'crevasse' && !o.passed && o.d <= W.dist) {
@@ -1074,8 +1098,8 @@ var Game = (function () {
             W.shake = 14; W.tapFlash = 12;
             Sfx.bubble();
             for (var bq = 0; bq < 18; bq++)
-              W.puffs.push({ x: W.px + rnd(-18, 18), d: W.dist + rnd(-10, 10),
-                             life: 28, max: 28, s: rnd(5, 13), tint: '#9fe8ff' });
+              W.puffs.push({ x: W.px + frnd(-18, 18), d: W.dist + frnd(-10, 10),
+                             life: 28, max: 28, s: frnd(5, 13), tint: '#9fe8ff' });
           } else { crash(o); continue; }
         }
       }
@@ -1098,8 +1122,8 @@ var Game = (function () {
         if (bdx * bdx + bdd * bdd < (o.r + PR * 0.6) * (o.r + PR * 0.6)) {
           W.bog = 8;
           if (W.t % 5 === 0)
-            W.puffs.push({ x: W.px + rnd(-14, 14), d: W.dist - 10,
-                           life: 22, max: 22, s: rnd(4, 9) });
+            W.puffs.push({ x: W.px + frnd(-14, 14), d: W.dist - 10,
+                           life: 22, max: 22, s: frnd(4, 9) });
         }
         continue;
       }
@@ -1137,8 +1161,8 @@ var Game = (function () {
         W.shake = Math.max(W.shake, 8);
         Sfx.crash();
         for (var sm = 0; sm < 10; sm++)
-          W.puffs.push({ x: o.x + rnd(-o.r, o.r), d: o.d + rnd(-o.r, o.r),
-                         life: 26, max: 26, s: rnd(5, 13) });
+          W.puffs.push({ x: o.x + frnd(-o.r, o.r), d: o.d + frnd(-o.r, o.r),
+                         life: 26, max: 26, s: frnd(5, 13) });
         W.objects.splice(i, 1);
         continue;
       }
@@ -1148,8 +1172,8 @@ var Game = (function () {
           W.shield = 0; W.saved++; W.invuln = 80; W.shake = 16; W.tapFlash = 12;
           Sfx.pop();
           for (var q = 0; q < 20; q++)
-            W.puffs.push({ x: W.px + rnd(-16, 16), d: W.dist + rnd(-12, 12),
-                           life: 26, max: 26, s: rnd(5, 13), tint: '#9fe8ff' });
+            W.puffs.push({ x: W.px + frnd(-16, 16), d: W.dist + frnd(-12, 12),
+                           life: 26, max: 26, s: frnd(5, 13), tint: '#9fe8ff' });
         } else crash(o);
       }
     }
@@ -1167,8 +1191,8 @@ var Game = (function () {
       Sfx.land();
       W.shake = Math.max(W.shake, 9);
       for (var lp = 0; lp < 16; lp++)
-        W.puffs.push({ x: W.px + rnd(-20, 20), d: W.dist - rnd(0, 18),
-                       life: 26, max: 26, s: rnd(5, 14) });
+        W.puffs.push({ x: W.px + frnd(-20, 20), d: W.dist - frnd(0, 18),
+                       life: 26, max: 26, s: frnd(5, 14) });
     }
     if (airborne()) W.wasAir = true;
 
@@ -1176,8 +1200,8 @@ var Game = (function () {
       W.state = 'finish'; W.endT = 0; W.rushT = 0; Sfx.excite(false);
       Sfx.zone();
       for (var fp = 0; fp < 22; fp++)
-        W.puffs.push({ x: W.px + rnd(-26, 26), d: W.dist + rnd(-16, 16),
-                       life: 34, max: 34, s: rnd(5, 14), tint: '#ffe08a' });
+        W.puffs.push({ x: W.px + frnd(-26, 26), d: W.dist + frnd(-16, 16),
+                       life: 34, max: 34, s: frnd(5, 14), tint: '#ffe08a' });
     }
 
     tutorial();
@@ -1343,8 +1367,8 @@ var Game = (function () {
     W.crashAt = { x: o.x, d: o.d, r: o.r, spin: 0 };
     Sfx.crash();
     for (var i = 0; i < 20; i++)
-      W.puffs.push({ x: W.px + rnd(-18, 18), d: W.dist + rnd(-14, 14),
-                     life: 34, max: 34, s: rnd(6, 15) });
+      W.puffs.push({ x: W.px + frnd(-18, 18), d: W.dist + frnd(-14, 14),
+                     life: 34, max: 34, s: frnd(6, 15) });
   }
 
   /* Picking yourself up where you fell. The hill is not rewound — the row
@@ -1376,8 +1400,8 @@ var Game = (function () {
       }
     }
     for (var p = 0; p < 18; p++)
-      W.puffs.push({ x: W.px + rnd(-26, 26), d: W.dist + rnd(-20, 20),
-                     life: 30, max: 30, s: rnd(6, 14), tint: '#bfe9ff' });
+      W.puffs.push({ x: W.px + frnd(-26, 26), d: W.dist + frnd(-20, 20),
+                     life: 30, max: 30, s: frnd(6, 14), tint: '#bfe9ff' });
     Sfx.gold();
     return true;
   }
@@ -1398,8 +1422,8 @@ var Game = (function () {
       var f = W.flakes[i];
       f.y += f.v + W.speed * 0.3 - (A.rise || 0) * (0.5 + f.v);
       f.x += Math.sin(W.t * 0.035 * f.sw + f.ph) * sway * 0.5;
-      if (f.y > VIEW_H + 6) { f.y = -6; f.x = Math.random() * VIEW_W; }
-      else if (f.y < -8) { f.y = VIEW_H + 6; f.x = Math.random() * VIEW_W; }
+      if (f.y > VIEW_H + 6) { f.y = -6; f.x = frand() * VIEW_W; }
+      else if (f.y < -8) { f.y = VIEW_H + 6; f.x = frand() * VIEW_W; }
       if (f.x < -10) f.x += VIEW_W + 20; else if (f.x > VIEW_W + 10) f.x -= VIEW_W + 20;
     }
   }
@@ -1413,7 +1437,7 @@ var Game = (function () {
     PAL = buildPal();
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.globalAlpha = 1;
-    var shx = (Math.random() - 0.5) * W.shake, shy = (Math.random() - 0.5) * W.shake;
+    var shx = (frand() - 0.5) * W.shake, shy = (frand() - 0.5) * W.shake;
     ctx.save();
     ctx.translate(shx, shy);
     drawChute();
@@ -1468,7 +1492,7 @@ var Game = (function () {
     for (i = 0; i < W.streaks.length; i++) {
       var s = W.streaks[i];
       var sy = scrY(s.d);
-      if (sy > VIEW_H + 320) { s.d += LOOK + 200; s.x = rnd(-CHUTE, CHUTE); continue; }
+      if (sy > VIEW_H + 320) { s.d += LOOK + 200; s.x = frnd(-CHUTE, CHUTE); continue; }
       if (sy < -320) continue;
       ctx.globalAlpha = s.a * (1.9 + 3.4 * sp);
       ctx.lineWidth = 4 - 2.2 * sp;
