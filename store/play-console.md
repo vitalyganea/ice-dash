@@ -35,9 +35,10 @@ are in `listing.md`.
 | Release | versionCode | Track | Status |
 |---|---|---|---|
 | 1.0.1 | 2 | Closed testing "1.0" | approved 5 Oct 2026 |
+| 1.0.2 | 3 | Closed testing "1.0" | built 5 Oct 2026: edge to edge for Android 15 |
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **3**.
+number (`android/app/build.gradle`). The next one is **4**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
@@ -65,9 +66,6 @@ Submit changes for review. The deobfuscation-file warning can be ignored
 
 ## For the next release
 
-- Play suggests edge-to-edge handling for Android 15:
-  `StatusBar.setOverlaysWebView` in `js/native.js` is deprecated, and the
-  game should respect the system insets.
 - Ads, if ever: Android only (through `native.js`), rewarded ads at the revive
   and results screens, EU consent (UMP), then update Ads = Yes, Advertising
   ID = Yes, Data safety and the privacy policy. Playables stays ad-free.

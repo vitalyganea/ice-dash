@@ -11,6 +11,10 @@
       "launchShowDuration": 600,
       "backgroundColor": "#0d3a5c",
       "showSpinner": false
+    },
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover"
     }
   }
 }

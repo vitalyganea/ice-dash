@@ -4878,7 +4878,7 @@ var Game = (function () {
     ctx.setTransform(hudK, 0, 0, hudK, 0, 0);
 
     var u = Math.max(13, Math.min(22, Math.min(CSS_W, CSS_H) / 26));
-    var padL = 12, padT = 12;
+    var padL = 12 + INSET_L, padT = 12 + INSET_T;
     var FONT = 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
 
     /* ---- everything you are reading, in one place ----
@@ -5177,6 +5177,26 @@ var Game = (function () {
   }
   function onDpr() { resize(); watchDpr(); }
 
+  /* The corner the readouts sit in can be under a phone's camera hole or
+     rounded glass when the page runs edge to edge (the Android app does).
+     The browser reports those margins as env(safe-area-inset-*); reading
+     them through a probe element is the only way a canvas can know them.
+     Everywhere else they are 0 and nothing moves. */
+  var INSET_T = 0, INSET_L = 0, insetProbe = null;
+  function readInsets() {
+    try {
+      if (!insetProbe) {
+        insetProbe = document.createElement('div');
+        insetProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+          'padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-left,0px)';
+        document.body.appendChild(insetProbe);
+      }
+      var cs = getComputedStyle(insetProbe);
+      INSET_T = parseFloat(cs.paddingTop) || 0;
+      INSET_L = parseFloat(cs.paddingLeft) || 0;
+    } catch (e) { INSET_T = INSET_L = 0; }
+  }
+
   function resize() {
     if (!canvas) return;
     var vw = Math.max(1, window.innerWidth || 960), vh = Math.max(1, window.innerHeight || 540);
@@ -5193,6 +5213,7 @@ var Game = (function () {
        one world unit is only `scale` CSS pixels there — which is exactly why
        the score was unreadable on a phone and fine on a laptop. */
     CSS_W = vw; CSS_H = vh; hudK = eff;
+    readInsets();
     canvas.width = Math.round(vw * eff); canvas.height = Math.round(vh * eff);
     drawK = canvas.width / VIEW_W;                    // equals canvas.height / VIEW_H
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);

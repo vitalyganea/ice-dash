@@ -8,7 +8,7 @@
        On the title, with nothing to go back to, it leaves the app.
      - navigator.vibrate is answered by the native Haptics plugin, so the
        game's own buzz patterns work without the app asking for anything.
-     - the status and navigation bars are hidden: the hill is the screen.
+     - the status bar is hidden: the hill is the screen.
      - Settings gets a link to the privacy policy, which Google Play
        wants reachable from inside the app.
    Every call is guarded: off-device, or with a plugin missing, nothing
@@ -75,8 +75,12 @@
   }
 
   /* ---- full screen ---- */
-  if (P.StatusBar && P.StatusBar.hide) {
-    try { P.StatusBar.setOverlaysWebView && P.StatusBar.setOverlaysWebView({ overlay: true }); } catch (e) {}
-    try { P.StatusBar.hide(); } catch (e) {}
+  /* Capacitor's own SystemBars runs the page edge to edge, the way Android
+     15 does it (insetsHandling in capacitor.config.json); the page keeps
+     clear of the camera hole through env(safe-area-inset-*). Only the status
+     bar is hidden — the navigation bar or gesture line stays where the
+     player expects it. */
+  if (P.SystemBars && P.SystemBars.hide) {
+    try { P.SystemBars.hide({ bar: 'StatusBar' }); } catch (e) {}
   }
 })();
