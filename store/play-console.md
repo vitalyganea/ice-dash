@@ -64,8 +64,24 @@ Submit changes for review. The deobfuscation-file warning can be ignored
   joins the group can opt in.
 - Testers must be real people; fake accounts can close the developer account.
 
-## For the next release
+## Plan (agreed 5 October 2026)
 
-- Ads, if ever: Android only (through `native.js`), rewarded ads at the revive
-  and results screens, EU consent (UMP), then update Ads = Yes, Advertising
-  ID = Yes, Data safety and the privacy policy. Playables stays ad-free.
+1. **Android to production.** 1.0.2 (edge to edge for Android 15) on the
+   closed track; 12 testers for 14 days; then "Apply for production".
+2. **Leaderboards (1.1).** Google Play Games Services, Android only through
+   `native.js`: Freeride distance, Time Rush score, Daily Line (the same line
+   for everyone, so a fair daily board); the weekly span is the "season".
+   Optionally the 30 trophies as Play achievements. Needs the Play Games
+   project, leaderboard ids and OAuth with both SHA-1 fingerprints (upload
+   key and Play app signing key) — the usual place it goes wrong. Testable
+   only on a real phone. Update Data safety and the privacy policy.
+3. **Ads (1.2), if wanted.** Android only, rewarded ads at the revive and
+   results screens, EU consent (UMP); Ads = Yes, Advertising ID = Yes, Data
+   safety and the privacy policy updated. Playables stays ad-free.
+4. **iOS, once Android has players.** `npx cap add ios`, the same game files;
+   `native.js` without the back button. Needs a Mac with Xcode (or a cloud
+   build such as Codemagic or GitHub Actions on macOS) and an Apple Developer
+   account at $99 a year; testing through TestFlight.
+
+The web version keeps running throughout. It can also be served from an
+own server: the files from `build.sh` behind any web server with HTTPS.
