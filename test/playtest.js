@@ -331,9 +331,11 @@ async function walk(cdp, sid, P) {
   await ev("(function(){var s=document.querySelector('#screen-shop');s.scrollTop=s.scrollHeight/2;})()");
   var arrow = await ev("(function(){var e=document.querySelector('#btn-back');" +
     "if(!e||e.classList.contains('hidden'))return null;var r=e.getBoundingClientRect();" +
-    "return {top:r.top,w:r.width};})()");
-  ok(arrow && arrow.top >= 0 && arrow.top < 80 && arrow.w >= 44,
-     'the back arrow is on screen in the Market without scrolling (' + JSON.stringify(arrow) + ')');
+    "return {top:r.top,bottom:r.bottom,left:r.left,w:r.width,vh:innerHeight};})()");
+  /* on screen with the shelf scrolled, and in the bottom-left corner: the
+     top edge belongs to the platform's own controls */
+  ok(arrow && arrow.bottom <= arrow.vh && arrow.top > arrow.vh * 0.6 && arrow.left < 40 && arrow.w >= 44,
+     'the back arrow is on screen in the Market, bottom-left, without scrolling (' + JSON.stringify(arrow) + ')');
   ok(await clickFor('#btn-back', '#screen-title') >= 0, 'and it leaves the Market');
   ok(!(await visible('#btn-back')), 'and it is gone again on the title');
 

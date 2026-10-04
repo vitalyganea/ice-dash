@@ -814,8 +814,11 @@ body{
    away with them. */
 .back-btn{
   position:fixed; z-index:50;
-  top:calc(12px + env(safe-area-inset-top,0px));
-  left:calc(12px + env(safe-area-inset-left,0px));
+  /* Bottom-left, not top-left: the top edge is where YouTube draws its own
+     controls over a Playable, and the game keeps its icons clear of it —
+     the pause button sits bottom-right for the same reason. */
+  bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  left:calc(16px + env(safe-area-inset-left,0px));
   width:54px; height:54px;
   display:grid; place-items:center; padding:0;
   border:3px solid #062a78; border-radius:16px;
@@ -839,7 +842,7 @@ body{
    under the arrow, so those screens start a little lower. */
 @media (max-width:820px){
   #screen-help, #screen-shop, #screen-runs, #screen-ach, #screen-settings{
-    padding-top:calc(80px + env(safe-area-inset-top,0px));
+    padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));
   }
 }
 
@@ -1206,8 +1209,10 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 
 .tut-skip{
   position:fixed; z-index:45;
-  top:calc(12px + env(safe-area-inset-top,0px));
-  right:calc(12px + env(safe-area-inset-right,0px));
+  /* Bottom-left, opposite the pause button and clear of the top edge where
+     the platform's own controls are drawn. */
+  bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  left:calc(16px + env(safe-area-inset-left,0px));
   min-height:44px; padding:8px 16px;
   font:inherit; font-size:15px; font-weight:800; color:var(--ink);
   background:rgba(255,255,255,.9);
