@@ -458,7 +458,7 @@ async function walk(cdp, sid, P) {
       /* The words are held back until the shell breaks, so wait for the
          prize line to come back rather than for a fixed moment. */
       var shown = false;
-      for (var fi = 0; fi < 60 && !shown; fi++) {
+      for (var fi = 0; fi < 160 && !shown; fi++) {
         shown = await ev("!document.querySelector('#find-prize').classList.contains('hidden')" +
                          " && (JSON.parse(localStorage.getItem('icedash-save-v1')||'{}').finds||0) < " + before);
         if (!shown) await sleep(100);

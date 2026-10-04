@@ -87,6 +87,16 @@ var Sfx = (function () {
     /* hitting a ramp: a scrape that slides upward into the launch */
     jump:   function(){ noise(0.1, 0.1, 900);
                         tone({ freq:330, to:880, dur:0.22, type:'triangle', vol:0.2 }); },
+    /* a frozen find straining: a tone rising under a crackle */
+    charge: function(){ tone({ freq:180, to:720, dur:1.3, type:'triangle', vol:0.12 });
+                        [0.3, 0.6, 0.85, 1.05].forEach(function (d) {
+                          tone({ freq:2200, to:1400, dur:0.05, type:'square', vol:0.05, delay:d }); }); },
+    /* and giving: a low thump with the shell scattering */
+    boom:   function(){ tone({ freq:140, to:45, dur:0.45, type:'sine', vol:0.32 });
+                        noise(0.4, 0.22, 2400); },
+    /* a new best: a short rising fanfare */
+    fanfare:function(){ [523,659,784,1046,1318].forEach(function(f,i){
+                          tone({ freq:f, dur:0.22, type:'triangle', vol:0.2, delay:i*0.08 }); }); },
     /* coming back down: a thump with a spray of snow behind it */
     land:   function(){ tone({ freq:200, to:110, dur:0.16, type:'sine', vol:0.24 });
                         noise(0.16, 0.14, 420); }

@@ -5311,8 +5311,14 @@ var Game = (function () {
        `kind` only picks the colour of what was inside — the prize itself is
        decided by the caller, because the engine has no business knowing
        what a fish is worth. */
-    playFindOpen: function (cv, size, kind, done) {
-      if (!cv || !cv.getContext) { if (done) done(); return; }
+    playFindOpen: function (cv, size, kind, done, onBreak) {
+      /* The opening is a moment, so it is staged: the nodule shakes harder
+         and harder while cracks of light run through it, it gives with a
+         flash, rays turn behind it and the shell flies apart, and what was
+         inside settles in its own colour — blue for fish, gold for gold,
+         rose for a spare life, the rarest. `onBreak` fires at the instant it
+         gives, so the page can throw its own burst across the whole screen. */
+      if (!cv || !cv.getContext) { if (onBreak) onBreak(); if (done) done(); return; }
       var k = Math.min(window.devicePixelRatio || 1, 2.5);
       size = size || 140;
       cv.width = Math.round(size * k); cv.height = Math.round(size * k);
@@ -5320,55 +5326,93 @@ var Game = (function () {
       var c = cv.getContext('2d');
       c.lineJoin = 'round'; c.lineCap = 'round';
 
-      var tone = kind === 'life' ? ['#ff9fb0', '#e03b55']
-               : kind === 'gold' ? ['#ffe9a8', '#e0a81f']
-                                 : ['#bfe6ff', '#3f93cc'];
-      var R = size * 0.32, cx = size / 2, cy = size / 2;
-      /* shards: where each piece of the shell flies */
-      var sh = [], i;
-      for (i = 0; i < 11; i++) {
-        var a = i / 11 * 6.2832 + 0.4;
-        sh.push({ a: a, sp: 0.7 + ((i * 7) % 5) * 0.22,
-                  rot: (i % 2 ? 1 : -1) * (0.08 + (i % 3) * 0.05),
-                  w: R * (0.26 + ((i * 5) % 4) * 0.08) });
+      var tone = kind === 'life' ? ['#ffd0dc', '#e03b6a', '255,120,170']
+               : kind === 'gold' ? ['#fff0b0', '#e0a81f', '255,210,90']
+                                 : ['#d6f1ff', '#3f93cc', '150,215,255'];
+      var R = size * 0.32, cx = size / 2, cy = size / 2, i;
+      /* cracks: fixed paths out from the middle, drawn longer as it strains */
+      var cracks = [];
+      for (i = 0; i < 7; i++) {
+        var a0 = i / 7 * 6.2832 + 0.3, pts = [[0, 0]], x = 0, y = 0;
+        for (var sgi = 1; sgi <= 4; sgi++) {
+          var aa = a0 + Math.sin(i * 3.1 + sgi * 1.7) * 0.45, step = R * 0.27;
+          x += Math.cos(aa) * step; y += Math.sin(aa) * step;
+          pts.push([x, y]);
+        }
+        cracks.push(pts);
       }
-      var T = 0, DUR = 78, raf = null;
+      var sh = [];
+      for (i = 0; i < 14; i++) {
+        var sa = i / 14 * 6.2832 + 0.4;
+        sh.push({ a: sa, sp: 0.7 + ((i * 7) % 5) * 0.22,
+                  rot: (i % 2 ? 1 : -1) * (0.08 + (i % 3) * 0.05),
+                  w: R * (0.24 + ((i * 5) % 4) * 0.08) });
+      }
+      var T = 0, DUR = 150, BREAK = 0.6, broke = false, raf = null;
       function frame() {
         T++;
         var t = T / DUR;
         c.setTransform(k, 0, 0, k, 0, 0);
         c.clearRect(0, 0, size, size);
 
-        if (t < 0.34) {                               /* winding up: it shakes */
-          var q = t / 0.34;
-          var jx = (Math.random() - 0.5) * q * 9, jy = (Math.random() - 0.5) * q * 9;
-          c.save(); c.translate(jx, jy);
-          drawFind(cx, cy, { r: R, ph: 0.8 }, c);
-          c.restore();
-          /* light building inside it */
-          var gl = c.createRadialGradient(cx, cy, 1, cx, cy, R * (1 + q));
-          gl.addColorStop(0, 'rgba(255,255,255,' + (0.5 * q).toFixed(3) + ')');
-          gl.addColorStop(1, 'rgba(255,255,255,0)');
+        if (t < BREAK) {                              /* it strains */
+          var q = t / BREAK, amp = q * q * 10;
+          var jx = (Math.random() - 0.5) * amp, jy = (Math.random() - 0.5) * amp;
+          /* light building inside, pulsing faster as it goes */
+          var pulse = 0.5 + 0.5 * Math.sin(T * (0.15 + q * 0.5));
+          var gl = c.createRadialGradient(cx, cy, 1, cx, cy, R * (1.2 + q));
+          gl.addColorStop(0, 'rgba(' + tone[2] + ',' + (0.25 + 0.45 * q * pulse).toFixed(3) + ')');
+          gl.addColorStop(1, 'rgba(' + tone[2] + ',0)');
           c.fillStyle = gl;
-          c.beginPath(); c.arc(cx, cy, R * (1 + q), 0, 6.2832); c.fill();
+          c.beginPath(); c.arc(cx, cy, R * (1.2 + q), 0, 6.2832); c.fill();
+          c.save(); c.translate(cx + jx, cy + jy);
+          drawFind(0, 0, { r: R, ph: 0.8 }, c);
+          /* the cracks of light, running further each frame */
+          c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 1.8;
+          c.shadowColor = 'rgba(' + tone[2] + ',1)'; c.shadowBlur = 8;
+          for (i = 0; i < cracks.length; i++) {
+            var reach = Math.max(0, Math.min(4, q * 6 - i * 0.35));
+            if (reach <= 0) continue;
+            var pts2 = cracks[i];
+            c.beginPath(); c.moveTo(pts2[0][0], pts2[0][1]);
+            for (var pi = 1; pi <= Math.ceil(reach); pi++) {
+              var f = Math.min(1, reach - (pi - 1));
+              c.lineTo(pts2[pi - 1][0] + (pts2[pi][0] - pts2[pi - 1][0]) * f,
+                       pts2[pi - 1][1] + (pts2[pi][1] - pts2[pi - 1][1]) * f);
+            }
+            c.stroke();
+          }
+          c.restore();
         } else {                                      /* it gives */
-          var q2 = (t - 0.34) / 0.66;
+          if (!broke) { broke = true; if (onBreak) onBreak(); }
+          var q2 = (t - BREAK) / (1 - BREAK);
+          /* the flash */
+          if (q2 < 0.18) {
+            c.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - q2 / 0.18)).toFixed(3) + ')';
+            c.fillRect(0, 0, size, size);
+          }
+          /* rays turning behind it */
+          c.save(); c.translate(cx, cy); c.rotate(T * 0.02);
+          var ra = Math.max(0, 0.55 * (1 - q2 * 0.6));
+          for (i = 0; i < 12; i++) {
+            c.rotate(6.2832 / 12);
+            c.fillStyle = 'rgba(' + tone[2] + ',' + (ra * (i % 2 ? 0.55 : 1)).toFixed(3) + ')';
+            c.beginPath(); c.moveTo(0, 0); c.lineTo(-R * 0.22, -size); c.lineTo(R * 0.22, -size); c.closePath(); c.fill();
+          }
+          c.restore();
           var burst = Math.min(1, q2 * 3.2);
           var bg = c.createRadialGradient(cx, cy, 1, cx, cy, R * (0.8 + burst * 2.4));
           bg.addColorStop(0, 'rgba(255,255,255,' + (0.85 * (1 - q2)).toFixed(3) + ')');
-          bg.addColorStop(0.45, 'rgba(' + (kind === 'gold' ? '255,224,140'
-                                        : kind === 'life' ? '255,170,185'
-                                                          : '190,232,255') +
-                                ',' + (0.5 * (1 - q2)).toFixed(3) + ')');
+          bg.addColorStop(0.45, 'rgba(' + tone[2] + ',' + (0.5 * (1 - q2)).toFixed(3) + ')');
           bg.addColorStop(1, 'rgba(255,255,255,0)');
           c.fillStyle = bg;
           c.beginPath(); c.arc(cx, cy, R * (0.8 + burst * 2.4), 0, 6.2832); c.fill();
 
           for (i = 0; i < sh.length; i++) {           /* the shell, leaving */
             var p = sh[i];
-            var fly = q2 * q2 * 1.5 + q2 * 0.5;
-            var px = cx + Math.cos(p.a) * R * (0.7 + fly * 2.6);
-            var py = cy + Math.sin(p.a) * R * (0.7 + fly * 2.6) + fly * fly * 26;
+            var fly = q2 * q2 * 1.5 + q2 * 0.6;
+            var px = cx + Math.cos(p.a) * R * (0.7 + fly * 2.8);
+            var py = cy + Math.sin(p.a) * R * (0.7 + fly * 2.8) + fly * fly * 26;
             c.save();
             c.translate(px, py);
             c.rotate(p.rot * T * 0.5);
@@ -5382,10 +5426,10 @@ var Game = (function () {
           }
           c.globalAlpha = 1;
 
-          /* and what was inside, settling in */
+          /* and what was inside, settling in with a bounce */
           var pop = Math.min(1, q2 * 2.4);
-          var ease = 1 - Math.pow(1 - pop, 3);
-          var pr = R * (0.2 + 0.72 * ease);
+          var ease = 1 + 0.25 * Math.sin(pop * Math.PI) * (1 - pop) - Math.pow(1 - pop, 3);
+          var pr = R * (0.2 + 0.72 * Math.max(0, ease));
           c.save();
           c.translate(cx, cy);
           c.rotate(Math.sin(T * 0.07) * 0.18);
@@ -5393,7 +5437,6 @@ var Game = (function () {
           pg.addColorStop(0, tone[0]);
           pg.addColorStop(1, tone[1]);
           c.fillStyle = pg;
-          /* a rounded lozenge; the UI puts the words underneath */
           c.beginPath();
           c.ellipse(0, 0, pr, pr * 0.86, 0, 0, 6.2832);
           c.fill();
@@ -5402,14 +5445,13 @@ var Game = (function () {
           c.beginPath();
           c.ellipse(-pr * 0.32, -pr * 0.36, pr * 0.26, pr * 0.16, -0.5, 0, 6.2832);
           c.fill();
-          /* sparks turning around it */
-          for (i = 0; i < 6; i++) {
-            var sa = T * 0.05 + i * 1.047;
+          for (i = 0; i < 8; i++) {                   /* sparks turning around it */
+            var sa2 = T * 0.05 + i * 0.785;
             var sr = pr * (1.35 + 0.12 * Math.sin(T * 0.08 + i));
             c.globalAlpha = 0.35 + 0.35 * Math.sin(T * 0.1 + i * 2);
             c.fillStyle = '#ffffff';
             c.beginPath();
-            c.arc(Math.cos(sa) * sr, Math.sin(sa) * sr * 0.8, 1.8 + (i % 3), 0, 6.2832);
+            c.arc(Math.cos(sa2) * sr, Math.sin(sa2) * sr * 0.8, 1.8 + (i % 3), 0, 6.2832);
             c.fill();
           }
           c.globalAlpha = 1;

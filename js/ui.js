@@ -477,8 +477,105 @@
     $('over-unlock').classList.toggle('hidden', !opened);
     if (opened) { $('over-unlock').textContent = t('over.unlocked.modes'); justOpened = true; }
     buildGoals(res, cd, stars, beat, rushRun);
+    if (beat) setTimeout(function () {
+      celebrateBest($('over-score'), rushRun ? res.dist : res.score, rushRun ? t('unit.m') : null);
+    }, 350);
     Game.pause();
     show('over');
+  }
+
+  /* ------------------------ bursts ---------------------------- */
+  /* One canvas over the whole window for the big moments. Each burst runs
+     on its own short animation and clears itself when done. */
+  var BURST_TONE = { fish: ['#bfe8ff', '#4fb0ea', '150,215,255'],
+                     gold: ['#fff1a8', '#f0b020', '255,210,90'],
+                     life: ['#ffd0dc', '#ff5a8a', '255,120,170'],
+                     best: ['#fff1a8', '#ff6b8a', '255,220,120'] };
+  var burstRaf = null;
+  function screenBurst(kind, x, y) {
+    var cv = $('fx-burst'); if (!cv || !cv.getContext) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = window.innerWidth, h = window.innerHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var tone = BURST_TONE[kind] || BURST_TONE.fish;
+    var confetti = kind !== 'fish';                     // gold, a life and a best throw colour too
+    var cols = kind === 'best' ? ['#ffd84a', '#ff6b8a', '#55bdf0', '#45d3a2', '#9a86f4']
+                               : [tone[0], tone[1], '#ffffff'];
+    var parts = [], i, n = kind === 'best' ? 110 : kind === 'life' ? 90 : 60;
+    for (i = 0; i < n; i++) {
+      var a = Math.random() * 6.2832, sp = 4 + Math.random() * 9;
+      var fromTop = kind === 'best';
+      parts.push({ x: fromTop ? Math.random() * w : x, y: fromTop ? -20 - Math.random() * 120 : y,
+                   vx: fromTop ? (Math.random() - 0.5) * 3 : Math.cos(a) * sp,
+                   vy: fromTop ? 2 + Math.random() * 4 : Math.sin(a) * sp - 3,
+                   r: 3 + Math.random() * 5, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.3,
+                   col: cols[i % cols.length], shard: !confetti || i % 3 === 0 });
+    }
+    var T = 0, DUR = kind === 'best' ? 150 : 80;
+    if (burstRaf) cancelAnimationFrame(burstRaf);
+    (function frame() {
+      T++;
+      c.clearRect(0, 0, w, h);
+      if (kind !== 'best' && T < 40) {                  // rays out of the find
+        c.save(); c.translate(x, y); c.rotate(T * 0.03);
+        var ra = 0.4 * (1 - T / 40), L = Math.max(w, h);
+        for (var k = 0; k < 14; k++) {
+          c.rotate(6.2832 / 14);
+          c.fillStyle = 'rgba(' + tone[2] + ',' + (ra * (k % 2 ? 0.5 : 1)).toFixed(3) + ')';
+          c.beginPath(); c.moveTo(0, 0); c.lineTo(-24, -L); c.lineTo(24, -L); c.closePath(); c.fill();
+        }
+        c.restore();
+      }
+      for (var j = 0; j < parts.length; j++) {
+        var p = parts[j];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.vx *= 0.985; p.rot += p.vr;
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+        c.globalAlpha = Math.max(0, 1 - T / DUR);
+        c.fillStyle = p.col;
+        if (p.shard) { c.beginPath(); c.moveTo(-p.r, p.r * 0.5); c.lineTo(0, -p.r * 1.2); c.lineTo(p.r, p.r * 0.4); c.closePath(); c.fill(); }
+        else c.fillRect(-p.r, -p.r * 0.4, p.r * 2, p.r * 0.8);
+        c.restore();
+      }
+      if (T < DUR) burstRaf = requestAnimationFrame(frame);
+      else { c.clearRect(0, 0, w, h); burstRaf = null; }
+    })();
+  }
+  /* What came out of the find flies into the purse line on the card. */
+  function flyPrize(kind) {
+    var from = $('find-art'), to = $('over-earned');
+    if (!from || !to || to.classList.contains('hidden')) to = $('find-prize');
+    if (!from || !to) return;
+    var a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    var tone = BURST_TONE[kind] || BURST_TONE.fish, n = kind === 'fish' ? 8 : 5;
+    for (var i = 0; i < n; i++) (function (i) {
+      var d = document.createElement('div');
+      d.className = 'fly-dot';
+      d.style.left = (a.left + a.width / 2 + (Math.random() - 0.5) * 40) + 'px';
+      d.style.top = (a.top + a.height / 2 + (Math.random() - 0.5) * 40) + 'px';
+      d.style.background = 'radial-gradient(circle at 35% 30%, #fff, ' + tone[1] + ')';
+      document.body.appendChild(d);
+      setTimeout(function () {
+        d.style.transform = 'translate(' + (b.left + b.width / 2 - parseFloat(d.style.left)) + 'px,' +
+                            (b.top + b.height / 2 - parseFloat(d.style.top)) + 'px) scale(.5)';
+        d.style.opacity = '0.2';
+      }, 30 + i * 60);
+      setTimeout(function () { d.remove(); }, 900 + i * 60);
+    })(i);
+    setTimeout(function () { to.classList.remove('bump'); void to.offsetWidth; to.classList.add('bump'); }, 760);
+  }
+  /* A new best: confetti down the whole screen and the number counting up. */
+  function celebrateBest(el, value, unit) {
+    screenBurst('best', 0, 0);
+    if (Sfx.fanfare) Sfx.fanfare();
+    buzz([40, 40, 40, 40, 90]);
+    var T = 0, DUR = 48;
+    (function tick() {
+      T++;
+      var v = Math.round(value * (1 - Math.pow(1 - T / DUR, 3)));
+      el.textContent = unit ? v + ' ' + unit : t('over.points', { n: v });
+      if (T < DUR) requestAnimationFrame(tick);
+    })();
   }
 
   /* ------------------------ what is next ---------------------- */
@@ -568,12 +665,19 @@
     if (btn) btn.disabled = true;
     achCheck(save);
     store();
-    Sfx.bubble();
     var kind = pick.kind;
-    setTimeout(function () { Sfx.gold(); }, 560);
+    if (Sfx.charge) Sfx.charge(); else Sfx.bubble();
+    buzz(20);
+    function onBreak() {
+      if (Sfx.boom) Sfx.boom();
+      Sfx.gold();
+      buzz(kind === 'life' ? [60, 40, 60, 40, 120] : kind === 'gold' ? [50, 30, 90] : [40, 30, 50]);
+      var r = $('find-art').getBoundingClientRect();
+      screenBurst(kind, r.left + r.width / 2, r.top + r.height / 2);
+    }
     if (Game.playFindOpen) {
-      Game.playFindOpen($('find-art'), 140, kind, function () { finish(); });
-    } else { finish(); }
+      Game.playFindOpen($('find-art'), 140, kind, function () { finish(); }, onBreak);
+    } else { onBreak(); finish(); }
 
     function finish() {
       opening = false;
@@ -582,6 +686,7 @@
       /* restart the reveal even when the same prize comes up twice */
       p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
       buildFinds(false);
+      flyPrize(kind);
     }
   }
 
