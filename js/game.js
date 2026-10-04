@@ -1520,6 +1520,7 @@ var Game = (function () {
     drawHaze();
     drawFog();
     drawPenguin();
+    drawGateFronts();     /* after him: he goes THROUGH the hoop */
     drawCloseCall();
     drawChill();
     drawPaceVignette();
@@ -1651,7 +1652,7 @@ var Game = (function () {
         if (o.kind === 'tree') drawTree(x, y, o, B); else drawRock(x, y, o, B);
         ctx.globalAlpha = 1;
       }
-      else if (o.t === 'gate')   drawGate(x, y, o);
+      else if (o.t === 'gate')   drawGate(x, y, o, hoopAhead(o) ? null : 'back');
       else if (o.t === 'fish')   { if (!o.got) drawFish(x, y, o, false); }
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
@@ -2828,15 +2829,19 @@ var Game = (function () {
 
      Kept as type 'gate' in the code because that is what it is to the
      rules: a thing you steer through for a bonus. */
-  /* A ring of ice crystals standing up out of the run, with the way
-     through it clear in the middle. It replaced an oval of polished blue
-     ice that players read as one more round thing on a hill full of round
-     things, with nothing to say "go through here". The ring is the same
-     size and shape as the oval was, so where it pays is exactly where it
-     always paid. It lights gold when you take it and goes dull when you
-     pass it by. */
-  function drawGate(x, y, o) {
-    var hw = o.w / 2, hh = 26;
+  /* A hoop of ice crystals standing upright across the run, for him to
+     slide THROUGH. It lay flat on the ice before, and read as a patch to
+     cross rather than a ring to go through. From straight above an upright
+     hoop is foreshortened to a flat oval, so it is drawn in two halves: the
+     far half before the creature and the near half after him, the way the
+     snow bridge's roof is — when he crosses it, the ring closes round him.
+     A shadow on the ice and a tuft of snow at each foot say it is standing.
+     The same width and the same place on the run as ever, so where it pays
+     has not moved. Gold when taken, grey when passed by.
+     `part` is 'back', 'front', or nothing for the whole thing (icons). */
+  function drawGate(x, y, o, part) {
+    var hw = o.w / 2, hh = 20;
+    var back = part !== 'front', front = part !== 'back';   // null or undefined: the whole hoop
     ctx.save();
     ctx.translate(x, y);
 
@@ -2846,36 +2851,51 @@ var Game = (function () {
     var rim = lit ? 'rgba(140,86,0,.85)' : gone ? 'rgba(110,126,140,.6)' : 'rgba(26,92,146,.8)';
     if (gone) ctx.globalAlpha = 0.6;
 
-    /* the light held inside it: this is the part you aim for */
-    var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, hw);
-    glow.addColorStop(0, lit ? 'rgba(255,224,120,.55)' : gone ? 'rgba(200,210,220,.12)'
-                                                         : 'rgba(170,232,255,.42)');
-    glow.addColorStop(1, 'rgba(170,232,255,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.fill();
+    if (back) {
+      /* its shadow, thrown on the ice beside it */
+      ctx.fillStyle = 'rgba(30,70,110,.18)';
+      ctx.beginPath(); ctx.ellipse(10, hh * 0.9, hw * 0.98, hh * 0.32, 0, 0, 6.2832); ctx.fill();
+      /* the light held inside it: the part you aim for */
+      var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, hw);
+      glow.addColorStop(0, lit ? 'rgba(255,224,120,.5)' : gone ? 'rgba(200,210,220,.1)'
+                                                           : 'rgba(170,232,255,.38)');
+      glow.addColorStop(1, 'rgba(170,232,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.fill();
+      /* where it stands in the ice: a tuft of snow at each foot */
+      [-1, 1].forEach(function (k) {
+        ctx.fillStyle = 'rgba(255,255,255,.92)';
+        ctx.beginPath(); ctx.ellipse(k * hw, 3, 9, 5, 0, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(70,120,160,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
+      });
+    }
 
-    /* The hoop itself, under the crystals: a band of clear ice, so it
-       reads as a ring to go through and not as a crown of spikes. */
-    ctx.lineWidth = 7; ctx.strokeStyle = rim;
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.stroke();
-    ctx.lineWidth = 4.2; ctx.strokeStyle = hi;
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.stroke();
+    /* the hoop: the far half (upper arc) behind him, the near half in front */
+    function band(a0, a1) {
+      ctx.lineWidth = 8; ctx.strokeStyle = rim;
+      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, a0, a1); ctx.stroke();
+      ctx.lineWidth = 4.6; ctx.strokeStyle = hi;
+      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, a0, a1); ctx.stroke();
+    }
+    if (back) band(Math.PI, 2 * Math.PI);
+    if (front) band(0, Math.PI);
 
     /* the crystals set into it: short and blunt, gems rather than thorns */
     var per = Math.PI * (3 * (hw + hh) - Math.sqrt((3 * hw + hh) * (hw + 3 * hh)));
-    var n = Math.max(7, Math.round(per / 22));
+    var n = Math.max(8, Math.round(per / 22));
     var sz = clamp(hw * 0.12, 5, 9);
     var twinkle = Math.floor(W.t * 0.09 + (o.d % 31)) % n;
     ctx.lineJoin = 'round';
     for (var i = 0; i < n; i++) {
-      var a = i / n * 6.2832;
+      var a = i / n * 6.2832 + 0.001;
+      var near = Math.sin(a) > 0;
+      if ((near && !front) || (!near && !back)) continue;
       var cx = Math.cos(a) * hw, cy = Math.sin(a) * hh;
       var nrm = Math.atan2(Math.sin(a) * hw, Math.cos(a) * hh);   // outward
-      var s2 = sz * (i % 2 ? 0.82 : 1.05);
+      var s2 = sz * (i % 2 ? 0.82 : 1.05) * (near ? 1.08 : 0.9);  // nearer looks bigger
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(nrm + Math.PI / 2);
-      /* a six-sided gem: a lit face and a shaded face */
       var tp = -s2 * 1.05, sd = s2 * 0.62, bt = s2 * 0.62;
       ctx.beginPath();
       ctx.moveTo(0, tp); ctx.lineTo(-sd, tp * 0.35); ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(0, bt);
@@ -2889,8 +2909,7 @@ var Game = (function () {
       ctx.strokeStyle = rim; ctx.lineWidth = 1.2; ctx.stroke();
       ctx.restore();
 
-      /* light running round the ring, one crystal at a time */
-      if (i === twinkle && !gone) {
+      if (i === twinkle && !gone) {                  // light running round the ring
         ctx.save();
         ctx.translate(cx + Math.cos(nrm) * s2, cy + Math.sin(nrm) * s2);
         ctx.fillStyle = '#ffffff';
@@ -2904,16 +2923,31 @@ var Game = (function () {
       }
     }
 
-    if (lit) {                                       // sparks thrown off as it is taken
+    if (lit && front) {                              // sparks thrown off as it is taken
       ctx.fillStyle = 'rgba(255,236,160,.9)';
       for (i = 0; i < 8; i++) {
         var a2 = i / 8 * 6.2832 + 0.4;
         ctx.beginPath();
-        ctx.arc(Math.cos(a2) * hw * 1.22, Math.sin(a2) * hh * 1.5, 2.4, 0, 6.2832);
+        ctx.arc(Math.cos(a2) * hw * 1.22, Math.sin(a2) * hh * 1.6, 2.4, 0, 6.2832);
         ctx.fill();
       }
     }
     ctx.restore();
+  }
+  /* The near halves of the hoops, drawn after the creature so he passes
+     through them rather than over them. */
+  /* Still ahead of him: he is nearer the camera than it, so the whole hoop
+     is drawn under him. Only once he reaches it does its near half come
+     over the top. */
+  function hoopAhead(o) { return o.d - W.dist > 26; }
+  function drawGateFronts() {
+    for (var i = 0; i < W.objects.length; i++) {
+      var o = W.objects[i];
+      if (o.t !== 'gate' || hoopAhead(o)) continue;
+      var y = scrY(o.d);
+      if (y < -60 || y > VIEW_H + 60) continue;
+      drawGate(scrX(o.x), y, o, 'front');
+    }
   }
 
   /* Time, in Time Rush: a bubble of green-gold light with what it gives
@@ -3155,31 +3189,41 @@ var Game = (function () {
       }
       c.restore();
     } else if (S.accessory === 'puffin') {
-      /* A puffin from above is a black back and a face: white cheeks
-         either side of the head and the beak, banded and far too big. */
-      c.fillStyle = '#f4f7fa';
+      /* A puffin from above is a black back and a face: pale cheeks either
+         side of the head, an eye set in each, and the beak — broad, short
+         and banded grey, yellow and red. A tall narrow cone read as a party
+         hat. */
       [-1, 1].forEach(function (k) {
-        c.beginPath(); c.ellipse(k * 8.5, -27, 5.6, 6.6, k * 0.3, 0, 6.2832); c.fill();
+        c.fillStyle = '#eef2f6';
+        c.beginPath(); c.ellipse(k * 8, -27, 6.4, 7.4, k * 0.25, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(60,70,84,.35)'; c.lineWidth = 0.8; c.stroke();
       });
+      function beak(cc) {
+        cc.beginPath();
+        cc.moveTo(-7, -31); cc.quadraticCurveTo(0, -33.5, 7, -31);
+        cc.quadraticCurveTo(5.5, -38, 0.8, -42.5); cc.quadraticCurveTo(0, -43, -0.8, -42.5);
+        cc.quadraticCurveTo(-5.5, -38, -7, -31);
+        cc.closePath();
+      }
       c.save();
-      c.beginPath();
-      c.moveTo(-7.5, -32); c.quadraticCurveTo(0, -36, 7.5, -32);
-      c.lineTo(2.4, -47); c.quadraticCurveTo(0, -49, -2.4, -47);
-      c.closePath();
-      c.fillStyle = S.accent; c.fill();
+      beak(c); c.fillStyle = S.accent; c.fill();
       c.clip();
-      c.fillStyle = '#ffd23a';                        // the yellow band
-      c.fillRect(-9, -41, 18, 3.4);
-      c.fillStyle = '#7d8ea3';                        // the grey base
-      c.fillRect(-9, -35.5, 18, 3.6);
+      c.fillStyle = '#6f8196';                        // grey-blue at the base
+      c.fillRect(-9, -34.5, 18, 3.6);
+      c.fillStyle = '#ffd23a';                        // the yellow ridge
+      c.fillRect(-9, -37.2, 18, 1.6);
+      c.fillStyle = 'rgba(255,255,255,.35)';          // light along one side
+      c.beginPath(); c.ellipse(-2.4, -37, 1.2, 4, 0.25, 0, 6.2832); c.fill();
       c.restore();
-      c.strokeStyle = 'rgba(90,30,10,.55)'; c.lineWidth = 1.1;
-      c.beginPath();
-      c.moveTo(-7.5, -32); c.quadraticCurveTo(0, -36, 7.5, -32);
-      c.lineTo(2.4, -47); c.quadraticCurveTo(0, -49, -2.4, -47);
-      c.closePath(); c.stroke();
+      beak(c); c.strokeStyle = 'rgba(90,30,10,.6)'; c.lineWidth = 1; c.stroke();
     } else if (S.accessory === 'collar') {
-      /* The emperor's mark: a blaze of gold either side of the neck. */
+      /* The emperor's marks: gold at the throat, showing past the head, and
+         a blaze either side of the neck. */
+      var tg = c.createLinearGradient(0, -24, 0, -12);
+      tg.addColorStop(0, 'rgba(255,214,90,.0)'); tg.addColorStop(0.5, 'rgba(255,200,70,.75)');
+      tg.addColorStop(1, 'rgba(255,214,90,0)');
+      c.fillStyle = tg;
+      c.beginPath(); c.ellipse(0, -17, 14, 5, 0, 0, 6.2832); c.fill();
       [-1, 1].forEach(function (k) {
         var cg = c.createLinearGradient(k * 6, -28, k * 16, -14);
         cg.addColorStop(0, '#fff1b0'); cg.addColorStop(1, S.accent);
@@ -3285,6 +3329,10 @@ var Game = (function () {
     c.beginPath();
     c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
     c.closePath(); c.fill();
+    if (S.beakStripe) {                               // the emperor's orange streak
+      c.fillStyle = S.beakStripe;
+      c.beginPath(); c.moveTo(-1.6, -30.5); c.lineTo(0, -36); c.lineTo(1.6, -30.5); c.closePath(); c.fill();
+    }
   }
 
   /* ---- what separates an animal from a shape ------------------
@@ -3295,7 +3343,13 @@ var Game = (function () {
      sheen instead. Everything here is deterministic — a creature must not
      shimmer from frame to frame. */
 
-  function frnd(i, k) {                              // stable per-strand jitter
+  /* Stable per-strand jitter for fur and feathers: the same strand lands in
+     the same place every frame. It was called frnd, and so was the look's
+     random generator added beside it — JavaScript keeps the LAST of two
+     functions with one name, so every puff, flake and streak quietly got
+     this hash instead of a random number and came out in the same place
+     every time. One name each now. */
+  function strandJit(i, k) {
     var x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
     return x - Math.floor(x);
   }
@@ -3320,7 +3374,7 @@ var Game = (function () {
         nx = ca / rx; ny = sa / ry;
         L = Math.sqrt(nx * nx + ny * ny) || 1;
         nx /= L; ny /= L;
-        w = len * (0.5 + frnd(i, seed + pass) * 0.7);
+        w = len * (0.5 + strandJit(i, seed + pass) * 0.7);
         c.beginPath();
         c.moveTo(bx - nx * w, by - ny * w);
         c.lineTo(bx + nx * w * 0.9, by + ny * w * 0.9);
@@ -3337,8 +3391,8 @@ var Game = (function () {
     c.save();
     c.strokeStyle = tone; c.lineWidth = 1.3; c.lineCap = 'round';
     for (var i = 0; i < n; i++) {
-      var a = frnd(i, seed) * 6.2832;
-      var d = 0.3 + frnd(i, seed + 3) * 0.62;
+      var a = strandJit(i, seed) * 6.2832;
+      var d = 0.3 + strandJit(i, seed + 3) * 0.62;
       var x = Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d;
       /* Flowing back from the head rather than out from the middle: taking
          the centre as the origin made every stroke point at it and the
@@ -3347,7 +3401,7 @@ var Game = (function () {
       var ox = x - hx, oy = y - hy;
       var m = Math.sqrt(ox * ox + oy * oy) || 1;
       ox /= m; oy /= m;
-      var L = 2.6 + frnd(i, seed + 7) * 3.4;
+      var L = 2.6 + strandJit(i, seed + 7) * 3.4;
       c.beginPath();
       c.moveTo(x - ox * L, y - oy * L);
       c.lineTo(x + ox * L, y + oy * L);
@@ -3688,6 +3742,14 @@ var Game = (function () {
     [[-7, -6], [6, -2], [-3, 8], [8, 12], [-8, 15]].forEach(function (q) {
       c.beginPath(); c.ellipse(q[0], q[1], 3.4, 2.6, 0.3, 0, 6.2832); c.fill();
     });
+    if (S.paws) {                                     // the otter's paws, held on its chest
+      [-1, 1].forEach(function (k) {
+        c.fillStyle = S.paws;
+        c.beginPath(); c.ellipse(k * 5, -13, 3.6, 4.2, k * 0.5, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 0.8;
+        c.beginPath(); c.arc(k * 5, -14, 2.2, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
+      });
+    }
     crease(c, 0, -19, 11, 5, 0.14);
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -28, 13, 12, 0, 0, 6.2832); c.fill();
@@ -3794,6 +3856,30 @@ var Game = (function () {
     c.restore();
 
 
+    if (S.horns) {
+      /* The coat a musk ox is known for: long guard hair hanging off its
+         flanks like a skirt, which from above is a fringe all the way down
+         either side. */
+      c.save();
+      c.strokeStyle = 'rgba(28,18,12,.55)'; c.lineCap = 'round';
+      for (var fy = -16; fy <= 30; fy += 4.5) {
+        var fw = fy < 0 ? 13 + (fy + 18) * 0.12 : fy < 18 ? 15.5 : 15.5 - (fy - 18) * 0.12;
+        [-1, 1].forEach(function (k) {
+          var j = strandJit(fy + 40, k > 0 ? 5 : 9);
+          c.lineWidth = 1 + j * 0.7;
+          c.beginPath();
+          c.moveTo(k * (fw - 1), fy);
+          c.quadraticCurveTo(k * (fw + 2), fy + 1.5, k * (fw + 2.5 + j * 2.5), fy + 4.5);
+          c.stroke();
+        });
+      }
+      c.strokeStyle = 'rgba(255,240,220,.18)'; c.lineWidth = 1;     // light on the long hair
+      for (var gy = -14; gy <= 28; gy += 6) {
+        c.beginPath(); c.moveTo(-6, gy); c.quadraticCurveTo(-3, gy + 4, -5, gy + 8); c.stroke();
+        c.beginPath(); c.moveTo(6, gy + 3); c.quadraticCurveTo(3, gy + 7, 5, gy + 11); c.stroke();
+      }
+      c.restore();
+    }
     c.fillStyle = S.antler;                          // the antlers, lit on top
     c.globalAlpha = 0.34;
     [-1, 1].forEach(function (k) {
@@ -3941,8 +4027,11 @@ var Game = (function () {
     c.closePath(); c.fill();
 
     if (S.stripe) {                                   // the lemming's dark back
-      c.fillStyle = S.stripe;
-      c.beginPath(); c.ellipse(0, 2, 4.5, 21, 0, 0, 6.2832); c.fill();
+      /* soft at the edges, as fur is, not a slot cut down the back */
+      var sg = c.createLinearGradient(-7, 0, 7, 0);
+      sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.5, S.stripe); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = sg;
+      c.beginPath(); c.ellipse(0, 2, 7, 22, 0, 0, 6.2832); c.fill();
     }
     if (S.spot) {                                     // the leopard's rosettes
       var ROS = [[-8, -12, 3.6], [7, -9, 3.2], [-10, 4, 3.4], [9, 6, 3.8], [-2, -2, 3],
@@ -3965,6 +4054,30 @@ var Game = (function () {
         }
       });
     }
+
+    /* The cats and the lemming hold their forepaws out in front, either
+       side of the head. Tucked under the body as the hare's are, they did
+       not show at all, and the animal looked as if it had no front legs. */
+    if (S.cat) [-1, 1].forEach(function (kk) {
+      var big = S.spot ? 1.15 : 1;
+      c.save();
+      c.translate(kk * 9.5, -17 - swing(o, kk > 0 ? 0 : Math.PI, 1.6));
+      c.rotate(kk * 0.18);
+      var pg2 = c.createRadialGradient(-1, -2, 1, 0, 0, 7 * big);
+      pg2.addColorStop(0, S.body[0]); pg2.addColorStop(1, S.body[1]);
+      c.fillStyle = pg2;
+      c.beginPath(); c.ellipse(0, 0, 4.4 * big, 6.2 * big, 0, 0, 6.2832); c.fill();
+      c.strokeStyle = S.body[2]; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = 'rgba(30,24,20,.45)'; c.lineWidth = 0.9;          // toes
+      [-1.6, 0, 1.6].forEach(function (tx) {
+        c.beginPath(); c.moveTo(tx * big, -6 * big); c.lineTo(tx * big, -3.6 * big); c.stroke();
+      });
+      if (S.spot) {                                   // a blot or two on the leopard's paw
+        c.fillStyle = S.spot;
+        c.beginPath(); c.ellipse(1.2, 1.5, 1.4, 1, 0.4, 0, 6.2832); c.fill();
+      }
+      c.restore();
+    });
 
     var hg = c.createRadialGradient(-4, -30, 2, 0, -26, 15);   // head
     hg.addColorStop(0, S.body[0]); hg.addColorStop(1, S.body[1]);
@@ -4010,7 +4123,14 @@ var Game = (function () {
     c.beginPath(); c.ellipse(0, -24, 8.5, 7, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -31, 2.6, 2.1, 0, 0, 6.2832); c.fill();
-    if (S.cat) eyes(c, -29, 6.2, 0, 1.9, '#1d2228');
+    if (S.cat) {
+      eyes(c, -29, 6.2, 0, 1.9, '#1d2228');
+      c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.8;       // whiskers
+      [-1, 1].forEach(function (kk) {
+        c.beginPath(); c.moveTo(kk * 3, -26); c.lineTo(kk * 13, -29); c.stroke();
+        c.beginPath(); c.moveTo(kk * 3, -24.5); c.lineTo(kk * 13, -24); c.stroke();
+      });
+    }
   }
 
   function bodyOwl(c, S, ang, wag, o) {

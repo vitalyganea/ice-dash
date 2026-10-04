@@ -119,7 +119,8 @@ var SKINS = [
     flipper: ['#966443', '#663e25', '#3f2615'],
     mark: '#e8d6bc', nose: '#20140c', outline: 'rgba(50,30,16,.5)',
     trim: '#9a6a46', trimEdge: 'rgba(60,36,20,.4)',
-    accent: null, accessory: null
+    accent: null, paws: '#3a2414',
+    accessory: null
   },
   {
     /* A perk nobody else has: it changes the SHAPE of a run rather than one
@@ -238,7 +239,8 @@ var SKINS = [
     body: ['#3c4558', '#1e2430', '#0d1017'],
     flipper: ['#465065', '#242b38', '#11151d'],
     trim: '#f5a524', trimEdge: 'rgba(170,100,10,.5)',
-    shape: 'penguin', accent: '#f5b82e', accessory: 'collar'
+    shape: 'penguin', accent: '#f5b82e', beakStripe: '#ff8a3d',
+    accessory: 'collar'
   },
   {
     id: 'orca', name: 'Orca', price: 8, currency: 'gold',
