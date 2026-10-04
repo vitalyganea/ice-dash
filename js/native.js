@@ -9,6 +9,8 @@
      - navigator.vibrate is answered by the native Haptics plugin, so the
        game's own buzz patterns work without the app asking for anything.
      - the status and navigation bars are hidden: the hill is the screen.
+     - Settings gets a link to the privacy policy, which Google Play
+       wants reachable from inside the app.
    Every call is guarded: off-device, or with a plugin missing, nothing
    here does anything and the game runs as it does on the web.
    =========================================================== */
@@ -56,6 +58,20 @@
       if (ms > 0) { try { P.Haptics.vibrate({ duration: Math.min(400, ms) }); } catch (e) {} }
       return true;
     };
+  }
+
+  /* ---- privacy policy ---- */
+  /* A plain link: the app's web view hands any address that is not its own
+     to the phone's browser. */
+  var setPanel = document.querySelector('#screen-settings .panel');
+  var setBack = setPanel && setPanel.querySelector('.btn-row');
+  if (setBack) {
+    var a = document.createElement('a');
+    a.className = 'set-link';
+    a.href = 'https://vitalyganea.github.io/ice-dash/privacy.html';
+    a.setAttribute('data-i18n', 'set.privacy');
+    a.textContent = typeof t === 'function' ? t('set.privacy') : 'Privacy policy';
+    setPanel.insertBefore(a, setBack);
   }
 
   /* ---- full screen ---- */

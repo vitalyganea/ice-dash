@@ -666,6 +666,8 @@ body{
   color:var(--ink-soft);
 }
 .set-head:first-of-type{ margin-top:6px; }
+/* Android only (js/native.js) */
+.set-link{ display:block; margin-top:18px; text-align:center; font-size:14px; color:inherit; opacity:.75; }
 
 /* ------------------- TROPHIES -------------------
    One row each: badge, what it is, how far along, and what it pays. The
