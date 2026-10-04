@@ -93,16 +93,15 @@ Pădure de brazi, ghețar, coborâre de noapte, cenușă peste un vulcan, jungl�
 | Content rating (IARC questionnaire) | No violence, no blood, no fear, no gambling, no user interaction, no sharing of location, no purchases → expect **PEGI 3 / Everyone** |
 | Target audience | 9–12, 13–15, 16–17, 18+ (if you include under-13s, Play's Families policy applies; the game already meets it: no ads, no data collection) |
 | Data safety | **No data collected, no data shared.** Data is not encrypted in transit because nothing is transmitted. Users can request deletion: not applicable — nothing leaves the device |
-| Privacy policy URL | the published `docs/privacy.html` (see below) |
+| Privacy policy URL | `https://vitalyganea.github.io/ice-dash/privacy.html` |
 | App access | All functionality available without special access |
 | Government app / financial / health | No |
 
 ### Publishing the privacy policy (free)
 1. On GitHub: repository **ice-dash** → Settings → Pages.
-2. Source: *Deploy from a branch*, Branch: `main`, folder: `/docs` → Save.
+2. Source: *Deploy from a branch*, Branch: `main`, folder: `/ (root)` → Save.
 3. After a minute the page is at
    `https://vitalyganea.github.io/ice-dash/privacy.html` — paste that URL into Play Console.
-4. Before publishing, replace `[your contact email]` / `[adresa ta de email]` in `docs/privacy.html` with the address you want shown.
 
 ### Graphics
 - App icon 512×512: `store/icon-512.png`
