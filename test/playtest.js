@@ -379,6 +379,22 @@ async function walk(cdp, sid, P) {
      'tapping steers a real run (' + dist + 'm covered, ' +
      (stillUp ? 'still going' : 'ended early') + ')');
   await shot('08-run');
+  /* The readout must hold still while its numbers change: it may only
+     move when a number gains a digit. With proportional digits it used to
+     shuffle a pixel or two every frame as the metres ticked over. */
+  var hudMoves = 0, hudSamples = 0, lastH = null;
+  for (var hs = 0; hs < 80; hs++) {
+    var hl = await ev("Game._hud && Game._hud()");
+    if (hl && lastH && hl.digits === lastH.digits) {
+      hudSamples++;
+      if (hl.w !== lastH.w || hl.fx !== lastH.fx) hudMoves++;
+    }
+    if (hl) lastH = hl;
+    if ((await ev(WANT_TAP)) === 1) await tapHill();
+    await sleep(40);
+  }
+  ok(hudSamples > 20 && hudMoves === 0, 'the score panel holds still while its numbers change (' +
+     hudMoves + ' shifts in ' + hudSamples + ' samples)');
 
   /* ---- pause, menu, and back into the same run ---- */
   await ensureRunning();

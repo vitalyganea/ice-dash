@@ -4906,13 +4906,19 @@ var Game = (function () {
                 ? tr('hud.best', 'BEST') + '  ' + W.best + (timed ? ' ' + tr('hud.m', 'M') : '') : '';
 
     var mult = comboMult();
-    var wScore = measureAt(score, fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
+    /* Widths are taken as if every digit were the widest one. The font's
+       digits are proportional — a 1 is narrower than an 8 — so measured as
+       they stood, the panel and everything after the metres shuffled a
+       pixel or two every frame as the numbers ticked over. Now the layout
+       only moves when a number gains a digit. */
+    function tab(t2) { return String(t2).replace(/[0-9]/g, '8'); }
+    var wScore = measureAt(tab(score), fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
                  (timed ? u * 2.6 : 0) + (mult > 1 ? u * 2.4 : 0);
     var icon = u * 1.5, sep = u * 0.9;
-    var wDist = measureAt(distTxt, fM), wFish = icon + measureAt(fishTxt, fM);
-    var wLife = lifeTxt ? icon + measureAt(lifeTxt, fM) : 0;
+    var wDist = measureAt(tab(distTxt), fM), wFish = icon + measureAt(tab(fishTxt), fM);
+    var wLife = lifeTxt ? icon + measureAt(tab(lifeTxt), fM) : 0;
     var wRow2 = wDist + sep + wFish + (lifeTxt ? sep + wLife : 0);
-    var wBest = bestTxt ? measureAt(bestTxt, fB) : 0;
+    var wBest = bestTxt ? measureAt(tab(bestTxt), fB) : 0;
     var w = Math.max(u * 7.5, wScore, wRow2, wBest) + pad * 2;
     var h = pad + fS * 0.95 + gap + fM * 0.95 + (bestTxt ? gap * 0.8 + fB * 0.95 : 0) + pad;
 
@@ -4941,7 +4947,7 @@ var Game = (function () {
     ctx.globalAlpha = 1;
     ctx.font = '800 ' + Math.round(u * 0.62) + FONT;
     ctx.fillStyle = 'rgba(11,61,122,.55)';
-    var labX = x0 + measureAt(score, fS) + u * 0.4;
+    var labX = x0 + measureAt(tab(score), fS) + u * 0.4;
     ctx.fillText(scoreLab, labX, y1);
     /* the run of catches, as a multiplier on points */
     if (mult > 1) {
@@ -4971,6 +4977,7 @@ var Game = (function () {
     ctx.fillStyle = '#1d4f7c';
     ctx.fillText(distTxt, x0, y2);
     var fx = x0 + wDist + sep;
+    hudLayout = { w: w, fx: fx, digits: score.length + '|' + distTxt.length + '|' + fishTxt.length };
     hudFish(fx + icon * 0.42, y2 - fM * 0.34, u * 0.5);
     ctx.fillStyle = '#1d4f7c';
     ctx.fillText(fishTxt, fx + icon, y2);
@@ -5057,6 +5064,7 @@ var Game = (function () {
     c.strokeStyle = '#062a78'; c.lineWidth = Math.max(2, u * 0.14);
     rr(c, x, y, w, h, u * 0.8); c.stroke();
   }
+  var hudLayout = null;
   var slabCv = null, slabKey = '';
   function hudSlab(w, h, u) {
     if (typeof document === 'undefined' || !document.createElement) return null;
@@ -5514,6 +5522,8 @@ var Game = (function () {
     /* The spine's half-width, so a test measures the two ways past a fork
        off the same curve the game collides against. */
     _nunHalf: nunHalf,
+    /* where the readout last put things, for a test to watch it hold still */
+    _hud: function () { return hudLayout; },
     _turnRate: function () { return W ? turnRate() : TURN; },
     /* Exposed so a test can walk the whole crossfade: a field the blender
        forgets turns into "rgb(undefined,...)", which canvas ignores without
