@@ -1,4 +1,4 @@
-package com.vitaliy.icedash;
+package com.veetalea.icedash;
 
 import com.getcapacitor.BridgeActivity;
 

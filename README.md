@@ -178,7 +178,7 @@ cd android && ./gradlew bundleRelease    # app/build/outputs/bundle/release/app-
 A release build is signed with the upload key named in
 `android/keystore.properties`, which is git-ignored and points at a key kept
 outside the repository. Without that file the release is left unsigned.
-The application id is `com.vitaliy.icedash`; it cannot change after the
+The application id is `com.veetalea.icedash`; it cannot change after the
 first upload to Play.
 
 ## Checking it
