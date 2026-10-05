@@ -5829,6 +5829,7 @@ var Game = (function () {
     /* where the readout last put things, for a test to watch it hold still */
     _hud: function () { return hudLayout; },
     _turnRate: function () { return W ? turnRate() : TURN; },
+    _seeing: function () { return !!(W && seeing()); },
     /* Exposed so a test can walk the whole crossfade: a field the blender
        forgets turns into "rgb(undefined,...)", which canvas ignores without
        a word. */
