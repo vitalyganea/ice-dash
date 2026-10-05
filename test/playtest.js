@@ -293,12 +293,19 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="settings"]', '#screen-settings');
   ok(await waitFor('#screen-settings'), 'Settings opens');
   await shot('03-settings');
+  ok(await ev("!!document.querySelector('#lang-open .flag svg') && /English/.test(document.getElementById('lang-open').textContent)"),
+     'Settings shows the language in use, with its flag');
+  ok(await clickFor('#lang-open', '#sheet-lang') >= 0, 'a tap on it opens the list of languages');
   var langs = await ev("Array.from(document.querySelectorAll('#lang-row button')).map(b=>b.textContent.trim())");
-  ok(langs.length >= 2, 'both languages are offered (' + langs.join(', ') + ')');
+  var flags = await ev("document.querySelectorAll('#lang-row .flag svg').length");
+  ok(langs.length === 3 && flags === 3, 'all three are offered, each with its flag (' + langs.join(', ') + ')');
+  await shot('03b-languages');
   await click('#lang-row [data-lang="ru"]');
+  ok(!(await visible('#sheet-lang')), 'picking one closes the list');
   var ruTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
   ok(/[Ѐ-ӿ]/.test(ruTitle), 'switching language changes the text on screen (' + ruTitle + ')');
   await shot('04-settings-ru');
+  await clickFor('#lang-open', '#sheet-lang');
   await click('#lang-row [data-lang="ro"]');
   var roTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
   ok(roTitle === 'Setări', 'Romanian is there too (' + roTitle + ')');
@@ -307,7 +314,9 @@ async function walk(cdp, sid, P) {
   var roFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ăȘț').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ăȘț');})");
   ok(roFont === true, 'and the game font has its own ă, ș and ț');
   await shot('04b-settings-ro');
+  await clickFor('#lang-open', '#sheet-lang');
   await click('#lang-row [data-lang="en"]');
+  ok(/English/.test(await ev("document.getElementById('lang-open').textContent")), 'and back to English');
   /* The sound switch: it has to flip what it shows AND what is saved. */
   var sfx0 = await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).sfx");
   await click('#t-sfx');

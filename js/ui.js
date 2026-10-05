@@ -726,6 +726,7 @@
       case 'modes':      Sfx.click(); show('modes'); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'close-sheet': Sfx.click(); closeSheet(); break;
+      case 'lang':       Sfx.click(); buildLangs(); $('sheet-lang').classList.remove('hidden'); break;
       case 'back-title':
         Sfx.click();
         /* The back arrow and Esc close an open window before they leave
@@ -946,9 +947,12 @@
     }
     b.focus({ preventScroll: true });
   }
+  /* Closes whichever window is open; says whether one was. */
   function closeSheet() {
-    var open = !$('sheet-skin').classList.contains('hidden');
-    $('sheet-skin').classList.add('hidden');
+    var open = false;
+    Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
+      if (!sh.classList.contains('hidden')) { open = true; sh.classList.add('hidden'); }
+    });
     sheetSkin = null;
     return open;
   }
@@ -977,9 +981,11 @@
     buildShop();
     openSheet(sk.id);               // the window stays, now saying it is chosen
   });
-  /* A tap on the dimmed ground around the window closes it. */
-  $('sheet-skin').addEventListener('click', function (e) {
-    if (e.target === this) { Sfx.click(); closeSheet(); }
+  /* A tap on the dimmed ground around a window closes it. */
+  Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
+    sh.addEventListener('click', function (e) {
+      if (e.target === this) { Sfx.click(); closeSheet(); }
+    });
   });
 
   $('shop-supply').addEventListener('click', function (e) {
@@ -1236,18 +1242,61 @@
   }
 
   /* -------------------------- settings ----------------------- */
+  /* Flags drawn as inline SVG: no image files, and emoji flags do not
+     exist on Windows. The Union Jack's diagonals need a clip path, and a
+     page may hold two of it at once, so every copy gets its own id. */
+  var flagN = 0;
+  function flag(id) {
+    var f;
+    if (id === 'ru') f = '<rect width="60" height="10" fill="#ffffff"/><rect y="10" width="60" height="10" fill="#0039a6"/>' +
+                         '<rect y="20" width="60" height="10" fill="#d52b1e"/>';
+    else if (id === 'ro') f = '<rect width="20" height="30" fill="#002b7f"/><rect x="20" width="20" height="30" fill="#fcd116"/>' +
+                              '<rect x="40" width="20" height="30" fill="#ce1126"/>';
+    else {
+      var c = 'uj' + (++flagN);
+      f = '<clipPath id="' + c + '"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>' +
+          '<rect width="60" height="30" fill="#012169"/>' +
+          '<path d="M0,0 60,30M60,0 0,30" stroke="#ffffff" stroke-width="6"/>' +
+          '<path d="M0,0 60,30M60,0 0,30" clip-path="url(#' + c + ')" stroke="#c8102e" stroke-width="4"/>' +
+          '<path d="M30,0v30M0,15h60" stroke="#ffffff" stroke-width="10"/>' +
+          '<path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/>';
+    }
+    var w = document.createElement('span');
+    w.className = 'flag';
+    w.setAttribute('aria-hidden', 'true');
+    w.innerHTML = '<svg viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice">' + f + '</svg>';
+    return w;
+  }
+  function langLabel(id) {
+    for (var i = 0; i < LANGS.length; i++) if (LANGS[i].id === id) return LANGS[i].label;
+    return id;
+  }
+
   function buildSettings() {
+    var open = $('lang-open');
+    open.textContent = '';
+    open.appendChild(flag(getLang()));
+    var nm = document.createElement('span');
+    nm.className = 'lang-name'; nm.textContent = langLabel(getLang());
+    open.appendChild(nm);
+    open.setAttribute('aria-label', t('set.language') + ': ' + langLabel(getLang()));
+    syncToggles();
+  }
+  function buildLangs() {
     var row = $('lang-row');
     row.textContent = '';
     LANGS.forEach(function (L) {
+      var on = getLang() === L.id;
       var b = document.createElement('button');
-      b.className = 'chip' + (getLang() === L.id ? ' on' : '');
-      b.textContent = L.label;
+      b.className = 'lang-row' + (on ? ' on' : '');
       b.setAttribute('data-lang', L.id);
-      b.setAttribute('aria-pressed', getLang() === L.id ? 'true' : 'false');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.appendChild(flag(L.id));
+      var nm = document.createElement('span');
+      nm.className = 'lang-name'; nm.textContent = L.label;
+      b.appendChild(nm);
       row.appendChild(b);
     });
-    syncToggles();
   }
 
   $('lang-row').addEventListener('click', function (e) {
@@ -1264,6 +1313,7 @@
     applyI18n();
     buildSettings();
     buildShop();
+    closeSheet();                   // picked: the list has done its job
     if (currentScreen === 'title') show('title');
   });
 
