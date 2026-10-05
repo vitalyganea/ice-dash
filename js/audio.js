@@ -98,6 +98,10 @@ var Sfx = (function () {
     fanfare:function(){ [523,659,784,1046,1318].forEach(function(f,i){
                           tone({ freq:f, dur:0.22, type:'triangle', vol:0.2, delay:i*0.08 }); }); },
     /* coming back down: a thump with a spray of snow behind it */
+    /* the avalanche, far behind: a low roll of thunder in the snow */
+    rumble: function(v){ v = v || 1;
+                         tone({ freq:58, to:36, dur:1.5, type:'sine', vol:0.13 * v });
+                         noise(1.3, 0.09 * v, 85); },
     land:   function(){ tone({ freq:200, to:110, dur:0.16, type:'sine', vol:0.24 });
                         noise(0.16, 0.14, 420); }
   };

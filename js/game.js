@@ -1272,6 +1272,8 @@ var Game = (function () {
       }
     }
     if (W.mode === 'avalanche' && W.state === 'run') avalancheStep(W.speed);
+    var fsn = freerideSnow();
+    if (fsn > 0 && W.t % 330 === 0 && Sfx.rumble) Sfx.rumble(0.35 + 0.65 * fsn);
     /* The groove his belly cuts in the ice, a point every few units of
        hill, broken where he flies; kept only as far back as can be seen. */
     var tr = W.trail, lastT = tr[tr.length - 1];
@@ -5230,18 +5232,31 @@ var Game = (function () {
   /* The avalanche: a churning wall of snow coming up from the bottom of
      the screen, its top edge where the snow has got to. Out of sight, a
      cold haze along the bottom edge says it is there and how near. */
+  /* In Freeride the avalanche is never seen, only felt: once the hill is
+     fast, a cold haze along the bottom edge, thicker the faster he goes,
+     and a far-off rumble now and then. It cannot catch anyone here. */
+  function freerideSnow() {
+    return (W && W.mode === 'free' && !W.course && W.state === 'run')
+         ? clamp((pace() - 0.55) / 0.45, 0, 1) : 0;
+  }
+  function snowHaze(near) {
+    var hz = VIEW_H * (0.10 + 0.16 * near);
+    var g = ctx.createLinearGradient(0, VIEW_H - hz, 0, VIEW_H);
+    g.addColorStop(0, 'rgba(236,246,255,0)');
+    g.addColorStop(1, 'rgba(236,246,255,' + (0.35 + 0.45 * near).toFixed(3) + ')');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, VIEW_H - hz, VIEW_W, hz);
+  }
   function drawAvalanche() {
-    if (!W || W.mode !== 'avalanche') return;
+    if (!W) return;
+    if (W.mode !== 'avalanche') {
+      var fs = freerideSnow();
+      if (fs > 0) snowHaze(fs * 0.6);
+      return;
+    }
     var top = PLAYER_Y + W.avGap, t = W.t;
     var near = clamp(1 - (top - VIEW_H) / 420, 0, 1);
-    if (near > 0) {
-      var hz = VIEW_H * (0.10 + 0.16 * near);
-      var g = ctx.createLinearGradient(0, VIEW_H - hz, 0, VIEW_H);
-      g.addColorStop(0, 'rgba(236,246,255,0)');
-      g.addColorStop(1, 'rgba(236,246,255,' + (0.35 + 0.45 * near).toFixed(3) + ')');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, VIEW_H - hz, VIEW_W, hz);
-    }
+    if (near > 0) snowHaze(near);
     if (top > VIEW_H + 40) return;
     /* the body: solid snow from the edge down, shaded towards the bottom */
     var body = ctx.createLinearGradient(0, top, 0, VIEW_H);
@@ -6104,6 +6119,7 @@ var Game = (function () {
     _turnRate: function () { return W ? turnRate() : TURN; },
     _seeing: function () { return !!(W && seeing()); },
     _eye: function (e) { if (e !== undefined) EYE = e; return EYE; },
+    _snow: function () { return W ? freerideSnow() : 0; },
     /* Exposed so a test can walk the whole crossfade: a field the blender
        forgets turns into "rgb(undefined,...)", which canvas ignores without
        a word. */

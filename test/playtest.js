@@ -722,6 +722,8 @@ async function walk(cdp, sid, P) {
   await sleep(2500);
   var zoom = await ev("Game.debug().zoom");
   ok(zoom < 0.96 && zoom > 0.9, 'flat out, the camera has drawn back (' + zoom.toFixed(3) + ')');
+  var snow = await ev("Game._snow()");
+  ok(snow > 0.5, 'and in Freeride the avalanche is felt behind him: a cold haze along the bottom (' + snow.toFixed(2) + ')');
   await shot('06d-camera-back');
   var trail = await ev("(function(){var t=Game.debug().trail;return {n:t.length,behind:t.length?Math.round(Game.debug().dist-t[0].d):0};})()");
   /* the eyes: a glance at a fish off to the right, then wide after a close call */
