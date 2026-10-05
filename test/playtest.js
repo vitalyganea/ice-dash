@@ -715,6 +715,15 @@ async function walk(cdp, sid, P) {
   ok(zoom < 0.96 && zoom > 0.9, 'flat out, the camera has drawn back (' + zoom.toFixed(3) + ')');
   await shot('06d-camera-back');
   var trail = await ev("(function(){var t=Game.debug().trail;return {n:t.length,behind:t.length?Math.round(Game.debug().dist-t[0].d):0};})()");
+  /* the eyes: a glance at a fish off to the right, then wide after a close call */
+  /* only that fish on the hill, so it is the nearest; read on the very next frame */
+  var look = await ev("(function(){var W=Game.debug();W.objects=W.objects.filter(function(o){return o.t!=='fish'&&o.t!=='gold';});" +
+    "W.objects.push({t:'fish',x:W.px+120,d:W.dist+90,r:15,got:false,ph:0});Game._render();var e=Game._eye();return e?e.lx:null;})()");
+  ok(look !== null && look > 0.3, 'he glances towards a fish off to his right (' + (look === null ? 'none' : look.toFixed(2)) + ')');
+  await ev("Game.debug().closeT=45;1");
+  await sleep(120);
+  var wide = await ev("(function(){var e=Game._eye();return e?e.wide:null;})()");
+  ok(wide !== null && wide > 1.2, 'and his eyes go wide after a close call (' + (wide === null ? 'none' : wide.toFixed(2)) + ')');
   ok(trail.n > 10 && trail.behind > 100, 'and his belly has cut a groove behind him (' + trail.n + ' points, ' + trail.behind + ' units back)');
   await ev("Game.stop();1");
 

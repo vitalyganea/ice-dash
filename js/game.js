@@ -3686,14 +3686,33 @@ var Game = (function () {
 
   /* Eyes do more for this than everything else put together. Placed on the
      sides of the head for prey, further forward for a hunter. */
+  /* What the eyes are doing, set by drawPenguin for the animal on the hill
+     and null for a portrait: a blink now and then, a glance at the nearest
+     fish, wide with alarm for a moment after a close call. */
+  var EYE = null;
+  function eyeState() {
+    return EYE || { shut: 1, wide: 1, lx: 0, ly: 0 };
+  }
   function eyes(c, cy, spread, up, r, dark) {
+    var E = eyeState(), rr = r * E.wide;
     [-1, 1].forEach(function (k) {
+      var ex = k * spread, ey = cy - up;
       c.fillStyle = 'rgba(0,0,0,.22)';
-      c.beginPath(); c.ellipse(k * spread, cy - up + 0.8, r * 1.35, r * 1.2, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(ex, ey + 0.8, rr * 1.35, rr * 1.2 * Math.max(0.35, E.shut), 0, 0, 6.2832); c.fill();
+      if (E.wide > 1.05) {                           // the whites, showing in alarm
+        c.fillStyle = 'rgba(255,255,255,' + Math.min(0.95, (E.wide - 1) * 2.4).toFixed(3) + ')';
+        c.beginPath(); c.ellipse(ex, ey, rr * 1.3, rr * 1.25, 0, 0, 6.2832); c.fill();
+      }
+      if (E.shut < 0.3) {                            // a blink: the lid, a line
+        c.strokeStyle = dark || '#121418'; c.lineWidth = Math.max(1, r * 0.55); c.lineCap = 'round';
+        c.beginPath(); c.moveTo(ex - rr, ey); c.quadraticCurveTo(ex, ey + rr * 0.45, ex + rr, ey); c.stroke();
+        return;
+      }
+      var px = ex + E.lx * r * 0.35, py = ey + E.ly * r * 0.35;   // a glance
       c.fillStyle = dark || '#121418';
-      c.beginPath(); c.ellipse(k * spread, cy - up, r, r * 0.95, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(px, py, rr, rr * 0.95 * E.shut, 0, 0, 6.2832); c.fill();
       c.fillStyle = 'rgba(255,255,255,.85)';         // catchlight, same side on both
-      c.beginPath(); c.arc(k * spread - r * 0.34, cy - up - r * 0.34, r * 0.34, 0, 6.2832); c.fill();
+      c.beginPath(); c.arc(px - rr * 0.34, py - rr * 0.34, rr * 0.34, 0, 6.2832); c.fill();
     });
   }
 
@@ -4452,13 +4471,21 @@ var Game = (function () {
     if (!S.cat) {
       /* A hare's eyes are set high on the sides of the head, big and dark
          with a pale ring; from above they show at the edges. */
+      var HE = eyeState();
       [-1, 1].forEach(function (kk) {
+        var w = HE.wide, sh = HE.shut;
         c.fillStyle = 'rgba(255,255,255,.8)';
-        c.beginPath(); c.ellipse(kk * 8.6, -27.5, 2.9, 2.5, kk * 0.3, 0, 6.2832); c.fill();
+        c.beginPath(); c.ellipse(kk * 8.6, -27.5, 2.9 * w, 2.5 * w * Math.max(0.3, sh), kk * 0.3, 0, 6.2832); c.fill();
+        if (sh < 0.3) {
+          c.strokeStyle = '#2a2018'; c.lineWidth = 1;
+          c.beginPath(); c.moveTo(kk * 8.6 - 2.6, -27.5); c.lineTo(kk * 8.6 + 2.6, -27.3); c.stroke();
+          return;
+        }
+        var px = kk * 8.8 + HE.lx * 0.8, py = -27.5 + HE.ly * 0.8;
         c.fillStyle = '#2a2018';
-        c.beginPath(); c.ellipse(kk * 8.8, -27.5, 2.1, 1.9, kk * 0.3, 0, 6.2832); c.fill();
+        c.beginPath(); c.ellipse(px, py, 2.1, 1.9 * sh, kk * 0.3, 0, 6.2832); c.fill();
         c.fillStyle = 'rgba(255,255,255,.85)';
-        c.beginPath(); c.ellipse(kk * 8.4, -28.2, 0.6, 0.6, 0, 0, 6.2832); c.fill();
+        c.beginPath(); c.ellipse(px - 0.4, py - 0.7, 0.6, 0.6, 0, 0, 6.2832); c.fill();
       });
       c.strokeStyle = 'rgba(90,80,70,.55)'; c.lineWidth = 0.7;          // whiskers
       [-1, 1].forEach(function (kk) {
@@ -4558,15 +4585,19 @@ var Game = (function () {
     /* the facial disc: a faint rim round the face */
     c.strokeStyle = 'rgba(150,168,188,.55)'; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, -20.5, 10.5, 8.5, 0, 0, 6.2832); c.stroke();
+    var OE = eyeState();
     [-1, 1].forEach(function (k) {                    // the eyes that face you
+      var w = OE.wide, sh = OE.shut;
       c.fillStyle = 'rgba(70,80,96,.55)';             // dark lids round the iris
-      c.beginPath(); c.ellipse(k * 5, -22, 4.6, 4.1, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(k * 5, -22, 4.6 * w, 4.1 * w * Math.max(0.3, sh), 0, 0, 6.2832); c.fill();
+      if (sh < 0.3) return;                           // shut: just the lids
       c.fillStyle = S.accent || '#f2b733';
-      c.beginPath(); c.ellipse(k * 5, -22, 3.7, 3.5, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(k * 5, -22, 3.7 * w, 3.5 * w * sh, 0, 0, 6.2832); c.fill();
       c.fillStyle = S.nose;
-      c.beginPath(); c.ellipse(k * 5, -22, 1.8, 2.0, 0, 0, 6.2832); c.fill();
+      var px = k * 5 + OE.lx * 1.1, py = -22 + OE.ly * 1.1;
+      c.beginPath(); c.ellipse(px, py, 1.8 / Math.max(1, w * 0.9), 2.0 * sh / Math.max(1, w * 0.9), 0, 0, 6.2832); c.fill();
       c.fillStyle = 'rgba(255,255,255,.9)';
-      c.beginPath(); c.ellipse(k * 5 - 0.8, -23, 0.7, 0.7, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(px - 0.8, py - 1, 0.7, 0.7, 0, 0, 6.2832); c.fill();
     });
     /* the beak, half hidden in bristle feathers */
     c.fillStyle = '#e8edf3';
@@ -4781,6 +4812,24 @@ var Game = (function () {
     var S = skin || SKINS[0];
     var ang = Math.atan2(W.vx, W.speed) * 0.85;       // heading, forward is up
     var crashed = W.state !== 'run';
+    /* The eyes: a blink every few seconds (a little irregular, never in
+       the same rhythm twice running), a glance at the nearest fish ahead,
+       and wide for a moment after a close call. */
+    var bt = W.t % 263, shut = bt < 4 ? 0.1 : bt < 7 ? 0.5 : (W.t % 571 < 4 ? 0.1 : 1);
+    var lx = 0, ly = -0.4, best = 1e9;
+    for (var fi = 0; fi < W.objects.length; fi++) {
+      var fo = W.objects[fi];
+      if ((fo.t !== 'fish' && fo.t !== 'gold') || fo.got) continue;
+      var fdd = fo.d - W.dist, fdx = fo.x - W.px;
+      if (fdd < 10 || fdd > 240) continue;
+      var dist2 = fdd * fdd + fdx * fdx;
+      if (dist2 < best) { best = dist2; var len = Math.sqrt(dist2);
+        /* into the animal's own frame: forward is up, and it is turned by ang */
+        var vx = fdx / len, vy = -fdd / len;
+        lx = vx * Math.cos(-ang) - vy * Math.sin(-ang); ly = vx * Math.sin(-ang) + vy * Math.cos(-ang); }
+    }
+    EYE = { shut: crashed ? 0.1 : shut, wide: W.closeT > 0 ? 1 + 0.45 * Math.min(1, W.closeT / 30) : 1,
+            lx: crashed ? 0 : lx, ly: crashed ? 0 : ly };
     /* Being briefly safe is shown with a ring, not by messing with the
        animal itself. Two earlier attempts were both worse: half opacity
        let the seams between a creature's lumps show through as circles,
@@ -6006,6 +6055,7 @@ var Game = (function () {
        else in here knows it happened. */
     drawHint: function (cv, kind, size) {
       if (!cv || !cv.getContext || typeof BIOMES === 'undefined') return;
+      EYE = null;
       size = size || 54;
       var k = Math.min(window.devicePixelRatio || 1, 2.5);
       cv.width = Math.round(size * k); cv.height = Math.round(size * k);
@@ -6024,6 +6074,7 @@ var Game = (function () {
     },
     drawSkinPreview: function (cv, skinId, size) {
       if (!cv || !cv.getContext || typeof SKINS === 'undefined') return;
+      EYE = null;                                    // a portrait looks at you, open-eyed
       var k = Math.min(window.devicePixelRatio || 1, 2.5);
       size = size || 92;
       cv.width = Math.round(size * k); cv.height = Math.round(size * k);
@@ -6052,6 +6103,7 @@ var Game = (function () {
     _hud: function () { return hudLayout; },
     _turnRate: function () { return W ? turnRate() : TURN; },
     _seeing: function () { return !!(W && seeing()); },
+    _eye: function (e) { if (e !== undefined) EYE = e; return EYE; },
     /* Exposed so a test can walk the whole crossfade: a field the blender
        forgets turns into "rgb(undefined,...)", which canvas ignores without
        a word. */
