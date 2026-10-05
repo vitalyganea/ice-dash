@@ -49,7 +49,13 @@ var ACHIEVEMENTS = [
   { id: 'clocks50', reward: 220, goal: 50,   stat: function (s) { return s.totClocks; } },
   { id: 'daily1',   reward: 100, goal: 1,    stat: function (s) { return s.dailyDays; } },
   { id: 'streak3',  reward: 250, goal: 3,    stat: function (s) { return s.dailyBest; } },
-  { id: 'streak7',  reward: 700, goal: 7,    stat: function (s) { return s.dailyBest; } }
+  { id: 'streak7',  reward: 700, goal: 7,    stat: function (s) { return s.dailyBest; } },
+  /* Avalanche: holding the snow off for a distance, and the rings that
+     did it. 1500 m is well past where a clean rider with no rings is
+     caught (about 700), so it asks for rings taken, not just no mistakes. */
+  { id: 'av500',    reward: 150, goal: 500,  stat: function (s) { return s.bestAv; } },
+  { id: 'av1500',   reward: 450, goal: 1500, stat: function (s) { return s.bestAv; } },
+  { id: 'avrings50',reward: 300, goal: 50,   stat: function (s) { return s.totAvRings; } }
 ];
 
 /* ---- today's tasks ----
@@ -65,6 +71,7 @@ var TASK_POOL = [
   { id: 'gold2',   n: 2,    test: function (r) { return r.gold || 0; } },
   { id: 'jump3',   n: 3,    test: function (r) { return r.jumps || 0; } },
   { id: 'rush400', n: 400,  test: function (r) { return r.mode === 'rush' ? r.dist : 0; } },
+  { id: 'av400',   n: 400,  test: function (r) { return r.mode === 'avalanche' ? r.dist : 0; } },
   { id: 'clocks6', n: 6,    test: function (r) { return r.clocks || 0; } },
   { id: 'daily',   n: 1,    test: function (r) { return r.course === 'daily' && r.finished ? 1 : 0; } },
   { id: 'line',    n: 1,    test: function (r) { return r.course && r.course !== 'daily' && r.course !== 'tutorial' && r.finished ? 1 : 0; } },

@@ -60,7 +60,7 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 |---|---|
 | Initial bundle < 30 MiB (< 15 recommended) | 1.04 MiB across 13 files (724 KB zipped) — 538 KB of it the two logo encodings, 243 KB `js/game.js`, 59 KB the embedded fonts |
 | Individual file < 30 MiB (< 512 KiB recommended) | largest is `img/logo.png`, 380 KB; largest script is `js/game.js`, 243 KB |
-| Saved game < 3 MiB (< 500 KiB recommended) | about 1.2 KB with everything in it — all 17 creatures owned, all 30 trophies earned, all nine marked lines starred, a long Daily streak, today's tasks done. A fresh save is about a third of that |
+| Saved game < 3 MiB (< 500 KiB recommended) | about 1.2 KB with everything in it — all 17 creatures owned, all 33 trophies earned, all nine marked lines starred, a long Daily streak, today's tasks done. A fresh save is about a third of that |
 | Load and interactive < 5 s | one image to fetch (158 KB WebP, same origin); the title screen is interactive on the first frame and does not wait for it |
 | At most 8000 files | 13 (`unlock.html` is a testing page and is not shipped) |
 | Only relative paths | yes, the SDK URL aside |
