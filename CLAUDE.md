@@ -16,6 +16,20 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
   mouse and touch.
 - `PLAYABLES.md` lists every certification requirement and where it is met. Keep it true.
 
+## Adding content (standing rules — apply without being asked)
+
+- **A new stretch of hill (biome) gets a tune of its own.** Write a new mood in
+  `js/audio.js` (note names via `line()` / `bars()`, its own key, lead voice and
+  tempo, suited to the place) and name it in the biome's `mood:` field.
+  `test/music.js` fails if a biome has no tune or shares one.
+- **A new creature (skin) gets a perk no other creature has** — a new mechanic,
+  not a reused perk in a different coat. Add the perk key in `js/game.js`,
+  declare its direction in `test/skinsafe.js` (it may only make the hill more
+  forgiving), give it a check in `test/perks.js` measured against Snowcap, and
+  its name and perk text in all three languages. `test/perks.js` fails if a new
+  creature only reuses existing perk keys, duplicates another's perk, or has no
+  check. Only then add its id to `FOUNDING` in `test/perks.js`.
+
 ## Checking
 
 ```bash

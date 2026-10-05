@@ -209,6 +209,34 @@ var au = shielded('aurora');
 ok(au.start === 1 && au.alive && au.saved === 1, 'the run opens with her in a bubble, and it takes a boulder');
 ok(grab('aurora', 1.6) === 1 && grab('snowcap', 1.6) === 0, 'a fish 1.6x out of reach: hers, not Snowcap\'s');
 
+/* ---- the rule for new creatures ----
+   Every creature brings something of its own. A new one must carry at
+   least one perk key no other creature has — a new mechanic, not a reused
+   one with a different coat — and no two creatures may have the very same
+   perk. The eighteen below were in the catalogue when the rule was made
+   (Aurora is two proved perks together, on purpose); add a new creature's
+   id here only once its new perk is in game.js, skinsafe.js and above. */
+var FOUNDING = ['snowcap', 'mitten', 'puffin', 'seal', 'lemming', 'muskox', 'bubbles', 'otter', 'hare',
+                'leopard', 'compass', 'owl', 'walrus', 'narwhal', 'reindeer', 'emperor', 'orca', 'aurora'];
+console.log('\nthe rule for new creatures');
+var sets = {}, keyOwners = {};
+SKINS.forEach(function (sk) {
+  var keys = Object.keys(sk.perk || {}).sort();
+  var sig = keys.map(function (k) { return k + '=' + sk.perk[k]; }).join(',');
+  (sets[sig] = sets[sig] || []).push(sk.id);
+  keys.forEach(function (k) { (keyOwners[k] = keyOwners[k] || []).push(sk.id); });
+});
+var twins = Object.keys(sets).filter(function (k) { return sets[k].length > 1; });
+ok(!twins.length, 'no two creatures have the very same perk' + (twins.length ? ' (' + twins.map(function (k) { return sets[k].join(' = '); }).join('; ') + ')' : ''));
+ok(SKINS.every(function (sk) { return sk.id === 'snowcap' || Object.keys(sk.perk || {}).length; }),
+   'every creature but Snowcap has a perk');
+SKINS.forEach(function (sk) {
+  if (FOUNDING.indexOf(sk.id) >= 0) return;
+  var own = Object.keys(sk.perk || {}).filter(function (k) { return keyOwners[k].length === 1; });
+  ok(own.length > 0, sk.id + ' is new, and brings a perk no other creature has' +
+     (own.length ? ' (' + own.join(', ') + ')' : ' — it only reuses ' + Object.keys(sk.perk || {}).join(', ')));
+});
+
 var missing = SKINS.filter(function (s) { return !covered[s.id]; }).map(function (s) { return s.id; });
 console.log('');
 ok(!missing.length, 'every creature in the catalogue has a check here' + (missing.length ? ' (missing: ' + missing.join(', ') + ')' : ' (' + SKINS.length + ')'));
