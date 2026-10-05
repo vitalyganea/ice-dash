@@ -27,7 +27,8 @@ var SKINS = [
     body: ['#48536e', '#262d3c', '#131820'],
     flipper: ['#54617d', '#2b3444', '#161c26'],
     trim: '#ff9f2e', trimEdge: 'rgba(180,90,10,.45)',
-    shape: 'penguin', accent: null, accessory: null
+    shape: 'penguin', accent: null, accessory: null,
+    eyeRing: true                      // an Adélie: the white ring round each eye
   },
   {
     id: 'mitten', name: 'Mitten', price: 100, currency: 'fish',
@@ -203,7 +204,9 @@ var SKINS = [
     perkText: 'The ramp over a crevasse runs much wider for him.',
     perk: { rampWide: 1.6 },
     shape: 'orca',
-    body: ['#e4ecf5', '#b6c6d8', '#8396ab'],
+    /* grey above with dark blotches across the back (`mottle`), the way a
+       narwhal really is, rather than a pale orca */
+    body: ['#d7e0ea', '#a5b5c7', '#76889d'], mottle: '#3e4b59',
     flipper: ['#d4dfeb', '#a7b8cb', '#7a8ca2'],
     mark: '#e8f0f8', nose: '#2f3842', outline: 'rgba(45,58,72,.45)',
     trim: '#aebfd2', trimEdge: 'rgba(70,88,106,.4)',

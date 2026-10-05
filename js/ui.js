@@ -1352,7 +1352,7 @@
     box.appendChild(mid);
     if (trophyWaiting()) {
       var b = document.createElement('button');
-      b.className = 'btn btn-sm btn-gold';
+      b.className = 'btn btn-sm btn-gold prize-take';
       b.id = 'prize-take';
       b.textContent = t('shop.trophytake');
       box.appendChild(b);
@@ -1379,7 +1379,7 @@
     claimFx(b, achClaim(save, b.getAttribute('data-claim')));
   });
   $('ach-prize').addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('#prize-take') : null;
+    var b = e.target.closest ? e.target.closest('.prize-take') : null;
     var sk = trophySkin();
     if (!b || !sk || !trophyWaiting()) return;
     save.owned.push(sk.id);

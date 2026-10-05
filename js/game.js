@@ -3355,6 +3355,14 @@ var Game = (function () {
       c.restore();
     });
 
+    /* the short stiff tail, between the feet */
+    c.fillStyle = S.body[2];
+    c.beginPath(); c.moveTo(-5, 21); c.lineTo(0, 33); c.lineTo(5, 21); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 0.7;
+    [-2, 0, 2].forEach(function (tx) {
+      c.beginPath(); c.moveTo(tx * 1.2, 23); c.lineTo(tx * 0.5, 31); c.stroke();
+    });
+
     c.fillStyle = 'rgba(244,250,255,.7)';             // white front, just peeking
     [-1, 1].forEach(function (k) {
       c.beginPath();
@@ -3380,6 +3388,20 @@ var Game = (function () {
     furCoat(c, 0, 17, 19, 22, S.body[0], 7);
     c.globalAlpha = 1;
     c.restore();
+    /* and the feathers themselves: small, overlapping, each with a faint
+       light edge and a shadow under it, in staggered rows like roof tiles */
+    c.save();
+    c.beginPath(); c.ellipse(0, 2, 21, 23, 0, 0, 6.2832); c.clip();
+    c.lineWidth = 0.8;
+    for (var fr = 0, fy = -17; fy <= 24; fy += 3.6, fr++) {
+      for (var fx = -21 + (fr % 2) * 2.6; fx <= 21; fx += 5.2) {
+        c.strokeStyle = 'rgba(255,255,255,.05)';
+        c.beginPath(); c.arc(fx, fy, 2.8, 0.5, 2.64); c.stroke();
+        c.strokeStyle = 'rgba(0,0,0,.07)';
+        c.beginPath(); c.arc(fx, fy + 0.8, 2.8, 0.6, 2.54); c.stroke();
+      }
+    }
+    c.restore();
 
     crease(c, 0, -17, 12, 5, 0.16);                   // where the head sits on the back
     c.fillStyle = bg;
@@ -3389,6 +3411,12 @@ var Game = (function () {
     sheen(c, -7, -9, 8.5, 15, -0.25, 0.14);           // along the back
     sheen(c, 9, 2, 3.5, 11, 0.2, 0.07);               // a thin edge on the far side
     eyes(c, -26, 7.4, 1.5, 2.7);                      // set wide, as a bird's are
+    if (S.eyeRing) {                                  // the Adélie's white ring
+      c.strokeStyle = 'rgba(250,252,255,.95)'; c.lineWidth = 1.5;
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); c.arc(k * 7.4, -27.5, 3.8, 0, 6.2832); c.stroke();
+      });
+    }
 
     drawSkinExtra(c, S);
 
@@ -4003,17 +4031,33 @@ var Game = (function () {
     c.beginPath(); build(c); c.clip();
     sphere(c, 0, -4, 15, 34, 0, 0.22);           // a wet gleam, not a grey wash
     sphere(c, 0, -33, 9, 11, 0, 0.26);
-    c.fillStyle = S.mark;                            // the eye patches, unmistakable
-    [-1, 1].forEach(function (k) {
-      c.save();
-      c.translate(k * 6.8, -34); c.rotate(k * 0.42);
-      c.beginPath(); c.ellipse(0, 0, 5.6, 3.2, 0, 0, 6.2832); c.fill();
-      c.restore();
-    });
-    c.fillStyle = 'rgba(244,248,251,.92)';           // and the chin, just showing
-    c.beginPath(); c.ellipse(0, -41, 5, 3.4, 0, 0, 6.2832); c.fill();
-    c.fillStyle = 'rgba(206,222,234,.85)';           // the saddle behind the dorsal
-    c.beginPath(); c.ellipse(0, 19, 11, 7.5, 0, 0, 6.2832); c.fill();
+    if (S.mottle) {
+      /* A narwhal is not an orca in grey: its back is dark and broken up
+         with blotches that thin out and pale towards the flanks, and it
+         has no patches round the eyes and no saddle. */
+      var MOT = [[-4,-26,2.6],[3,-22,2.2],[-7,-16,2.8],[6,-12,3],[0,-8,2.4],[-9,-4,2.2],
+                 [8,0,2.6],[-3,2,3.2],[4,8,2.4],[-8,10,2.6],[9,14,2],[0,16,2.8],
+                 [-5,22,2.2],[5,24,2.4],[0,30,2],[-2,-15,1.8],[2,-1,1.6],[-11,6,1.6],[11,-6,1.6]];
+      MOT.forEach(function (m) {
+        var far = Math.min(1, Math.abs(m[0]) / 12);
+        c.fillStyle = S.mottle;
+        c.globalAlpha = 0.62 - far * 0.32;
+        c.beginPath(); c.ellipse(m[0], m[1], m[2], m[2] * 0.75, m[0] * 0.1, 0, 6.2832); c.fill();
+      });
+      c.globalAlpha = 1;
+    } else {
+      c.fillStyle = S.mark;                            // the eye patches, unmistakable
+      [-1, 1].forEach(function (k) {
+        c.save();
+        c.translate(k * 6.8, -34); c.rotate(k * 0.42);
+        c.beginPath(); c.ellipse(0, 0, 5.6, 3.2, 0, 0, 6.2832); c.fill();
+        c.restore();
+      });
+      c.fillStyle = 'rgba(244,248,251,.92)';           // and the chin, just showing
+      c.beginPath(); c.ellipse(0, -41, 5, 3.4, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(206,222,234,.85)';           // the saddle behind the dorsal
+      c.beginPath(); c.ellipse(0, 19, 11, 7.5, 0, 0, 6.2832); c.fill();
+    }
     c.fillStyle = 'rgba(255,255,255,.2)';            // wet shine down the back
     c.beginPath(); c.ellipse(-5, -6, 4.5, 26, -0.04, 0, 6.2832); c.fill();
     /* the dorsal stands up, so from here it is a hard-edged blade */
@@ -4065,6 +4109,11 @@ var Game = (function () {
     } else if (S.cat && S.stub) {                     // the lemming's stub
       c.fillStyle = S.body[2];
       c.beginPath(); c.ellipse(0, 30, 4.5, 5, 0, 0, 6.2832); c.fill();
+    } else if (!S.cat) {                              // the hare's white scut
+      var sc = c.createRadialGradient(-1, 28, 1, 0, 30, 6);
+      sc.addColorStop(0, '#ffffff'); sc.addColorStop(1, S.body[1]);
+      c.fillStyle = sc;
+      c.beginPath(); c.ellipse(0, 30, 5.5, 5, 0, 0, 6.2832); c.fill();
     }
     [-1, 1].forEach(function (kk) {                   // hind legs, bunched
       c.save();
@@ -4072,6 +4121,14 @@ var Game = (function () {
       c.rotate(kk * (0.5 + swing(o, kk > 0 ? 0 : Math.PI, 0.26)));
       c.fillStyle = S.flipper[2];
       c.beginPath(); c.ellipse(0, 0, 7.5, 14, 0, 0, 6.2832); c.fill();
+      if (!S.cat) {                                   // the long hind foot, furred toes
+        c.fillStyle = S.flipper[1];
+        c.beginPath(); c.ellipse(0, 9, 4.6, 6.5, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(60,50,40,.35)'; c.lineWidth = 0.8;
+        [-1.8, 0, 1.8].forEach(function (tx) {
+          c.beginPath(); c.moveTo(tx, 12); c.lineTo(tx, 15); c.stroke();
+        });
+      }
       c.restore();
     });
     [-1, 1].forEach(function (kk) {                   // forepaws, tucked under
@@ -4092,6 +4149,29 @@ var Game = (function () {
     c.bezierCurveTo(-8, 29, -15, 23, -16, 9);
     c.bezierCurveTo(-17, -6, -12, -23, 0, -22);
     c.closePath(); c.fill();
+
+    /* Fur: short strokes lying back along the body, a light one beside a
+       dark one, so the coat has a direction and a little depth. Without
+       it every creature on this body read as a smooth pebble. */
+    c.save();
+    c.beginPath(); c.ellipse(0, 4, 15.5, 25, 0, 0, 6.2832); c.clip();
+    c.lineWidth = 0.9; c.lineCap = 'round';
+    for (var fy = -16; fy <= 26; fy += 4.2) {
+      for (var fx = -14; fx <= 14; fx += 4.6) {
+        var jx = fx + ((fy * 7 + fx * 3) % 5) * 0.5, jy = fy + ((fx * 5) % 3) * 0.6;
+        var tilt = jx * 0.06;
+        c.strokeStyle = 'rgba(255,255,255,.22)';
+        c.beginPath(); c.moveTo(jx, jy); c.lineTo(jx + tilt * 3, jy + 3.2); c.stroke();
+        c.strokeStyle = 'rgba(40,30,20,.14)';
+        c.beginPath(); c.moveTo(jx + 0.9, jy + 0.5); c.lineTo(jx + 0.9 + tilt * 3, jy + 3.7); c.stroke();
+      }
+    }
+    /* a soft shadow down the spine */
+    var sp = c.createLinearGradient(-6, 0, 6, 0);
+    sp.addColorStop(0, 'rgba(0,0,0,0)'); sp.addColorStop(0.5, 'rgba(40,30,20,.12)'); sp.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sp;
+    c.fillRect(-6, -20, 12, 48);
+    c.restore();
 
     if (S.stripe) {                                   // the lemming's dark back
       /* soft at the edges, as fur is, not a slot cut down the back */
@@ -4190,6 +4270,23 @@ var Game = (function () {
     c.beginPath(); c.ellipse(0, -24, 8.5, 7, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -31, 2.6, 2.1, 0, 0, 6.2832); c.fill();
+    if (!S.cat) {
+      /* A hare's eyes are set high on the sides of the head, big and dark
+         with a pale ring; from above they show at the edges. */
+      [-1, 1].forEach(function (kk) {
+        c.fillStyle = 'rgba(255,255,255,.8)';
+        c.beginPath(); c.ellipse(kk * 8.6, -27.5, 2.9, 2.5, kk * 0.3, 0, 6.2832); c.fill();
+        c.fillStyle = '#2a2018';
+        c.beginPath(); c.ellipse(kk * 8.8, -27.5, 2.1, 1.9, kk * 0.3, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.85)';
+        c.beginPath(); c.ellipse(kk * 8.4, -28.2, 0.6, 0.6, 0, 0, 6.2832); c.fill();
+      });
+      c.strokeStyle = 'rgba(90,80,70,.55)'; c.lineWidth = 0.7;          // whiskers
+      [-1, 1].forEach(function (kk) {
+        c.beginPath(); c.moveTo(kk * 2.5, -30); c.lineTo(kk * 12, -33.5); c.stroke();
+        c.beginPath(); c.moveTo(kk * 2.5, -29.2); c.lineTo(kk * 12.5, -30); c.stroke();
+      });
+    }
     if (S.cat) {
       eyes(c, -29, 6.2, 0, 1.9, '#1d2228');
       c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.8;       // whiskers
@@ -4200,54 +4297,105 @@ var Game = (function () {
     }
   }
 
+  /* A snowy owl from above is mostly wing: the two fold along the back and
+     meet over the tail, their long flight feathers lying in layers at the
+     tips. The marks are not stripes but rows of small dark crescents, each
+     one the tip of a feather, thicker on the wings than on the back and
+     gone by the crown. The head is big and round, the face turned up. */
+  /* in the wing's own frame: x out from the fold, y back from the shoulder */
+  var OWL_SPOTS = [[5,4],[10,4],[14,8],[4,10],[9,11],[14,14],[6,16],[11,18],
+                   [4,22],[8,23],[12,25],[6,29]];
   function bodyOwl(c, S, ang, wag, o) {
-    [-1, 1].forEach(function (kk) {                   // wings, swept into a V
-      c.save();
-      c.translate(kk * 13, -2);
-      c.rotate(kk * (0.5 + swing(o, kk > 0 ? 0 : Math.PI, 0.16)) - ang * 0.5 * kk);
-      var wgr = c.createLinearGradient(0, -16, 0, 22);
-      wgr.addColorStop(0, S.flipper[0]); wgr.addColorStop(1, S.flipper[2]);
-      c.fillStyle = wgr;
-      c.beginPath();
-      c.moveTo(0, -16);
-      c.quadraticCurveTo(kk * 15, -2, kk * 11, 24);
-      c.quadraticCurveTo(kk * 2, 14, 0, -4);
-      c.closePath(); c.fill();
-      c.restore();
-    });
-    var bg = c.createRadialGradient(-6, -10, 4, 0, 0, 30);
-    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
-    c.fillStyle = bg;
-    c.beginPath(); c.ellipse(0, 1, 18, 25, 0, 0, 6.2832); c.fill();
-
-    /* Barring down the back. It is the only thing that stops a white bird
-       on white ice from being an oval, so there is a lot of it and it is
-       drawn in slate rather than in a lighter shade of the bird. */
-    c.fillStyle = S.mark;
-    for (var b = 0; b < 6; b++) {
-      c.globalAlpha = 0.62 - b * 0.045;
-      c.beginPath();
-      c.ellipse(0, -9 + b * 7.4, 14 - b * 1.4, 2.2, 0, 0, 6.2832); c.fill();
-    }
-    /* and a scatter of speckles across the shoulders */
-    c.globalAlpha = 0.42;
-    [[-9, -5], [9, -4], [-6, 6], [7, 8], [-11, 3], [11, 2]].forEach(function (p) {
-      c.beginPath(); c.ellipse(p[0], p[1], 1.9, 1.5, 0, 0, 6.2832); c.fill();
+    /* tail: a short fan past the wing tips, barred at the end */
+    c.fillStyle = S.flipper[1];
+    c.beginPath();
+    c.moveTo(-6, 20); c.quadraticCurveTo(0, 36, 6, 20); c.closePath(); c.fill();
+    c.strokeStyle = S.mark; c.globalAlpha = 0.6; c.lineWidth = 1.4;
+    [26, 30].forEach(function (ty) {
+      c.beginPath(); c.moveTo(-3.6, ty); c.quadraticCurveTo(0, ty + 1.6, 3.6, ty); c.stroke();
     });
     c.globalAlpha = 1;
 
-    c.fillStyle = S.body[0];                          // the facial disc
-    c.beginPath(); c.ellipse(0, -21, 14, 12, 0, 0, 6.2832); c.fill();
-    c.strokeStyle = S.outline; c.lineWidth = 1.6; c.stroke();
-    [-1, 1].forEach(function (kk) {                   // the eyes that face you
-      c.fillStyle = S.accent || '#f2b733';
-      c.beginPath(); c.ellipse(kk * 5.4, -22, 4.2, 4.0, 0, 0, 6.2832); c.fill();
-      c.fillStyle = S.nose;
-      c.beginPath(); c.ellipse(kk * 5.4, -22, 2.0, 2.2, 0, 0, 6.2832); c.fill();
+    /* the body under the wings */
+    var bg = c.createRadialGradient(-5, -8, 4, 0, 2, 28);
+    bg.addColorStop(0, S.body[0]); bg.addColorStop(0.6, S.body[1]); bg.addColorStop(1, S.body[2]);
+    c.fillStyle = bg;
+    c.beginPath(); c.ellipse(0, 2, 17, 23, 0, 0, 6.2832); c.fill();
+
+    /* the folded wings, lifting a little with the stride */
+    [-1, 1].forEach(function (k) {
+      c.save();
+      /* each wing runs from the line down the middle of the back out to
+         the flank, so the two cover the back and meet over the tail */
+      c.translate(k * 0.6, -10);
+      c.rotate(k * swing(o, k > 0 ? 0 : Math.PI, 0.05) - ang * 0.2 * k);
+      var wg = c.createLinearGradient(0, -4, k * 10, 34);
+      wg.addColorStop(0, S.body[0]); wg.addColorStop(0.5, S.flipper[0]); wg.addColorStop(1, S.flipper[2]);
+      c.fillStyle = wg;
+      c.beginPath();
+      c.moveTo(0, -1);
+      c.quadraticCurveTo(k * 21, 0, k * 16, 21);
+      c.quadraticCurveTo(k * 11, 32, k * 1, 35);
+      c.quadraticCurveTo(k * 2, 16, 0, -1);
+      c.closePath(); c.fill();
+      c.strokeStyle = S.outline; c.lineWidth = 0.9; c.stroke();
+      /* the flight feathers, layered at the tip */
+      c.strokeStyle = 'rgba(60,76,96,.38)'; c.lineWidth = 0.8;
+      for (var f = 0; f < 4; f++) {
+        c.beginPath();
+        c.moveTo(k * (15 - f * 3.2), 15 + f * 4.4);
+        c.quadraticCurveTo(k * (10 - f * 2.6), 23 + f * 3.4, k * (2.5 - f * 0.4), 26 + f * 2.4);
+        c.stroke();
+      }
+      /* crescents, the dark tips of the feathers */
+      c.fillStyle = S.mark;
+      OWL_SPOTS.forEach(function (p, n) {
+        c.globalAlpha = 0.62 - n * 0.025;
+        var x = k * p[0], y = p[1];
+        c.beginPath(); c.ellipse(x, y, 2.1, 1.05, k * 0.35, 0, 6.2832); c.fill();
+      });
+      c.globalAlpha = 1;
+      c.restore();
     });
+
+    /* a few fainter flecks across the back between the wings */
+    c.fillStyle = S.mark; c.globalAlpha = 0.35;
+    [[0, -6], [-2, 1], [2, 5]].forEach(function (p) {
+      c.beginPath(); c.ellipse(p[0], p[1], 1.3, 0.9, 0, 0, 6.2832); c.fill();
+    });
+    c.globalAlpha = 1;
+
+    /* the head: big, round, pure white, a scatter of fine flecks on the crown */
+    var hg = c.createRadialGradient(-3, -26, 2, 0, -21, 15);
+    hg.addColorStop(0, '#ffffff'); hg.addColorStop(0.7, S.body[0]); hg.addColorStop(1, S.body[1]);
+    c.fillStyle = hg;
+    c.beginPath(); c.ellipse(0, -21, 13.5, 12.5, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = S.outline; c.lineWidth = 1.2; c.stroke();
+    c.fillStyle = S.mark; c.globalAlpha = 0.4;
+    [[-5, -30], [-1, -31.5], [3, -30.5], [6.5, -28], [-8, -27]].forEach(function (p) {
+      c.beginPath(); c.ellipse(p[0], p[1], 0.9, 0.7, 0, 0, 6.2832); c.fill();
+    });
+    c.globalAlpha = 1;
+    /* the facial disc: a faint rim round the face */
+    c.strokeStyle = 'rgba(150,168,188,.55)'; c.lineWidth = 1;
+    c.beginPath(); c.ellipse(0, -20.5, 10.5, 8.5, 0, 0, 6.2832); c.stroke();
+    [-1, 1].forEach(function (k) {                    // the eyes that face you
+      c.fillStyle = 'rgba(70,80,96,.55)';             // dark lids round the iris
+      c.beginPath(); c.ellipse(k * 5, -22, 4.6, 4.1, 0, 0, 6.2832); c.fill();
+      c.fillStyle = S.accent || '#f2b733';
+      c.beginPath(); c.ellipse(k * 5, -22, 3.7, 3.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = S.nose;
+      c.beginPath(); c.ellipse(k * 5, -22, 1.8, 2.0, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.9)';
+      c.beginPath(); c.ellipse(k * 5 - 0.8, -23, 0.7, 0.7, 0, 0, 6.2832); c.fill();
+    });
+    /* the beak, half hidden in bristle feathers */
+    c.fillStyle = '#e8edf3';
+    c.beginPath(); c.ellipse(0, -18.6, 2.6, 2.2, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
     c.beginPath();
-    c.moveTo(0, -18); c.lineTo(-2.2, -21.5); c.lineTo(2.2, -21.5);
+    c.moveTo(0, -15.6); c.quadraticCurveTo(-1.8, -18, -1.6, -19.6); c.lineTo(1.6, -19.6);
+    c.quadraticCurveTo(1.8, -18, 0, -15.6);
     c.closePath(); c.fill();
   }
 
