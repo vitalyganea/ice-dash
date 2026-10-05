@@ -73,6 +73,9 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   perk that changes how you earn, and spare lives at 250 fish (cap 5). A
   perk may only ever make the hill *more* forgiving; `test/skinsafe.js`
   holds a declared direction for each one and fails on any that does not.
+- **Aurora** — asked for by the user: one creature that cannot be bought,
+  given to whoever earns every trophy, shown as the prize at the top of
+  Trophies. Trophy rewards are claimed by hand.
 - **Extra lives** — a crash with a spare in hand offers a 3-2-1 revive from
   where you fell. Nothing is banked until the player chooses.
 - **First-run tutorial** — added at the user's request: a brand-new player

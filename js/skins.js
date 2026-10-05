@@ -254,8 +254,30 @@ var SKINS = [
     paw: '#12161d', pawDark: '#080b10',
     trim: '#1b212a', trimEdge: 'rgba(4,6,10,.5)',
     accent: null, accessory: null
+  },
+  {
+    /* Not for sale at any price: she comes to whoever has earned every
+       trophy on the board. Indigo with the northern lights across her back
+       and a crown of ice crystals — the one creature nobody can buy, so
+       the one you notice on somebody else's screen. Her perk is two that
+       are already proved safe, together. */
+    id: 'aurora', name: 'Aurora', price: 0, currency: 'trophy',
+    blurb: 'Only the ones who did everything have seen her.',
+    perkText: 'Starts every run in a bubble and draws fish in from far away.',
+    perk: { reach: 1.8, startShield: 1 },
+    body: ['#4a4fb0', '#2a2c78', '#14163f'],
+    flipper: ['#3d7fa8', '#24547a', '#122f47'],
+    trim: '#8ff3ff', trimEdge: 'rgba(40,140,170,.5)',
+    shape: 'penguin', accent: '#c9f6ff', accessory: 'aurora'
   }
 ];
+
+/* The trophy creature is given, not bought: every trophy earned opens her. */
+function trophySkinOpen(save) {
+  for (var i = 0; i < ACHIEVEMENTS.length; i++)
+    if (save.ach.indexOf(ACHIEVEMENTS[i].id) < 0) return false;
+  return true;
+}
 
 var SKIN_BY_ID = {};
 for (var _s = 0; _s < SKINS.length; _s++) SKIN_BY_ID[SKINS[_s].id] = SKINS[_s];

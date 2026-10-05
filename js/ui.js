@@ -900,7 +900,8 @@
        you see. Prices in different currencies cannot be compared, so the
        gold ones go last however small the number on them looks. */
     var list = SKINS.slice().sort(function (a, b) {
-      var ga = a.currency === 'gold' ? 1 : 0, gb = b.currency === 'gold' ? 1 : 0;
+      var ga = a.currency === 'gold' ? 1 : a.currency === 'trophy' ? 2 : 0,
+          gb = b.currency === 'gold' ? 1 : b.currency === 'trophy' ? 2 : 0;
       return ga !== gb ? ga - gb : a.price - b.price;
     });
     for (var i = 0; i < list.length; i++) grid.appendChild(card(list[i]));
@@ -924,6 +925,13 @@
       var w = document.createElement('span');
       w.className = 'skin-tag tag-worn'; w.textContent = '✓';
       el.appendChild(w);
+    } else if (!owns(sk.id) && sk.currency === 'trophy') {
+      /* the trophy creature: how many trophies there are to go */
+      var tp = document.createElement('span'), open = trophySkinOpen(save);
+      tp.className = 'skin-tag tag-trophy' + (open ? ' can' : '');
+      tp.textContent = '★ ' + (open ? t('shop.trophyfree') : achDone() + '/' + ACHIEVEMENTS.length);
+      el.appendChild(tp);
+      el.classList.add('trophy-card');
     } else if (!owns(sk.id)) {
       var p = document.createElement('span');
       var afford = balance(sk.currency) >= sk.price;
@@ -961,6 +969,12 @@
       b.textContent = t('shop.wearing'); b.disabled = true; b.className += ' btn-ghost';
     } else if (owns(sk.id)) {
       b.textContent = t('shop.wear'); b.className += ' btn-green';
+    } else if (sk.currency === 'trophy') {
+      if (trophySkinOpen(save)) { b.textContent = t('shop.trophytake'); b.className += ' btn-gold'; }
+      else {
+        b.textContent = t('shop.trophyneed', { a: achDone(), b: ACHIEVEMENTS.length });
+        b.className += ' btn-ghost'; b.disabled = true;
+      }
     } else {
       var canAfford = balance(sk.currency) >= sk.price;
       b.appendChild(document.createTextNode(t('shop.buy') + '  '));
@@ -995,7 +1009,13 @@
   $('sheet-skin-btn').addEventListener('click', function () {
     var sk = SKIN_BY_ID[sheetSkin];
     if (!sk || this.disabled) return;
-    if (!owns(sk.id)) {
+    if (!owns(sk.id) && sk.currency === 'trophy') {
+      if (!trophySkinOpen(save)) return;
+      save.owned.push(sk.id);
+      Sfx.gold();
+      var r0 = this.getBoundingClientRect();
+      screenBurst('best', r0.left + r0.width / 2, r0.top + r0.height / 2);
+    } else if (!owns(sk.id)) {
       if (balance(sk.currency) < sk.price) return;
       if (sk.currency === 'gold') save.gold -= sk.price; else save.fish -= sk.price;
       save.owned.push(sk.id);
@@ -1088,6 +1108,7 @@
      not count: once the purse holds 250 they always could, and a badge that
      is always lit says nothing. */
   function canBuyCreature() {
+    if (trophyWaiting()) return true;
     for (var i = 0; i < SKINS.length; i++) {
       var s = SKINS[i];
       if (!s.price || save.owned.indexOf(s.id) >= 0) continue;
@@ -1222,10 +1243,9 @@
        changed, a target that moved — and without this it would sit there
        reading 30 / 30 and locked. */
     if (achCheck(save).length) store();
-    var done = 0;
-    for (var i = 0; i < ACHIEVEMENTS.length; i++)
-      if (save.ach.indexOf(ACHIEVEMENTS[i].id) >= 0) done++;
+    var done = achDone();
     $('ach-count').textContent = t('ach.count', { a: done, b: ACHIEVEMENTS.length });
+    buildPrize(done);
 
     /* More than one waiting: one tap takes the lot. */
     var owedAll = achUnclaimed(save), ca = $('ach-claim-all');
@@ -1291,6 +1311,59 @@
     });
   }
 
+  function achDone() {
+    var n = 0;
+    for (var i = 0; i < ACHIEVEMENTS.length; i++) if (save.ach.indexOf(ACHIEVEMENTS[i].id) >= 0) n++;
+    return n;
+  }
+  function trophySkin() {
+    for (var i = 0; i < SKINS.length; i++) if (SKINS[i].currency === 'trophy') return SKINS[i];
+    return null;
+  }
+  /* every trophy earned, and she has not been taken yet */
+  function trophyWaiting() { var sk = trophySkin(); return !!sk && !owns(sk.id) && trophySkinOpen(save); }
+  /* The prize at the top of Trophies: the creature every trophy opens,
+     with how far there is to go — the reason to finish the board. */
+  function buildPrize(done) {
+    var sk = trophySkin(), box = $('ach-prize');
+    if (!sk || !box) return;
+    box.textContent = '';
+    var cv = document.createElement('canvas');
+    cv.className = 'skin-pic prize-pic';
+    box.appendChild(cv);
+    Game.drawSkinPreview(cv, sk.id, 72);
+    var mid = document.createElement('div');
+    mid.className = 'prize-mid';
+    var h = document.createElement('div');
+    h.className = 'prize-name'; h.textContent = t('skin.' + sk.id + '.name', null, sk.name);
+    mid.appendChild(h);
+    var d = document.createElement('div');
+    d.className = 'prize-desc';
+    d.textContent = owns(sk.id) ? t('ach.prize.yours') : t('ach.prize.desc');
+    mid.appendChild(d);
+    if (!owns(sk.id)) {
+      var bar = document.createElement('div');
+      bar.className = 'ach-bar';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(done / ACHIEVEMENTS.length * 100) + '%';
+      bar.appendChild(fill);
+      mid.appendChild(bar);
+    }
+    box.appendChild(mid);
+    if (trophyWaiting()) {
+      var b = document.createElement('button');
+      b.className = 'btn btn-sm btn-gold';
+      b.id = 'prize-take';
+      b.textContent = t('shop.trophytake');
+      box.appendChild(b);
+    } else if (!owns(sk.id)) {
+      var c = document.createElement('div');
+      c.className = 'prize-count'; c.textContent = done + ' / ' + ACHIEVEMENTS.length;
+      box.appendChild(c);
+    }
+    box.classList.toggle('won', owns(sk.id));
+  }
+
   /* Claiming: the fish go into the purse with a burst from the button. */
   function claimFx(el, paid) {
     if (!paid) return;
@@ -1304,6 +1377,19 @@
     var b = e.target.closest ? e.target.closest('[data-claim]') : null;
     if (!b) return;
     claimFx(b, achClaim(save, b.getAttribute('data-claim')));
+  });
+  $('ach-prize').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('#prize-take') : null;
+    var sk = trophySkin();
+    if (!b || !sk || !trophyWaiting()) return;
+    save.owned.push(sk.id);
+    save.equipped = sk.id;          // taken, and put on straight away
+    achCheck(save);
+    Sfx.gold(); buzz([30, 40, 60]);
+    var r = b.getBoundingClientRect();
+    screenBurst('best', r.left + r.width / 2, r.top + r.height / 2);
+    store();
+    buildAch();
   });
   $('ach-claim-all').addEventListener('click', function () {
     var paid = 0;

@@ -3267,6 +3267,40 @@ var Game = (function () {
         c.quadraticCurveTo(k * 11, -16, k * 6, -20);
         c.closePath(); c.fill();
       });
+    } else if (S.accessory === 'aurora') {
+      /* The northern lights across her back: soft bands of green and
+         violet, kept inside the body and drifting slowly, a glow rather
+         than a line. */
+      var ph = (W ? W.t : 0) * 0.035;
+      c.save();
+      c.beginPath(); c.ellipse(0, -1, 14.5, 19, 0, 0, 6.2832); c.clip();
+      c.globalCompositeOperation = 'lighter';
+      [['110,255,180', -9, 0], ['150,200,255', -2, 1.7], ['190,130,255', 5, 3.4]].forEach(function (rb) {
+        for (var bx = -15; bx <= 15; bx += 3) {
+          var by = rb[1] + Math.sin(bx * 0.16 + ph + rb[2]) * 2.2;
+          var gr = c.createRadialGradient(bx, by, 0, bx, by, 6);
+          gr.addColorStop(0, 'rgba(' + rb[0] + ',.32)');
+          gr.addColorStop(1, 'rgba(' + rb[0] + ',0)');
+          c.fillStyle = gr;
+          c.beginPath(); c.ellipse(bx, by, 6, 6, 0, 0, 6.2832); c.fill();
+        }
+      });
+      c.restore();
+      /* a crown of five ice crystals over the head */
+      for (var ci = -2; ci <= 2; ci++) {
+        var ca = ci * 0.36, len = ci === 0 ? 11 : 7.5 - Math.abs(ci);
+        c.save();
+        c.translate(Math.sin(ca) * 10, -28 - Math.cos(ca) * 3);
+        c.rotate(ca);
+        var cg2 = c.createLinearGradient(0, 0, 0, -len);
+        cg2.addColorStop(0, '#7fd8f0'); cg2.addColorStop(1, '#ffffff');
+        c.fillStyle = cg2;
+        c.beginPath();
+        c.moveTo(-2.6, 0); c.lineTo(0, -len); c.lineTo(2.6, 0); c.lineTo(0, 2);
+        c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(20,60,110,.55)'; c.lineWidth = 0.8; c.stroke();
+        c.restore();
+      }
     } else if (S.accessory === 'glow') {
       var gg = c.createRadialGradient(0, -4, 10, 0, -4, 34);
       gg.addColorStop(0, 'rgba(159,232,255,0)');

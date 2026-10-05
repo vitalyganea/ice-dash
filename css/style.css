@@ -1424,3 +1424,27 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .ach-row.owed{ border-color:#a86a00; background:rgba(255,246,214,.95); }
 .ach-claim{ white-space:nowrap; }
 .btn-row.row-three .market-btn{ position:relative; }
+
+/* ---- the prize for every trophy ---- */
+.ach-prize{
+  display:flex; align-items:center; gap:14px;
+  margin:4px 0 14px; padding:12px 16px;
+  border-radius:18px; text-align:left;
+  background:linear-gradient(135deg,#2a2c78 0%,#3d4fb0 55%,#2f8fa8 100%);
+  border:3px solid #062a78; box-shadow:0 4px 0 #062a78;
+  color:#fff;
+}
+.ach-prize:empty{ display:none; }
+.prize-pic{ width:72px; height:72px; flex:0 0 auto;
+  background:radial-gradient(circle at 50% 40%, #7ff0d0 0%, #4a4fb0 70%, #2a2c78 100%); }
+.prize-mid{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.prize-name{ font-weight:800; font-size:clamp(17px,2.8vw,21px); text-shadow:0 1px 0 #062a78; }
+.prize-desc{ font-size:clamp(12px,1.9vw,14px); line-height:1.3; opacity:.92; }
+.prize-count{ font-weight:800; font-size:16px; white-space:nowrap; }
+.ach-prize .ach-bar{ background:rgba(255,255,255,.25); }
+.ach-prize .ach-bar i{ background:linear-gradient(90deg,#7ff0d0,#c7a6ff); }
+.ach-prize.won{ background:linear-gradient(135deg,#1f9d63 0%,#2f8fa8 100%); }
+.skin-tag.tag-trophy{ color:#fff; background:#3d4fb0; border-color:#062a78; }
+.skin-tag.tag-trophy.can{ color:#7a4a00; background:#fff2c2; border-color:#a86a00; }
+.skin-card.trophy-card{ background:linear-gradient(160deg,rgba(74,79,176,.18),rgba(47,143,168,.18)); }
+.ach-prize .btn{ white-space:nowrap; flex:0 0 auto; }

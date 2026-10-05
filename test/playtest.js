@@ -655,6 +655,38 @@ async function walk(cdp, sid, P) {
   async function readSave() {
     return ev("JSON.parse(localStorage.getItem('icedash-save-v1')||'{}')");
   }
+  /* ---- the trophy creature ----
+     Shut on the shelf until the board is complete, then given, not sold. */
+  await clickFor('[data-action="shop"]', '#screen-shop');
+  var tTag = await ev("(function(){var e=document.querySelector('#shop-grid [data-pick=\"aurora\"] .tag-trophy');return e?e.textContent:null;})()");
+  ok(tTag && /\d+\/\d+/.test(tTag), 'Aurora is on the shelf with the trophies still to go (' + tTag + ')');
+  await clickFor('#shop-grid [data-pick="aurora"]', '#sheet-skin');
+  ok(await ev("document.getElementById('sheet-skin-btn').disabled"), 'and she cannot be bought');
+  await shot('05c-aurora-locked');
+  await clickFor('.sheet-x', null);
+  await clickFor('#btn-back', '#screen-title');
+  /* the same player with every trophy earned and paid */
+  await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));" +
+           "s.ach=ACHIEVEMENTS.map(function(a){return a.id;});s.claimed=s.ach.slice();" +
+           "localStorage.setItem('icedash-save-v1',JSON.stringify(s));sessionStorage.setItem('fresh','1');Game.stop&&Game.stop();})();1");
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  ok(await waitFor('#screen-title', 8000) && await visible('#market-badge'),
+     'with every trophy earned, the Market says something is waiting');
+  await clickFor('[data-action="trophies"]', '#screen-ach');
+  ok(await visible('#prize-take'), 'and the prize at the top of Trophies offers her');
+  await shot('06b-aurora-prize');
+  await click('#prize-take');
+  var svA = await readSave();
+  ok(svA.owned.indexOf('aurora') >= 0 && svA.equipped === 'aurora', 'taking her puts her on (' + svA.equipped + ')');
+  ok(!(await visible('#prize-take')) && /yours/i.test(await ev("document.getElementById('ach-prize').textContent")),
+     'and the prize now says she is yours');
+  await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+  ok(await clickFor('#btn-free', '#hud') >= 0 && (await ev("Game.debug().shield")) === 1,
+     'she rides, and starts the run in a bubble as her perk says');
+  await sleep(500);
+  await shot('06c-aurora-riding');
+  await ev("Game.stop();1");
+
   await ev("sessionStorage.setItem('fresh','1');localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
   ok(await waitFor('#tut-card', 8000), 'a brand-new player is dropped straight into the tutorial');
