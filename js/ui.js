@@ -847,7 +847,7 @@
   }
   /* What each moment feels like: a crash is the heaviest, a ring the
      lightest. Short on purpose — a tap game is held for minutes. */
-  var BUZZ = { crash: [60, 40, 90], caught: [90, 50, 140], gold: 28, find: [20, 30, 20], rush: [30, 20, 30],
+  var BUZZ = { crash: [60, 40, 90], caught: [90, 50, 140], perfect: [12, 30, 18], gold: 28, find: [20, 30, 20], rush: [30, 20, 30],
                clock: 16, ring: 12, save: [40, 30, 40], land: 24, close: 18,
                finish: [30, 40, 60], timeup: [80] };
   function onFx(e) { if (BUZZ[e] !== undefined) buzz(BUZZ[e]); }

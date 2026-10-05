@@ -719,7 +719,12 @@ async function walk(cdp, sid, P) {
   await shot('06c-aurora-riding');
   /* far down the hill and flat out, the camera has drawn back */
   await ev("(function(){var W=Game.debug();W.dist=26000;W.objects.length=0;W.invuln=99999;W.grace=99999;})();1");
-  await sleep(2500);
+  /* kept clear while the camera settles: with her reach she will otherwise
+     sweep up a cold draught on the way, and the hill slows under it */
+  for (var cl = 0; cl < 14; cl++) {
+    await ev("(function(){var W=Game.debug();W.objects.length=0;W.chillT=0;W.bog=0;})();1");
+    await sleep(180);
+  }
   var zoom = await ev("Game.debug().zoom");
   ok(zoom < 0.96 && zoom > 0.9, 'flat out, the camera has drawn back (' + zoom.toFixed(3) + ')');
   var snow = await ev("Game._snow()");
@@ -734,6 +739,14 @@ async function walk(cdp, sid, P) {
   await ev("Game.debug().closeT=45;1");
   await sleep(120);
   var wide = await ev("(function(){var e=Game._eye();return e?e.wide:null;})()");
+  /* a perfect tap, staged: one opening a quarter of a second ahead, off to the side he taps towards */
+  var perf = await ev("(async function(){var W=Game.debug();W.objects=[];W.closeT=0;W.dir=-1;W.vx=0;" +
+    "var d=W.dist+W.speed*14;W.rows=[{d:d,gap:W.px+25-Game._chuteAt(d),gapW:220}];var n0=W.perfects;Game.tap();" +
+    "for(var i=0;i<40&&Game.debug().perfects===n0;i++)await new Promise(function(r){setTimeout(r,16);});" +
+    "return {n:Game.debug().perfects-n0,t:Game.debug().perfT};})()");
+  ok(perf.n === 1 && perf.t > 0, 'a last-moment tap through an opening is a PERFECT (' + JSON.stringify(perf) + ')');
+  await sleep(120);
+  await shot('06e-perfect');
   ok(wide !== null && wide > 1.2, 'and his eyes go wide after a close call (' + (wide === null ? 'none' : wide.toFixed(2)) + ')');
   ok(trail.n > 10 && trail.behind > 100, 'and his belly has cut a groove behind him (' + trail.n + ' points, ' + trail.behind + ' units back)');
   await ev("Game.stop();1");

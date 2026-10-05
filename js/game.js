@@ -238,6 +238,7 @@ var Game = (function () {
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
       mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0, zoom: 1, trail: [],
+      lastTapT: -999, tapPrev: -999, tapX: 0, perfects: 0, perfT: 0,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
@@ -939,6 +940,7 @@ var Game = (function () {
     if (W.hold) { W.hold = false; lesson({ key: null }); return; }
     W.dir = -W.dir;
     W.tapFlash = 8;
+    W.tapPrev = W.lastTapT; W.lastTapT = W.t; W.tapX = W.px;
     Sfx.turn();
     for (var i = 0; i < 4; i++)
       W.puffs.push({ x: W.px - W.dir * 8, d: W.dist - 6, life: 18, max: 18, s: frnd(5, 11) });
@@ -991,7 +993,7 @@ var Game = (function () {
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
-                     mode: W.mode, clocks: W.clocks, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
+                     mode: W.mode, clocks: W.clocks, perfects: W.perfects, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
@@ -1283,10 +1285,12 @@ var Game = (function () {
     /* the camera draws back with pace (7% at full speed), and leans in a
        little on a close call */
     var zt = 1 - 0.07 * pace();
-    if (W.closeT > 0) zt = Math.min(1, zt + 0.04);
-    W.zoom += (zt - W.zoom) * (W.closeT > 0 ? 0.12 : 0.025);
+    if (W.closeT > 0 || W.perfT > 30) zt = Math.min(1, zt + 0.04);
+    W.zoom += (zt - W.zoom) * ((W.closeT > 0 || W.perfT > 30) ? 0.12 : 0.025);
     if (W.penT > 0) W.penT--;
     if (W.closeT > 0) W.closeT--;
+    if (W.perfT > 0) W.perfT--;
+    perfectCheck();
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
@@ -1364,6 +1368,49 @@ var Game = (function () {
     ctx.strokeText(word, tx, ty);
     ctx.fillStyle = '#ffe066';
     ctx.fillText(word, tx, ty);
+    ctx.restore();
+  }
+  /* A perfect tap: the turn made at the last moment that still carries
+     him through. When he crosses a row, the tap that turned him towards
+     its opening came within 22 frames of it (about a third of a second),
+     it was a single deliberate tap and not a flutter, and he is through.
+     The reward is points, a step on the combo and the feel of a burst —
+     streaks, the camera leaning in, a flourish — but not real speed: the
+     spawner proves each row at the hill's own pace, and on the Glacier a
+     6% burst would cost a sixth of the sideways reach the proof relies on. */
+  function perfectCheck() {
+    if (W.state !== 'run' || W.hold || airborne()) return;
+    var dt = W.t - W.lastTapT;
+    if (dt < 3 || dt > 22 || W.lastTapT - W.tapPrev < 18) return;
+    for (var i = 0; i < W.rows.length; i++) {
+      var r = W.rows[i];
+      if (r.d > W.dist || r.d <= W.dist - W.speed) continue;   // crossed this frame
+      var gx = chuteAt(r.d) + r.gap;
+      if (Math.abs(W.px - gx) > r.gapW / 2) return;          // not through it
+      if ((gx - W.tapX) * W.dir <= 0) return;                // the tap was not towards it
+      W.perfects++; W.perfT = 50; W.lastTapT = -999;         // one reward per tap
+      comboUp();
+      W.score += 40 * comboMult();
+      Sfx.perfect(); fx('perfect');
+      return;
+    }
+  }
+  function drawPerfect() {
+    if (!W.perfT) return;
+    var a = Math.min(1, W.perfT / 16), rise = (50 - W.perfT) * 1.1, pop = 1 + Math.max(0, W.perfT - 40) * 0.04;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.translate(scrX(W.px), PLAYER_Y - 96 - rise);
+    ctx.scale(pop, pop);
+    ctx.font = '800 30px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
+    ctx.lineWidth = 7; ctx.strokeStyle = '#062a78';
+    var word = tr('hud.perfect', 'PERFECT!');
+    ctx.strokeText(word, 0, 0);
+    var g = ctx.createLinearGradient(0, -24, 0, 6);
+    g.addColorStop(0, '#fff6c9'); g.addColorStop(1, '#ffb22e');
+    ctx.fillStyle = g;
+    ctx.fillText(word, 0, 0);
     ctx.restore();
   }
   function solid(o) { return o.t === 'rock' || o.t === 'tree'; }
@@ -1576,6 +1623,7 @@ var Game = (function () {
     drawPenguin();
     drawGateFronts();     /* after him: he goes THROUGH the hoop */
     drawCloseCall();
+    drawPerfect();
     drawChill();
     drawPaceVignette();
     drawBridges();        /* after him: he is UNDER the bridge */
@@ -5129,7 +5177,8 @@ var Game = (function () {
   /* Wind along the sides, and only once he is really moving. Kept off the
      middle third so it never competes with the line he is reading. */
   function drawSpeedStreaks() {
-    var sp = pace();
+    /* a perfect tap throws the streaks out as if he had surged */
+    var sp = Math.min(1, pace() + (W.perfT > 0 ? 0.45 * W.perfT / 50 : 0));
     if (sp < 0.10) return;
     var k = clamp((sp - 0.10) / 0.45, 0, 1);
     ctx.save();

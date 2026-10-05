@@ -77,6 +77,10 @@ var Sfx = (function () {
                         tone({ freq:1318, dur:0.12, type:'triangle', vol:0.18, delay:0.05 }); },
     gate:   function(){ [659,880,1174].forEach(function(f,i){
                           tone({ freq:f, dur:0.13, type:'triangle', vol:0.2, delay:i*0.05 }); }); },
+    /* a perfect tap: a quick bright rising flourish, a whoosh under it */
+    perfect: function(){ [988,1318,1976].forEach(function(f,i){
+                           tone({ freq:f, dur:0.12, type:'sine', vol:0.2, delay:i*0.035 }); });
+                         noise(0.22, 0.08, 2400); },
     zone:   function(){ [523,659,784,1046].forEach(function(f,i){
                           tone({ freq:f, dur:0.22, type:'sine', vol:0.2, delay:i*0.09 }); }); },
     bank:   function(){ noise(0.12, 0.12, 500); },
