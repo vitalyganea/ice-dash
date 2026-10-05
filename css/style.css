@@ -1300,3 +1300,65 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .btn-row.modes .mode-more{ grid-column:1 / -1; position:relative; }
 .btn-row.modes-list{ flex-direction:column; align-items:stretch; gap:22px; margin:6px 0 10px; }
 .btn-row.modes-list .mode-btn small{ font-size:.58em; }
+
+/* ---- the Market shelf as pictures ----
+   A tile per creature: the portrait, and a price tag until it is bought.
+   Several to a row even on a phone, so the whole shelf is seen at once;
+   the words are in the window a tap opens. */
+.shop-grid{ grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:12px; }
+.skin-card{
+  position:relative;
+  flex-direction:column; justify-content:center; gap:0;
+  padding:12px 6px 18px;
+  font:inherit; color:inherit; cursor:pointer;
+  transition:transform .12s ease;
+}
+.skin-card:active{ transform:scale(.95); }
+.skin-card:focus-visible{ outline:3px solid #2789d8; outline-offset:2px; }
+.skin-card .skin-pic{ width:80px; height:80px; }
+.skin-tag{
+  position:absolute; left:50%; bottom:-9px; transform:translateX(-50%);
+  display:inline-flex; align-items:center; gap:3px;
+  padding:2px 9px 2px 5px; border-radius:99px; white-space:nowrap;
+  font-weight:800; font-size:13px; line-height:20px;
+  color:#44647c; background:#eef5fa; border:2px solid #90a8ba;
+}
+.skin-tag.can{ color:#062a78; background:#d9f0ff; border-color:#062a78; }
+.skin-tag.gold.can{ color:#7a4a00; background:#fff2c2; border-color:#a86a00; }
+.skin-tag.tag-worn{
+  padding:2px 9px; color:#fff; background:var(--green); border-color:#062a78;
+}
+.coin{ display:inline-block; vertical-align:middle; flex:0 0 auto; }
+@media (max-width:540px){
+  .shop-grid{ grid-template-columns:repeat(3,1fr); gap:14px 10px; }
+  .skin-card{ flex-direction:column; padding:10px 4px 16px; gap:0; }
+  .skin-card .skin-pic{ width:min(72px,22vw); height:min(72px,22vw); }
+}
+
+/* ---- a small window over the screen ----
+   Used for a creature's words. Dims what is under it; a tap on the dim,
+   the cross, Esc or the back arrow closes it. */
+.sheet{
+  position:fixed; inset:0; z-index:60;
+  display:flex; align-items:center; justify-content:center;
+  padding:calc(18px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));
+  background:rgba(6,20,52,.55);
+  animation:fade .2s ease both;
+}
+.sheet-card{ width:min(400px,100%); margin:0; padding:30px 24px 22px; }
+.sheet-x{
+  position:absolute; top:10px; right:10px;
+  width:38px; height:38px; border-radius:50%;
+  border:2px solid #062a78; background:#fff; cursor:pointer;
+}
+.sheet-x::before, .sheet-x::after{
+  content:''; position:absolute; left:50%; top:50%; width:16px; height:3px; border-radius:2px;
+  background:#062a78; transform:translate(-50%,-50%) rotate(45deg);
+}
+.sheet-x::after{ transform:translate(-50%,-50%) rotate(-45deg); }
+.sheet-pic{ width:140px; height:140px; margin:0 auto 10px; }
+.sheet-name{ margin:0 0 6px; font-size:clamp(20px,3.4vw,26px); font-weight:800; color:var(--ink); }
+.sheet-perk{ margin:0 auto; max-width:30ch; font-size:clamp(14px,2.2vw,17px); line-height:1.35; color:var(--ink-soft); }
+.sheet-card .btn-row{ margin-top:18px; }
+.sheet-card .btn .coin{ margin:0 3px 0 2px; }
+.sheet-card .shop-note{ margin-top:12px; }

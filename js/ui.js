@@ -157,6 +157,7 @@
   var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1 };
   var justOpened = false;
   function show(name) {
+    closeSheet();
     currentScreen = name;
     for (var k in screens) screens[k].classList.toggle('hidden', k !== name);
     /* The pause button belongs to play and nothing else. This used to be
@@ -724,8 +725,12 @@
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
       case 'modes':      Sfx.click(); show('modes'); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
+      case 'close-sheet': Sfx.click(); closeSheet(); break;
       case 'back-title':
         Sfx.click();
+        /* The back arrow and Esc close an open window before they leave
+           the screen under it. */
+        if (closeSheet()) break;
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
@@ -872,54 +877,92 @@
     for (var i = 0; i < list.length; i++) grid.appendChild(card(list[i]));
   }
 
+  /* The shelf is pictures. Each creature is a tile with its portrait and,
+     until it is bought, its price; the name, the perk and the button are in
+     the window a tap on the tile opens. Eleven-plus cards of text were a
+     wall to scroll past before you saw what was on offer. */
   function card(sk) {
-    var el = document.createElement('div');
+    var el = document.createElement('button');
     el.className = 'skin-card' + (save.equipped === sk.id ? ' worn' : '')
                                + (owns(sk.id) ? ' owned' : '');
+    el.setAttribute('data-pick', sk.id);
+    el.setAttribute('aria-label', t('skin.' + sk.id + '.name', null, sk.name));
     var cv = document.createElement('canvas');
     cv.className = 'skin-pic';
     el.appendChild(cv);
-    Game.drawSkinPreview(cv, sk.id, 88);
+    Game.drawSkinPreview(cv, sk.id, 80);
+    if (save.equipped === sk.id) {
+      var w = document.createElement('span');
+      w.className = 'skin-tag tag-worn'; w.textContent = '✓';
+      el.appendChild(w);
+    } else if (!owns(sk.id)) {
+      var p = document.createElement('span');
+      var afford = balance(sk.currency) >= sk.price;
+      p.className = 'skin-tag tag-price' + (sk.currency === 'gold' ? ' gold' : '') + (afford ? ' can' : '');
+      p.appendChild(coin(sk.currency, 16));
+      p.appendChild(document.createTextNode(num(sk.price)));
+      el.appendChild(p);
+    }
+    return el;
+  }
+  /* The game's own fish, small, as the mark of a currency. */
+  function coin(cur, size) {
+    var cv = document.createElement('canvas');
+    cv.className = 'coin';
+    cv.setAttribute('aria-hidden', 'true');
+    if (Game.drawHint) Game.drawHint(cv, cur === 'gold' ? 'gold' : 'fish', size);
+    return cv;
+  }
+  function num(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
 
-    /* Portrait and words are separate boxes so a narrow screen can stand
-       them side by side instead of making every card a screenful. */
-    var info = document.createElement('div');
-    info.className = 'skin-info';
-    el.appendChild(info);
-
-    var h = document.createElement('div');
-    h.className = 'skin-name'; h.textContent = t('skin.' + sk.id + '.name', null, sk.name);
-    info.appendChild(h);
-
-    var perk = document.createElement('div');
-    perk.className = 'skin-perk';
-    perk.textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
-    info.appendChild(perk);
-
-    var b = document.createElement('button');
-    b.className = 'btn btn-sm';
-    b.setAttribute('data-skin', sk.id);
+  var sheetSkin = null;
+  function openSheet(id) {
+    var sk = SKIN_BY_ID[id];
+    if (!sk) return;
+    sheetSkin = id;
+    var sh = $('sheet-skin');
+    sh.classList.remove('hidden');
+    Game.drawSkinPreview($('sheet-skin-pic'), sk.id, 140);
+    $('sheet-skin-name').textContent = t('skin.' + sk.id + '.name', null, sk.name);
+    $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
+    var b = $('sheet-skin-btn'), need = $('sheet-skin-need');
+    b.textContent = ''; b.disabled = false; b.className = 'btn';
+    need.classList.add('hidden');
     if (save.equipped === sk.id) {
       b.textContent = t('shop.wearing'); b.disabled = true; b.className += ' btn-ghost';
     } else if (owns(sk.id)) {
       b.textContent = t('shop.wear'); b.className += ' btn-green';
     } else {
-      var icon = ' ' + t(sk.currency === 'gold' ? 'cur.gold' : 'cur.fish');
-      b.textContent = sk.price + icon;
       var canAfford = balance(sk.currency) >= sk.price;
+      b.appendChild(document.createTextNode(t('shop.buy') + '  '));
+      b.appendChild(coin(sk.currency, 22));
+      b.appendChild(document.createTextNode(num(sk.price)));
       b.className += canAfford ? ' btn-blue' : ' btn-ghost';
       b.disabled = !canAfford;
-      if (!canAfford) b.title = t('shop.needmore', { n: sk.price - balance(sk.currency) });
+      if (!canAfford) {
+        need.textContent = t('shop.needmore', { n: num(sk.price - balance(sk.currency)) });
+        need.classList.remove('hidden');
+      }
     }
-    info.appendChild(b);
-    return el;
+    b.focus({ preventScroll: true });
+  }
+  function closeSheet() {
+    var open = !$('sheet-skin').classList.contains('hidden');
+    $('sheet-skin').classList.add('hidden');
+    sheetSkin = null;
+    return open;
   }
 
   $('shop-grid').addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('[data-skin]') : null;
-    if (!b || b.disabled) return;
-    var sk = SKIN_BY_ID[b.getAttribute('data-skin')];
-    if (!sk) return;
+    var c = e.target.closest ? e.target.closest('[data-pick]') : null;
+    if (!c) return;
+    Sfx.click();
+    openSheet(c.getAttribute('data-pick'));
+  });
+
+  $('sheet-skin-btn').addEventListener('click', function () {
+    var sk = SKIN_BY_ID[sheetSkin];
+    if (!sk || this.disabled) return;
     if (!owns(sk.id)) {
       if (balance(sk.currency) < sk.price) return;
       if (sk.currency === 'gold') save.gold -= sk.price; else save.fish -= sk.price;
@@ -932,6 +975,11 @@
     achCheck(save);                 // owning things is a goal in its own right
     store();
     buildShop();
+    openSheet(sk.id);               // the window stays, now saying it is chosen
+  });
+  /* A tap on the dimmed ground around the window closes it. */
+  $('sheet-skin').addEventListener('click', function (e) {
+    if (e.target === this) { Sfx.click(); closeSheet(); }
   });
 
   $('shop-supply').addEventListener('click', function (e) {
@@ -1258,6 +1306,7 @@
   /* Esc is never swallowed: Design req. 2 forbids preventDefault() on it. */
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
+      if (closeSheet()) { Sfx.click(); return; }
       if (BACKABLE[currentScreen]) { act('back-title'); }
       else if (currentScreen === 'pause') act('resume');
       else if (Game.isRunning() && !Game.isPaused()) { Game.pause(); show('pause'); }

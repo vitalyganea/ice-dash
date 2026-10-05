@@ -321,10 +321,39 @@ async function walk(cdp, sid, P) {
 
   await clickFor('[data-action="shop"]', '#screen-shop');
   ok(await waitFor('#screen-shop'), 'the Market opens');
-  var cards = await ev("document.querySelectorAll('#shop-grid [data-skin]').length");
+  var cards = await ev("document.querySelectorAll('#shop-grid [data-pick]').length");
   var nSkins = await ev("SKINS.length");
   ok(cards === nSkins && nSkins >= 17, 'every creature is on the shelf (' + cards + ' of ' + nSkins + ')');
+  ok(await ev("!document.querySelector('#shop-grid .skin-name, #shop-grid .skin-perk, #shop-grid button button')"),
+     'the shelf is pictures: no names or perks written on the tiles');
+  ok(await ev("!!document.querySelector('#shop-grid [data-pick=\"seal\"] .tag-worn')"),
+     'the creature being ridden is marked on its tile');
   await shot('05-market');
+  /* A tap on a tile opens its window, with the words and the button. */
+  ok(await clickFor('#shop-grid [data-pick="mitten"]', '#sheet-skin') >= 0, 'a tap on a creature opens its window');
+  var sk = await ev("({n:document.getElementById('sheet-skin-name').textContent," +
+                    "p:document.getElementById('sheet-skin-perk').textContent," +
+                    "b:document.getElementById('sheet-skin-btn').textContent})");
+  ok(sk.n && sk.p.length > 10 && sk.b === 'Choose',
+     'with its name, what it does, and Choose for one already owned (' + JSON.stringify(sk) + ')');
+  await shot('05b-market-sheet');
+  await click('#sheet-skin-btn');
+  ok((await readSave()).equipped === 'mitten' && /✓/.test(await ev("document.getElementById('sheet-skin-btn').textContent")),
+     'Choose puts it on, and the window now says it is chosen');
+  ok(await clickFor('.sheet-x', null) >= 0 && !(await visible('#sheet-skin')), 'the cross closes the window');
+  await clickFor('#shop-grid [data-pick="seal"]', '#sheet-skin');
+  await click('#sheet-skin-btn');
+  ok((await readSave()).equipped === 'seal', 'and choosing back works the same way');
+  await clickFor('.sheet-x', null);
+  var unowned = await ev("(function(){var e=document.querySelector('#shop-grid .tag-price.can');return e?e.parentNode.getAttribute('data-pick'):null;})()");
+  ok(unowned, 'an affordable creature shows its price on the tile (' + unowned + ')');
+  await clickFor('#shop-grid [data-pick="' + unowned + '"]', '#sheet-skin');
+  var buyTxt = await ev("document.getElementById('sheet-skin-btn').textContent");
+  ok(/^Buy/.test(buyTxt) && await ev("!document.getElementById('sheet-skin-btn').disabled"),
+     'and its window offers to buy it (' + buyTxt.replace(/\s+/g, ' ') + ')');
+  await clickFor('#btn-back', null);
+  ok(!(await visible('#sheet-skin')) && await visible('#screen-shop'),
+     'the back arrow closes the window first, leaving the Market open');
   /* The way out of the Market must not be a scroll away. The arrow is
      checked where it is, at the top of the window, with the shelf scrolled
      to the middle the way a player looking at one animal leaves it. */

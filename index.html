@@ -259,8 +259,8 @@
     <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
     <p class="wallet"><span id="wallet-fish">0</span><span id="wallet-gold">0</span></p>
     <div id="shop-supply" class="shop-supply"></div>
+    <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
     <div id="shop-grid" class="shop-grid"></div>
-    <p id="shop-note" class="shop-note" data-i18n="shop.note">Wear one at a time.</p>
     <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
@@ -324,6 +324,21 @@
     <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
+
+<!-- A small window over whatever screen is open: a creature's words and its
+     button, opened by a tap on its picture. Outside the screens because a
+     screen's backdrop-filter would make it the box a fixed child is placed
+     in, and it has to cover the whole viewport. -->
+<div id="sheet-skin" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sheet-skin-name">
+  <div class="panel sheet-card">
+    <button class="sheet-x" data-action="close-sheet" data-i18n-aria="btn.close" aria-label="Close"></button>
+    <canvas id="sheet-skin-pic" class="skin-pic sheet-pic"></canvas>
+    <h3 id="sheet-skin-name" class="sheet-name"></h3>
+    <p id="sheet-skin-perk" class="sheet-perk"></p>
+    <div class="btn-row"><button id="sheet-skin-btn" class="btn"></button></div>
+    <p id="sheet-skin-need" class="shop-note hidden"></p>
+  </div>
+</div>
 
 <script src="js/i18n.js"></script>
 <script src="js/audio.js"></script>
