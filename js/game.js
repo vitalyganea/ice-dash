@@ -237,7 +237,7 @@ var Game = (function () {
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
-      mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0, zoom: 1,
+      mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0, zoom: 1, trail: [],
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
@@ -1272,6 +1272,12 @@ var Game = (function () {
       }
     }
     if (W.mode === 'avalanche' && W.state === 'run') avalancheStep(W.speed);
+    /* The groove his belly cuts in the ice, a point every few units of
+       hill, broken where he flies; kept only as far back as can be seen. */
+    var tr = W.trail, lastT = tr[tr.length - 1];
+    if (airborne()) { if (lastT && lastT.x !== null) tr.push({ x: null, d: W.dist }); }
+    else if (!lastT || W.dist - lastT.d >= 7) tr.push({ x: W.px, d: W.dist, rush: W.rushT > 0 });
+    while (tr.length && tr[0].d < W.dist - BEHIND - 40) tr.shift();
     /* the camera draws back with pace (7% at full speed), and leans in a
        little on a close call */
     var zt = 1 - 0.07 * pace();
@@ -1559,6 +1565,7 @@ var Game = (function () {
     drawGround();
     drawEmberGlow();
     drawSightLine();
+    drawTrail();
     drawObjects();
     drawSpeedStreaks();
     drawAurora();
@@ -5125,6 +5132,48 @@ var Game = (function () {
       ctx.moveTo(x, y);
       ctx.lineTo(x - side * (18 + 52 * h * k), y + 18 - 36 * h);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* The run he has made: a groove in the ice behind him, a shadowed cut
+     with a line of light along one lip, fading as it falls behind. Under a
+     snow rush it is cut deeper and catches the light gold. */
+  function drawTrail() {
+    var tr = W.trail;
+    if (!tr || tr.length < 2) return;
+    /* Drawn as unbroken strokes, a few points each, so no two pieces of the
+       line overlap: drawn segment by segment with round ends, every joint
+       was painted twice and the groove came out as a string of beads. */
+    var BAND = 6;
+    ctx.save();
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
+    for (var pass = 0; pass < 2; pass++) {
+      for (var i0 = 0; i0 < tr.length - 1; i0 += BAND) {
+        var end = Math.min(tr.length - 1, i0 + BAND);
+        var p1 = tr[end];
+        var back = clamp((W.dist - tr[i0].d) / (BEHIND + 40), 0, 1), fade = 1 - back;
+        var rush = !!tr[end].rush;
+        var off = pass ? -PR * 0.32 : 0;
+        if (pass === 0) {
+          ctx.strokeStyle = rush ? 'rgba(150,110,40,' + (0.22 * fade).toFixed(3) + ')'
+                                 : 'rgba(40,96,140,' + (0.24 * fade).toFixed(3) + ')';
+          ctx.lineWidth = PR * (rush ? 1.15 : 0.9);
+        } else {
+          ctx.strokeStyle = rush ? 'rgba(255,224,140,' + (0.5 * fade).toFixed(3) + ')'
+                                 : 'rgba(255,255,255,' + (0.55 * fade).toFixed(3) + ')';
+          ctx.lineWidth = 1.6;
+        }
+        ctx.beginPath();
+        var open = false;
+        for (var i = i0; i <= end; i++) {
+          var p = tr[i];
+          if (p.x === null) { open = false; continue; }
+          var x = scrX(p.x) + off, y = scrY(p.d);
+          if (open) ctx.lineTo(x, y); else { ctx.moveTo(x, y); open = true; }
+        }
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }

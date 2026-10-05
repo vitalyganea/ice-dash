@@ -714,6 +714,8 @@ async function walk(cdp, sid, P) {
   var zoom = await ev("Game.debug().zoom");
   ok(zoom < 0.96 && zoom > 0.9, 'flat out, the camera has drawn back (' + zoom.toFixed(3) + ')');
   await shot('06d-camera-back');
+  var trail = await ev("(function(){var t=Game.debug().trail;return {n:t.length,behind:t.length?Math.round(Game.debug().dist-t[0].d):0};})()");
+  ok(trail.n > 10 && trail.behind > 100, 'and his belly has cut a groove behind him (' + trail.n + ' points, ' + trail.behind + ' units back)');
   await ev("Game.stop();1");
 
   await ev("sessionStorage.setItem('fresh','1');localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");
