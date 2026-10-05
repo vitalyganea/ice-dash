@@ -27,6 +27,7 @@ var BIOMES = [
   },
   {
     name: 'Rocky Pass',
+    mood:  'rocky',            // its own tune (audio.js)
     sky:   ['#ffd39a', '#ffeccd'],
     hazeRGB: '255,236,205',
     snowA: '#fdf3e2', iceTop: '#c9e6f2', iceBot: '#a3cfe3', bankEdge: '#e8dcc4', bankShade: '#d3bf9c',
@@ -41,6 +42,7 @@ var BIOMES = [
        and the haze are all within a few points of white, so the only thing
        you can read is the shadow an obstacle throws. */
     name: 'Arctic Shelf',
+    mood:  'arctic',           // its own tune (audio.js)
     sky:   ['#cfefff', '#ffffff'],
     hazeRGB: '244,252,255',
     snowA: '#ffffff', iceTop: '#d6f1ff', iceBot: '#aadcf4', bankEdge: '#ffffff', bankShade: '#c2dded',
@@ -53,6 +55,7 @@ var BIOMES = [
   },
   {
     name: 'Glacier',
+    mood:  'glacier',          // its own tune (audio.js)
     /* The one stretch where he handles differently, so it has to look
        unmistakably colder than the pine forest or the tell is lost. */
     sky:   ['#9fdcff', '#dff6ff'],
@@ -69,6 +72,7 @@ var BIOMES = [
        fallen ash, the rock is basalt, and the sky is lit from below by
        something the hill is sitting on. */
     name: 'Ashfall',
+    mood:  'ashfall',          // its own tune (audio.js)
     sky:   ['#2a1214', '#a8431f'],
     hazeRGB: '96,38,24',
     snowA: '#3a3430', iceTop: '#454252', iceBot: '#232029', bankEdge: '#4a423d', bankShade: '#241f1c',
@@ -88,6 +92,7 @@ var BIOMES = [
        past bending, fat slow flakes, and the aurora already out. Nothing
        hung on anything — the season does all of it by itself. */
     name: 'Midwinter',
+    mood:  'midwinter',        // its own tune (audio.js)
     sky:   ['#2a3a6e', '#eebac6'],
     hazeRGB: '234,188,199',
     snowA: '#f0e2e8', iceTop: '#93a6d8', iceBot: '#5f73ad', bankEdge: '#e8d8e0', bankShade: '#b09fb6',
@@ -103,6 +108,7 @@ var BIOMES = [
   },
   {
     name: 'Night Run',
+    mood:  'night',            // its own tune (audio.js)
     sky:   ['#231c52', '#4a3a86'],
     hazeRGB: '39,31,88',
     snowA: '#cdd6ef', iceTop: '#6a7fc0', iceBot: '#44548f', bankEdge: '#aab5d8', bankShade: '#7f8cba',
@@ -118,6 +124,7 @@ var BIOMES = [
        itself: black obsidian underfoot and open lava running either side
        of the line. The only safe ground is the strip you are on. */
     name: 'Emberflow',
+    mood:  'ember',            // its own tune (audio.js)
     sky:   ['#1a0a0b', '#d05a1e'],
     hazeRGB: '132,40,14',
     snowA: '#2b221e', iceTop: '#3c3135', iceBot: '#1d1619', bankEdge: '#3a2c25', bankShade: '#150f0d',
@@ -137,6 +144,7 @@ var BIOMES = [
        so the red is the hill's own: berries in the snow against the darkest
        green on the mountain. Nothing here was hung on anything. */
     name: 'Hollyfrost',
+    mood:  'holly',            // its own tune (audio.js)
     sky:   ['#bfe0ff', '#fff2dc'],
     hazeRGB: '255,241,216',
     snowA: '#fff4e2', iceTop: '#e2ecf4', iceBot: '#b4cadb', bankEdge: '#fffaf0', bankShade: '#c9b9a4',
@@ -154,6 +162,7 @@ var BIOMES = [
        has had years to grow. The forest is still standing in it, frozen
        silver rather than green. */
     name: 'Everwinter',
+    mood:  'ever',             // its own tune (audio.js)
     sky:   ['#101c34', '#3f5a86'],
     hazeRGB: '38,54,88',
     snowA: '#eef4ff', iceTop: '#a6c0e2', iceBot: '#7591bd', bankEdge: '#ffffff', bankShade: '#9fb2cf',

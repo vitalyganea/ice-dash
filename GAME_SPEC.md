@@ -68,7 +68,7 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   that bends every fish towards you.
 - **Biomes** — ten stretches of hill, each with its own palette, weather and
   in one case its own grip. Six are tied one-to-one to a course so you know
-  which line you are on from the first frame.
+  which line you are on from the first frame. Each has its own tune, synthesised like every other sound.
 - **Economy** — fish buy eleven animals, priced in a ladder, each with a
   perk that changes how you earn, and spare lives at 250 fish (cap 5). A
   perk may only ever make the hill *more* forgiving; `test/skinsafe.js`

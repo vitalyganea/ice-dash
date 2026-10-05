@@ -132,6 +132,31 @@ var Sfx = (function () {
      A mood swaps the harmony, the line over it and how the line sounds;
      the gaits (calm and rushing) work the same over all of them. */
   var LEAD = 'triangle', LEAD_DUR = 0.22, LEAD_VOL = 0.075;
+  var PAD = 'sine', BASSW = 'triangle', TEMPO = 1;
+
+  /* Note names to pitch, so a tune can be written the way it is read:
+     'A4' is 440, sharps with #, flats with b. */
+  var NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  function hz(n) {
+    var m = /^([A-G])([#b]?)(\d)$/.exec(n);
+    var semi = NOTE[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3]) * 12;
+    return Math.round(440 * Math.pow(2, (semi - 57) / 12) * 100) / 100;
+  }
+  /* 32 steps in one string; '-' is a rest */
+  function line(str) { return str.trim().split(/\s+/).map(function (t) { return t === '-' ? 0 : hz(t); }); }
+  /* four chords (or four bass triads), '|' between bars */
+  function bars(str) { return str.split('|').map(function (b) { return b.trim().split(/\s+/).map(hz); }); }
+  /* The rushing line, when a tune does not write its own: each rest on a
+     beat picks up the note before it, so the same melody runs twice as busy. */
+  function busy(mel) {
+    var out = mel.slice(), last = 0;
+    for (var i = 0; i < out.length; i++) {
+      if (out[i]) last = out[i];
+      else if (i % 2 === 0 && last) out[i] = last;
+    }
+    return out;
+  }
+
   var MOODS = {
     base: { chords: CHORDS, bass: BASS, mel: MEL, hot: MEL_HOT,
             lead: 'triangle', dur: 0.22, vol: 0.075 },
@@ -179,14 +204,79 @@ var Sfx = (function () {
             783.99,0,659.25,0,587.33,0,659.25,0,
             987.77,0,880.00,0,783.99,0,659.25,0,
             587.33,0,493.88,0,587.33,0,659.25,0],
-      lead: 'sine', dur: 0.5, vol: 0.07 }
+      lead: 'sine', dur: 0.5, vol: 0.07 },
+
+    /* ---- one for every other stretch, so each is heard as well as seen.
+       Pine Forest, where every run starts, keeps the hill's own tune. ---- */
+
+    /* Rocky Pass, warm stone in a low sun: G mixolydian, sturdy and
+       plucked, a little quicker than the hill's own */
+    rocky: {
+      chords: bars('G3 B3 D4 | F3 A3 C4 | C4 E4 G4 | G3 B3 D4'),
+      bass:   bars('G2 D3 G3 | F2 C3 F3 | C3 G3 C4 | G2 D3 G3'),
+      mel: line('G4 - B4 D5 - C5 B4 -   A4 - F4 - A4 C5 - -   E5 - D5 C5 - G4 - -   B4 - A4 G4 - - - -'),
+      lead: 'square', dur: 0.12, vol: 0.032, tempo: 0.94 },
+    /* Arctic Shelf, polar noon: A major, high and airy, nothing hurried */
+    arctic: {
+      chords: bars('A3 C#4 E4 | F#3 A3 C#4 | D4 F#4 A4 | E3 G#3 B3'),
+      bass:   bars('A2 E3 A3 | F#2 C#3 F#3 | D3 A3 D4 | E2 B2 E3'),
+      mel: line('E5 - - A5 - - G#5 -   F#5 - - - E5 - - -   D5 - F#5 - A5 - - -   G#5 - - B5 - - - -'),
+      lead: 'sine', dur: 0.42, vol: 0.065, tempo: 1.08 },
+    /* Glacier, where the ice is glass: F# minor, quick high notes that
+       ring like a wet finger on a glass rim */
+    glacier: {
+      chords: bars('F#3 A3 C#4 | D3 F#3 A3 | A3 C#4 E4 | E3 A3 B3'),
+      bass:   bars('F#2 C#3 F#3 | D2 A2 D3 | A2 E3 A3 | E2 B2 E3'),
+      mel: line('C#6 - A5 - F#5 - A5 -   D6 - A5 - F#5 - D5 -   E5 - A5 - C#6 - E6 -   B5 - A5 - E5 - - -'),
+      lead: 'sine', dur: 0.3, vol: 0.05, tempo: 1.02, pad: 'triangle' },
+    /* Ashfall, a glacier over a volcano: D phrygian, low and heavy, the
+       bass with an edge on it */
+    ashfall: {
+      chords: bars('D3 F3 A3 | Eb3 G3 Bb3 | D3 F3 A3 | C3 E3 G3'),
+      bass:   bars('D2 A2 D3 | Eb2 Bb2 Eb3 | D2 A2 D3 | C2 G2 C3'),
+      mel: line('A4 - - Bb4 A4 - G4 -   F4 - - - G4 - - -   A4 - D5 - C5 - A4 -   G4 - F4 - E4 - - -'),
+      lead: 'triangle', dur: 0.32, vol: 0.075, tempo: 1.14, bassWave: 'sawtooth' },
+    /* Midwinter at dusk, the pines loaded with snow: F major, warm and
+       rocking like a lullaby */
+    midwinter: {
+      chords: bars('F3 A3 C4 | D3 F3 A3 | Bb3 D4 F4 | C4 E4 G4'),
+      bass:   bars('F2 C3 F3 | D2 A2 D3 | Bb2 F3 Bb3 | C3 G3 C4'),
+      mel: line('C5 - A4 - F4 - A4 -   D5 - - C5 A4 - - -   Bb4 - D5 - F5 - D5 -   C5 - E5 - G5 - - -'),
+      lead: 'sine', dur: 0.36, vol: 0.07, tempo: 1.04 },
+    /* Night Run: B minor, slow and far apart, the dark between the notes */
+    night: {
+      chords: bars('B2 D3 F#3 | G2 B2 D3 | E3 G3 B3 | F#3 A#3 C#4'),
+      bass:   bars('B1 F#2 B2 | G1 D2 G2 | E2 B2 E3 | F#2 C#3 F#3'),
+      mel: line('F#5 - - - - - B4 -   - - D5 - - - C#5 -   B4 - - - - - F#4 -   - - A#4 - - - - -'),
+      lead: 'sine', dur: 0.7, vol: 0.06, tempo: 1.2 },
+    /* Emberflow, the mountain on fire: C minor, driving, square and
+       sawtooth, the quickest tune on the hill */
+    ember: {
+      chords: bars('C3 Eb3 G3 | Ab2 C3 Eb3 | Bb2 D3 F3 | G2 B2 D3'),
+      bass:   bars('C2 G2 C3 | Ab1 Eb2 Ab2 | Bb1 F2 Bb2 | G1 D2 G2'),
+      mel: line('C5 - Eb5 - G5 - Eb5 C5   Ab4 - C5 - Eb5 - C5 -   Bb4 - D5 - F5 - D5 Bb4   G4 - B4 - D5 - - -'),
+      lead: 'square', dur: 0.11, vol: 0.03, tempo: 0.88, bassWave: 'sawtooth' },
+    /* Hollyfrost, noon and rowan berries: G major on high bells */
+    holly: {
+      chords: bars('G3 B3 D4 | E3 G3 B3 | C4 E4 G4 | D4 F#4 A4'),
+      bass:   bars('G2 D3 G3 | E2 B2 E3 | C3 G3 C4 | D3 A3 D4'),
+      mel: line('B5 - G5 - D5 - G5 -   E5 - G5 - B5 - - -   C6 - B5 - A5 - G5 -   A5 - F#5 - D5 - - -'),
+      lead: 'sine', dur: 0.48, vol: 0.055, tempo: 1.0, pad: 'triangle' },
+    /* Everwinter, moonlight and no wind: E dorian, almost nothing moving,
+       long notes held in the cold */
+    ever: {
+      chords: bars('E3 G3 B3 | A3 C#4 E4 | G3 B3 D4 | D3 F#3 A3'),
+      bass:   bars('E2 B2 E3 | A2 E3 A3 | G2 D3 G3 | D2 A2 D3'),
+      mel: line('B4 - - - - - - -   E5 - - - G5 - F#5 -   - - - - B4 - - -   A4 - - - D5 - - -'),
+      lead: 'sine', dur: 0.9, vol: 0.055, tempo: 1.25 }
   };
   var mood = 'base';
   function setMood(name) {
     var m = MOODS[name] || MOODS.base;
     mood = MOODS[name] ? name : 'base';
-    CHORDS = m.chords; BASS = m.bass; MEL = m.mel; MEL_HOT = m.hot;
+    CHORDS = m.chords; BASS = m.bass; MEL = m.mel; MEL_HOT = m.hot || busy(m.mel);
     LEAD = m.lead; LEAD_DUR = m.dur; LEAD_VOL = m.vol;
+    PAD = m.pad || 'sine'; BASSW = m.bassWave || 'triangle'; TEMPO = m.tempo || 1;
   }
 
   function playNote(freq, time, dur, type, vol) {
@@ -208,23 +298,23 @@ var Sfx = (function () {
       if (hot) {
         /* a quieter pad, with stabs on and off the beat over it */
         if (beat === 0)
-          CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 1.0, 'sine', 0.030); });
+          CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 1.0, PAD, 0.030); });
         if (beat === 0 || beat === 3 || beat === 6)
           CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 0.14, 'triangle', 0.045); });
-        playNote(BASS[bar][BASS_FIG[beat]], nextTime, 0.17, 'triangle', 0.095);
+        playNote(BASS[bar][BASS_FIG[beat]], nextTime, 0.17, BASSW, BASSW === 'sawtooth' ? 0.05 : 0.095);
         var mh = MEL_HOT[step % 32];
         if (mh) playNote(mh, nextTime, Math.min(0.19, LEAD_DUR), LEAD, LEAD_VOL * 0.96);
         if (TICK[beat]) playNote(2093.00, nextTime, 0.035, 'square', 0.012);
       } else {
         if (beat === 0)                                   // sustained chord
-          CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 1.15, 'sine', 0.055); });
+          CHORDS[bar].forEach(function (f) { playNote(f, nextTime, 1.15 * TEMPO, PAD, PAD === 'sine' ? 0.055 : 0.04); });
         if (beat % 2 === 0)                               // bass, half time
-          playNote(BASS[bar][0], nextTime, 0.26, 'triangle', 0.10);
+          playNote(BASS[bar][0], nextTime, 0.26, BASSW, BASSW === 'sawtooth' ? 0.055 : 0.10);
         var m = MEL[step % 32];
         if (m) playNote(m, nextTime, LEAD_DUR, LEAD, LEAD_VOL);
       }
 
-      nextTime += (hot ? STEP_HOT : STEP_CALM);
+      nextTime += (hot ? STEP_HOT : STEP_CALM) * TEMPO;
       step = (step + 1) % 32;
     }
   }
