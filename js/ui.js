@@ -1497,6 +1497,13 @@
                          '<rect y="20" width="60" height="10" fill="#d52b1e"/>';
     else if (id === 'ro') f = '<rect width="20" height="30" fill="#002b7f"/><rect x="20" width="20" height="30" fill="#fcd116"/>' +
                               '<rect x="40" width="20" height="30" fill="#ce1126"/>';
+    else if (id === 'es') f = '<rect width="60" height="30" fill="#aa151b"/><rect y="7.5" width="60" height="15" fill="#f1bf00"/>';
+    else if (id === 'de') f = '<rect width="60" height="10" fill="#000000"/><rect y="10" width="60" height="10" fill="#dd0000"/>' +
+                              '<rect y="20" width="60" height="10" fill="#ffce00"/>';
+    else if (id === 'pt') f = '<rect width="60" height="30" fill="#009c3b"/>' +           // Brazilian Portuguese: Brazil's flag
+                              '<path d="M30,3 L56,15 L30,27 L4,15 Z" fill="#ffdf00"/>' +
+                              '<circle cx="30" cy="15" r="7" fill="#002776"/>' +
+                              '<path d="M23.4,13.6 Q30,12 36.6,16.6" stroke="#ffffff" stroke-width="1.2" fill="none"/>';
     else {
       var c = 'uj' + (++flagN);
       f = '<clipPath id="' + c + '"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>' +
@@ -1548,7 +1555,8 @@
     var b = e.target.closest ? e.target.closest('[data-lang]') : null;
     if (!b) return;
     var id = b.getAttribute('data-lang');
-    if (id === getLang()) return;
+    /* the language already in use: nothing to switch, the list just closes */
+    if (id === getLang()) { Sfx.click(); closeSheet(); return; }
     setLang(id);
     save.lang = getLang();
     store();

@@ -307,7 +307,7 @@ async function walk(cdp, sid, P) {
   ok(await clickFor('#lang-open', '#sheet-lang') >= 0, 'a tap on it opens the list of languages');
   var langs = await ev("Array.from(document.querySelectorAll('#lang-row button')).map(b=>b.textContent.trim())");
   var flags = await ev("document.querySelectorAll('#lang-row .flag svg').length");
-  ok(langs.length === 3 && flags === 3, 'all three are offered, each with its flag (' + langs.join(', ') + ')');
+  ok(langs.length === 6 && flags === 6, 'all six are offered, each with its flag (' + langs.join(', ') + ')');
   await shot('03b-languages');
   await click('#lang-row [data-lang="ru"]');
   ok(!(await visible('#sheet-lang')), 'picking one closes the list');
@@ -323,6 +323,26 @@ async function walk(cdp, sid, P) {
   var roFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ăȘț').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ăȘț');})");
   ok(roFont === true, 'and the game font has its own ă, ș and ț');
   await shot('04b-settings-ro');
+  await clickFor('#lang-open', '#sheet-lang');
+  await click('#lang-row [data-lang="de"]');
+  var deTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
+  ok(deTitle === 'Einstellungen', 'German switches too (' + deTitle + ')');
+  var latinFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ñßãçüé¡¿').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ñßãçüé¡¿');})");
+  ok(latinFont === true, 'and the game font draws ñ ß ã ç ü ¡ ¿ itself');
+  /* the longest words: the title and the Market in German, Spanish and Portuguese */
+  for (var lg of ['de', 'es', 'pt']) {
+    await clickFor('#lang-open', '#sheet-lang');
+    await click('#lang-row [data-lang="' + lg + '"]');
+    await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+    await sleep(300);
+    /* the red badges sit over a button's corner on purpose; only words count */
+    var over = await ev("(function(){var bd=document.querySelectorAll('#screen-title .badge');bd.forEach(function(e){e.style.display='none';});" +
+      "var bad=[];document.querySelectorAll('#screen-title .btn, #screen-title .mode-btn').forEach(function(b){if(b.offsetParent&&(b.scrollWidth>b.clientWidth+6))bad.push(b.textContent.trim().slice(0,20));});" +
+      "bd.forEach(function(e){e.style.display='';});return bad;})()");
+    ok(over.length === 0, lg + ': no title button overflows its words (' + (over.join(' | ') || 'all fit') + ')');
+    await shot('01-title-' + lg);
+    await clickFor('.row-three [data-action="settings"]', '#screen-settings');
+  }
   await clickFor('#lang-open', '#sheet-lang');
   await click('#lang-row [data-lang="en"]');
   ok(/English/.test(await ev("document.getElementById('lang-open').textContent")), 'and back to English');
@@ -701,7 +721,7 @@ async function walk(cdp, sid, P) {
            "s.ach=ACHIEVEMENTS.map(function(a){return a.id;});s.claimed=s.ach.slice();" +
            "localStorage.setItem('icedash-save-v1',JSON.stringify(s));sessionStorage.setItem('fresh','1');Game.stop&&Game.stop();})();1");
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
-  ok(await waitFor('#screen-title', 8000) && await visible('#market-badge'),
+  ok(await waitFor('#screen-title', 8000) && await waitFor('#market-badge', 4000),   // the save loads a beat after the title
      'with every trophy earned, the Market says something is waiting');
   await clickFor('.row-three [data-action="trophies"]', '#screen-ach');
   ok(await visible('#prize-take'), 'and the prize at the top of Trophies offers her');

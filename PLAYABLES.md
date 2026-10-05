@@ -37,7 +37,7 @@ you to do in the Developer Portal.
 | Crisp at every resolution | the canvas backing store is sized in device pixels and the context scaled to match; re-runs on resize and on density change |
 | Communicates end of content | Freeride is endless by design and says so; the marked lines and the Daily Line end at a finish line with stars; Time Rush ends when its clock does, Avalanche when the snow catches you. Every results screen shows the score, the best, and what to go back for |
 | No sharing prompts / external links / extra agreements / quit button | none present |
-| English supported | English is the default and the fallback for every string; Russian and Romanian are offered alongside it in Settings, a Russian or Romanian device language is picked up on first run, and anything else falls back to English |
+| English supported | English is the default and the fallback for every string; Russian, Romanian, Spanish, Portuguese (Brazil) and German are offered alongside it in Settings, a device set to any of them is picked up on first run, and anything else falls back to English. `test/i18n.js` checks every key in every language |
 | No icon clashing with platform controls | nothing the game draws as a control sits along the top edge, where the platform draws its own chrome. In a run: the pause glyph (two bars), **bottom**-right, 64 css px. In the tutorial: Skip, **bottom**-left. Over the long panels: a back arrow, **bottom**-left. The readouts in the top-left are a panel of numbers, not a control |
 
 ## Privacy and data

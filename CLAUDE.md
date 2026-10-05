@@ -11,7 +11,9 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
   `loadData()` has settled. `localStorage` is the fallback when the SDK is absent.
 - Do not use the Page Visibility API. Pause/resume come only from `onPause`/`onResume`.
 - No overall mute; audio stays subordinate to `isAudioEnabled()`.
-- Every string goes through `js/i18n.js` in English, Russian and Romanian (the `RO` block).
+- Every string goes through `js/i18n.js` in all six languages: English and Russian in
+  the main table, then the `RO`, `ES`, `PT` (Brazilian) and `DE` blocks. `test/i18n.js`
+  fails if any language is missing a key or changes its `{placeholders}` or tags.
 - Must fill the viewport at every aspect ratio from 9:32 to 32:9, and work with
   mouse and touch.
 - `PLAYABLES.md` lists every certification requirement and where it is met. Keep it true.
