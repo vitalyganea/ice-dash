@@ -126,7 +126,7 @@
     <button id="title-tasks" class="tasks-chip hidden" data-action="trophies"></button>
     <div class="btn-row row-three">
       <button class="btn btn-ghost" data-action="help" data-i18n="btn.help">How to play</button>
-      <button class="btn btn-ghost" data-action="trophies" data-i18n="btn.trophies">Trophies</button>
+      <button class="btn btn-ghost market-btn" data-action="trophies"><span data-i18n="btn.trophies">Trophies</span><span id="ach-badge" class="badge hidden" aria-hidden="true">!</span></button>
       <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
     </div>
     <p id="title-best" class="big-score hidden">Best 0 points</p>
@@ -305,6 +305,7 @@
       <p id="tasks-note" class="shop-note"></p>
     </div>
     <p id="ach-count" class="wallet"></p>
+    <div class="btn-row"><button id="ach-claim-all" class="btn btn-gold hidden"></button></div>
     <div id="ach-list" class="ach-list"></div>
     <p class="shop-note" data-i18n="ach.note">Every one of them pays out in fish.</p>
     <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>

@@ -383,8 +383,30 @@ async function walk(cdp, sid, P) {
   ok(await clickFor('#btn-back', '#screen-title') >= 0, 'and it leaves the Market');
   ok(!(await visible('#btn-back')), 'and it is gone again on the title');
 
+  ok(await visible('#ach-badge'), 'the Trophies button says a reward is waiting');
   await clickFor('[data-action="trophies"]', '#screen-ach');
   ok(await waitFor('#screen-ach'), 'Trophies opens');
+  /* Earned trophies wait to be paid: one claimed by hand, the rest at once. */
+  var owed = await ev("document.querySelectorAll('#ach-list [data-claim]').length");
+  ok(owed >= 2 && await ev("document.querySelector('#ach-list .ach-row').classList.contains('owed')"),
+     'earned trophies wait with a Claim button, at the top of the list (' + owed + ')');
+  var claimId = await ev("document.querySelector('#ach-list [data-claim]').getAttribute('data-claim')");
+  var f0 = (await readSave()).fish;
+  var rew = await ev("ACHIEVEMENTS.filter(function(a){return a.id===" + JSON.stringify(claimId) + ";})[0].reward");
+  await click('#ach-list [data-claim="' + claimId + '"]');
+  var sv1 = await readSave();
+  ok(sv1.fish === f0 + rew && sv1.claimed.indexOf(claimId) >= 0,
+     'Claim pays that trophy\'s fish into the purse (' + f0 + ' -> ' + sv1.fish + ', +' + rew + ')');
+  ok(!(await ev("!!document.querySelector('#ach-list [data-claim=\"" + claimId + "\"]')")), 'and only once: its button is gone');
+  await shot('06a-trophies-claim');
+  if (owed >= 3) {
+    ok(await visible('#ach-claim-all'), 'with more than one left, Claim all is offered');
+    await click('#ach-claim-all');
+  } else {
+    await click('#ach-list [data-claim]');
+  }
+  ok(await ev("document.querySelectorAll('#ach-list [data-claim]').length") === 0 && !(await visible('#ach-claim-all')),
+     'and when everything is claimed, nothing is left waiting');
   var trophies = await ev("document.querySelectorAll('#ach-list > *').length");
   var nTasks = await ev("document.querySelectorAll('#tasks-list .task-row').length");
   ok(nTasks === 3, 'today\'s three tasks head the trophy list (' + nTasks + ')');
@@ -394,6 +416,7 @@ async function walk(cdp, sid, P) {
   ok(raw === 0, 'and every one has a name, not a key (' + raw + ' untranslated)');
   await shot('06-trophies');
   await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+  ok(!(await visible('#ach-badge')), 'and the badge on the title goes out');
 
   await clickFor('[data-action="runs"]', '#screen-runs');
   ok(await waitFor('#screen-runs'), 'Known Lines opens');

@@ -1419,3 +1419,8 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
   background:radial-gradient(circle at 50% 40%, #ffffff 0%, #cfe9f8 100%);
 }
 .purse-pill.gold .coin{ background:radial-gradient(circle at 50% 40%, #ffffff 0%, #ffe39a 100%); }
+
+/* ---- a trophy earned and not yet paid ---- */
+.ach-row.owed{ border-color:#a86a00; background:rgba(255,246,214,.95); }
+.ach-claim{ white-space:nowrap; }
+.btn-row.row-three .market-btn{ position:relative; }

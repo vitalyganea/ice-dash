@@ -9,6 +9,9 @@
 
    Each one pays fish. They are a reason to go back for a thing you
    nearly did, and they feed the same purse the market takes from.
+   Earning one and being paid for it are two steps: the fish wait in the
+   trophy until the player claims them, so the payout is a moment of its
+   own instead of a line that scrolls past on the results.
    =========================================================== */
 
 var ACHIEVEMENTS = [
@@ -135,7 +138,7 @@ function achProgress(a, save) {
   return { cur: Math.min(cur, goal), goal: goal, done: cur >= goal };
 }
 
-/* Everything newly earned, in catalogue order, with the fish it pays. */
+/* Everything newly earned, in catalogue order. Nothing is paid here. */
 function achCheck(save) {
   var won = [];
   for (var i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -143,8 +146,30 @@ function achCheck(save) {
     if (save.ach.indexOf(a.id) >= 0) continue;
     if (!achProgress(a, save).done) continue;
     save.ach.push(a.id);
-    save.fish += a.reward;
     won.push(a);
   }
   return won;
+}
+
+/* Earned and not yet paid for. */
+function achUnclaimed(save) {
+  var out = [];
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    var a = ACHIEVEMENTS[i];
+    if (save.ach.indexOf(a.id) >= 0 && (save.claimed || []).indexOf(a.id) < 0) out.push(a);
+  }
+  return out;
+}
+
+/* Pay one trophy's fish into the purse, once. Returns what it paid. */
+function achClaim(save, id) {
+  if (!save.claimed) save.claimed = [];
+  if (save.ach.indexOf(id) < 0 || save.claimed.indexOf(id) >= 0) return 0;
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    if (ACHIEVEMENTS[i].id !== id) continue;
+    save.claimed.push(id);
+    save.fish += ACHIEVEMENTS[i].reward;
+    return ACHIEVEMENTS[i].reward;
+  }
+  return 0;
 }

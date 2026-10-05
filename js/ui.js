@@ -35,7 +35,7 @@
              /* Trophy progress is kept as running totals rather than being
                 worked out from history, so a goal can show how far along you
                 are at any moment and not only when it ticks over. */
-             ach: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
+             ach: [], claimed: [], totFish: 0, totGold: 0, totGates: 0, totJumps: 0,
              totSaves: 0, bestDist: 0, bestRunFish: 0,
              /* spare lives bought at the market, and unopened finds */
              lives: 0, finds: 0, totRevives: 0,
@@ -108,6 +108,11 @@
           for (var q = 0; q < ACHIEVEMENTS.length; q++)
             if (ACHIEVEMENTS[q].id === o.ach[j] && save.ach.indexOf(o.ach[j]) < 0)
               save.ach.push(o.ach[j]);
+      /* Trophies were paid the moment they were earned until claiming came
+         in, so a save from before it has been paid for every one it holds. */
+      save.claimed = Object.prototype.toString.call(o.claimed) === '[object Array]'
+                   ? o.claimed.filter(function (id) { return save.ach.indexOf(id) >= 0; })
+                   : save.ach.slice();
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -180,6 +185,7 @@
     if (name === 'title') {
       refreshModes();
       $('market-badge').classList.toggle('hidden', !canBuyCreature());
+      $('ach-badge').classList.toggle('hidden', !achUnclaimed(save).length);
       /* today's tasks, as a line on the title that opens the list */
       var tchip = $('title-tasks'), nd = todaysDone().length;
       tchip.classList.toggle('hidden', !freeUnlocked());
@@ -1186,7 +1192,7 @@
     won.forEach(function (a) {
       var row = document.createElement('div');
       row.className = 'won-row';
-      row.textContent = t('ach.' + a.id + '.name') + '   +' + a.reward + ' ' + t('cur.fish');
+      row.textContent = t('ach.' + a.id + '.name') + ' — ' + t('ach.toclaim', { n: a.reward });
       box.appendChild(row);
     });
   }
@@ -1221,9 +1227,19 @@
       if (save.ach.indexOf(ACHIEVEMENTS[i].id) >= 0) done++;
     $('ach-count').textContent = t('ach.count', { a: done, b: ACHIEVEMENTS.length });
 
+    /* More than one waiting: one tap takes the lot. */
+    var owedAll = achUnclaimed(save), ca = $('ach-claim-all');
+    ca.classList.toggle('hidden', owedAll.length < 2);
+    if (owedAll.length >= 2) {
+      var sum = 0; owedAll.forEach(function (a) { sum += a.reward; });
+      ca.textContent = t('ach.claimall', { n: sum });
+    }
+
     var list = $('ach-list');
     list.textContent = '';
-    ACHIEVEMENTS.forEach(function (a) {
+    /* the ones waiting to be paid come first, where they are seen */
+    var order = owedAll.concat(ACHIEVEMENTS.filter(function (a) { return owedAll.indexOf(a) < 0; }));
+    order.forEach(function (a) {
       var p = achProgress(a, save);
       var got = save.ach.indexOf(a.id) >= 0;
 
@@ -1253,16 +1269,47 @@
 
       var right = document.createElement('div');
       right.className = 'ach-right';
-      right.textContent = got ? ('✓ ' + t('ach.earned'))
-                              : (p.cur + ' / ' + p.goal);
-      var rew = document.createElement('small');
-      rew.textContent = '+' + a.reward + ' ' + t('cur.fish');
-      right.appendChild(rew);
+      var owed = got && save.claimed.indexOf(a.id) < 0;
+      if (owed) {
+        /* earned, and the fish are waiting for a tap */
+        row.classList.add('owed');
+        var cb = document.createElement('button');
+        cb.className = 'btn btn-sm btn-gold ach-claim';
+        cb.setAttribute('data-claim', a.id);
+        cb.appendChild(document.createTextNode(t('ach.claim') + ' +' + a.reward));
+        right.appendChild(cb);
+      } else {
+        right.textContent = got ? ('✓ ' + t('ach.earned'))
+                                : (p.cur + ' / ' + p.goal);
+        var rew = document.createElement('small');
+        rew.textContent = '+' + a.reward + ' ' + t('cur.fish');
+        right.appendChild(rew);
+      }
       row.appendChild(right);
 
       list.appendChild(row);
     });
   }
+
+  /* Claiming: the fish go into the purse with a burst from the button. */
+  function claimFx(el, paid) {
+    if (!paid) return;
+    Sfx.gold(); buzz(28);
+    var r = el.getBoundingClientRect();
+    screenBurst('gold', r.left + r.width / 2, r.top + r.height / 2);
+    store();
+    buildAch();
+  }
+  $('ach-list').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-claim]') : null;
+    if (!b) return;
+    claimFx(b, achClaim(save, b.getAttribute('data-claim')));
+  });
+  $('ach-claim-all').addEventListener('click', function () {
+    var paid = 0;
+    achUnclaimed(save).forEach(function (a) { paid += achClaim(save, a.id); });
+    claimFx(this, paid);
+  });
 
   /* -------------------------- settings ----------------------- */
   /* Flags drawn as inline SVG: no image files, and emoji flags do not
