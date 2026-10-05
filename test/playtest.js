@@ -268,6 +268,12 @@ async function walk(cdp, sid, P) {
   ok(await visible('#screen-title'), 'the title screen comes up');
   ok(await ev("!!(window.Game && Game.isRunning)"), 'the engine is on the page');
   await shot('01-title');
+  /* the whole title in the window without scrolling: the plaque at the top,
+     the row of quiet buttons at the bottom */
+  var fit = await ev("(function(){var s=document.getElementById('screen-title');s.scrollTop=0;" +
+    "var b=document.querySelector('.row-three').getBoundingClientRect(),p=document.getElementById('title-best').getBoundingClientRect();" +
+    "return {rowBottom:Math.round(b.bottom),plaqueTop:Math.round(p.top),vh:innerHeight};})()");
+  ok(fit.rowBottom <= fit.vh && fit.plaqueTop > 0, 'the whole title fits the window, best score to bottom row (' + JSON.stringify(fit) + ')');
 
   /* The bug that was reported: Continue sitting there with nothing to
      continue. */
@@ -680,7 +686,7 @@ async function walk(cdp, sid, P) {
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
   ok(await waitFor('#screen-title', 8000) && await visible('#market-badge'),
      'with every trophy earned, the Market says something is waiting');
-  await clickFor('[data-action="trophies"]', '#screen-ach');
+  await clickFor('.row-three [data-action="trophies"]', '#screen-ach');
   ok(await visible('#prize-take'), 'and the prize at the top of Trophies offers her');
   await shot('06b-aurora-prize');
   await click('#prize-take');

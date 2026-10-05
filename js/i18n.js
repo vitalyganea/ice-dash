@@ -21,6 +21,8 @@ var STRINGS = {
     en: 'One tap sends you the other way. Mind the trees!',
     ru: 'Одно касание — и ты летишь в другую сторону. Берегись деревьев!' },
   'title.best':    { en: 'Best {n} points', ru: 'Рекорд: {n}' },
+  'title.best.lab':  { en: 'Your best', ru: 'Твой рекорд' },
+  'title.best.unit': { en: 'points', ru: 'очков' },
 
   'btn.ride':      { en: '▶ Ride',          ru: '▶ Поехали' },
   'btn.market':    { en: 'Market',          ru: 'Рынок' },
@@ -431,6 +433,8 @@ var STRINGS = {
 var RO = {
   'title.tagline': 'O atingere te trimite în partea cealaltă. Ai grijă la copaci!',
   'title.best': 'Record: {n} puncte',
+  'title.best.lab': 'Recordul tău',
+  'title.best.unit': 'puncte',
   'btn.ride': '▶ La drum',
   'btn.market': 'Piața',
   'btn.help': 'Cum se joacă',

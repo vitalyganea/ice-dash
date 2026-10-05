@@ -211,7 +211,10 @@
         });
       }
       var el = $('title-best');
-      el.textContent = t('title.best', { n: save.best });
+      $('bp-lab').textContent = t('title.best.lab');
+      $('bp-num').textContent = num(save.best);
+      $('bp-unit').textContent = t('title.best.unit');
+      el.setAttribute('aria-label', t('title.best', { n: save.best }));
       el.classList.toggle('hidden', save.best <= 0);
     }
   }

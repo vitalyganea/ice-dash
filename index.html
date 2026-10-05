@@ -97,6 +97,14 @@
       </div>
     </h1>
     <p class="subtitle" data-i18n="title.tagline">One tap sends you the other way. Mind the trees!</p>
+    <!-- The best score as a plaque of gold ice under the tagline, where it is
+         seen first: a star, the word, the number. It was a line of yellow
+         text at the very bottom, off the screen on a laptop. -->
+    <div id="title-best" class="best-plaque hidden" role="status">
+      <span class="bp-star" aria-hidden="true"></span>
+      <span class="bp-text"><span class="bp-lab" id="bp-lab">Best</span><b class="bp-num" id="bp-num">0</b></span>
+      <span class="bp-unit" id="bp-unit">points</span>
+    </div>
     <!-- Only there when a run is sitting paused. Pressing Menu from the
          pause screen used to destroy the run outright, and the title had no
          way back to it. -->
@@ -129,7 +137,6 @@
       <button class="btn btn-ghost market-btn" data-action="trophies"><span data-i18n="btn.trophies">Trophies</span><span id="ach-badge" class="badge hidden" aria-hidden="true">!</span></button>
       <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
     </div>
-    <p id="title-best" class="big-score hidden">Best 0 points</p>
   </div>
 </section>
 
