@@ -1395,3 +1395,27 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
   content:''; width:8px; height:15px; margin-right:6px;
   border:solid var(--green-dark); border-width:0 4px 4px 0; transform:rotate(45deg) translateY(-3px);
 }
+
+/* ---- the Market purse: two pills, not two words run together ---- */
+#screen-shop .wallet.purse{ gap:12px; flex-wrap:wrap; }
+.purse-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:3px 16px 3px 6px; border-radius:99px;
+  font-size:clamp(18px,3vw,22px); font-weight:800; line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  color:#062a78;
+  background:linear-gradient(180deg,#ffffff 0%,#d9f0ff 100%);
+  border:2px solid #062a78;
+  box-shadow:0 3px 0 #0450b8;
+}
+.purse-pill.gold{
+  color:#7a4a00;
+  background:linear-gradient(180deg,#fffbe8 0%,#ffe9a0 100%);
+  border-color:#a86a00;
+  box-shadow:0 3px 0 #c98a00;
+}
+.purse-pill .coin{
+  width:30px; height:30px; border-radius:50%;
+  background:radial-gradient(circle at 50% 40%, #ffffff 0%, #cfe9f8 100%);
+}
+.purse-pill.gold .coin{ background:radial-gradient(circle at 50% 40%, #ffffff 0%, #ffe39a 100%); }

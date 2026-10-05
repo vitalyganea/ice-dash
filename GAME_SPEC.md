@@ -97,7 +97,7 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   each with a marked line of its own. Still nothing built: leaves, stars
   and crystal, all under ice.
 - **Trophies** for the new modes, the new lines and the streak.
-- **Languages** — English and Russian.
+- **Languages** — English, Russian and Romanian, picked from a window of flags in Settings.
 
 ## Explicit non-goals
 

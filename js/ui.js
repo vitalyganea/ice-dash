@@ -810,9 +810,18 @@
   /* ---------------------------- shop ------------------------- */
   var shopBack = null;
 
+  /* The purse: two pills, each the currency's own fish and the amount.
+     As one line of text the two sums ran together into one number. */
   function wallet() {
-    $('wallet-fish').textContent = save.fish + ' ' + t('cur.fish');
-    $('wallet-gold').textContent = save.gold + ' ' + t('cur.gold');
+    [['wallet-fish', 'fish', save.fish], ['wallet-gold', 'gold', save.gold]].forEach(function (w) {
+      var el = $(w[0]);
+      el.textContent = '';
+      el.appendChild(coin(w[1], 30));
+      var b = document.createElement('b');
+      b.textContent = num(w[2]);
+      el.appendChild(b);
+      el.setAttribute('aria-label', w[2] + ' ' + t('cur.' + w[1]));
+    });
   }
 
   function owns(id) { return save.owned.indexOf(id) >= 0; }

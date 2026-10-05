@@ -333,6 +333,12 @@ async function walk(cdp, sid, P) {
   var cards = await ev("document.querySelectorAll('#shop-grid [data-pick]').length");
   var nSkins = await ev("SKINS.length");
   ok(cards === nSkins && nSkins >= 17, 'every creature is on the shelf (' + cards + ' of ' + nSkins + ')');
+  var purse = await ev("(function(){var f=document.getElementById('wallet-fish'),g=document.getElementById('wallet-gold');" +
+    "var a=f.getBoundingClientRect(),b=g.getBoundingClientRect();" +
+    "return {gap:Math.round(b.left-a.right),row:Math.abs(a.top-b.top)<4,coins:document.querySelectorAll('.purse .coin').length," +
+    "f:f.textContent,g:g.textContent};})()");
+  ok(purse.coins === 2 && purse.gap >= 8 && purse.row && /^\d/.test(purse.f) && !/fish|gold/i.test(purse.f + purse.g),
+     'the purse is two pills side by side, a fish and a number each, apart (' + JSON.stringify(purse) + ')');
   ok(await ev("!document.querySelector('#shop-grid .skin-name, #shop-grid .skin-perk, #shop-grid button button')"),
      'the shelf is pictures: no names or perks written on the tiles');
   ok(await ev("!!document.querySelector('#shop-grid [data-pick=\"seal\"] .tag-worn')"),
