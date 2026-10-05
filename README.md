@@ -133,7 +133,7 @@ one side. A tap sends him the other way. That is the whole game.
   to have. Russian declines its nouns after a number, so the readouts are
   written as labels (`рыба: 37`) rather than as counted phrases
 - Music and sound effects, each with its own on/off toggle; every one of
-  the thirteen stretches of hill has a tune of its own, written in
+  the fourteen stretches of hill has a tune of its own, written in
   `js/audio.js` as note names and checked by `test/music.js`
 - Fills the screen at any shape, from 9:32 to 32:9. A fixed safe region of
   the world is guaranteed visible and the view then extends to the edges, so

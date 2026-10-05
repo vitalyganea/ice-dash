@@ -229,5 +229,26 @@ var BIOMES = [
     fog:   0.22, fogRGB: '90,40,110',
     air:   { rgb: '255,236,170', a: 0.8, r: 2.0, rise: 0.6, drift: 1.2, hot: 0.4, n: 0.4 },
     sparkle: 0.8
+  },
+  {
+    /* Neon: a retrowave sunset frozen over. Violet ice with a striped sun
+       going down in it, hot pink banks, cyan light along the edge, and
+       palms — frozen where they stood — in place of the pines. Asked for
+       by the user, tune and all (synthpop, audio.js). */
+    name: 'Neon',
+    mood:  'neon',             // its own tune (audio.js)
+    sky:   ['#1a0533', '#ff3d8b'],
+    hazeRGB: '255,80,170',
+    snowA: '#ffd6f0', iceTop: '#6a35b0', iceBot: '#241052', bankEdge: '#ff5fd8', bankShade: '#8a2a9a',
+    far:   '#2a0a4a', edge: '#28e8ff',
+    tree:  '#22c3cf', treeDark: '#11809a', trunk: '#ff9a3c',
+    rock:  '#5a3a8a', rockDark: '#33205a',
+    cap:   '#ffa6ea', capShade: 'rgba(255,60,200,.35)', shadow: 'rgba(12,0,34,.5)',
+    lip:   '#9ff6ff', streak: 'rgba(120,240,255,.45)',
+    flora: 'palm',            // palms, frozen where they stood
+    grip:  1,
+    fog:   0.18, fogRGB: '255,60,180',
+    air:   { rgb: '255,150,235', a: 0.8, r: 1.5, rise: 0, drift: 0.5, n: 0.5 },
+    neon:  1                  // the sun in the ice, the scanlines
   }
 ];

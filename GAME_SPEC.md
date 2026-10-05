@@ -73,6 +73,10 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   perk that changes how you earn, and spare lives at 250 fish (cap 5). A
   perk may only ever make the hill *more* forgiving; `test/skinsafe.js`
   holds a declared direction for each one and fails on any that does not.
+- **Neon** — asked for by the user: a fourteenth stretch, a retrowave
+  sunset frozen over — violet ice with a striped sun going down in it,
+  scanlines, hot pink banks with cyan light along the edge, palms in place
+  of pines — with a synthpop tune of its own and a marked line, Neon Nights.
 - **Aurora** — asked for by the user: one creature that cannot be bought,
   given to whoever earns every trophy, shown as the prize at the top of
   Trophies. Trophy rewards are claimed by hand.

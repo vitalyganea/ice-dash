@@ -86,6 +86,13 @@ var COURSES = [
     id: 'geode', biome: 12, step: 232, gapW: [198, 154],
     script: '5 5* 5 4 3 3w 3* 4 5! 6 7 7C 7 6* 5 4 3! 2 2* 3 4| 5 6 7! 8 ' +
             '8$ 7 6* 5 4C 4 3 3! 4 5* 6 7 7 6 5 5'
+  },
+  {
+    /* Neon: a line that swings like the tune, side to side on the beat,
+       through the palms and over two crevasses, with a magnet halfway. */
+    id: 'neonnights', biome: 13, step: 230, gapW: [198, 154],
+    script: '5 5* 6 7 7| 6 5 4* 3 3! 4 5 6* 7 7C 6 5 4 3*& 3 4 5| 6 7! 7 ' +
+            '6* 5 4 3 3C 4 5* 6 7 7+ 6 5 4* 4 5 5'
   }
 ];
 

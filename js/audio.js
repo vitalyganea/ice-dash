@@ -276,7 +276,16 @@ var Sfx = (function () {
       chords: bars('E3 G3 B3 | A3 C#4 E4 | G3 B3 D4 | D3 F#3 A3'),
       bass:   bars('E2 B2 E3 | A2 E3 A3 | G2 D3 G3 | D2 A2 D3'),
       mel: line('B4 - - - - - - -   E5 - - - G5 - F#5 -   - - - - B4 - - -   A4 - - - D5 - - -'),
-      lead: 'sine', dur: 0.9, vol: 0.055, tempo: 1.25 }
+      lead: 'sine', dur: 0.9, vol: 0.055, tempo: 1.25 },
+    /* Neon: synthpop out of the eighties — A minor round Am-F-C-G, a
+       square-wave lead running arpeggios, a sawtooth bass pumping eighths
+       when it rushes, quicker than anything but Emberflow */
+    neon: {
+      chords: bars('A3 C4 E4 | F3 A3 C4 | C4 E4 G4 | G3 B3 D4'),
+      bass:   bars('A2 E3 A3 | F2 C3 F3 | C3 G3 C4 | G2 D3 G3'),
+      mel: line('A4 - C5 E5 - D5 C5 -   F4 - A4 C5 - E5 D5 -   E5 - G5 E5 - D5 C5 -   D5 - B4 G4 - A4 B4 -'),
+      hot: line('A4 C5 E5 A5 E5 C5 E5 C5   F4 A4 C5 F5 C5 A4 C5 A4   C5 E5 G5 C6 G5 E5 G5 E5   G4 B4 D5 G5 D5 B4 D5 B4'),
+      lead: 'square', dur: 0.14, vol: 0.03, tempo: 0.86, bassWave: 'sawtooth', pad: 'triangle' }
   };
   var mood = 'base';
   function setMood(name) {

@@ -198,6 +198,7 @@ var STRINGS = {
   'biome.10': { en: 'Frozen Jungle', ru: 'Замёрзшие джунгли' },
   'biome.11': { en: 'Cosmic Ice',    ru: 'Космический лёд' },
   'biome.12': { en: 'Crystal Caves', ru: 'Хрустальные пещеры' },
+  'biome.13': { en: 'Neon', ru: 'Неон' },
 
 
   'btn.trophies': { en: 'Trophies',      ru: 'Награды' },
@@ -497,6 +498,7 @@ var STRINGS = {
   'course.canopy.name':     { en: 'Canopy',       ru: 'Полог' },
   'course.starfall.name':   { en: 'Starfall',     ru: 'Звездопад' },
   'course.geode.name':      { en: 'Geode',        ru: 'Жеода' },
+  'course.neonnights.name': { en: 'Neon Nights',  ru: 'Неоновые ночи' },
 
   'skin.snowcap.name': { en: 'Snowcap', ru: 'Снежок' },
   'skin.snowcap.perk': { en: 'No bonus — the honest baseline.',
@@ -683,6 +685,7 @@ var RO = {
   'biome.10': 'Jungla înghețată',
   'biome.11': 'Gheața cosmică',
   'biome.12': 'Peșterile de cristal',
+  'biome.13': 'Neon',
   'btn.trophies': 'Trofee',
   'ach.title': 'Trofee',
   'ach.note': 'Fiecare dintre ele plătește în pești: atinge Revendică ca să-i iei.',
@@ -906,6 +909,7 @@ var RO = {
   'course.canopy.name': 'Coronamentul',
   'course.starfall.name': 'Ploaie de stele',
   'course.geode.name': 'Geoda',
+  'course.neonnights.name': 'Nopți de neon',
   'skin.snowcap.name': 'Fulg',
   'skin.snowcap.perk': 'Fără bonus — punctul de plecare cinstit.',
   'skin.mitten.name': 'Mănușă',

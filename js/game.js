@@ -202,6 +202,7 @@ var Game = (function () {
     out.lava = (prev.lava || 0) + ((cur.lava || 0) - (prev.lava || 0)) * t;
     out.berries = (prev.berries || 0) + ((cur.berries || 0) - (prev.berries || 0)) * t;
     out.sparkle = (prev.sparkle || 0) + ((cur.sparkle || 0) - (prev.sparkle || 0)) * t;
+    out.neon = (prev.neon || 0) + ((cur.neon || 0) - (prev.neon || 0)) * t;
     out.snowyTrees = (prev.snowyTrees || 0) +
                      ((cur.snowyTrees || 0) - (prev.snowyTrees || 0)) * t;
     /* A boulder's cap is a colour and blends; the two shade washes are rgba
@@ -1613,6 +1614,7 @@ var Game = (function () {
     drawChute();
     drawGround();
     drawEmberGlow();
+    drawNeon();
     drawSightLine();
     drawTrail();
     drawObjects();
@@ -2741,6 +2743,76 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* Neon: a palm seen from straight above — long feathered fronds raying
+     out of the crown, dark against the violet ice with a line of neon
+     along each spine and rim. */
+  function drawPalm(x, y, o, B) {
+    var r = o.r * 1.12, n = 7 + formOf(o, 3), k, j;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(10,0,30,.38)';
+    ctx.beginPath(); ctx.ellipse(7, 10, r * 1.0, r * 0.9, 0, 0, 6.2832); ctx.fill();
+    ctx.rotate(o.rot);
+    for (k = 0; k < n; k++) {
+      ctx.save();
+      ctx.rotate(k / n * 6.2832 + (k % 2) * 0.22);
+      var L = r * (k % 2 ? 0.95 : 1.08), bend = (k % 3 - 1) * 0.18;
+      /* the frond: leaflets either side of a curving spine */
+      ctx.fillStyle = k % 2 ? B.treeDark : B.tree;
+      for (j = 1; j <= 6; j++) {
+        var u = j / 7, sx = Math.sin(bend * u * 3) * L * 0.2, sy = -L * u, w = r * 0.44 * (1 - u * 0.55);
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.quadraticCurveTo(sx + w, sy + L * 0.02, sx + w * 1.1, sy + L * 0.12);
+        ctx.quadraticCurveTo(sx + w * 0.4, sy + L * 0.06, sx, sy + L * 0.08);
+        ctx.quadraticCurveTo(sx - w * 0.4, sy + L * 0.06, sx - w * 1.1, sy + L * 0.12);
+        ctx.quadraticCurveTo(sx - w, sy + L * 0.02, sx, sy);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#d8fdff'; ctx.lineWidth = 1.6;                 // light down the spine
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(Math.sin(bend * 1.5) * L * 0.2, -L * 0.5, Math.sin(bend * 3) * L * 0.2, -L);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.fillStyle = B.trunk;                                           // the crown
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.17, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = '#ff5fd8'; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.restore();
+  }
+
+  /* Neon's sky, seen in the ice: a striped sun going down far ahead, its
+     bands cut through, and faint scanlines rolling down the run. Under
+     everything on the hill, and only as strong as the stretch is Neon. */
+  function drawNeon() {
+    var B = pal(), amt = B.neon || 0;
+    if (amt <= 0.01) return;
+    ctx.save();
+    var cx = VIEW_W / 2, cy = VIEW_H * 0.2, R = Math.min(VIEW_W, VIEW_H) * 0.34;
+    var sg = ctx.createLinearGradient(0, cy - R, 0, cy + R);
+    sg.addColorStop(0, 'rgba(255,230,120,' + (0.42 * amt).toFixed(3) + ')');
+    sg.addColorStop(0.55, 'rgba(255,90,170,' + (0.36 * amt).toFixed(3) + ')');
+    sg.addColorStop(1, 'rgba(160,40,220,' + (0.18 * amt).toFixed(3) + ')');
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.clip();
+    ctx.fillStyle = sg;
+    /* painted in slices, the gaps between them widening down the lower
+       half — the bands are left out, never cut out of what is under it */
+    var yy = cy - R;
+    for (var b = 0; b < 6; b++) {
+      var by = cy + R * (0.08 + b * 0.16), bh = R * (0.025 + b * 0.014);
+      ctx.fillRect(cx - R, yy, R * 2, by - yy);
+      yy = by + bh;
+    }
+    ctx.fillRect(cx - R, yy, R * 2, cy + R - yy);
+    ctx.restore();
+    /* scanlines, rolling slowly down the run */
+    ctx.fillStyle = 'rgba(40,232,255,' + (0.06 * amt).toFixed(3) + ')';
+    var off = (W.t * 0.6) % 14;
+    for (var y = -14 + off; y < VIEW_H; y += 14) ctx.fillRect(0, y, VIEW_W, 2);
+    ctx.restore();
+  }
+
   /* Crystal caves and cosmic ice: a cluster of crystals grown up out of
      the ice, faceted, catching the light on one face. */
   function drawCrystalSpire(x, y, o, B) {
@@ -2775,6 +2847,7 @@ var Game = (function () {
   function drawTree(x, y, o, B) {
     if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
     if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
+    if (B.flora === 'palm')    return drawPalm(x, y, o, B);
     var r = o.r, k, a, rad, ri;
     ctx.save();
     ctx.translate(x, y);

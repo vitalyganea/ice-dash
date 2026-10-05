@@ -819,11 +819,20 @@ async function walk(cdp, sid, P) {
   ok(await visible('#screen-title') && !(await visible('#tut-card')),
      'and coming back, it is not shown again');
 
+  /* Neon, the newest stretch, on its own marked line */
+  await ev("(function(){document.querySelectorAll('.screen').forEach(function(e){e.classList.add('hidden');});" +
+           "Game.stop();Game.start(0,{over:function(){}},'snowcap','neonnights',0);var W=Game.debug();W.invuln=99999;W.grace=99999;})();1");
+  await sleep(1600);
+  var nb = await ev("(function(){var W=Game.debug();return {biome:W.biome,name:BIOMES[W.biome].name,course:W.course&&W.course.id};})()");
+  ok(nb.name === 'Neon' && nb.course === 'neonnights', 'Neon Nights rides in the Neon stretch (' + JSON.stringify(nb) + ')');
+  await shot('20-neon');
+  await ev("Game.stop();1");
+
   /* Every stretch's tune, played for a moment in a real AudioContext. */
   var tunes = await ev("(async function(){Sfx.unlock&&Sfx.unlock();Sfx.music(true);var n=0;" +
     "for(var i=0;i<BIOMES.length;i++){Sfx.mood(BIOMES[i].mood||'base');n++;await new Promise(function(r){setTimeout(r,250);});}" +
     "Sfx.music(false);return n;})()");
-  ok(tunes === 13, 'every stretch\'s tune plays in the browser (' + tunes + ' of 13)');
+  ok(tunes === 14, 'every stretch\'s tune plays in the browser (' + tunes + ' of 14)');
 
   ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   ok(retries <= 3, 'the interface answers the first tap (' + retries +
