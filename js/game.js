@@ -27,6 +27,10 @@ var Game = (function () {
   /* Time Rush: the clock you start with, what a clock bubble gives back,
      and what a crash takes away instead of the run. */
   var RUSH_START = 20 * 60, CLOCK_GAIN = 3 * 60, CRASH_COST = 5 * 60;
+  /* Avalanche: the lead you start with, how much faster than your clean
+     pace the snow comes, what a crystal ring knocks it back by (less as the
+     hill hardens, so a run always ends), and the most lead you can bank. */
+  var AV_GAP0 = 560, AV_K = 1.10, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 900;
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
 
@@ -233,7 +237,7 @@ var Game = (function () {
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
-      mode: 'free', timeT: 0, clocks: 0, penT: 0,
+      mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
@@ -253,6 +257,8 @@ var Game = (function () {
     w.hold = !!(w.course && w.course.tut);
     /* Time Rush is the open hill against a clock. */
     if (pendingMode === 'rush' && !w.course) { w.mode = 'rush'; w.timeT = RUSH_START; }
+    /* Avalanche is the open hill with the snow coming down behind you. */
+    if (pendingMode === 'avalanche' && !w.course) { w.mode = 'avalanche'; w.avGap = AV_GAP0; }
     /* The name of the stretch you are on, once as the run begins. Not in
        the tutorial, whose own words sit in that same place. */
     w.zoneT = w.hold ? 0 : ZONE_SHOW;
@@ -967,6 +973,14 @@ var Game = (function () {
         if (W.timeT <= 0) { W.state = 'timeup'; W.endT = 0; }
         return;
       }
+      /* In Avalanche a crash does not end the run either: he is back on
+         the hill a beat later. The snow does not wait while he is down,
+         and that is the whole of the cost. */
+      if (W.state === 'crash' && W.mode === 'avalanche') {
+        avalancheStep(0);
+        if (W.state === 'crash' && W.endT === 30) { W.lives++; revive(); W.revives--; }
+        return;
+      }
       if (W.state === 'crash' && W.course && W.course.tut && W.endT === 30) {
         W.lives++; revive(); W.revives--;
         lesson({ key: 'tut.oops' });
@@ -977,7 +991,7 @@ var Game = (function () {
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
-                     mode: W.mode, clocks: W.clocks, closes: W.closes, comboBest: W.comboBest,
+                     mode: W.mode, clocks: W.clocks, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
@@ -1131,6 +1145,11 @@ var Game = (function () {
           W.score += Math.round(50 * gb) * comboMult();
           W.coins += Math.round(2 * gb);       // gates pay the shop as well
           Sfx.gate(); W.tapFlash = 10; fx('ring');
+          if (W.mode === 'avalanche') {
+            var before = W.avGap;
+            W.avGap = Math.min(AV_CAP, W.avGap + lerp(AV_PUSH0, AV_PUSH1, hardAt(W.dist)));
+            W.avPushN = W.avGap - before; W.avPush = 50;
+          }
         }
       }
       /* plain circle overlap, in the very pixels being drawn */
@@ -1252,6 +1271,7 @@ var Game = (function () {
         Sfx.excite(false); Sfx.zone(); fx('timeup');
       }
     }
+    if (W.mode === 'avalanche' && W.state === 'run') avalancheStep(W.speed);
     if (W.penT > 0) W.penT--;
     if (W.closeT > 0) W.closeT--;
     if (W.zoneT > 0) W.zoneT--;
@@ -1343,6 +1363,18 @@ var Game = (function () {
     if (perk().comboKeep && !W.comboKeep && W.combo % 10 === 0) W.comboKeep = 1;
   }
   /* What a time bubble gives, for whoever is wearing what. */
+  /* The snow comes down at a fixed share faster than the pace a clean
+     rider holds at this point of the hill, so riding clean only slows the
+     loss; deep snow, a crash or a cold draught you did not need cost lead. */
+  function avalancheStep(mySpeed) {
+    var clean = Math.min(SPEED_MAX, SPEED0 + W.dist * SPEED_RAMP * rampOf()) * slowmo();
+    W.avGap += mySpeed - clean * AV_K;
+    if (W.avPush > 0) W.avPush--;
+    if (W.avGap <= 0) {
+      W.avGap = 0; W.state = 'caught'; W.endT = 0; W.rushT = 0; W.shake = 18;
+      Sfx.excite(false); Sfx.crash(); fx('caught');
+    }
+  }
   function clockGain() { return Math.round(CLOCK_GAIN * (perk().clockGain || 1)); }
   function comboMult() { return 1 + Math.min(2, Math.floor(W.combo / 10)); }
   /* How close a boulder has to be before it counts. `slim` tucks the
@@ -1526,6 +1558,7 @@ var Game = (function () {
     drawPaceVignette();
     drawBridges();        /* after him: he is UNDER the bridge */
     drawFlakes();
+    drawAvalanche();      /* last: when it catches him, it covers him */
     ctx.restore();
     drawHud();
   }
@@ -4741,6 +4774,61 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* The avalanche: a churning wall of snow coming up from the bottom of
+     the screen, its top edge where the snow has got to. Out of sight, a
+     cold haze along the bottom edge says it is there and how near. */
+  function drawAvalanche() {
+    if (!W || W.mode !== 'avalanche') return;
+    var top = PLAYER_Y + W.avGap, t = W.t;
+    var near = clamp(1 - (top - VIEW_H) / 420, 0, 1);
+    if (near > 0) {
+      var hz = VIEW_H * (0.10 + 0.16 * near);
+      var g = ctx.createLinearGradient(0, VIEW_H - hz, 0, VIEW_H);
+      g.addColorStop(0, 'rgba(236,246,255,0)');
+      g.addColorStop(1, 'rgba(236,246,255,' + (0.35 + 0.45 * near).toFixed(3) + ')');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, VIEW_H - hz, VIEW_W, hz);
+    }
+    if (top > VIEW_H + 40) return;
+    /* the body: solid snow from the edge down, shaded towards the bottom */
+    var body = ctx.createLinearGradient(0, top, 0, VIEW_H);
+    body.addColorStop(0, '#ffffff');
+    body.addColorStop(0.35, '#e4f0f8');
+    body.addColorStop(1, '#b9d2e4');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(0, VIEW_H + 10);
+    for (var x = 0; x <= VIEW_W + 20; x += 20) {
+      var wob = Math.sin(x * 0.031 + t * 0.09) * 9 + Math.sin(x * 0.083 - t * 0.13) * 5;
+      ctx.lineTo(x, top + wob);
+    }
+    ctx.lineTo(VIEW_W, VIEW_H + 10);
+    ctx.closePath();
+    ctx.fill();
+    /* a shaded back row first, larger and higher, so the front has depth */
+    for (var j = 0; j < 12; j++) {
+      var jx = ((j * 131 - t * 0.4) % (VIEW_W + 160) + VIEW_W + 160) % (VIEW_W + 160) - 80;
+      var jr = 38 + (j * 23 % 18) + Math.sin(t * 0.05 + j * 2.3) * 6;
+      ctx.fillStyle = j % 2 ? '#d6e6f2' : '#c9dcec';
+      ctx.beginPath(); ctx.arc(jx, top - 6 + Math.sin(t * 0.08 + j) * 5, jr, 0, Math.PI * 2); ctx.fill();
+    }
+    /* billows rolling along the front */
+    for (var i = 0; i < 16; i++) {
+      var bx = ((i * 97 + t * (i % 2 ? 0.7 : -0.5)) % (VIEW_W + 120) + VIEW_W + 120) % (VIEW_W + 120) - 60;
+      var br = 26 + (i * 37 % 22) + Math.sin(t * 0.07 + i) * 5;
+      var by = top + 4 + Math.sin(t * 0.11 + i * 1.7) * 6;
+      ctx.fillStyle = i % 3 ? '#ffffff' : '#eef6fc';
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+    }
+    /* spray thrown up ahead of it */
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    for (var k = 0; k < 24; k++) {
+      var sx = (k * 53 + t * 1.3 * (k % 3 + 1)) % VIEW_W;
+      var sy = top - 18 - ((k * 29 + t * 2.1) % 60);
+      ctx.beginPath(); ctx.arc(sx, sy, 2 + (k % 3), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function drawPaceVignette() {
     var sp = pace();
     if (sp < 0.12) return;
@@ -4892,18 +4980,21 @@ var Game = (function () {
     /* Time Rush reads the clock where the score would be: it is the thing
        you are racing, and the score there is the distance underneath. */
     var timed = W.mode === 'rush';
-    var score = timed ? (W.timeT / 60).toFixed(1) : String(Math.floor(W.score));
-    var scoreLab = timed ? tr('hud.time', 'TIME') : tr('hud.score', 'SCORE');
+    /* Avalanche reads the lead on the snow there instead, in metres. */
+    var aval = W.mode === 'avalanche', lead = Math.floor(W.avGap / 8);
+    var score = timed ? (W.timeT / 60).toFixed(1)
+              : aval ? lead + ' ' + tr('hud.m', 'M') : String(Math.floor(W.score));
+    var scoreLab = timed ? tr('hud.time', 'TIME') : aval ? tr('hud.av', 'AVALANCHE') : tr('hud.score', 'SCORE');
     var distTxt = String(Math.floor(W.dist / 8)) + ' ' + tr('hud.m', 'M');
     /* The catch as the purse counts it — the same number the results card
        adds to your fish — and not the count of fish swallowed, which a
        creature's perk makes a different number. */
     var fishTxt = String(W.coins);
-    var lifeTxt = (W.lives > 0 && !timed) ? String(W.lives) : '';
+    var lifeTxt = (W.lives > 0 && !timed && !aval) ? String(W.lives) : '';
     /* The best is a Freeride number. On a marked run it is another game's
        score, so it is not shown there at all. */
     var bestTxt = (W.best > 0 && !W.course)
-                ? tr('hud.best', 'BEST') + '  ' + W.best + (timed ? ' ' + tr('hud.m', 'M') : '') : '';
+                ? tr('hud.best', 'BEST') + '  ' + W.best + ((timed || aval) ? ' ' + tr('hud.m', 'M') : '') : '';
 
     var mult = comboMult();
     /* Widths are taken as if every digit were the widest one. The font's
@@ -4913,7 +5004,7 @@ var Game = (function () {
        only moves when a number gains a digit. */
     function tab(t2) { return String(t2).replace(/[0-9]/g, '8'); }
     var wScore = measureAt(tab(score), fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
-                 (timed ? u * 2.6 : 0) + (mult > 1 ? u * 2.4 : 0);
+                 ((timed || aval) ? u * 2.6 : 0) + (mult > 1 ? u * 2.4 : 0);
     var icon = u * 1.5, sep = u * 0.9;
     var wDist = measureAt(tab(distTxt), fM), wFish = icon + measureAt(tab(fishTxt), fM);
     var wLife = lifeTxt ? icon + measureAt(tab(lifeTxt), fM) : 0;
@@ -4941,8 +5032,9 @@ var Game = (function () {
     var y1 = padT + pad + fS * 0.82;
     ctx.font = '800 ' + fS + FONT;
     var secs = W.timeT / 60;
-    ctx.fillStyle = !timed ? '#0b3d7a' : secs < 5 ? '#d22b3f' : secs < 8 ? '#d9730d' : '#0b3d7a';
-    if (timed && secs < 5) ctx.globalAlpha = 0.65 + 0.35 * Math.abs(Math.sin(W.t * 0.15));
+    ctx.fillStyle = aval ? (lead < 15 ? '#d22b3f' : lead < 30 ? '#d9730d' : '#0b3d7a')
+                  : !timed ? '#0b3d7a' : secs < 5 ? '#d22b3f' : secs < 8 ? '#d9730d' : '#0b3d7a';
+    if ((timed && secs < 5) || (aval && lead < 15)) ctx.globalAlpha = 0.65 + 0.35 * Math.abs(Math.sin(W.t * 0.15));
     ctx.fillText(score, x0, y1);
     ctx.globalAlpha = 1;
     ctx.font = '800 ' + Math.round(u * 0.62) + FONT;
@@ -4960,6 +5052,15 @@ var Game = (function () {
       ctx.fillStyle = '#7a4a00'; ctx.textAlign = 'center';
       ctx.fillText('x' + mult, mx + u * 1.0, y1 - u * 0.15);
       ctx.textAlign = 'left';
+    }
+    /* what the last ring won back from the snow, for a moment */
+    if (aval && W.avPush > 0) {
+      ctx.globalAlpha = Math.min(1, W.avPush / 20);
+      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
+      ctx.fillStyle = '#1f9d63';
+      ctx.fillText('+' + Math.round(W.avPushN / 8) + ' ' + tr('hud.m', 'M'),
+                   labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.5, y1);
+      ctx.globalAlpha = 1;
     }
     /* what the last crash cost, for a moment */
     if (timed && W.penT > 0) {

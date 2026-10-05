@@ -571,12 +571,17 @@ async function walk(cdp, sid, P) {
   /* ---- Time Rush ---- */
   ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from More modes');
   ok(await ev("Game.debug().mode") === 'rush', 'as a timed run');
+  /* The bubbles are taken off the hill for this check: riding through one
+     puts three seconds back, and the clock read higher at the end than at
+     the start of a perfectly good run. */
+  await ev("(function(){var W=Game.debug();W.objects=W.objects.filter(function(o){return o.t!=='clock';});})();1");
   var tA = await ev("Game.debug().timeT");
   /* Headless Chrome can run at a handful of frames a second when the
      machine is busy, and a crash pauses the clock while it plays out — so
      wait until it has visibly moved rather than for a fixed time. */
   for (var rr = 0; rr < 100; rr++) {
     if ((await ev(WANT_TAP)) === 1) await tapHill();
+    await ev("(function(){var W=Game.debug();if(W)W.objects=W.objects.filter(function(o){return o.t!=='clock';});})();1");
     await sleep(60);
     if (rr > 30 && (await ev("Game.debug()&&Game.debug().timeT")) < tA - 60) break;
   }
@@ -592,6 +597,29 @@ async function walk(cdp, sid, P) {
   await shot('18-rush-over');
   ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
      (await ev("Game.debug().mode")) === 'rush', 'Ride again is another Time Rush');
+  await waitFor('#btn-menu', 4000);
+  await clickFor('#btn-menu', '#screen-pause');
+  await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');
+  await ev("Game.stop();1");
+
+  /* ---- Avalanche ---- */
+  await clickFor('#btn-more', '#screen-modes');
+  ok(await clickFor('#btn-av', '#hud') >= 0, 'Avalanche starts from More modes');
+  ok(await ev("Game.debug().mode") === 'avalanche' && await ev("Game.debug().avGap") > 0,
+     'with a lead on the snow');
+  /* Brought close, so the wall itself is on screen for the picture. */
+  await ev("(function(){var W=Game.debug();W.avGap=140;W.objects.length=0;})();1");
+  await sleep(400);
+  await shot('18c-avalanche');
+  await ev("(function(){var W=Game.debug();W.avGap=2;})();1");
+  ok(await waitFor('#screen-over', 8000), 'when the snow arrives the results come up');
+  var aTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
+  var aScore = await ev("document.getElementById('over-score').textContent");
+  ok(/avalanche/i.test(aTitle) && / m$/.test(aScore), 'saying the avalanche got you, scored in metres (' + aTitle + ' / ' + aScore + ')');
+  ok((await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).bestAv")) > 0, 'and Avalanche has a best of its own');
+  await shot('18d-avalanche-over');
+  ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
+     (await ev("Game.debug().mode")) === 'avalanche', 'Ride again is another Avalanche');
   await waitFor('#btn-menu', 4000);
   await clickFor('#btn-menu', '#screen-pause');
   await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');

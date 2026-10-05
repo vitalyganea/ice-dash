@@ -23,11 +23,19 @@ Opened this way the game runs standalone: the Playables SDK is not present, so
 the best score goes to `localStorage` instead of the cloud save, and the
 platform pause and audio hooks are simply inactive.
 
-## Four ways down
+## Five ways down
+
+Freeride and Known Lines are on the title; the other three are behind
+**More modes**.
 
 **Time Rush** is the open hill against a clock: twenty seconds to start,
 green-gold bubbles off the safe line give three back, and a crash costs
 five seconds instead of the run. It keeps its own best, in metres.
+
+**Avalanche** is the open hill with the snow coming down behind you, a
+tenth faster than a clean rider. Deep snow and crashes cost lead; every
+crystal ring knocks the snow back, by less as the hill hardens, so every
+run ends (`test/avalanche.js`). Its own best, in metres.
 
 **The Daily Line** is a marked line written fresh each day from the date,
 the same for everyone on that day, with stars and a streak for finishing

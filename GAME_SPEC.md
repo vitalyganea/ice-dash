@@ -90,6 +90,15 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   Twenty seconds to start; clock bubbles (+3 s) sit off the safe line, so
   time is earned by leaning out for it. A crash costs five seconds instead
   of the run. The score is the distance; it has its own best.
+- **Avalanche** — asked for by the user, picked from a list: the open hill
+  with a wall of snow behind. It starts 70 m back and comes down 10% faster
+  than the pace a clean rider holds, so riding clean only slows the loss;
+  deep snow and crashes (which put you back on the hill, as in Time Rush)
+  cost lead, and each crystal ring knocks the snow back 22 m at the top of
+  the hill, 6 m at the bottom, banked up to 112 m. Clean riding with no
+  ring is caught near 700 m; taking every ring, near 3–4 km. Distance is
+  the score; it has its own best. The title holds Freeride and Known Lines;
+  Daily Line, Time Rush and Avalanche are under More modes.
 - **Daily Line** — a marked line written fresh each day from the date, the
   same for everyone on that day, with stars like the others and a streak
   for finishing on consecutive days.

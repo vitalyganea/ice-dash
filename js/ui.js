@@ -46,6 +46,8 @@
              tutDone: false,
              /* Time Rush keeps its own best, in metres, and the clocks taken */
              bestRush: 0, totClocks: 0,
+             /* Avalanche: its own best in metres, and the rings that held it back */
+             bestAv: 0, totAvRings: 0,
              /* the Daily Line: today's stars, and the run of days finished */
              daily: { key: '', stars: 0 }, dailyLast: '', dailyStreak: 0,
              dailyBest: 0, dailyDays: 0,
@@ -80,7 +82,7 @@
                     ? o.equipped : 'snowcap';
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
-       'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks',
+       'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks','bestAv','totAvRings',
        'dailyStreak','dailyBest','dailyDays']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
       /* Both are capped on load as well as on purchase: a hand-edited save
@@ -239,7 +241,7 @@
     Sfx.unlock();
     hideLesson(); waitingFor = null;
     /* Each mode is measured against its own best: Time Rush in metres. */
-    Game.start(lastMode === 'rush' ? save.bestRush : save.best,
+    Game.start(lastMode === 'rush' ? save.bestRush : lastMode === 'avalanche' ? save.bestAv : save.best,
                { hud: function () {}, over: onOver, lesson: onLesson, fx: onFx },
                save.equipped, lastCourse, save.lives || 0, { mode: lastMode });
     tutChrome();
@@ -402,14 +404,21 @@
     } else if (cd) {
       if (stars > (save.courses[cd.id] || 0)) save.courses[cd.id] = stars;
     }
-    var rushRun = res.mode === 'rush';
-    var beat = !cd && !rushRun && res.score > save.best;
+    var rushRun = res.mode === 'rush', avRun = res.mode === 'avalanche';
+    var mRun = rushRun || avRun;                     // scored in metres
+    var beat = !cd && !mRun && res.score > save.best;
     if (beat) save.best = res.score;
     /* Time Rush is scored in metres, on a board of its own. */
     if (rushRun) {
       beat = res.dist > (save.bestRush || 0);
       if (beat) save.bestRush = res.dist;
       save.totClocks = (save.totClocks || 0) + (res.clocks || 0);
+    }
+    /* So is Avalanche, on another. */
+    if (avRun) {
+      beat = res.dist > (save.bestAv || 0);
+      if (beat) save.bestAv = res.dist;
+      save.totAvRings = (save.totAvRings || 0) + (res.gates || 0);
     }
     save.fish += res.coins || 0;
     save.gold += res.gold || 0;
@@ -454,21 +463,22 @@
       lv.appendChild(lab);
     }
     document.querySelector('#screen-over .panel-title-text').textContent =
-      t(rushRun ? 'over.timeup' : res.finished ? 'over.finish' : 'over.title');
+      t(rushRun ? 'over.timeup' : res.caught ? 'over.caught' : res.finished ? 'over.finish' : 'over.title');
     var st = $('over-stars');
     st.classList.toggle('hidden', !cd);
     if (cd) st.textContent = '★★★☆☆☆'.slice(3 - stars, 6 - stars);
     /* Retry re-runs the same course; on freeride it is a fresh hill. */
     var again = document.querySelector('#screen-over [data-action="play"], #screen-over [data-action="retry"]');
-    again.setAttribute('data-action', (cd || rushRun) ? 'retry' : 'play');
+    again.setAttribute('data-action', (cd || mRun) ? 'retry' : 'play');
     again.textContent = t(cd ? 'btn.retry' : 'btn.again');
-    $('over-score').textContent = rushRun ? res.dist + ' ' + t('unit.m')
+    $('over-score').textContent = mRun ? res.dist + ' ' + t('unit.m')
                                           : t('over.points', { n: res.score });
     var bits = [res.dist + ' ' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
     if (rushRun) bits[0] = t('unit.clocks') + ': ' + (res.clocks || 0);
+    if (avRun) bits[0] = t('unit.avrings') + ': ' + (res.gates || 0);
     if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
     $('over-detail').textContent = bits.join('  ·  ');
     buildFinds(true);
@@ -478,9 +488,9 @@
     var opened = !wasOpen && freeUnlocked();
     $('over-unlock').classList.toggle('hidden', !opened);
     if (opened) { $('over-unlock').textContent = t('over.unlocked.modes'); justOpened = true; }
-    buildGoals(res, cd, stars, beat, rushRun);
+    buildGoals(res, cd, stars, beat, mRun, avRun ? save.bestAv : rushRun ? save.bestRush : save.best);
     if (beat) setTimeout(function () {
-      celebrateBest($('over-score'), rushRun ? res.dist : res.score, rushRun ? t('unit.m') : null);
+      celebrateBest($('over-score'), mRun ? res.dist : res.score, mRun ? t('unit.m') : null);
     }, 350);
     Game.pause();
     show('over');
@@ -585,14 +595,14 @@
      did not beat, the star you did not get, the creature you are saving
      for. A results card that only says what happened gives no reason to
      press Ride again. */
-  function buildGoals(res, cd, stars, beat, rushRun) {
+  function buildGoals(res, cd, stars, beat, rushRun, bestOf) {
     var box = $('over-goals'), goals = [];
     if (cd && stars < 3 && res.fishTotal) {
       var need = Math.round(res.fishTotal * (stars < 2 ? 0.40 : 0.75));
       if (!res.finished) goals.push({ txt: t('goal.finish'), p: 0 });
       else if (need > res.fish) goals.push({ txt: t('goal.star', { n: need - res.fish }), p: res.fish / need });
     } else if (!cd && !beat) {
-      var bestV = rushRun ? save.bestRush : save.best, cur = rushRun ? res.dist : res.score;
+      var bestV = bestOf || 0, cur = rushRun ? res.dist : res.score;
       if (bestV > 0 && cur < bestV)
         goals.push({ txt: t(rushRun ? 'goal.bestm' : 'goal.best', { n: bestV - cur }), p: cur / bestV });
     }
@@ -717,6 +727,9 @@
       case 'rush':
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null, 'rush'); break;
+      case 'avalanche':
+        if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
+        Sfx.click(); ride(null, 'avalanche'); break;
       case 'tut-skip':   Sfx.click(); skipTutorial(); break;
       case 'tut-first':  Sfx.click(); ride(COURSES[0].id); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
@@ -802,7 +815,7 @@
   }
   /* What each moment feels like: a crash is the heaviest, a ring the
      lightest. Short on purpose — a tap game is held for minutes. */
-  var BUZZ = { crash: [60, 40, 90], gold: 28, find: [20, 30, 20], rush: [30, 20, 30],
+  var BUZZ = { crash: [60, 40, 90], caught: [90, 50, 140], gold: 28, find: [20, 30, 20], rush: [30, 20, 30],
                clock: 16, ring: 12, save: [40, 30, 40], land: 24, close: 18,
                finish: [30, 40, 60], timeup: [80] };
   function onFx(e) { if (BUZZ[e] !== undefined) buzz(BUZZ[e]); }
@@ -1032,6 +1045,7 @@
     var open = freeUnlocked();
     [['btn-free', 'free-sub', 'mode.free.sub'],
      ['btn-rush', 'rush-sub', 'mode.rush.sub'],
+     ['btn-av', 'av-sub', 'mode.av.sub'],
      ['btn-daily', 'daily-sub', 'mode.daily.sub']].forEach(function (m) {
       var b = $(m[0]), sub = $(m[1]);
       if (!b || !sub) return;
@@ -1048,7 +1062,7 @@
        today's Daily Line is not finished: the reason to come back
        should not be hidden one screen in. */
     var more = $('more-sub');
-    if (more) more.textContent = t('mode.daily') + ' · ' + t('mode.rush');
+    if (more) more.textContent = [t('mode.daily'), t('mode.rush'), t('mode.av')].join(' · ');
     var mb = $('more-badge');
     if (mb) mb.classList.toggle('hidden', !(open && save.dailyLast !== dailyKey()));
   }
