@@ -708,6 +708,12 @@ async function walk(cdp, sid, P) {
      'she rides, and starts the run in a bubble as her perk says');
   await sleep(500);
   await shot('06c-aurora-riding');
+  /* far down the hill and flat out, the camera has drawn back */
+  await ev("(function(){var W=Game.debug();W.dist=26000;W.objects.length=0;W.invuln=99999;W.grace=99999;})();1");
+  await sleep(2500);
+  var zoom = await ev("Game.debug().zoom");
+  ok(zoom < 0.96 && zoom > 0.9, 'flat out, the camera has drawn back (' + zoom.toFixed(3) + ')');
+  await shot('06d-camera-back');
   await ev("Game.stop();1");
 
   await ev("sessionStorage.setItem('fresh','1');localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");

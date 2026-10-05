@@ -237,7 +237,7 @@ var Game = (function () {
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
-      mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0,
+      mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0, zoom: 1,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
@@ -1272,6 +1272,11 @@ var Game = (function () {
       }
     }
     if (W.mode === 'avalanche' && W.state === 'run') avalancheStep(W.speed);
+    /* the camera draws back with pace (7% at full speed), and leans in a
+       little on a close call */
+    var zt = 1 - 0.07 * pace();
+    if (W.closeT > 0) zt = Math.min(1, zt + 0.04);
+    W.zoom += (zt - W.zoom) * (W.closeT > 0 ? 0.12 : 0.025);
     if (W.penT > 0) W.penT--;
     if (W.closeT > 0) W.closeT--;
     if (W.zoneT > 0) W.zoneT--;
@@ -1542,6 +1547,14 @@ var Game = (function () {
     var shx = (frand() - 0.5) * W.shake, shy = (frand() - 0.5) * W.shake;
     ctx.save();
     ctx.translate(shx, shy);
+    /* The camera breathes: it draws back as the hill speeds up, and leans
+       in for a moment on a close call. Drawn back, the world is painted as
+       if the screen were larger and scaled down to fit, so every painter
+       still covers the whole view and nothing at the edges is left bare;
+       it never leans in past 1, so the chute is never cropped. */
+    var z = W.zoom || 1, keepW = VIEW_W, keepH = VIEW_H, keepP = PLAYER_Y;
+    if (z < 0.999) { VIEW_W = keepW / z; VIEW_H = keepH / z; PLAYER_Y = keepP / z; ctx.scale(z, z); }
+    try {
     drawChute();
     drawGround();
     drawEmberGlow();
@@ -1557,8 +1570,12 @@ var Game = (function () {
     drawChill();
     drawPaceVignette();
     drawBridges();        /* after him: he is UNDER the bridge */
-    drawFlakes();
-    drawAvalanche();      /* last: when it catches him, it covers him */
+    drawAvalanche();      /* when it catches him, it covers him */
+    } finally { VIEW_W = keepW; VIEW_H = keepH; PLAYER_Y = keepP; }
+    ctx.restore();
+    ctx.save();
+    ctx.translate(shx, shy);
+    drawFlakes();         /* falling snow is in front of the lens, not on the hill */
     ctx.restore();
     drawHud();
   }
