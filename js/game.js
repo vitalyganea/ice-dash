@@ -2038,24 +2038,80 @@ var Game = (function () {
     g.addColorStop(0, tone[0]); g.addColorStop(0.6, tone[1]); g.addColorStop(1, tone[2]);
     ctx.fillStyle = g;
 
-    if (o.t === 'chill') {                       // a frost star
-      ctx.rotate(a * 0.5);
-      for (k = 0; k < 6; k++) {
+    if (o.t === 'chill') {
+      /* A cold draught: a snowflake caught in a gust. The wind is the
+         point — curls of it wrapping round, turning slowly, because the
+         thing it does is slow the hill down. A star on its own read as
+         one more snowflake. */
+      ctx.save();
+      ctx.rotate(a * 0.25);
+      ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round';
+      for (k = 0; k < 6; k++) {                      // the flake: six arms, branched
         ctx.save(); ctx.rotate(k * 1.0472);
+        ctx.lineWidth = r * 0.12;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.62); ctx.stroke();
+        ctx.lineWidth = r * 0.07;
         ctx.beginPath();
-        ctx.moveTo(-r * 0.17, 0); ctx.lineTo(0, -r);
-        ctx.lineTo(r * 0.17, 0); ctx.lineTo(0, r * 0.3);
-        ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.moveTo(0, -r * 0.34); ctx.lineTo(-r * 0.16, -r * 0.48);
+        ctx.moveTo(0, -r * 0.34); ctx.lineTo(r * 0.16, -r * 0.48);
+        ctx.stroke();
         ctx.restore();
       }
-    } else if (o.t === 'sight') {                // a lens you look through
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.92, r * 0.72, 0, 0, 6.2832); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3; ctx.stroke();
-      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(a * 2);
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.46, r * 0.34, 0, 0, 6.2832); ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#d8f2ff';
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, 6.2832); ctx.fill();
+      ctx.restore();
+      /* the gust: three streaks of wind blowing through it, each ending
+         in a curl, drifting slowly across */
+      ctx.save();
+      ctx.lineCap = 'round';
+      for (k = 0; k < 3; k++) {
+        var gy = (k - 1) * r * 0.5, drift = Math.sin(a * 0.9 + k * 1.7) * r * 0.08;
+        var gx0 = -r * 1.05 + drift, gx1 = r * (0.55 - (k % 2) * 0.2) + drift;
+        ctx.strokeStyle = 'rgba(46,130,196,.9)'; ctx.lineWidth = r * 0.085;
+        ctx.beginPath();
+        ctx.moveTo(gx0, gy);
+        ctx.bezierCurveTo(gx0 + r * 0.5, gy - r * 0.12, gx1 - r * 0.5, gy + r * 0.12, gx1, gy);
+        /* the curl back over at the tip */
+        ctx.arc(gx1, gy - r * 0.14, r * 0.14, Math.PI * 0.5, Math.PI * 1.85, true);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (o.t === 'sight') {
+      /* A clear lens of ice, and through it, a path lighting up: dots of
+         gold light running up it one after another — the openings ahead,
+         shown before you get there. The green oval before it read as a
+         sweet. */
+      var lg = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 1, 0, 0, r);
+      lg.addColorStop(0, 'rgba(214,242,255,.95)'); lg.addColorStop(0.6, 'rgba(110,182,226,.92)');
+      lg.addColorStop(1, 'rgba(46,112,170,.95)');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.9, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = r * 0.16; ctx.stroke();
+      ctx.strokeStyle = 'rgba(70,140,196,.6)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.98, 0, 6.2832); ctx.stroke();
+      /* the path, an S up the lens */
+      ctx.save();
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.2832); ctx.clip();
+      /* the path itself, a faint warm trail */
+      ctx.strokeStyle = 'rgba(255,214,110,.55)'; ctx.lineWidth = r * 0.1; ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (k = 0; k <= 20; k++) {
+        var uu = k / 20, qx = Math.sin(uu * 3.4 - 0.6) * r * 0.36, qy = r * 0.62 - uu * r * 1.24;
+        k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy);
+      }
+      ctx.stroke();
+      for (k = 0; k < 6; k++) {
+        var u = k / 5, px = Math.sin(u * 3.4 - 0.6) * r * 0.36, py = r * 0.62 - u * r * 1.24;
+        var lit = (a * 0.8 - u + 10) % 1;            // a light that runs up it
+        var glow = Math.max(0, 1 - lit * 3);
+        ctx.fillStyle = 'rgba(255,206,64,' + (0.8 + 0.2 * glow).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(px, py, r * (0.12 + 0.06 * glow), 0, 6.2832); ctx.fill();
+        if (glow > 0.2) {
+          ctx.fillStyle = 'rgba(255,240,180,' + (0.35 * glow).toFixed(3) + ')';
+          ctx.beginPath(); ctx.arc(px, py, r * 0.24, 0, 6.2832); ctx.fill();
+        }
+      }
+      ctx.restore();
     } else {
       /* A horseshoe magnet frozen in a block of ice, red and blue, with
          its field pulsing out of the poles and two small fish being drawn
@@ -2131,6 +2187,20 @@ var Game = (function () {
     ctx.fillStyle = 'rgba(60,120,166,.22)';
     ctx.beginPath(); ctx.ellipse(4, 7, r * 1.05, r * 0.92, 0, 0, 6.2832); ctx.fill();
 
+    /* Speed lines streaming out behind it: this is the find that makes
+       you unstoppable, and a still snowball said nothing of the kind. */
+    ctx.lineCap = 'round';
+    for (k = 0; k < 4; k++) {
+      var sxo = (k - 1.5) * r * 0.42, run = (a * 1.8 + k * 0.37) % 1;
+      var len = r * (0.7 + 0.5 * ((k * 7) % 3) / 2);
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.85 - run * 0.6).toFixed(3) + ')';
+      ctx.lineWidth = r * (0.12 - k % 2 * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(sxo, r * 0.7 + run * r * 0.3);
+      ctx.lineTo(sxo * 1.15, r * 0.7 + run * r * 0.3 + len);
+      ctx.stroke();
+    }
+
     var g = ctx.createRadialGradient(-r * 0.3, -r * 0.34, r * 0.1, 0, 0, r);
     g.addColorStop(0, '#ffffff');
     g.addColorStop(0.62, '#e8f5ff');
@@ -2149,6 +2219,15 @@ var Game = (function () {
       ctx.stroke();
     }
     ctx.restore();
+
+    /* a glowing heart to it, beating */
+    var beat = 0.6 + 0.4 * Math.sin(a * 3);
+    var core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.62);
+    core.addColorStop(0, 'rgba(255,226,120,' + (0.95 * beat).toFixed(3) + ')');
+    core.addColorStop(0.5, 'rgba(255,170,70,' + (0.5 * beat).toFixed(3) + ')');
+    core.addColorStop(1, 'rgba(255,170,80,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 6.2832); ctx.fill();
 
     ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.6;
     ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
@@ -2220,14 +2299,28 @@ var Game = (function () {
     c.fillStyle = cg;
     c.beginPath(); c.arc(0, 0, r * 0.62, 0, 6.2832); c.fill();
 
-    c.fillStyle = 'rgba(255,252,230,' + (0.5 + 0.5 * pulse).toFixed(3) + ')';
+    /* What is inside, plain to see: a golden fish, stiff in the ice, a
+       glint running along it. It was a four-pointed sparkle, which said
+       "something shiny" and not "something to crack out". */
+    c.save();
+    c.rotate(-0.5);
+    c.fillStyle = 'rgba(255,196,60,' + (0.75 + 0.25 * pulse).toFixed(3) + ')';
+    c.beginPath(); c.ellipse(0, 0, r * 0.38, r * 0.17, 0, 0, 6.2832); c.fill();
+    c.beginPath();                                   // tail
+    c.moveTo(-r * 0.32, 0); c.lineTo(-r * 0.56, -r * 0.17); c.lineTo(-r * 0.56, r * 0.17); c.closePath(); c.fill();
+    c.beginPath();                                   // fin
+    c.moveTo(-r * 0.04, -r * 0.14); c.lineTo(r * 0.06, -r * 0.27); c.lineTo(r * 0.14, -r * 0.13); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(122,74,0,.85)';               // eye
+    c.beginPath(); c.arc(r * 0.24, -r * 0.03, r * 0.045, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,252,230,' + (0.35 + 0.6 * pulse).toFixed(3) + ')';
+    c.beginPath(); c.ellipse(r * 0.04, -r * 0.07, r * 0.2, r * 0.04, 0, 0, 6.2832); c.fill();
+    c.restore();
+    /* and fine cracks through the ice round it */
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 0.9;
     c.beginPath();
-    for (k = 0; k < 4; k++) {
-      var sa = a * 1.4 + k * 1.5708, sr = r * (k % 2 ? 0.18 : 0.42);
-      k ? c.lineTo(Math.cos(sa) * sr, Math.sin(sa) * sr)
-        : c.moveTo(Math.cos(sa) * sr, Math.sin(sa) * sr);
-    }
-    c.closePath(); c.fill();
+    c.moveTo(r * 0.5, -r * 0.4); c.lineTo(r * 0.28, -r * 0.18); c.lineTo(r * 0.36, r * 0.02);
+    c.moveTo(-r * 0.46, r * 0.42); c.lineTo(-r * 0.26, r * 0.26);
+    c.stroke();
 
     /* one clean highlight on the ice above it */
     c.fillStyle = 'rgba(255,255,255,.75)';
@@ -3178,6 +3271,22 @@ var Game = (function () {
 
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip();
+    /* A shield, not just a bubble: a honeycomb of ice across its skin,
+       catching the light as it turns, says it is there to take a hit. */
+    ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.lineWidth = 1.1;
+    var hs = r * 0.3, hoff = (ph * 3) % (hs * 1.732);
+    for (var hy = -r - hs; hy < r + hs; hy += hs * 1.5) {
+      var row = Math.round((hy + r + hs) / (hs * 1.5));
+      for (var hx = -r - hs * 2 + (row % 2) * hs * 0.866 + hoff; hx < r + hs; hx += hs * 1.732) {
+        ctx.beginPath();
+        for (var hk = 0; hk < 6; hk++) {
+          var hang = hk * 1.0472 + 0.5236;
+          var vx = hx + Math.cos(hang) * hs * 0.55, vy = hy + Math.sin(hang) * hs * 0.55;
+          hk ? ctx.lineTo(vx, vy) : ctx.moveTo(vx, vy);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+    }
     ctx.strokeStyle = 'rgba(255,255,255,.3)';        // the film turning inside
     ctx.lineWidth = 1.6;
     ctx.beginPath();
@@ -4465,6 +4574,7 @@ var Game = (function () {
     else if (kind === 'gate')   drawGate(c, c, { w: 54, d: 0, passed: false, scored: false });
     else if (kind === 'find')   drawFind(c, c, { r: 21, ph: 0.4 });
     else if (kind === 'rush')   drawRushBall(c, c, { r: 22, ph: 1.4 });
+    else if (kind === 'clock')  drawClock(c, c, { r: 22, ph: 0.8 });
     else if (kind === 'chill' || kind === 'sight' || kind === 'call')
                                 drawFind3(c, c, { t: kind, r: 21, ph: 0.5 });
     else if (kind === 'drift')  drawDrift(c, c, { r: 26, ph: 1.0 }, B);

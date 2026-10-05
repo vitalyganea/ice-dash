@@ -288,6 +288,9 @@ async function walk(cdp, sid, P) {
   /* ---- the panels ---- */
   await clickFor('[data-action="help"]', '#screen-help');
   ok(await waitFor('#screen-help'), 'How to play opens');
+  var hints = await ev("(function(){var li=document.querySelectorAll('#screen-help [data-hint]');var n=0;" +
+    "li.forEach(function(e){var c=e.querySelector('canvas');if(c&&c.width>0)n++;});return {all:li.length,drawn:n,clock:!!document.querySelector('[data-hint=\"clock\"] canvas')};})()");
+  ok(hints.drawn === hints.all && hints.clock, 'every line that names a thing has its picture, the time bubble included (' + hints.drawn + ' of ' + hints.all + ')');
   ok(await ev("document.querySelectorAll('#screen-help li').length >= 14"),
      'and it covers the hill (' + (await ev("document.querySelectorAll('#screen-help li').length")) + ' entries)');
   await shot('02-help');
