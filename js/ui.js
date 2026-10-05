@@ -147,14 +147,14 @@
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
-                  ach: $('screen-ach'), runs: $('screen-runs'),
+                  ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'),
                   revive: $('screen-revive'), tutdone: $('screen-tutdone') };
   var hud = $('hud');
   var currentScreen = 'title';
 
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
-  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1 };
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1 };
   var justOpened = false;
   function show(name) {
     currentScreen = name;
@@ -173,6 +173,7 @@
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
     if (name === 'runs') buildRuns();
+    if (name === 'modes') refreshModes();
     if (name === 'title') {
       refreshModes();
       $('market-badge').classList.toggle('hidden', !canBuyCreature());
@@ -184,7 +185,7 @@
       /* The first time the modes open, they say so on the title too. */
       if (justOpened) {
         justOpened = false;
-        ['btn-free', 'btn-rush', 'btn-daily'].forEach(function (id) {
+        ['btn-free', 'btn-more'].forEach(function (id) {
           var b = $(id); if (!b) return;
           b.classList.remove('just-opened'); void b.offsetWidth; b.classList.add('just-opened');
           setTimeout(function () { b.classList.remove('just-opened'); }, 4200);
@@ -721,6 +722,7 @@
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
+      case 'modes':      Sfx.click(); show('modes'); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'back-title':
         Sfx.click();
@@ -979,6 +981,13 @@
       }
     });
     refreshDaily();
+    /* More modes names what is behind it, and shows the badge while
+       today's Daily Line is not finished: the reason to come back
+       should not be hidden one screen in. */
+    var more = $('more-sub');
+    if (more) more.textContent = t('mode.daily') + ' · ' + t('mode.rush');
+    var mb = $('more-badge');
+    if (mb) mb.classList.toggle('hidden', !(open && save.dailyLast !== dailyKey()));
   }
 
   /* The creature the purse is saving towards: the cheapest one not owned

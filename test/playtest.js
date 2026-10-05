@@ -495,8 +495,15 @@ async function walk(cdp, sid, P) {
   var saved = await ev("localStorage.getItem('icedash-save-v1')");
   ok(saved && saved.length > 100, 'the run was written to the save (' + (saved || '').length + ' bytes)');
 
+  /* ---- More modes ---- */
+  ok(!(await visible('#btn-daily')) && !(await visible('#btn-rush')),
+     'the title leads with two modes; the Daily Line and Time Rush are not on it');
+  ok(await visible('#more-badge'), 'More modes carries a badge while today\'s line is unfinished');
+  ok(await clickFor('#btn-more', '#screen-modes') >= 0, 'More modes opens its list');
+  await shot('18b-more-modes');
+
   /* ---- the Daily Line ---- */
-  ok(await clickFor('#btn-daily', '#hud') >= 0, 'the Daily Line starts from the title');
+  ok(await clickFor('#btn-daily', '#hud') >= 0, 'the Daily Line starts from More modes');
   var dl = await ev("Game.debug().course.id");
   ok(dl === 'daily', 'as today\'s written line (' + dl + ')');
   await sleep(800);
@@ -512,11 +519,13 @@ async function walk(cdp, sid, P) {
   ok(/streak/i.test(await ev("document.getElementById('over-detail').textContent")), 'and the results show the streak');
   ok((dsv.ach || []).indexOf('daily1') >= 0, 'and the first one earns its trophy');
   await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+  ok(!(await visible('#more-badge')), 'and the More modes badge goes out once today\'s line is finished');
+  await clickFor('#btn-more', '#screen-modes');
   var dsub = await ev("document.getElementById('daily-sub').textContent");
-  ok(/★/.test(dsub) && /1/.test(dsub), 'the title button now shows today\'s stars and the streak ("' + dsub + '")');
+  ok(/★/.test(dsub) && /1/.test(dsub), 'the Daily Line button now shows today\'s stars and the streak ("' + dsub + '")');
 
   /* ---- Time Rush ---- */
-  ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from the title');
+  ok(await clickFor('#btn-rush', '#hud') >= 0, 'Time Rush starts from More modes');
   ok(await ev("Game.debug().mode") === 'rush', 'as a timed run');
   var tA = await ev("Game.debug().timeT");
   /* Headless Chrome can run at a handful of frames a second when the
@@ -606,7 +615,7 @@ async function walk(cdp, sid, P) {
        (await ev("document.getElementById('over-unlock').textContent")) + ')');
     await shot('16b-unlocked');
     await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
-    ok(await ev("document.getElementById('btn-rush').classList.contains('just-opened') && !document.getElementById('btn-rush').disabled"),
+    ok(await ev("document.getElementById('btn-more').classList.contains('just-opened') && !document.getElementById('btn-rush').disabled"),
        'and on the title the new modes light up, open');
     await shot('16c-title-opened');
   } else {

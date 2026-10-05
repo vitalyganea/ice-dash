@@ -108,17 +108,16 @@
         <b data-i18n="mode.runs">Known Lines</b>
         <small data-i18n="mode.runs.sub">Six lines down the mountain, the same every time.</small>
       </button>
-      <button class="btn btn-big btn-purple mode-btn" id="btn-daily" data-action="daily">
-        <b data-i18n="mode.daily">Daily Line</b>
-        <small id="daily-sub" data-i18n="mode.daily.sub">A new line every day.</small>
-      </button>
       <button class="btn btn-big btn-blue mode-btn" id="btn-free" data-action="play">
         <b data-i18n="mode.free">Freeride</b>
         <small id="free-sub" data-i18n="mode.free.sub">The mountain never ends.</small>
       </button>
-      <button class="btn btn-big btn-red mode-btn" id="btn-rush" data-action="rush">
-        <b data-i18n="mode.rush">Time Rush</b>
-        <small id="rush-sub" data-i18n="mode.rush.sub">Twenty seconds. Grab more on the way.</small>
+      <!-- The other modes live one tap further in, so the title leads with
+           the two a player comes back for. -->
+      <button class="btn btn-big btn-purple mode-btn mode-more" id="btn-more" data-action="modes">
+        <b data-i18n="mode.more">More modes</b>
+        <small id="more-sub">Daily Line · Time Rush</small>
+        <span id="more-badge" class="badge hidden" aria-hidden="true">!</span>
       </button>
     </div>
     <div class="btn-row">
@@ -262,6 +261,23 @@
     <div id="shop-supply" class="shop-supply"></div>
     <div id="shop-grid" class="shop-grid"></div>
     <p id="shop-note" class="shop-note" data-i18n="shop.note">Wear one at a time.</p>
+    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
+  </div>
+</section>
+
+<section id="screen-modes" class="screen hidden">
+  <div class="panel panel-wide">
+    <h2 class="panel-title-text" data-i18n="mode.more">More modes</h2>
+    <div class="btn-row modes-list">
+      <button class="btn btn-big btn-purple mode-btn" id="btn-daily" data-action="daily">
+        <b data-i18n="mode.daily">Daily Line</b>
+        <small id="daily-sub" data-i18n="mode.daily.sub">A new line every day.</small>
+      </button>
+      <button class="btn btn-big btn-red mode-btn" id="btn-rush" data-action="rush">
+        <b data-i18n="mode.rush">Time Rush</b>
+        <small id="rush-sub" data-i18n="mode.rush.sub">Twenty seconds. Grab more on the way.</small>
+      </button>
+    </div>
     <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>

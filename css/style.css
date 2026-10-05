@@ -1292,3 +1292,11 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .btn-row.row-three{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
 .btn-row.row-three .btn{ padding:10px 6px; min-width:0; }
 @media (max-width:420px){ .btn-row.row-three .btn{ font-size:13px; } }
+
+/* ---- two modes on the title, the rest one tap in ----
+   Known Lines and Freeride share the top row; More modes runs the full
+   width under them and carries the Daily Line's badge. The list it opens
+   stacks its modes, so each keeps its whole subtitle. */
+.btn-row.modes .mode-more{ grid-column:1 / -1; position:relative; }
+.btn-row.modes-list{ flex-direction:column; align-items:stretch; gap:22px; margin:6px 0 10px; }
+.btn-row.modes-list .mode-btn small{ font-size:.58em; }
