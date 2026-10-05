@@ -382,6 +382,9 @@ async function walk(cdp, sid, P) {
      'the back arrow is on screen in the Market, bottom-left, without scrolling (' + JSON.stringify(arrow) + ')');
   ok(await clickFor('#btn-back', '#screen-title') >= 0, 'and it leaves the Market');
   ok(!(await visible('#btn-back')), 'and it is gone again on the title');
+  /* the badge said something new was affordable; having looked, it is out,
+     though the purse could still buy it */
+  ok(!(await visible('#market-badge')), 'and the Market badge is out once the shelf has been seen');
 
   ok(await visible('#ach-badge'), 'the Trophies button says a reward is waiting');
   await clickFor('[data-action="trophies"]', '#screen-ach');
@@ -567,7 +570,11 @@ async function walk(cdp, sid, P) {
      'the title leads with two modes; the Daily Line and Time Rush are not on it');
   ok(await visible('#more-badge'), 'More modes carries a badge while today\'s line is unfinished');
   ok(await clickFor('#btn-more', '#screen-modes') >= 0, 'More modes opens its list');
+  ok(await visible('#btn-daily .todo-dot'), 'where the unfinished Daily Line wears a quiet mark');
   await shot('18b-more-modes');
+  await clickFor('#btn-back', '#screen-title');
+  ok(!(await visible('#more-badge')), 'and having opened the list, the badge is out for the day, line unfinished or not');
+  await clickFor('#btn-more', '#screen-modes');
 
   /* ---- the Daily Line ---- */
   ok(await clickFor('#btn-daily', '#hud') >= 0, 'the Daily Line starts from More modes');
@@ -588,6 +595,7 @@ async function walk(cdp, sid, P) {
   await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
   ok(!(await visible('#more-badge')), 'and the More modes badge goes out once today\'s line is finished');
   await clickFor('#btn-more', '#screen-modes');
+  ok(!(await visible('#btn-daily .todo-dot')), 'and its mark is gone once the line is finished');
   var dsub = await ev("document.getElementById('daily-sub').textContent");
   ok(/★/.test(dsub) && /1/.test(dsub), 'the Daily Line button now shows today\'s stars and the streak ("' + dsub + '")');
 

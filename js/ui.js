@@ -54,7 +54,11 @@
              /* today's three tasks and which are done */
              tasks: { key: '', done: [] },
              /* a short buzz on a phone for the big moments */
-             vibrate: true };
+             vibrate: true,
+             /* What the badges have already shown: the creatures seen on the
+                shelf while affordable, and the day More modes was last opened.
+                A badge says something new, and looking at it puts it out. */
+             marketSeen: [], modesSeen: '' };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -90,6 +94,9 @@
       save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
       save.tutDone = o.tutDone === true;
       save.dailyLast = typeof o.dailyLast === 'string' ? o.dailyLast : '';
+      save.marketSeen = Object.prototype.toString.call(o.marketSeen) === '[object Array]'
+                      ? o.marketSeen.filter(function (id) { return !!SKIN_BY_ID[id]; }) : [];
+      save.modesSeen = typeof o.modesSeen === 'string' ? o.modesSeen : '';
       save.tasks = (o.tasks && typeof o.tasks.key === 'string' && o.tasks.done && o.tasks.done.length !== undefined)
                  ? { key: o.tasks.key, done: o.tasks.done.filter(function (x) { return typeof x === 'string'; }).slice(0, 3) }
                  : { key: '', done: [] };
@@ -177,14 +184,17 @@
     if (name === 'tutdone')
       $('tutdone-go').textContent = t('tut.done.go', { n: t('course.' + COURSES[0].id + '.name') });
     if (name === 'help') buildHints();
-    if (name === 'shop') buildShop();
+    if (name === 'shop') { buildShop(); seeMarket(); }
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
     if (name === 'runs') buildRuns();
-    if (name === 'modes') refreshModes();
+    if (name === 'modes') {
+      if (save.modesSeen !== dailyKey()) { save.modesSeen = dailyKey(); store(); }
+      refreshModes();
+    }
     if (name === 'title') {
       refreshModes();
-      $('market-badge').classList.toggle('hidden', !canBuyCreature());
+      $('market-badge').classList.toggle('hidden', !marketNews().length);
       $('ach-badge').classList.toggle('hidden', !achUnclaimed(save).length);
       /* today's tasks, as a line on the title that opens the list */
       var tchip = $('title-tasks'), nd = todaysDone().length;
@@ -1084,13 +1094,17 @@
       }
     });
     refreshDaily();
-    /* More modes names what is behind it, and shows the badge while
-       today's Daily Line is not finished: the reason to come back
-       should not be hidden one screen in. */
+    /* More modes names what is behind it. Its badge is the day's new
+       Daily Line: lit once a day until the list is opened (or the line is
+       finished first). Inside, the Daily Line keeps a quiet mark until it
+       is finished, so the reason to come back is not lost once seen. */
     var more = $('more-sub');
     if (more) more.textContent = [t('mode.daily'), t('mode.rush'), t('mode.av')].join(' · ');
+    var today = dailyKey(), dailyOpen = open && save.dailyLast !== today;
     var mb = $('more-badge');
-    if (mb) mb.classList.toggle('hidden', !(open && save.dailyLast !== dailyKey()));
+    if (mb) mb.classList.toggle('hidden', !(dailyOpen && save.modesSeen !== today));
+    var db = $('btn-daily');
+    if (db) db.classList.toggle('todo', dailyOpen);
   }
 
   /* The creature the purse is saving towards: the cheapest one not owned
@@ -1104,19 +1118,31 @@
     }
     return best;
   }
-  /* Something on the Market shelf can be bought right now. Spare lives do
-     not count: once the purse holds 250 they always could, and a badge that
-     is always lit says nothing. */
-  function canBuyCreature() {
-    if (trophyWaiting()) return true;
+  /* The creatures the Market badge is for: affordable now (or, for Aurora,
+     ready to take) and not yet seen on the shelf that way. Opening the
+     Market sees them all. The badge used to be lit whenever anything at all
+     could be bought, which with a full purse meant always, and a badge that
+     never goes out stops being read. */
+  function affordableNow() {
+    var out = [];
+    var tsk = trophySkin();
+    if (tsk && trophyWaiting()) out.push(tsk.id);
     for (var i = 0; i < SKINS.length; i++) {
       var s = SKINS[i];
       if (!s.price || save.owned.indexOf(s.id) >= 0) continue;
-      if ((s.currency === 'gold' ? save.gold : save.fish) >= s.price) return true;
+      if ((s.currency === 'gold' ? save.gold : save.fish) >= s.price) out.push(s.id);
     }
-    return false;
+    return out;
   }
-
+  function marketNews() {
+    return affordableNow().filter(function (id) { return save.marketSeen.indexOf(id) < 0; });
+  }
+  function seeMarket() {
+    var news = marketNews();
+    if (!news.length) return;
+    save.marketSeen = save.marketSeen.concat(news);
+    store();
+  }
   /* The Daily Line's button says how today is going and how long the
      streak is, so the reason to come back is on the title screen. */
   function refreshDaily() {

@@ -1448,3 +1448,13 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .skin-tag.tag-trophy.can{ color:#7a4a00; background:#fff2c2; border-color:#a86a00; }
 .skin-card.trophy-card{ background:linear-gradient(160deg,rgba(74,79,176,.18),rgba(47,143,168,.18)); }
 .ach-prize .btn{ white-space:nowrap; flex:0 0 auto; }
+
+/* ---- today's Daily Line, not yet finished: a quiet mark on its button ----
+   A child of its own, because a button's ::before and ::after are its snow. */
+.todo-dot{
+  display:none; position:absolute; top:12px; right:14px; z-index:3;
+  width:12px; height:12px; border-radius:50%;
+  background:#ffd84a; border:2px solid #062a78;
+  box-shadow:0 0 0 3px rgba(255,216,74,.35);
+}
+#btn-daily.todo .todo-dot{ display:block; }
