@@ -1104,10 +1104,17 @@
     var more = $('more-sub');
     if (more) more.textContent = [t('mode.daily'), t('mode.rush'), t('mode.av')].join(' · ');
     var today = dailyKey(), dailyOpen = open && save.dailyLast !== today;
+    /* A mode not yet ridden wears the same gold dot as an unfinished Daily
+       Line: just opened, it is the newest thing on the screen. Ridden once,
+       it has a best of its own, and that is how it is known. */
+    var untried = { 'btn-free': open && !(save.best > 0),
+                    'btn-rush': open && !(save.bestRush > 0),
+                    'btn-av':   open && !(save.bestAv > 0),
+                    'btn-daily': dailyOpen };
+    for (var id in untried) { var mbtn = $(id); if (mbtn) mbtn.classList.toggle('todo', untried[id]); }
+    var inside = untried['btn-daily'] || untried['btn-rush'] || untried['btn-av'];
     var mb = $('more-badge');
-    if (mb) mb.classList.toggle('hidden', !(dailyOpen && save.modesSeen !== today));
-    var db = $('btn-daily');
-    if (db) db.classList.toggle('todo', dailyOpen);
+    if (mb) mb.classList.toggle('hidden', !(inside && save.modesSeen !== today));
   }
 
   /* The creature the purse is saving towards: the cheapest one not owned

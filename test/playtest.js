@@ -577,6 +577,8 @@ async function walk(cdp, sid, P) {
   ok(await visible('#more-badge'), 'More modes carries a badge while today\'s line is unfinished');
   ok(await clickFor('#btn-more', '#screen-modes') >= 0, 'More modes opens its list');
   ok(await visible('#btn-daily .todo-dot'), 'where the unfinished Daily Line wears a quiet mark');
+  ok(await visible('#btn-rush .todo-dot') && await visible('#btn-av .todo-dot'),
+     'and so do Time Rush and Avalanche, never ridden on this save');
   await shot('18b-more-modes');
   await clickFor('#btn-back', '#screen-title');
   ok(!(await visible('#more-badge')), 'and having opened the list, the badge is out for the day, line unfinished or not');
@@ -641,6 +643,8 @@ async function walk(cdp, sid, P) {
 
   /* ---- Avalanche ---- */
   await clickFor('#btn-more', '#screen-modes');
+  ok(!(await visible('#btn-rush .todo-dot')) && await visible('#btn-av .todo-dot'),
+     'ridden once, Time Rush loses its mark; Avalanche, not yet ridden, keeps it');
   ok(await clickFor('#btn-av', '#hud') >= 0, 'Avalanche starts from More modes');
   ok(await ev("Game.debug().mode") === 'avalanche' && await ev("Game.debug().avGap") > 0,
      'with a lead on the snow');
@@ -654,6 +658,7 @@ async function walk(cdp, sid, P) {
   var aScore = await ev("document.getElementById('over-score').textContent");
   ok(/avalanche/i.test(aTitle) && / m$/.test(aScore), 'saying the avalanche got you, scored in metres (' + aTitle + ' / ' + aScore + ')');
   ok((await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).bestAv")) > 0, 'and Avalanche has a best of its own');
+  ok(!(await visible('#btn-free .todo-dot')), 'Freeride, ridden on this save, has no mark on the title');
   await shot('18d-avalanche-over');
   ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
      (await ev("Game.debug().mode")) === 'avalanche', 'Ride again is another Avalanche');
