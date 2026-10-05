@@ -10,10 +10,10 @@ var fs = require('fs'), path = require('path');
 var DIR = path.join(__dirname, '..', 'js') + path.sep;
 var fail = 0;
 function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++; }
-global.navigator = { language: 'en' }; global.window = {}; global.document = { documentElement: {} };
+global.window = {}; global.document = { documentElement: {}, querySelectorAll: function () { return []; } };
 eval(fs.readFileSync(DIR + 'skins.js', 'utf8'));
 eval(fs.readFileSync(DIR + 'album.js', 'utf8'));
-var I18N = fs.readFileSync(DIR + 'i18n.js', 'utf8');
+eval(fs.readFileSync(DIR + 'i18n.js', 'utf8'));     // STRINGS and LANGS, every language merged in
 
 console.log('A. chapters open in order, and pay once');
 var save = { fish: 0 };
@@ -46,17 +46,15 @@ albumAdd(s2, 'puffin', { comboBest: 22 }); albumAdd(s2, 'puffin', { comboBest: 4
 ok(albumOf(s2, 'puffin').combo === 41, 'the best run of catches is kept');
 
 console.log('\nC. every creature has a feat and its stories, in every language');
+function inAll(key) {
+  return !!STRINGS[key] && LANGS.every(function (L) { return !!STRINGS[key][L.id]; });
+}
 SKINS.forEach(function (sk) {
   var feat = ALBUM_FEAT[sk.id];
-  var stats = albumGoals(sk.id).map(function (g) { return g.stat; });
-  var goalKeys = stats.every(function (st) { return I18N.indexOf("'album.g." + st + "'") >= 0; });
-  var count = 0;
-  for (var i = 1; i <= 3; i++) {
-    var k = "'story." + sk.id + '.' + i + "'";
-    count += (I18N.split(k).length - 1);           // once in the main table, once in RO
-  }
-  ok(!!feat && goalKeys && count === 6, sk.id + ': a feat of its own (' + (feat ? feat.stat + ' ' + feat.n : 'none') +
-     '), and its three stories in English, Russian and Romanian');
+  var goalKeys = albumGoals(sk.id).every(function (g) { return inAll('album.g.' + g.stat); });
+  var stories = [1, 2, 3].every(function (i) { return inAll('story.' + sk.id + '.' + i); });
+  ok(!!feat && goalKeys && stories, sk.id + ': a feat of its own (' + (feat ? feat.stat + ' ' + feat.n : 'none') +
+     '), and its three stories in all ' + LANGS.length + ' languages');
 });
 
 console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'album checks passed'));

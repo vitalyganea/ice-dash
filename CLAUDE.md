@@ -28,11 +28,11 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
   not a reused perk in a different coat. Add the perk key in `js/game.js`,
   declare its direction in `test/skinsafe.js` (it may only make the hill more
   forgiving), give it a check in `test/perks.js` measured against Snowcap, and
-  its name and perk text in all three languages. `test/perks.js` fails if a new
+  its name and perk text in every language. `test/perks.js` fails if a new
   creature only reuses existing perk keys, duplicates another's perk, or has no
   check. Only then add its id to `FOUNDING` in `test/perks.js`. It also needs
   an album feat in `js/album.js` (`ALBUM_FEAT`, tied to its perk) and its three
-  stories in all three languages — `test/album.js` fails without them.
+  stories in every language — `test/album.js` fails without them.
 
 ## Checking
 
