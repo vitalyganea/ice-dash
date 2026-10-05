@@ -2056,17 +2056,63 @@ var Game = (function () {
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2;
       ctx.beginPath(); ctx.ellipse(0, 0, r * 0.46, r * 0.34, 0, 0, 6.2832); ctx.stroke();
       ctx.globalAlpha = 1;
-    } else {                                     // a ring of little fish
-      for (k = 0; k < 5; k++) {
-        var fa = a + k * 1.2566;
+    } else {
+      /* A horseshoe magnet frozen in a block of ice, red and blue, with
+         its field pulsing out of the poles and two small fish being drawn
+         in. The one man-made thing on the hill, by the user's choice: a
+         ring of fish read as nothing, and a magnet says at once what it
+         does (GAME_SPEC.md, non-goals). */
+      var bob = Math.sin(a * 1.6) * r * 0.05;
+      /* the block of ice */
+      var ig = ctx.createLinearGradient(-r, -r, r, r);
+      ig.addColorStop(0, 'rgba(240,250,255,.95)'); ig.addColorStop(0.5, 'rgba(176,222,246,.9)');
+      ig.addColorStop(1, 'rgba(110,180,222,.92)');
+      ctx.fillStyle = ig;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.78, -r * 0.92); ctx.lineTo(r * 0.82, -r * 0.86);
+      ctx.lineTo(r * 0.94, r * 0.74); ctx.lineTo(-r * 0.7, r * 0.9); ctx.lineTo(-r * 0.94, -r * 0.1);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.2; ctx.stroke();
+      /* the field: arcs pulsing outwards from the poles */
+      for (k = 0; k < 3; k++) {
+        var ph2 = (a * 0.9 + k / 3) % 1;
+        ctx.globalAlpha = (1 - ph2) * 0.75;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(0, -r * 0.42 + bob, r * (0.3 + ph2 * 0.62), Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      /* the magnet: a thick U, red arm and blue arm, silver poles */
+      ctx.save();
+      ctx.translate(0, bob);
+      ctx.lineCap = 'butt';
+      var w = r * 0.3, R = r * 0.42, cy = r * 0.08;
+      ctx.lineWidth = w;
+      ctx.strokeStyle = '#d8323f';                      // red half
+      ctx.beginPath(); ctx.moveTo(-R, -r * 0.34); ctx.lineTo(-R, cy); ctx.arc(0, cy, R, Math.PI, Math.PI * 1.5, true); ctx.stroke();
+      ctx.strokeStyle = '#2f6fd6';                      // blue half
+      ctx.beginPath(); ctx.moveTo(R, -r * 0.34); ctx.lineTo(R, cy); ctx.arc(0, cy, R, 0, Math.PI * 0.5); ctx.stroke();
+      ctx.fillStyle = '#e6edf3';                        // the poles
+      ctx.fillRect(-R - w / 2, -r * 0.56, w, r * 0.22);
+      ctx.fillRect(R - w / 2, -r * 0.56, w, r * 0.22);
+      ctx.strokeStyle = 'rgba(6,42,120,.8)'; ctx.lineWidth = 1.2;
+      ctx.beginPath();                                  // a navy outline round the U
+      ctx.moveTo(-R - w / 2, -r * 0.56); ctx.lineTo(-R - w / 2, cy); ctx.arc(0, cy, R + w / 2, Math.PI, 0, true);
+      ctx.lineTo(R + w / 2, -r * 0.56); ctx.lineTo(R - w / 2, -r * 0.56); ctx.lineTo(R - w / 2, cy);
+      ctx.arc(0, cy, R - w / 2, 0, Math.PI); ctx.lineTo(-R + w / 2, -r * 0.56); ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.45)';          // shine on the red arm
+      ctx.fillRect(-R - w * 0.3, -r * 0.3, w * 0.22, r * 0.36);
+      ctx.restore();
+      /* two small fish, drawn in towards the poles */
+      ctx.fillStyle = '#2f7fb4';
+      for (k = 0; k < 2; k++) {
+        var t2 = (a * 0.7 + k * 0.5) % 1, side = k ? 1 : -1;
+        var fx = side * r * (1.25 - t2 * 0.75), fy = -r * (0.95 - t2 * 0.45);
         ctx.save();
-        ctx.translate(Math.cos(fa) * r * 0.62, Math.sin(fa) * r * 0.5);
-        ctx.rotate(fa + 1.5708);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r * 0.3, r * 0.17, 0, 0, 6.2832); ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(0, r * 0.26); ctx.lineTo(-r * 0.16, r * 0.44);
-        ctx.lineTo(r * 0.16, r * 0.44); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = Math.min(1, (1 - t2) * 2.2);
+        ctx.translate(fx, fy); ctx.rotate(side > 0 ? 2.6 : 0.55);
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.18, r * 0.09, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-r * 0.16, 0); ctx.lineTo(-r * 0.28, -r * 0.08); ctx.lineTo(-r * 0.28, r * 0.08);
+        ctx.closePath(); ctx.fill();
         ctx.restore();
       }
     }

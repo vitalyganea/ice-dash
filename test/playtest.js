@@ -700,6 +700,7 @@ async function walk(cdp, sid, P) {
   ok(!(await visible('#prize-take')) && /yours/i.test(await ev("document.getElementById('ach-prize').textContent")),
      'and the prize now says she is yours');
   await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+  await waitFor('#btn-free', 4000);                 // the title is still settling in
   ok(await clickFor('#btn-free', '#hud') >= 0 && (await ev("Game.debug().shield")) === 1,
      'she rides, and starts the run in a bubble as her perk says');
   await sleep(500);

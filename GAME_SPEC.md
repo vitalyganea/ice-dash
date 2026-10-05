@@ -117,6 +117,10 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   user: no flags, banners, crates, signs or chevrons. The finish is an
   apron of glacier ice; the "loot box" is a nodule of ice with something
   frozen inside it.
+  **One exception, by the user's choice (October 2026):** the find that pulls
+  every fish towards you is a red-and-blue horseshoe magnet frozen in a block
+  of ice. As a ring of little fish it read as nothing; a magnet says at once
+  what it does. Nothing else man-made follows from it.
 - No libraries, no build step, no bundler.
 - No image or audio asset files beyond the title logo.
 - No orientation lock, and no in-game master mute (Playables forbids both).
