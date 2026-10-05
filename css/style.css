@@ -1500,3 +1500,16 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
          color:#3d2400; text-shadow:0 1px 0 rgba(255,255,255,.6); }
 .bp-unit{ font-size:13px; font-weight:800; align-self:flex-end; margin-bottom:3px; opacity:.85; }
 @media (prefers-reduced-motion: reduce){ .best-plaque::after, .bp-star{ animation:none; } }
+
+/* ---- a creature's three stories, in its window ---- */
+.album{ margin:14px 0 4px; text-align:left; display:flex; flex-direction:column; gap:7px; }
+.album-head{ font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); text-align:center; }
+.album-row{ padding:8px 12px; border-radius:12px; background:rgba(255,255,255,.6); border:2px dashed rgba(90,130,160,.35); }
+.album-row.open{ background:rgba(255,248,222,.95); border:2px solid #e3b23c; }
+.album-ch{ font-size:11px; font-weight:800; color:#7a8ea0; text-transform:uppercase; letter-spacing:.05em; }
+.album-row.open .album-ch{ color:#a86a00; }
+.album-txt{ font-size:13.5px; line-height:1.35; color:var(--ink); margin-top:2px; }
+.album-row:not(.open) .album-txt{ color:var(--ink-soft); }
+.album-row .ach-bar{ margin-top:6px; }
+.sheet-card{ max-height:calc(100vh - 40px); overflow-y:auto; }
+.won-story{ color:#a86a00; }

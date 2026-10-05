@@ -531,6 +531,8 @@ async function walk(cdp, sid, P) {
     await sleep(20);
   }
   ok(await waitFor('#screen-over', 8000), 'the run ends on the results screen');
+  ok(/new story/i.test(await ev("document.getElementById('over-won').textContent")),
+     'and the first run with the seal opens her first story');
   var shown = await ev("document.querySelector('#over-score').textContent.trim()");
   ok(/\d/.test(shown), 'which shows a score (' + shown + ')');
   var goals = await ev("Array.from(document.querySelectorAll('#over-goals .goal-txt')).map(e=>e.textContent).join(' | ')");
@@ -682,6 +684,13 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="shop"]', '#screen-shop');
   var tTag = await ev("(function(){var e=document.querySelector('#shop-grid [data-pick=\"aurora\"] .tag-trophy');return e?e.textContent:null;})()");
   ok(tTag && /\d+\/\d+/.test(tTag), 'Aurora is on the shelf with the trophies still to go (' + tTag + ')');
+  /* the seal has been ridden: her window shows her stories */
+  await clickFor('#shop-grid [data-pick="seal"]', '#sheet-skin');
+  var alb = await ev("({rows:document.querySelectorAll('#sheet-skin-album .album-row').length,open:document.querySelectorAll('#sheet-skin-album .album-row.open').length,txt:(document.querySelector('#sheet-skin-album .album-row.open .album-txt')||{}).textContent||''})");
+  ok(alb.rows === 3 && alb.open >= 1 && alb.txt.length > 20 && alb.txt.indexOf('story.') < 0,
+     'her window holds three chapters, the first open with its story ("' + alb.txt.slice(0, 40) + '…")');
+  await shot('05d-album');
+  await clickFor('.sheet-x', null);
   await clickFor('#shop-grid [data-pick="aurora"]', '#sheet-skin');
   ok(await ev("document.getElementById('sheet-skin-btn').disabled"), 'and she cannot be bought');
   await shot('05c-aurora-locked');

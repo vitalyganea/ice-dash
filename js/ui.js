@@ -58,7 +58,10 @@
              /* What the badges have already shown: the creatures seen on the
                 shelf while affordable, and the day More modes was last opened.
                 A badge says something new, and looking at it puts it out. */
-             marketSeen: [], modesSeen: '' };
+             marketSeen: [], modesSeen: '',
+             /* per creature: running totals and how many of its three
+                stories are open (album.js) */
+             album: {} };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -97,6 +100,14 @@
       save.marketSeen = Object.prototype.toString.call(o.marketSeen) === '[object Array]'
                       ? o.marketSeen.filter(function (id) { return !!SKIN_BY_ID[id]; }) : [];
       save.modesSeen = typeof o.modesSeen === 'string' ? o.modesSeen : '';
+      save.album = {};
+      if (o.album && typeof o.album === 'object')
+        for (var aid in o.album) {
+          if (!SKIN_BY_ID[aid] || !o.album[aid] || typeof o.album[aid] !== 'object') continue;
+          var src = o.album[aid], dst = albumOf(save, aid);
+          for (var ak in dst) dst[ak] = Math.max(0, parseInt(src[ak], 10) || 0);
+          dst.got = Math.min(3, dst.got);
+        }
       save.tasks = (o.tasks && typeof o.tasks.key === 'string' && o.tasks.done && o.tasks.done.length !== undefined)
                  ? { key: o.tasks.key, done: o.tasks.done.filter(function (x) { return typeof x === 'string'; }).slice(0, 3) }
                  : { key: '', done: [] };
@@ -454,9 +465,11 @@
     save.totSmashed += res.smashed || 0;
     save.totForks   += res.forks   || 0;
     var taskWon = (res.course === 'tutorial') ? [] : tasksCheck(save, res, dailyKey());
-    var won = achCheck(save);                        // pays out into save.fish
+    albumAdd(save, save.equipped, res);              // the creature that rode it
+    var storyWon = albumCheck(save, save.equipped);  // pays its chapters' fish
+    var won = achCheck(save);
     store();
-    showWon(won, taskWon);
+    showWon(won, taskWon, storyWon);
     var earned = $('over-earned');
     var bits = [];
     if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
@@ -975,6 +988,7 @@
     Game.drawSkinPreview($('sheet-skin-pic'), sk.id, 140);
     $('sheet-skin-name').textContent = t('skin.' + sk.id + '.name', null, sk.name);
     $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
+    buildAlbum(sk.id);
     var b = $('sheet-skin-btn'), need = $('sheet-skin-need');
     b.textContent = ''; b.disabled = false; b.className = 'btn';
     need.classList.add('hidden');
@@ -1003,6 +1017,38 @@
     b.focus({ preventScroll: true });
   }
   /* Closes whichever window is open; says whether one was. */
+  /* The creature's three stories, under its perk in its window: an open
+     chapter reads as its story; a closed one says what opens it and how
+     far along it is. */
+  function buildAlbum(id) {
+    var box = $('sheet-skin-album');
+    box.textContent = '';
+    var h = document.createElement('div');
+    h.className = 'album-head'; h.textContent = t('album.title');
+    box.appendChild(h);
+    for (var i = 0; i < 3; i++) {
+      var p = albumProgress(save, id, i);
+      var row = document.createElement('div');
+      row.className = 'album-row' + (p.open ? ' open' : '');
+      var lab = document.createElement('div');
+      lab.className = 'album-ch';
+      lab.textContent = t('album.chapter', { n: i + 1 }) + (p.open ? '' : '  ·  +' + ALBUM_PAY[i]);
+      row.appendChild(lab);
+      var txt = document.createElement('div');
+      txt.className = 'album-txt';
+      txt.textContent = p.open ? t('story.' + id + '.' + (i + 1)) : t('album.g.' + p.stat, { n: num(p.n) });
+      row.appendChild(txt);
+      if (!p.open) {
+        var bar = document.createElement('div');
+        bar.className = 'ach-bar';
+        var fill = document.createElement('i');
+        fill.style.width = Math.round(p.cur / p.n * 100) + '%';
+        bar.appendChild(fill);
+        row.appendChild(bar);
+      }
+      box.appendChild(row);
+    }
+  }
   function closeSheet() {
     var open = false;
     Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
@@ -1229,11 +1275,18 @@
   });
 
   /* -------------------------- trophies ----------------------- */
-  function showWon(won, tasks) {
+  function showWon(won, tasks, stories) {
     var box = $('over-won');
-    tasks = tasks || [];
+    tasks = tasks || []; stories = stories || [];
     box.textContent = '';
-    box.classList.toggle('hidden', !won.length && !tasks.length);
+    box.classList.toggle('hidden', !won.length && !tasks.length && !stories.length);
+    stories.forEach(function (st) {
+      var row = document.createElement('div');
+      row.className = 'won-row won-story';
+      var sk = SKIN_BY_ID[st.id];
+      row.textContent = t('album.won', { s: t('skin.' + st.id + '.name', null, sk ? sk.name : st.id), n: st.pay });
+      box.appendChild(row);
+    });
     tasks.forEach(function (tk) {
       var row = document.createElement('div');
       row.className = 'won-row won-task';

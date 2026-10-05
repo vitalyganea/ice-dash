@@ -28,7 +28,9 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
   forgiving), give it a check in `test/perks.js` measured against Snowcap, and
   its name and perk text in all three languages. `test/perks.js` fails if a new
   creature only reuses existing perk keys, duplicates another's perk, or has no
-  check. Only then add its id to `FOUNDING` in `test/perks.js`.
+  check. Only then add its id to `FOUNDING` in `test/perks.js`. It also needs
+  an album feat in `js/album.js` (`ALBUM_FEAT`, tied to its perk) and its three
+  stories in all three languages — `test/album.js` fails without them.
 
 ## Checking
 
