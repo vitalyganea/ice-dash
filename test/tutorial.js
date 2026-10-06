@@ -168,6 +168,26 @@ console.log('\nG. a player who answers within a second never sees it stop');
   ok(answered === 2 && minSp > 0.8, 'both taps asked for, and the hill never drops below slow motion (lowest ' + minSp.toFixed(2) + ')');
 })();
 
+/* ---- H. his stride never races ------------------------------- */
+console.log('\nH. coming out of slow motion, his flippers do not race');
+(function () {
+  H.setSeed(6);
+  G.start(0, {}, 'snowcap', 'tutorial', 0);
+  G.tap();
+  var prev = null, worst = 0;
+  for (var f = 0; f < 1500; f++) {
+    var w = G.debug();
+    if (w.tutWait && f % 50 === 0) G.tap();
+    if (prev != null && w.gait != null) worst = Math.max(worst, Math.abs(w.gait - prev));
+    prev = w.gait;
+    H.frames(1);
+  }
+  G.stop();
+  /* a frame may hold two steps of the game; each moves the stride by well
+     under half a unit. The old stride, time x speed, leapt by over ten. */
+  ok(worst < 1, 'the stride moves smoothly through every change of pace (largest step ' + worst.toFixed(2) + ')');
+})();
+
 /* ---- E. nobody can fail out of it --------------------------- */
 console.log('\nE. a player who never steers still gets to the end');
 var r2 = ride('passive', 12);

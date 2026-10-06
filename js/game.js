@@ -960,6 +960,12 @@ var Game = (function () {
   /* ---------------------------- step -------------------------- */
   function step() {
     W.t++;
+    /* Where he is in his stride, advanced a frame at a time at the rate his
+       speed sets now. It was W.t times that rate, so whenever the speed
+       changed every frame of the run so far was re-timed at once: coming
+       out of the tutorial's slow motion the flippers raced through dozens
+       of strokes in a moment, as if the slowed ones had piled up. */
+    W.gait = (W.gait || 0) + 0.15 + (W.state === 'run' && !W.hold ? W.speed : 0) * 0.038;
     if (W.shake > 0) { W.shake *= 0.86; if (W.shake < 0.05) W.shake = 0; }
     if (W.tapFlash > 0) W.tapFlash--;
 
@@ -5126,7 +5132,7 @@ var Game = (function () {
        stride (faster downhill means quicker paddling), and how hard it is
        leaning. One shared `wag` moved both sides of an animal the same
        way, which is why they read as pictures — nothing alternates. */
-    var gait = W.t * (0.15 + W.speed * 0.038);
+    var gait = W.gait || 0;
     var turn = clamp(W.vx / Math.max(1, DRIFT * W.speed), -1, 1);
     paintCreature(ctx, S, {
       ang: ang, wag: Math.sin(gait) * 0.1, gait: gait, turn: turn,
