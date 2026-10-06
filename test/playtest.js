@@ -718,9 +718,12 @@ async function walk(cdp, sid, P) {
   await shot('05d-album');
   await clickFor('.sheet-x', null);
   await clickFor('#shop-grid [data-pick="aurora"]', '#sheet-skin');
-  ok(await ev("document.getElementById('sheet-skin-btn').disabled"), 'and she cannot be bought');
+  ok(!(await ev("/^Buy/.test(document.getElementById('sheet-skin-btn').textContent)")), 'and she cannot be bought');
   await shot('05c-aurora-locked');
-  await clickFor('.sheet-x', null);
+  /* her button leads to the trophies still to win, and back returns to the Market */
+  ok(await clickFor('#sheet-skin-btn', '#screen-ach') >= 0 && !(await visible('#sheet-skin')),
+     'her trophy count opens Trophies');
+  ok(await clickFor('#screen-ach [data-action="back-title"]', '#screen-shop') >= 0, 'and Back from there returns to the Market');
   await clickFor('#btn-back', '#screen-title');
   /* the same player with every trophy earned and paid */
   await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));" +

@@ -781,7 +781,8 @@
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
              currentScreen === 'ach' || currentScreen === 'runs') &&
-            (shopBack === 'over' || shopBack === 'pause')) {
+            (shopBack === 'over' || shopBack === 'pause' ||
+             (shopBack === 'shop' && currentScreen === 'ach'))) {   // Trophies opened from Aurora's window
           var back = shopBack; shopBack = null; show(back); break;
         }
         /* A paused run is never thrown away by walking around the menus.
@@ -990,7 +991,7 @@
     $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
     buildAlbum(sk.id);
     var b = $('sheet-skin-btn'), need = $('sheet-skin-need'), tag = $('sheet-skin-tag');
-    b.textContent = ''; b.disabled = false; b.className = 'btn';
+    b.textContent = ''; b.disabled = false; b.className = 'btn'; b.removeAttribute('data-go');
     need.classList.add('hidden');
     /* The one being ridden gets a plain tag, not a button: a "Chosen" that
        looked pressable and did nothing was a dead end. */
@@ -1003,8 +1004,9 @@
     } else if (sk.currency === 'trophy') {
       if (trophySkinOpen(save)) { b.textContent = t('shop.trophytake'); b.className += ' btn-gold'; }
       else {
-        b.textContent = t('shop.trophyneed', { a: achDone(), b: ACHIEVEMENTS.length });
-        b.className += ' btn-ghost'; b.disabled = true;
+        /* not yet hers: the button leads to the trophies still to win */
+        b.textContent = t('shop.trophyneed', { a: achDone(), b: ACHIEVEMENTS.length }) + '  ›';
+        b.className += ' btn-blue'; b.setAttribute('data-go', 'trophies');
       }
     } else {
       var canAfford = balance(sk.currency) >= sk.price;
@@ -1072,6 +1074,9 @@
   $('sheet-skin-btn').addEventListener('click', function () {
     var sk = SKIN_BY_ID[sheetSkin];
     if (!sk || this.disabled) return;
+    if (this.getAttribute('data-go') === 'trophies') {   // Aurora, still out of reach
+      closeSheet(); act('trophies'); return;
+    }
     if (!owns(sk.id) && sk.currency === 'trophy') {
       if (!trophySkinOpen(save)) return;
       save.owned.push(sk.id);
