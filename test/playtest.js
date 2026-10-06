@@ -729,6 +729,19 @@ async function walk(cdp, sid, P) {
   ok(await clickFor('#sheet-skin-btn', '#screen-ach') >= 0 && !(await visible('#sheet-skin')),
      'her trophy count opens Trophies');
   ok(await clickFor('#screen-ach [data-action="back-title"]', '#screen-shop') >= 0, 'and Back from there returns to the Market');
+  /* buying a creature with a comic opens its story straight away */
+  await clickFor('#shop-grid [data-pick="puffin"]', '#sheet-skin');
+  await click('#sheet-skin-btn');
+  ok(await waitFor('#screen-comic', 4000), 'buying the Puffin opens his comic');
+  await click('#comic-next'); await sleep(250); await click('#comic-next'); await sleep(300);
+  await shot('05e-comic-puffin');
+  ok(await clickFor('#comic-skip', '#screen-shop') >= 0, 'and when it is done the Market is back');
+  /* and the seal, already owned, reads hers from her window */
+  await clickFor('#shop-grid [data-pick="seal"]', '#sheet-skin');
+  ok(await clickFor('#sheet-skin-comic', '#screen-comic') >= 0, 'the Seal\'s window opens her comic');
+  for (var sp = 0; sp < 4; sp++) { await click('#comic-next'); await sleep(250); }
+  await shot('05f-comic-seal');
+  await clickFor('#comic-skip', '#screen-shop');
   await clickFor('#btn-back', '#screen-title');
   /* the same player with every trophy earned and paid */
   await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));" +

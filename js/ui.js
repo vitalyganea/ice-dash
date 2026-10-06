@@ -1172,6 +1172,7 @@
     if (this.getAttribute('data-go') === 'trophies') {   // Aurora, still out of reach
       closeSheet(); act('trophies'); return;
     }
+    var bought = !owns(sk.id);
     if (!owns(sk.id) && sk.currency === 'trophy') {
       if (!trophySkinOpen(save)) return;
       save.owned.push(sk.id);
@@ -1195,6 +1196,9 @@
     buildShop();
     var tile = document.querySelector('#shop-grid [data-pick="' + sk.id + '"]');
     if (tile) tile.classList.add('just-chosen');
+    /* bought, and it has a comic: its story opens straight away */
+    if (bought && comicFor(sk.id) && !save.comicSeen[sk.id])
+      openComic(sk.id, function () { show('shop'); });
   });
   /* A tap on the dimmed ground around a window closes it. */
   Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
