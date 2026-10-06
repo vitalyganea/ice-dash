@@ -2135,45 +2135,161 @@ var Game = (function () {
      fairness of it: you can see the next one coming from far enough back
      to lengthen your line and arrive after it has dropped. */
   function drawGeyser(x, y, o, B) {
-    var ph = geyserPhase(o), up = geyserUp(o), r = o.r, k;
+    var ph = geyserPhase(o), up = geyserUp(o), r = o.r, k, upF = GEYSER_UP / GEYSER_PERIOD;
+    var t = up ? ph / upF : 0, h = up ? Math.sin(Math.PI * t) : 0;
+    var w8 = up ? 1 : (ph - upF) / (1 - upF);       // build-up, 0 just after, 1 just before
+    /* its own fixed shape: every vent is lumpy in its own way */
+    var seed = o.d * 0.0137 + (o.x || 0) * 0.031;
+    function rnd(i) { var v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453; return v - Math.floor(v); }
+    function lobe(rx, ry, n, wob, off) {
+      /* rounded through the midpoints, so it reads as crust, not a polygon */
+      var P = [];
+      for (var i = 0; i < n; i++) {
+        var a = i / n * 6.2832, f = 1 - wob + wob * 2 * rnd(i + off);
+        P.push([Math.cos(a) * rx * f, Math.sin(a) * ry * f]);
+      }
+      ctx.beginPath();
+      ctx.moveTo((P[n - 1][0] + P[0][0]) / 2, (P[n - 1][1] + P[0][1]) / 2);
+      for (i = 0; i < n; i++) {
+        var q = P[(i + 1) % n];
+        ctx.quadraticCurveTo(P[i][0], P[i][1], (P[i][0] + q[0]) / 2, (P[i][1] + q[1]) / 2);
+      }
+      ctx.closePath();
+    }
     ctx.save();
     ctx.translate(x, y);
 
-    /* the hole, always there */
-    var hg = ctx.createRadialGradient(0, 0, 2, 0, 0, r * 0.66);
-    hg.addColorStop(0, 'rgba(12,38,62,.92)');
-    hg.addColorStop(0.7, 'rgba(26,74,112,.72)');
-    hg.addColorStop(1, 'rgba(60,130,176,.2)');
+    /* the ice round it, darkened and glassy where the spray falls back
+       and melts it */
+    var mg = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 1.2);
+    mg.addColorStop(0, 'rgba(60,128,178,.32)'); mg.addColorStop(1, 'rgba(60,128,178,0)');
+    ctx.fillStyle = mg;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.2, r * 1.0, 0, 0, 6.2832); ctx.fill();
+
+    /* the sinter mound: a low cone of mineral crust laid down by the hot
+       water, in stepped terraces, pale and crusty, rimed with frost */
+    var tone = [['#f1ece2', '#d8cdb6'], ['#e8dfcc', '#cbbb98'], ['#ddd0b2', '#bba57c']];
+    for (k = 0; k < 3; k++) {
+      var sc = 1 - k * 0.17;
+      var tg = ctx.createRadialGradient(-r * 0.2 * sc, -r * 0.2 * sc, 2, 0, 0, r * 0.86 * sc);
+      tg.addColorStop(0, tone[k][0]); tg.addColorStop(1, tone[k][1]);
+      ctx.fillStyle = tg;
+      lobe(r * 0.86 * sc, r * 0.7 * sc, 15, 0.13, k * 20);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(130,98,60,.38)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 0.8;       // the lit lip of each step
+      ctx.save(); ctx.translate(-0.8, -0.8); ctx.stroke(); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.75)';          // frost crystals on the crust
+    for (k = 0; k < 12; k++) {
+      var fa = rnd(k + 60) * 6.2832, fr = r * (0.48 + rnd(k + 80) * 0.34);
+      ctx.beginPath(); ctx.arc(Math.cos(fa) * fr, Math.sin(fa) * fr * 0.82, 0.8 + rnd(k + 90) * 1.2, 0, 6.2832); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(176,112,52,.28)';           // rusty mineral stains run down from the vent
+    for (k = 0; k < 4; k++) {
+      var sa = rnd(k + 40) * 6.2832;
+      ctx.save(); ctx.rotate(sa);
+      ctx.beginPath(); ctx.ellipse(r * 0.42, 0, r * 0.16, r * 0.05, 0, 0, 6.2832); ctx.fill();
+      ctx.restore();
+    }
+
+    /* the vent: a throat going down into the dark */
+    var vr = r * 0.4, vy = r * 0.33;
+    var hg = ctx.createRadialGradient(0, vy * 0.2, 1, 0, 0, vr);
+    hg.addColorStop(0, '#061a2c'); hg.addColorStop(0.65, '#123f63'); hg.addColorStop(1, '#2f6f98');
     ctx.fillStyle = hg;
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.66, r * 0.5, 0, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.66, r * 0.5, 0, 0, 6.2832); ctx.stroke();
+    lobe(vr, vy, 11, 0.08, 120); ctx.fill();
+    ctx.strokeStyle = 'rgba(110,80,46,.6)'; ctx.lineWidth = 1.6; ctx.stroke();
+
+    /* the water in it, rising as its turn comes round, rippling faster,
+       then boiling: the warning you can read from far up the hill */
+    var lv = 0.35 + 0.65 * w8;
+    var wg = ctx.createRadialGradient(0, 0, 1, 0, 0, vr * lv);
+    wg.addColorStop(0, 'rgba(120,200,240,' + (0.35 + 0.5 * w8).toFixed(2) + ')');
+    wg.addColorStop(1, 'rgba(40,120,170,' + (0.2 + 0.4 * w8).toFixed(2) + ')');
+    ctx.fillStyle = wg;
+    ctx.beginPath(); ctx.ellipse(0, 0, vr * lv * 0.92, vy * lv * 0.92, 0, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(220,245,255,.6)'; ctx.lineWidth = 1;
+    for (k = 0; k < 2; k++) {
+      var rp = ((W.t * (0.012 + 0.03 * w8) + k * 0.5) % 1);
+      ctx.globalAlpha = (1 - rp) * (0.3 + 0.6 * w8);
+      ctx.beginPath(); ctx.ellipse(0, 0, vr * lv * rp * 0.9, vy * lv * rp * 0.9, 0, 0, 6.2832); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    if (!up && w8 > 0.35) {                           // boiling: bubbles that swell and burst
+      var nb = Math.round(3 + 9 * (w8 - 0.35));
+      for (k = 0; k < nb; k++) {
+        var bp = (W.t * (0.04 + 0.05 * w8) + rnd(k + 150)) % 1;
+        var ba = rnd(k + 170) * 6.2832, bd = rnd(k + 190) * 0.7;
+        var bx = Math.cos(ba) * vr * lv * bd, by = Math.sin(ba) * vy * lv * bd;
+        ctx.strokeStyle = 'rgba(235,250,255,' + (0.9 * (1 - bp)).toFixed(2) + ')'; ctx.lineWidth = 0.9;
+        ctx.beginPath(); ctx.arc(bx, by, 0.8 + bp * (2 + 2.5 * w8), 0, 6.2832); ctx.stroke();
+      }
+    }
+
+    /* steam, always: thin when it sleeps, thick as it wakes, drifting off
+       up the hill and fading */
+    var ns = up ? 7 : 2 + Math.round(4 * w8);
+    for (k = 0; k < ns; k++) {
+      var sp = (W.t * 0.006 + rnd(k + 210)) % 1;
+      var sx = (rnd(k + 230) - 0.5) * r * 0.5 + Math.sin(sp * 4 + k) * r * 0.15 - sp * r * 0.35;
+      var sy = -sp * r * (1.1 + 0.8 * h);
+      var srr = r * (0.18 + sp * 0.4) * (up ? 1.4 : 0.7 + 0.5 * w8);
+      var sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, srr);
+      var sal = (1 - sp) * (up ? 0.45 : 0.12 + 0.3 * w8);
+      sg.addColorStop(0, 'rgba(255,255,255,' + sal.toFixed(2) + ')'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(sx, sy, srr, 0, 6.2832); ctx.fill();
+    }
 
     if (up) {
-      /* up: a column of spray, brightest at its foot */
-      var t = ph / (GEYSER_UP / GEYSER_PERIOD);
-      var h = Math.sin(Math.PI * t);
-      for (k = 0; k < 14; k++) {
-        var sa = k * 2.399 + W.t * 0.08;
-        var sr = r * (0.2 + 0.95 * h) * (0.3 + ((k * 7) % 10) / 10);
-        ctx.globalAlpha = (0.30 + 0.5 * h) * (1 - ((k * 3) % 7) / 10);
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr * 0.8,
-                4 + h * 9 + (k % 3) * 2, 0, 6.2832);
-        ctx.fill();
+      /* erupting. The column stands up out of the vent — seen from above
+         it leans up the screen as the gate arches do — with its shadow
+         thrown across the ice, foam boiling round its foot and water
+         flung out in drops that fall back all round. */
+      var H = r * (0.5 + 1.5 * h), bw = r * 0.24;
+      ctx.fillStyle = 'rgba(30,70,110,' + (0.18 * h).toFixed(2) + ')';     // its shadow
+      ctx.beginPath(); ctx.ellipse(r * 0.55 * h, r * 0.3 * h, bw * 1.2 + H * 0.35, bw * 0.9, 0.45, 0, 6.2832); ctx.fill();
+
+      for (k = 0; k < 26; k++) {                      // drops flung out and falling back
+        var dp = (W.t * 0.035 + rnd(k + 300)) % 1;
+        var da = rnd(k + 320) * 6.2832, dr = r * (0.25 + dp * (0.6 + 0.6 * rnd(k + 340))) * (0.5 + 0.5 * h);
+        var lift = Math.sin(Math.PI * dp) * r * 0.5 * h;
+        ctx.fillStyle = 'rgba(235,250,255,' + (0.95 * (1 - dp * 0.7)).toFixed(2) + ')';
+        ctx.beginPath(); ctx.arc(Math.cos(da) * dr, Math.sin(da) * dr * 0.8 - lift, 1.2 + rnd(k + 360) * 2, 0, 6.2832); ctx.fill();
       }
-      ctx.globalAlpha = 1;
-    } else {
-      /* down: it swells as its turn comes back round, so the warning is
-         there before the spray is */
-      var w8 = (ph - GEYSER_UP / GEYSER_PERIOD) / (1 - GEYSER_UP / GEYSER_PERIOD);
-      ctx.globalAlpha = 0.18 + 0.5 * w8 * w8;
-      ctx.fillStyle = 'rgba(190,232,255,.9)';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r * (0.22 + 0.4 * w8), r * (0.17 + 0.3 * w8), 0, 0, 6.2832);
+      ctx.fillStyle = 'rgba(255,255,255,.85)';        // the foam round its foot
+      lobe(vr * (1.05 + 0.35 * h), vy * (1.05 + 0.35 * h), 13, 0.18, 400 + Math.floor(W.t / 6) % 5);
       ctx.fill();
-      ctx.globalAlpha = 1;
+
+      var cg = ctx.createLinearGradient(0, 0, 0, -H);  // the column
+      cg.addColorStop(0, 'rgba(225,246,255,.95)'); cg.addColorStop(0.55, 'rgba(255,255,255,.9)');
+      cg.addColorStop(1, 'rgba(255,255,255,.35)');
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.moveTo(-bw, 0);
+      for (k = 0; k <= 8; k++) {                      // a ragged, churning edge
+        var u = k / 8;
+        ctx.lineTo(-bw * (1 + u * 0.9) - Math.sin(W.t * 0.3 + k * 1.7) * bw * 0.25, -H * u);
+      }
+      for (k = 8; k >= 0; k--) {
+        var u2 = k / 8;
+        ctx.lineTo(bw * (1 + u2 * 0.9) + Math.sin(W.t * 0.27 + k * 2.1) * bw * 0.25, -H * u2);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(170,215,240,.55)'; ctx.lineWidth = 1;          // streaks of water up it
+      for (k = -1; k <= 1; k++) {
+        ctx.beginPath(); ctx.moveTo(k * bw * 0.5, -2);
+        ctx.quadraticCurveTo(k * bw * 0.9 + Math.sin(W.t * 0.2 + k) * 2, -H * 0.5, k * bw * 1.3, -H * 0.9); ctx.stroke();
+      }
+      for (k = 0; k < 6; k++) {                       // and the cloud it bursts into at the top
+        var ca = k * 1.05 + W.t * 0.02;
+        var cr = bw * (1.1 + 0.5 * rnd(k + 500)) * (0.6 + 0.6 * h);
+        var cx = Math.cos(ca) * bw * 1.3, cy = -H + Math.sin(ca) * bw * 0.6;
+        var cgr = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
+        cgr.addColorStop(0, 'rgba(255,255,255,.8)'); cgr.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = cgr;
+        ctx.beginPath(); ctx.arc(cx, cy, cr, 0, 6.2832); ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -3610,12 +3726,25 @@ var Game = (function () {
         c.restore();
       }
     } else if (S.accessory === 'cap') {
-      c.fillStyle = S.accent;
-      c.beginPath(); c.ellipse(0, -26, 10.5, 9.5, 0, 0, 6.2832); c.fill();
-      c.fillStyle = 'rgba(255,255,255,.35)';
-      c.beginPath(); c.ellipse(-3, -29, 4.5, 3.5, -0.4, 0, 6.2832); c.fill();
+      /* worn back on the crown, so the eyes still show under it (it used
+         to cover the whole head, and in a comic's close-up he had no face) */
       c.fillStyle = 'rgba(0,0,0,.22)';              // brim, towards the tail
-      c.beginPath(); c.ellipse(0, -19, 11.5, 4, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(0, -16.5, 10.5, 3.6, 0, 0, 6.2832); c.fill();
+      c.fillStyle = S.accent;
+      c.beginPath(); c.ellipse(0, -20.5, 8.8, 6.2, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.35)';
+      c.beginPath(); c.ellipse(-2.6, -22.5, 3.6, 2.4, -0.4, 0, 6.2832); c.fill();
+      if (DETAIL) {                                 // panel seams and a button
+        c.strokeStyle = 'rgba(110,70,0,.4)'; c.lineWidth = 0.4;
+        [-1, 0, 1].forEach(function (k) {
+          c.beginPath(); c.moveTo(0, -20.5); c.quadraticCurveTo(k * 5, -22, k * 8.6 * (k ? 0.9 : 0), k ? -19.4 : -26.6); c.stroke();
+        });
+        c.beginPath(); c.moveTo(0, -20.5); c.lineTo(0, -14.4); c.stroke();
+        c.fillStyle = S.accent; c.strokeStyle = 'rgba(110,70,0,.5)';
+        c.beginPath(); c.arc(0, -20.5, 1.1, 0, 6.2832); c.fill(); c.stroke();
+        c.strokeStyle = 'rgba(80,50,0,.35)'; c.lineWidth = 0.5;
+        c.beginPath(); c.ellipse(0, -20.5, 8.8, 6.2, 0, 0, 6.2832); c.stroke();
+      }
     } else if (S.accessory === 'tusk') {
       /* The one thing that makes a narwhal a narwhal. Straight out in
          front, with the spiral it is known for. */
@@ -3688,9 +3817,11 @@ var Game = (function () {
         cg.addColorStop(0, '#fff1b0'); cg.addColorStop(1, S.accent);
         c.fillStyle = cg;
         c.beginPath();
-        c.moveTo(k * 7, -30);
-        c.quadraticCurveTo(k * 17, -26, k * 16, -13);
-        c.quadraticCurveTo(k * 11, -16, k * 6, -20);
+        /* behind the eye, not over it: drawn from the eye forward, the
+           blaze hid both eyes and in a close-up he had no face */
+        c.moveTo(k * 10.6, -24.6);
+        c.quadraticCurveTo(k * 17.4, -23, k * 16, -12.6);
+        c.quadraticCurveTo(k * 11.4, -15.6, k * 7.4, -19.4);
         c.closePath(); c.fill();
       });
     } else if (S.accessory === 'aurora') {
@@ -4284,9 +4415,39 @@ var Game = (function () {
       c.lineTo(k * 2.5, -48);
       c.quadraticCurveTo(k * 4, -42, k * 1.5, -34);
       c.closePath(); c.fill();
+      if (DETAIL) {
+        /* close up, ivory: shaded down its inner side, worn darker at the
+           root, with the faint rings a tusk grows in */
+        c.save(); c.clip();
+        var tg = c.createLinearGradient(k * 2, 0, k * 8, 0);
+        tg.addColorStop(0, 'rgba(160,140,100,.35)'); tg.addColorStop(0.5, 'rgba(255,255,255,0)');
+        tg.addColorStop(1, 'rgba(170,150,110,.3)');
+        c.fillStyle = tg; c.fillRect(-12, -52, 24, 20);
+        c.fillStyle = 'rgba(150,120,70,.35)'; c.fillRect(-12, -38, 24, 4);
+        c.strokeStyle = 'rgba(150,130,90,.16)'; c.lineWidth = 0.3;
+        for (var rg = -45; rg < -38; rg += 3.5) {
+          c.beginPath(); c.moveTo(k * 1, rg); c.lineTo(k * 9, rg - 1.2); c.stroke();
+        }
+        c.restore();
+        c.strokeStyle = 'rgba(120,100,70,.5)'; c.lineWidth = 0.5; c.stroke();
+      }
     });
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -35, 3.6, 2.8, 0, 0, 6.2832); c.fill();
+    if (DETAIL) {
+      /* close up: the bristly moustache pads, a dot for every whisker, and
+         the nose's nostrils */
+      c.fillStyle = 'rgba(70,40,24,.5)';
+      [-1, 1].forEach(function (k) {
+        for (var wr = 0; wr < 3; wr++) for (var wc = 0; wc < 4; wc++) {
+          c.beginPath(); c.arc(k * (4.4 + wc * 1.7), -31.6 + wr * 1.7 + wc * 0.2, 0.32, 0, 6.2832); c.fill();
+        }
+      });
+      c.fillStyle = 'rgba(0,0,0,.55)';
+      [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * 1.4, -35.4, 0.7, 0.45, k * 0.6, 0, 6.2832); c.fill(); });
+      c.fillStyle = 'rgba(255,255,255,.28)';
+      c.beginPath(); c.ellipse(-0.8, -36.6, 1.4, 0.5, 0, 0, 6.2832); c.fill();
+    }
   }
 
   function bodySeal(c, S, ang, wag, o) {
@@ -4497,6 +4658,12 @@ var Game = (function () {
     c.beginPath(); c.ellipse(0, -45, 5, 5.6, 0, 0, 6.2832); c.fill();
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, -49, 3.2, 2.6, 0, 0, 6.2832); c.fill();
+    if (DETAIL) {                                    // close up: nostrils, a wet light
+      c.fillStyle = 'rgba(0,0,0,.55)';
+      [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * 1.4, -48.4, 0.7, 0.45, k * 0.5, 0, 6.2832); c.fill(); });
+      c.fillStyle = 'rgba(255,255,255,.3)';
+      c.beginPath(); c.ellipse(-0.6, -50, 1.2, 0.5, 0, 0, 6.2832); c.fill();
+    }
     LEGS.forEach(function (L) {
       var t = limbTip(L[0], L[1], L[2], L[3]);
       c.save(); c.translate(t[0], t[1]); c.rotate(L[2]);
@@ -4779,8 +4946,36 @@ var Game = (function () {
     });
     c.fillStyle = S.mark;                             // cheeks
     c.beginPath(); c.ellipse(0, -24, 8.5, 7, 0, 0, 6.2832); c.fill();
-    c.fillStyle = S.nose;
-    c.beginPath(); c.ellipse(0, -31, 2.6, 2.1, 0, 0, 6.2832); c.fill();
+    if (DETAIL) {
+      /* close up, a real nose: a soft triangle with a light on top and
+         two nostrils, and the mouth under it — the cat's and lemming's
+         curling either side, the hare's split straight down */
+      c.fillStyle = S.nose;
+      c.beginPath();
+      c.moveTo(-2.8, -32.2); c.quadraticCurveTo(0, -33.4, 2.8, -32.2);
+      c.quadraticCurveTo(1.2, -29.6, 0, -29.2); c.quadraticCurveTo(-1.2, -29.6, -2.8, -32.2);
+      c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.35)';
+      c.beginPath(); c.ellipse(-0.6, -32.3, 1, 0.35, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.45)';
+      [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * 1.1, -31, 0.45, 0.3, k * 0.6, 0, 6.2832); c.fill(); });
+      c.strokeStyle = 'rgba(40,28,20,.6)'; c.lineWidth = 0.5;
+      c.beginPath(); c.moveTo(0, -29.2); c.lineTo(0, -27.6);
+      if (S.cat) {
+        c.moveTo(0, -27.6); c.quadraticCurveTo(-1.2, -26.4, -2.4, -27.4);
+        c.moveTo(0, -27.6); c.quadraticCurveTo(1.2, -26.4, 2.4, -27.4);
+      } else {
+        c.moveTo(0, -27.6); c.lineTo(-1.6, -26.4); c.moveTo(0, -27.6); c.lineTo(1.6, -26.4);
+      }
+      c.stroke();
+      c.fillStyle = 'rgba(60,40,30,.35)';                // whisker dots on the cheeks
+      [-1, 1].forEach(function (k) {
+        for (var wd = 0; wd < 3; wd++) { c.beginPath(); c.arc(k * (2.6 + wd * 1.1), -28.6 + (wd % 2) * 0.8, 0.28, 0, 6.2832); c.fill(); }
+      });
+    } else {
+      c.fillStyle = S.nose;
+      c.beginPath(); c.ellipse(0, -31, 2.6, 2.1, 0, 0, 6.2832); c.fill();
+    }
     if (!S.cat) {
       /* A hare's eyes are set high on the sides of the head, big and dark
          with a pale ring; from above they show at the edges. */
@@ -4920,6 +5115,23 @@ var Game = (function () {
     c.moveTo(0, -15.6); c.quadraticCurveTo(-1.8, -18, -1.6, -19.6); c.lineTo(1.6, -19.6);
     c.quadraticCurveTo(1.8, -18, 0, -15.6);
     c.closePath(); c.fill();
+    if (DETAIL) {
+      /* close up: the hook of the beak catching the light, the bristle
+         feathers fanning over its root, and fine feathering in the disc */
+      c.fillStyle = 'rgba(255,255,255,.35)';
+      c.beginPath(); c.moveTo(-0.3, -16.4); c.quadraticCurveTo(-1.2, -18, -1, -19.2); c.lineTo(-0.3, -19.2); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(150,165,185,.6)'; c.lineWidth = 0.35;
+      for (var bf = -4; bf <= 4; bf++) {
+        c.beginPath(); c.moveTo(bf * 0.5, -20.4); c.lineTo(bf * 0.95, -18.4 + Math.abs(bf) * 0.2); c.stroke();
+      }
+      c.strokeStyle = 'rgba(150,168,188,.28)'; c.lineWidth = 0.35;
+      for (var fd = 0; fd < 28; fd++) {
+        var fa = fd / 28 * 6.2832;
+        c.beginPath();
+        c.moveTo(Math.cos(fa) * 7.6, -20.5 + Math.sin(fa) * 6.2);
+        c.lineTo(Math.cos(fa) * 10.2, -20.5 + Math.sin(fa) * 8.3); c.stroke();
+      }
+    }
   }
 
   var BODIES = { penguin: bodyPenguin, walrus: bodyWalrus, seal: bodySeal,
@@ -6232,6 +6444,12 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
+    /* draws one geyser at a chosen point of its cycle, for the eye checks */
+    _drawGeyser: function (c, x, y, r, ph, t) {
+      var keepCtx = ctx, keepW = W;
+      ctx = c; W = { t: t || 0, dist: ph * GEYSER_PERIOD / 0.18 };
+      try { drawGeyser(x, y, { d: 0, x: x, r: r }, null); } finally { ctx = keepCtx; W = keepW; }
+    },
 
     /* A still portrait of one skin, for the shop card. Borrows the very
        painter the hill uses, so a card can never drift out of step with
