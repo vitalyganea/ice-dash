@@ -382,13 +382,19 @@ async function walk(cdp, sid, P) {
      'with its name, what it does, and Choose for one already owned (' + JSON.stringify(sk) + ')');
   await shot('05b-market-sheet');
   await click('#sheet-skin-btn');
-  ok((await readSave()).equipped === 'mitten' && /✓/.test(await ev("document.getElementById('sheet-skin-btn').textContent")),
-     'Choose puts it on, and the window now says it is chosen');
+  await sleep(150);
+  ok((await readSave()).equipped === 'mitten' && !(await visible('#sheet-skin')) &&
+     await ev("!!document.querySelector('#shop-grid [data-pick=\"mitten\"] .tag-worn')"),
+     'Choose puts it on, closes the window, and the tick moves to its tile');
+  /* the one being ridden: a plain tag in its window, no button to press */
+  await clickFor('#shop-grid [data-pick="mitten"]', '#sheet-skin');
+  ok(await visible('#sheet-skin-tag') && !(await visible('#sheet-skin-btn')),
+     'its window shows a Chosen tag, not a button that does nothing');
   ok(await clickFor('.sheet-x', null) >= 0 && !(await visible('#sheet-skin')), 'the cross closes the window');
   await clickFor('#shop-grid [data-pick="seal"]', '#sheet-skin');
   await click('#sheet-skin-btn');
-  ok((await readSave()).equipped === 'seal', 'and choosing back works the same way');
-  await clickFor('.sheet-x', null);
+  await sleep(150);
+  ok((await readSave()).equipped === 'seal' && !(await visible('#sheet-skin')), 'and choosing back works the same way');
   var unowned = await ev("(function(){var e=document.querySelector('#shop-grid .tag-price.can');return e?e.parentNode.getAttribute('data-pick'):null;})()");
   ok(unowned, 'an affordable creature shows its price on the tile (' + unowned + ')');
   await clickFor('#shop-grid [data-pick="' + unowned + '"]', '#sheet-skin');

@@ -989,11 +989,15 @@
     $('sheet-skin-name').textContent = t('skin.' + sk.id + '.name', null, sk.name);
     $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
     buildAlbum(sk.id);
-    var b = $('sheet-skin-btn'), need = $('sheet-skin-need');
+    var b = $('sheet-skin-btn'), need = $('sheet-skin-need'), tag = $('sheet-skin-tag');
     b.textContent = ''; b.disabled = false; b.className = 'btn';
     need.classList.add('hidden');
+    /* The one being ridden gets a plain tag, not a button: a "Chosen" that
+       looked pressable and did nothing was a dead end. */
+    tag.classList.toggle('hidden', save.equipped !== sk.id);
+    b.classList.toggle('hidden', save.equipped === sk.id);
     if (save.equipped === sk.id) {
-      b.textContent = t('shop.wearing'); b.disabled = true; b.className += ' btn-ghost';
+      tag.textContent = t('shop.wearing');
     } else if (owns(sk.id)) {
       b.textContent = t('shop.wear'); b.className += ' btn-green';
     } else if (sk.currency === 'trophy') {
@@ -1014,7 +1018,7 @@
         need.classList.remove('hidden');
       }
     }
-    b.focus({ preventScroll: true });
+    if (!b.classList.contains('hidden')) b.focus({ preventScroll: true });
   }
   /* Closes whichever window is open; says whether one was. */
   /* The creature's three stories, under its perk in its window: an open
@@ -1085,8 +1089,12 @@
     save.equipped = sk.id;          // buying it puts it on straight away
     achCheck(save);                 // owning things is a goal in its own right
     store();
+    /* Chosen, the window has done its job: it closes, and the creature's
+       tile takes the tick with a little pop so the change is seen. */
+    closeSheet();
     buildShop();
-    openSheet(sk.id);               // the window stays, now saying it is chosen
+    var tile = document.querySelector('#shop-grid [data-pick="' + sk.id + '"]');
+    if (tile) tile.classList.add('just-chosen');
   });
   /* A tap on the dimmed ground around a window closes it. */
   Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
