@@ -257,7 +257,7 @@ var Game = (function () {
     /* The tutorial: lessons waiting for their row, the one that is holding
        the hill until he taps, and a short slow while a line is read. The
        hill also stands still until the very first tap. */
-    w.lessons = []; w.tutWait = null; w.tutRead = 0;
+    w.lessons = []; w.tutWait = null; w.tutK = 1; w.tutRead = 0;
     w.hold = !!(w.course && w.course.tut);
     /* Time Rush is the open hill against a clock. */
     if (pendingMode === 'rush' && !w.course) { w.mode = 'rush'; w.timeT = RUSH_START; }
@@ -989,6 +989,7 @@ var Game = (function () {
       if (W.state === 'crash' && W.course && W.course.tut && W.endT === 30) {
         W.lives++; revive(); W.revives--;
         lesson({ key: 'tut.oops' });
+        readFor('tut.oops');
         return;
       }
       if (W.endT === 46 && hooks.over)
@@ -1358,25 +1359,73 @@ var Game = (function () {
         /* Already going the right way, by luck or by the bank turning him:
            say so instead of asking for a tap that would turn him wrong. */
         lesson({ key: 'tut.going', want: L.want });
-        W.tutRead = 90;
+        readFor('tut.going');
       } else {
         lesson({ key: L.key, hint: L.hint });
-        W.tutRead = 150;
+        readFor(L.key);
       }
     }
     if (W.tutWait && W.dir === W.tutWait.want) {
       W.tutWait = null;
       lesson({ key: 'tut.nice', ok: true });
+      readFor('tut.nice');
     }
     if (W.tutRead > 0) W.tutRead--;
+    /* The hill eases to a stop while a tap is asked for and eases back off
+       after it — never a jump. Lines that only tell you something no
+       longer slow it at all: each one used to drop the hill to 60% for
+       two and a half seconds, and over a whole lesson the speed lurched up
+       and down twenty-odd times, which reads as a game that stutters. */
+    /* tutK runs in a straight line (to a stop in half a second, back up in
+       0.4 s) and the pace follows it through an S-curve, so the change
+       starts and ends softly — an exponential ease made its biggest jump
+       on the very first frame, which is the lurch this is here to stop. */
+    /* While a tap is asked for the hill does not stop at once: it settles
+       into slow motion (45%) and only comes to rest if nobody has tapped by
+       the time the opening is close. A player who answers in a second
+       never sees it stop at all — stopping dead right after the start was
+       a second interruption on top of the first. */
+    /* and while a line is up to be read, slow motion too (55%), for as
+       long as that line takes to read in the player's language */
+    var want = W.tutRead > 0 ? 0.55 : 1;
+    if (W.tutWait) {
+      var left = W.tutWait.d - W.dist;
+      want = left > 110 ? 0.45 : 0.45 * clamp((left - 20) / 90, 0, 1);
+    }
+    if (W.tutK > want) W.tutK = Math.max(want, W.tutK - 1 / 30);
+    else W.tutK = Math.min(want, W.tutK + 1 / 24);
+  }
+  /* How long a line holds the hill in slow motion: time to read it, from
+     its length in the language being shown — two seconds at the least,
+     five at the most. */
+  function readFor(key) {
+    var txt = String(tr(key, '')).replace(/<[^>]+>/g, '');
+    W.tutRead = Math.round(clamp(80 + txt.length * 2.4, 120, 300));
   }
   /* Slower is always safe — every row is proved at full pace — so the
-     tutorial may slow the hill as much as it likes: almost to a stop while
-     it waits for a tap, a little while a line is being read. */
+     tutorial may bring the hill to a stop while it waits for a tap. */
   function tutPace() {
     if (!W.course || !W.course.tut) return 1;
-    if (W.tutWait) return 0.1;
-    return W.tutRead > 0 ? 0.6 : 1;
+    var k = W.tutK === undefined ? 1 : W.tutK;
+    return k * k * (3 - 2 * k);
+  }
+  /* While the hill is held for a tap: the edges dim and a ring pulses
+     round him, so the stop reads as the game handing him the move, not as
+     the game stalling. */
+  function drawTutWait() {
+    if (!W.course || !W.course.tut || !W.tutWait) return;
+    var k = clamp((1 - W.tutK) / 0.55, 0, 1);
+    ctx.save();
+    var g = ctx.createRadialGradient(VIEW_W / 2, PLAYER_Y - 60, VIEW_H * 0.2, VIEW_W / 2, PLAYER_Y - 60, VIEW_H * 0.9);
+    g.addColorStop(0, 'rgba(6,20,52,0)');
+    g.addColorStop(1, 'rgba(6,20,52,' + (0.42 * k).toFixed(3) + ')');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    var ph = (W.t % 50) / 50;
+    ctx.strokeStyle = 'rgba(255,255,255,' + ((1 - ph) * 0.85 * k).toFixed(3) + ')';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(scrX(W.px), PLAYER_Y, 34 + ph * 46, 0, 6.2832); ctx.stroke();
+    ctx.restore();
   }
 
   function drawCloseCall() {
@@ -1646,6 +1695,7 @@ var Game = (function () {
     drawGateFronts();     /* after him: he goes THROUGH the hoop */
     drawCloseCall();
     drawPerfect();
+    drawTutWait();
     drawChill();
     drawPaceVignette();
     drawBridges();        /* after him: he is UNDER the bridge */
@@ -1995,7 +2045,7 @@ var Game = (function () {
         gl.addColorStop(1, 'rgba(206,232,250,0)');
         ctx.fillStyle = gl;
         ctx.beginPath(); ctx.arc(pxx, py, 92, 0, 6.2832); ctx.fill();
-        creatureShade(pxx, py, Math.atan2(W.vx, W.speed) * 0.85);
+        creatureShade(pxx, py, Math.atan2(W.vx, Math.max(W.speed, 3)) * 0.85);
       }
       ctx.restore();
 
@@ -4953,7 +5003,11 @@ var Game = (function () {
 
   function drawPenguin() {
     var S = skin || SKINS[0];
-    var ang = Math.atan2(W.vx, W.speed) * 0.85;       // heading, forward is up
+    /* heading, forward is up. Measured against a floor on the speed: with
+       the hill slowed nearly to a stop the slightest sideways drift turned
+       him almost side-on, and each tap swung him across — the shiver a new
+       player saw in the tutorial's first seconds. */
+    var ang = Math.atan2(W.vx, Math.max(W.speed, 3)) * 0.85;
     var crashed = W.state !== 'run';
     /* The eyes: a blink every few seconds (a little irregular, never in
        the same rhythm twice running), a glance at the nearest fish ahead,

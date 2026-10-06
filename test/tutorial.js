@@ -69,12 +69,13 @@ heard = [];
 H.setSeed(6);
 G.start(0, { lesson: function (m) { heard.push(m); } }, 'snowcap', 'tutorial', 0);
 G.tap();                                   // let it go
-var waitedSlow = 0, waitFrames = 0, answered = 0;
+var waitedSlow = 0, waitFrames = 0, answered = 0, stopped = 0;
 for (var f = 0; f < 4000 && answered < 2; f++) {
   W = G.debug();
   if (W.tutWait) {
     waitFrames++;
-    if (W.speed < 0.6) waitedSlow++;
+    if (W.speed < 2) waitedSlow++;                // slow motion, under two-thirds of the pace
+    if (W.speed < 0.02) stopped++;
     /* a slow new player: half a second to read it, then the tap */
     if (waitFrames === 30) { G.tap(); answered++; waitFrames = 0; }
   }
@@ -83,7 +84,7 @@ for (var f = 0; f < 4000 && answered < 2; f++) {
 var asks = heard.filter(function (m) { return m.wait && m.key !== 'tut.start'; });
 ok(asks.length >= 1 && (asks[0].key === 'tut.left' || asks[0].key === 'tut.right'),
    'the first opening asks for a tap in a direction (' + asks.map(function (m) { return m.key; }).join(', ') + ')');
-ok(waitedSlow >= 29, 'and while it waits the hill all but stops (' + waitedSlow + ' slow frames)');
+ok(waitedSlow >= 10, 'and while it waits the hill settles into slow motion (' + waitedSlow + ' slow frames)');
 ok(heard.some(function (m) { return m.key === 'tut.nice'; }), 'a tap the right way is answered ("tut.nice")');
 G.stop();
 
@@ -119,6 +120,53 @@ ok(order.every(function (p, j) { return j === 0 || p > order[j - 1]; }), 'and in
 ok(want.every(function (k) { return seen.filter(function (s) { return s === k; }).length === 1; }),
    'and each one only once');
 ok(r1.over && r1.over.finished && r1.over.course === 'tutorial', 'the careful rider crosses the finish');
+
+/* ---- F. it never lurches --------------------------------------- */
+console.log('\nF. the hill never lurches');
+(function () {
+  H.setSeed(11);
+  var over = null;
+  G.start(0, { over: function (r) { over = r; } }, 'snowcap', 'tutorial', 0);
+  G.tap();
+  var wf = 0, prev = null, worst = 0, slowOutsideWait = 0, frames = 0, asked = 0, readFrames = 0;
+  for (var f = 0; f < 40000 && !over; f++) {
+    var w = G.debug(); if (!w) break;
+    if (w.state === 'run') {
+      frames++;
+      if (prev !== null) worst = Math.max(worst, Math.abs(w.speed - prev));
+      prev = w.speed;
+      if (!w.tutWait && !w.tutRead && w.tutK >= 0.995 && w.speed < 2.5) slowOutsideWait++;
+      if (w.tutRead > 0) readFrames++;
+      /* no steering before the second lesson row, so both asked-for taps are ridden */
+      if (w.tutWait) { if (++wf === 40) { G.tap(); wf = 0; asked++; } }
+      else if (asked >= 2 || f > 1500) steer(w);
+    } else prev = null;
+    H.frames(1);
+  }
+  G.stop();
+  ok(asked >= 1 && worst < 0.35, 'through both stops, no frame changes the speed by more than a third of a unit (worst ' + worst.toFixed(2) + ', ' + asked + ' stops)');
+  ok(readFrames > 600, 'every line gives time to read it, in slow motion (' + readFrames + ' frames of ' + frames + ')');
+  ok(slowOutsideWait === 0, 'and with nothing to read or answer it runs at the hill\'s own pace (' + slowOutsideWait + ' slow frames)');
+})();
+
+/* ---- G. no stop for a player who answers ---------------------- */
+console.log('\nG. a player who answers within a second never sees it stop');
+(function () {
+  H.setSeed(6);
+  G.start(0, {}, 'snowcap', 'tutorial', 0);
+  G.tap();
+  var wf = 0, minSp = 99, answered = 0;
+  for (var f = 0; f < 3000 && answered < 2; f++) {
+    var w = G.debug();
+    if (w.state === 'run' && w.tutWait) {
+      minSp = Math.min(minSp, w.speed);
+      if (++wf === 50) { G.tap(); wf = 0; answered++; }        // most of a second to react
+    }
+    H.frames(1);
+  }
+  G.stop();
+  ok(answered === 2 && minSp > 0.8, 'both taps asked for, and the hill never drops below slow motion (lowest ' + minSp.toFixed(2) + ')');
+})();
 
 /* ---- E. nobody can fail out of it --------------------------- */
 console.log('\nE. a player who never steers still gets to the end');
