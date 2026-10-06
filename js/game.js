@@ -24,6 +24,7 @@ var Game = (function () {
   var SPEED0 = 3.0, SPEED_MAX = 6.4, SPEED_RAMP = 0.000155;
   var ZONE_SHOW = 110;         // frames the stretch's name stays up
   var CLOSE_GAP = 14;          // a pass this near the edge of a hit is a close call
+  var PERF_CHAIN = 180;        // frames: a PERFECT this soon after the last one chains
   /* Time Rush: the clock you start with, what a clock bubble gives back,
      and what a crash takes away instead of the run. */
   var RUSH_START = 20 * 60, CLOCK_GAIN = 3 * 60, CRASH_COST = 5 * 60;
@@ -239,7 +240,8 @@ var Game = (function () {
       biome: 0, biomeT: 0, shake: 0,
       state: 'run', endT: 0, best: 0, crashAt: null, tapFlash: 0, zoneT: 0,
       mode: 'free', timeT: 0, clocks: 0, penT: 0, avGap: 0, avPush: 0, avPushN: 0, zoom: 1, trail: [],
-      lastTapT: -999, tapPrev: -999, tapX: 0, perfects: 0, perfT: 0,
+      lastTapT: -999, tapPrev: -999, tapX: 0, tapD: -1e9, tapDir: 0, perfects: 0, perfT: 0, perfX: 0, perfD: 0,
+      perfChain: 0, perfChainBest: 0, lastPerfT: -1e9,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0
     };
@@ -941,7 +943,7 @@ var Game = (function () {
     if (W.hold) { W.hold = false; lesson({ key: null }); return; }
     W.dir = -W.dir;
     W.tapFlash = 8;
-    W.tapPrev = W.lastTapT; W.lastTapT = W.t; W.tapX = W.px;
+    W.tapPrev = W.lastTapT; W.lastTapT = W.t; W.tapX = W.px; W.tapD = W.dist; W.tapDir = W.dir;
     Sfx.turn();
     for (var i = 0; i < 4; i++)
       W.puffs.push({ x: W.px - W.dir * 8, d: W.dist - 6, life: 18, max: 18, s: frnd(5, 11) });
@@ -994,7 +996,7 @@ var Game = (function () {
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
-                     mode: W.mode, clocks: W.clocks, perfects: W.perfects, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
+                     mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
@@ -1218,8 +1220,28 @@ var Game = (function () {
           o.nearDone = true;
           if (o.near !== undefined && o.near >= 0 && o.near < CLOSE_GAP * (perk().closeWide || 1) &&
               W.state === 'run' && !airborne() && !rushing() && W.grace <= 0) {
-            W.closes++; W.score += Math.round(15 * (perk().closeBonus || 1)) * comboMult(); W.closeT = 55; W.closeX = o.x;
-            fx('close');
+            W.closes++; W.score += Math.round(15 * (perk().closeBonus || 1)) * comboMult();
+            /* A PERFECT is a close call he made himself: the tap that turned
+               him away from this very obstacle came in the last moment
+               before he reached it (within about half a second of it), and
+               he scraped past. A close call with no such tap is just CLOSE. */
+            var lead = o.d - W.tapD;
+            if (lead > 0 && lead <= W.speed * 33 && W.tapDir * (W.tapX - o.x) > 0) {
+              /* PERFECTs within three seconds of each other chain: x2, x3...
+                 each one worth that much more, the flourish climbing */
+              W.perfChain = (W.t - W.lastPerfT <= PERF_CHAIN) ? W.perfChain + 1 : 1;
+              W.perfChainBest = Math.max(W.perfChainBest, W.perfChain);
+              W.lastPerfT = W.t;
+              W.perfects++; W.perfT = 50;
+              W.perfX = o.x + (W.px > o.x ? 1 : -1) * hitR(o) * 0.8; W.perfD = o.d;
+              comboUp();
+              W.score += 40 * W.perfChain * comboMult();
+              W.tapD = -1e9;                       // one PERFECT per tap
+              Sfx.perfect(W.perfChain); fx('perfect');
+            } else {
+              W.closeT = 55; W.closeX = o.x;
+              fx('close');
+            }
           }
         }
       }
@@ -1291,7 +1313,6 @@ var Game = (function () {
     if (W.penT > 0) W.penT--;
     if (W.closeT > 0) W.closeT--;
     if (W.perfT > 0) W.perfT--;
-    perfectCheck();
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
@@ -1371,42 +1392,39 @@ var Game = (function () {
     ctx.fillText(word, tx, ty);
     ctx.restore();
   }
-  /* A perfect tap: the turn made at the last moment that still carries
-     him through. When he crosses a row, the tap that turned him towards
-     its opening came within 22 frames of it (about a third of a second),
-     it was a single deliberate tap and not a flutter, and he is through.
-     The reward is points, a step on the combo and the feel of a burst —
-     streaks, the camera leaning in, a flourish — but not real speed: the
-     spawner proves each row at the hill's own pace, and on the Glacier a
-     6% burst would cost a sixth of the sideways reach the proof relies on. */
-  function perfectCheck() {
-    if (W.state !== 'run' || W.hold || airborne()) return;
-    var dt = W.t - W.lastTapT;
-    if (dt < 3 || dt > 22 || W.lastTapT - W.tapPrev < 18) return;
-    for (var i = 0; i < W.rows.length; i++) {
-      var r = W.rows[i];
-      if (r.d > W.dist || r.d <= W.dist - W.speed) continue;   // crossed this frame
-      var gx = chuteAt(r.d) + r.gap;
-      if (Math.abs(W.px - gx) > r.gapW / 2) return;          // not through it
-      if ((gx - W.tapX) * W.dir <= 0) return;                // the tap was not towards it
-      W.perfects++; W.perfT = 50; W.lastTapT = -999;         // one reward per tap
-      comboUp();
-      W.score += 40 * comboMult();
-      Sfx.perfect(); fx('perfect');
-      return;
-    }
-  }
+  /* The PERFECT: a spark where he scraped past the obstacle, and the word
+     over it, so it is plain what was dodged and where. Not real speed: the
+     spawner proves each row at the hill's own pace (reachOver at speedAt),
+     and on the Glacier a 6% burst would cost about a sixth of the sideways
+     reach that proof relies on. */
   function drawPerfect() {
     if (!W.perfT) return;
     var a = Math.min(1, W.perfT / 16), rise = (50 - W.perfT) * 1.1, pop = 1 + Math.max(0, W.perfT - 40) * 0.04;
+    var sx = scrX(W.perfX), sy = scrY(W.perfD);
+    /* the spark on the obstacle's edge, flaring out and fading */
+    var sp = 1 - W.perfT / 50;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - sp * 1.4);
+    ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round';
+    for (var k = 0; k < 8; k++) {
+      var ang = k * 0.785 + 0.2, r0 = 4 + sp * 10, r1 = 10 + sp * 34 * (k % 2 ? 0.6 : 1);
+      ctx.lineWidth = k % 2 ? 2 : 3.2;
+      ctx.beginPath();
+      ctx.moveTo(sx + Math.cos(ang) * r0, sy + Math.sin(ang) * r0);
+      ctx.lineTo(sx + Math.cos(ang) * r1, sy + Math.sin(ang) * r1);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff6c9';
+    ctx.beginPath(); ctx.arc(sx, sy, 7 * (1 - sp), 0, 6.2832); ctx.fill();
+    ctx.restore();
     ctx.save();
     ctx.globalAlpha = a;
     ctx.textAlign = 'center';
-    ctx.translate(scrX(W.px), PLAYER_Y - 96 - rise);
+    ctx.translate(sx, sy - 44 - rise);
     ctx.scale(pop, pop);
     ctx.font = '800 30px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
     ctx.lineWidth = 7; ctx.strokeStyle = '#062a78';
-    var word = tr('hud.perfect', 'PERFECT!');
+    var word = tr('hud.perfect', 'PERFECT!') + (W.perfChain > 1 ? ' \u00d7' + W.perfChain : '');
     ctx.strokeText(word, 0, 0);
     var g = ctx.createLinearGradient(0, -24, 0, 6);
     g.addColorStop(0, '#fff6c9'); g.addColorStop(1, '#ffb22e');
@@ -4951,7 +4969,8 @@ var Game = (function () {
         var vx = fdx / len, vy = -fdd / len;
         lx = vx * Math.cos(-ang) - vy * Math.sin(-ang); ly = vx * Math.sin(-ang) + vy * Math.cos(-ang); }
     }
-    EYE = { shut: crashed ? 0.1 : shut, wide: W.closeT > 0 ? 1 + 0.45 * Math.min(1, W.closeT / 30) : 1,
+    var alarm = Math.max(W.closeT, W.perfT);
+    EYE = { shut: crashed ? 0.1 : shut, wide: alarm > 0 ? 1 + 0.45 * Math.min(1, alarm / 30) : 1,
             lx: crashed ? 0 : lx, ly: crashed ? 0 : ly };
     /* Being briefly safe is shown with a ring, not by messing with the
        animal itself. Two earlier attempts were both worse: half opacity

@@ -759,13 +759,17 @@ async function walk(cdp, sid, P) {
   await ev("Game.debug().closeT=45;1");
   await sleep(120);
   var wide = await ev("(function(){var e=Game._eye();return e?e.wide:null;})()");
-  /* a perfect tap, staged: one opening a quarter of a second ahead, off to the side he taps towards */
-  var perf = await ev("(async function(){var W=Game.debug();W.objects=[];W.closeT=0;W.dir=-1;W.vx=0;" +
-    "var d=W.dist+W.speed*14;W.rows=[{d:d,gap:W.px+25-Game._chuteAt(d),gapW:220}];var n0=W.perfects;Game.tap();" +
-    "for(var i=0;i<40&&Game.debug().perfects===n0;i++)await new Promise(function(r){setTimeout(r,16);});" +
-    "return {n:Game.debug().perfects-n0,t:Game.debug().perfT};})()");
-  ok(perf.n === 1 && perf.t > 0, 'a last-moment tap through an opening is a PERFECT (' + JSON.stringify(perf) + ')');
-  await sleep(120);
+  /* a PERFECT, staged: a boulder ahead on his right, his edge set to pass 6 units
+     from it, and a tap away from it a fifth of a second before he gets there */
+  var perf = await ev("(async function(){var W=Game.debug();W.objects=[];W.closeT=0;W.invuln=0;W.grace=0;W.dir=1;W.vx=0;" +
+    "var PR=Game._consts().PR,r=30,hit=r*0.82+PR*0.78,x0=W.px;" +
+    "W.objects.push({t:'rock',x:x0+hit+6,d:W.dist+W.speed*24,r:r,rot:0,pts:[1,1,1,1,1,1,1,1,1]});var n0=W.perfects;" +
+    /* tapped by distance, not by the clock: a busy headless phone runs fewer frames a second */
+    "var rd=W.objects[0].d,tapped=false;for(var i=0;i<200&&Game.debug().perfects===n0;i++){var w=Game.debug();w.px=x0;w.vx=0;" +
+    "if(!tapped&&rd-w.dist<=w.speed*12){Game.tap();tapped=true;}await new Promise(function(r){setTimeout(r,8);});}" +
+    "return {n:Game.debug().perfects-n0,t:Game.debug().perfT,alive:Game.debug().state==='run'};})()");
+  ok(perf.n === 1 && perf.t > 0 && perf.alive, 'a last-moment tap away from a boulder, a scrape past it: PERFECT (' + JSON.stringify(perf) + ')');
+  await sleep(60);
   await shot('06e-perfect');
   ok(wide !== null && wide > 1.2, 'and his eyes go wide after a close call (' + (wide === null ? 'none' : wide.toFixed(2)) + ')');
   ok(trail.n > 10 && trail.behind > 100, 'and his belly has cut a groove behind him (' + trail.n + ' points, ' + trail.behind + ' units back)');
