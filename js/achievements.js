@@ -15,50 +15,50 @@
    =========================================================== */
 
 var ACHIEVEMENTS = [
-  { id: 'first',    reward:  25, goal: 1,    stat: function (s) { return s.runs; } },
-  { id: 'dist500',  reward:  50, goal: 500,  stat: function (s) { return s.bestDist; } },
-  { id: 'dist2000', reward: 150, goal: 2000, stat: function (s) { return s.bestDist; } },
-  { id: 'dist5000', reward: 400, goal: 5000, stat: function (s) { return s.bestDist; } },
-  { id: 'runfish30',reward:  80, goal: 30,   stat: function (s) { return s.bestRunFish; } },
-  { id: 'fish500',  reward: 100, goal: 500,  stat: function (s) { return s.totFish; } },
-  { id: 'fish3000', reward: 350, goal: 3000, stat: function (s) { return s.totFish; } },
-  { id: 'gold1',    reward:  60, goal: 1,    stat: function (s) { return s.totGold; } },
-  { id: 'gold25',   reward: 300, goal: 25,   stat: function (s) { return s.totGold; } },
-  { id: 'gates100', reward: 120, goal: 100,  stat: function (s) { return s.totGates; } },
-  { id: 'jump1',    reward:  40, goal: 1,    stat: function (s) { return s.totJumps; } },
-  { id: 'jump50',   reward: 250, goal: 50,   stat: function (s) { return s.totJumps; } },
-  { id: 'saves10',  reward: 150, goal: 10,   stat: function (s) { return s.totSaves; } },
-  { id: 'wear3',    reward: 100, goal: 3,    stat: function (s) { return s.owned.length; } },
-  { id: 'wearAll',  reward: 500, goal: 0,    stat: function (s) { return s.owned.length; } },
+  { id: 'first',    reward:  10, goal: 1,    stat: function (s) { return s.runs; } },
+  { id: 'dist500',  reward:  25, goal: 500,  stat: function (s) { return s.bestDist; } },
+  { id: 'dist2000', reward:  75, goal: 2000, stat: function (s) { return s.bestDist; } },
+  { id: 'dist5000', reward: 200, goal: 5000, stat: function (s) { return s.bestDist; } },
+  { id: 'runfish30',reward:  40, goal: 30,   stat: function (s) { return s.bestRunFish; } },
+  { id: 'fish500',  reward:  50, goal: 500,  stat: function (s) { return s.totFish; } },
+  { id: 'fish3000', reward: 175, goal: 3000, stat: function (s) { return s.totFish; } },
+  { id: 'gold1',    reward:  30, goal: 1,    stat: function (s) { return s.totGold; } },
+  { id: 'gold25',   reward: 150, goal: 25,   stat: function (s) { return s.totGold; } },
+  { id: 'gates100', reward:  60, goal: 100,  stat: function (s) { return s.totGates; } },
+  { id: 'jump1',    reward:  20, goal: 1,    stat: function (s) { return s.totJumps; } },
+  { id: 'jump50',   reward: 125, goal: 50,   stat: function (s) { return s.totJumps; } },
+  { id: 'saves10',  reward:  75, goal: 10,   stat: function (s) { return s.totSaves; } },
+  { id: 'wear3',    reward:  50, goal: 3,    stat: function (s) { return s.owned.length; } },
+  { id: 'wearAll',  reward: 250, goal: 0,    stat: function (s) { return s.owned.length; } },
 
   /* Four systems went in without a single goal attached to them, so
      nothing ever asked you to go near a frozen find or a snow rush. */
-  { id: 'find1',    reward: 150, goal: 1,    stat: function (s) { return s.totFinds; } },
-  { id: 'find10',   reward: 500, goal: 10,   stat: function (s) { return s.totFinds; } },
-  { id: 'rush5',    reward: 250, goal: 5,    stat: function (s) { return s.totRushes; } },
-  { id: 'smash50',  reward: 300, goal: 50,   stat: function (s) { return s.totSmashed; } },
-  { id: 'revive1',  reward: 100, goal: 1,    stat: function (s) { return s.totRevives; } },
-  { id: 'forks10',  reward: 280, goal: 10,   stat: function (s) { return s.totForks; } },
+  { id: 'find1',    reward:  75, goal: 1,    stat: function (s) { return s.totFinds; } },
+  { id: 'find10',   reward: 250, goal: 10,   stat: function (s) { return s.totFinds; } },
+  { id: 'rush5',    reward: 125, goal: 5,    stat: function (s) { return s.totRushes; } },
+  { id: 'smash50',  reward: 150, goal: 50,   stat: function (s) { return s.totSmashed; } },
+  { id: 'revive1',  reward:  50, goal: 1,    stat: function (s) { return s.totRevives; } },
+  { id: 'forks10',  reward: 140, goal: 10,   stat: function (s) { return s.totForks; } },
   /* and the marked runs had none either, which is odd for the half of the
      game that has a finish line */
-  { id: 'lines1',   reward: 120, goal: 1,    stat: function (s) { return linesDone(s); } },
-  { id: 'linesAll', reward: 700, goal: 0,    stat: function (s) { return linesDone(s); } },
-  { id: 'stars18',  reward: 1200, goal: 0,   stat: function (s) { return starsTotal(s); } },
+  { id: 'lines1',   reward:  60, goal: 1,    stat: function (s) { return linesDone(s); } },
+  { id: 'linesAll', reward: 350, goal: 0,    stat: function (s) { return linesDone(s); } },
+  { id: 'stars18',  reward:  600, goal: 0,   stat: function (s) { return starsTotal(s); } },
   /* Time Rush and the Daily Line, so the two newest ways to play each
      have something to reach for: distance against the clock, time
      earned back, and coming back day after day. */
-  { id: 'rush500',  reward: 120, goal: 500,  stat: function (s) { return s.bestRush; } },
-  { id: 'rush2000', reward: 400, goal: 2000, stat: function (s) { return s.bestRush; } },
-  { id: 'clocks50', reward: 220, goal: 50,   stat: function (s) { return s.totClocks; } },
-  { id: 'daily1',   reward: 100, goal: 1,    stat: function (s) { return s.dailyDays; } },
-  { id: 'streak3',  reward: 250, goal: 3,    stat: function (s) { return s.dailyBest; } },
-  { id: 'streak7',  reward: 700, goal: 7,    stat: function (s) { return s.dailyBest; } },
+  { id: 'rush500',  reward:  60, goal: 500,  stat: function (s) { return s.bestRush; } },
+  { id: 'rush2000', reward: 200, goal: 2000, stat: function (s) { return s.bestRush; } },
+  { id: 'clocks50', reward: 110, goal: 50,   stat: function (s) { return s.totClocks; } },
+  { id: 'daily1',   reward:  50, goal: 1,    stat: function (s) { return s.dailyDays; } },
+  { id: 'streak3',  reward: 125, goal: 3,    stat: function (s) { return s.dailyBest; } },
+  { id: 'streak7',  reward: 350, goal: 7,    stat: function (s) { return s.dailyBest; } },
   /* Avalanche: holding the snow off for a distance, and the rings that
      did it. 1500 m is well past where a clean rider with no rings is
      caught (about 700), so it asks for rings taken, not just no mistakes. */
-  { id: 'av500',    reward: 150, goal: 500,  stat: function (s) { return s.bestAv; } },
-  { id: 'av1500',   reward: 450, goal: 1500, stat: function (s) { return s.bestAv; } },
-  { id: 'avrings50',reward: 300, goal: 50,   stat: function (s) { return s.totAvRings; } }
+  { id: 'av500',    reward:  75, goal: 500,  stat: function (s) { return s.bestAv; } },
+  { id: 'av1500',   reward: 225, goal: 1500, stat: function (s) { return s.bestAv; } },
+  { id: 'avrings50',reward: 150, goal: 50,   stat: function (s) { return s.totAvRings; } }
 ];
 
 /* ---- today's tasks ----

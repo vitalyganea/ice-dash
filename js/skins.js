@@ -44,7 +44,7 @@ var SKINS = [
   {
     /* Black back, white face, a beak far too big for him: the one sea bird
        that reads from straight above at this size. */
-    id: 'puffin', name: 'Puffin', price: 400, currency: 'fish',
+    id: 'puffin', name: 'Puffin', price: 550, currency: 'fish',
     blurb: 'All beak, and in no hurry to explain it.',
     perkText: 'Shrugs off one missed fish without losing the run of catches.',
     perk: { comboKeep: 1 },
@@ -54,7 +54,7 @@ var SKINS = [
     shape: 'penguin', accent: '#ff5a1f', accessory: 'puffin'
   },
   {
-    id: 'seal', name: 'Seal', price: 450, currency: 'fish',
+    id: 'seal', name: 'Seal', price: 600, currency: 'fish',
     blurb: 'Spent her whole life under this ice.',
     perkText: 'Sniffs out the golden fish, far more of them.',
     perk: { goldRate: 2.4 },
@@ -68,7 +68,7 @@ var SKINS = [
   {
     /* Small and orange-brown with a dark stripe down the back: the summer
        coat, for the same reason as the hare's. */
-    id: 'lemming', name: 'Lemming', price: 500, currency: 'fish',
+    id: 'lemming', name: 'Lemming', price: 700, currency: 'fish',
     blurb: 'Comes back every single day, whatever the hill does.',
     perkText: 'Every star on the Daily Line pays 25 fish more.',
     perk: { dailyStar: 25 },
@@ -83,7 +83,7 @@ var SKINS = [
   {
     /* Dark shaggy brown with pale horns, built low and wide: deep snow is
        where a musk ox lives, not something it wades through. */
-    id: 'muskox', name: 'Musk Ox', price: 600, currency: 'fish',
+    id: 'muskox', name: 'Musk Ox', price: 800, currency: 'fish',
     blurb: 'Deep snow is just the floor to him.',
     perkText: 'Deep snow does not slow him down at all.',
     perk: { bogImmune: 1 },
@@ -98,7 +98,7 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'bubbles', name: 'Bubbles', price: 700, currency: 'fish',
+    id: 'bubbles', name: 'Bubbles', price: 950, currency: 'fish',
     blurb: 'Never leaves home unwrapped.',
     perkText: 'Starts every run already inside a bubble.',
     perk: { startShield: 1 },
@@ -111,7 +111,7 @@ var SKINS = [
   {
     /* Warm brown with a pale face, flat on her back on the water usually;
        on the ice she simply never wastes a moment. */
-    id: 'otter', name: 'Sea Otter', price: 800, currency: 'fish',
+    id: 'otter', name: 'Sea Otter', price: 1100, currency: 'fish',
     blurb: 'Always knows exactly how long she has left.',
     perkText: 'Time bubbles give her four seconds instead of three.',
     perk: { clockGain: 1.34 },
@@ -127,7 +127,7 @@ var SKINS = [
     /* A perk nobody else has: it changes the SHAPE of a run rather than one
        interaction in it. The gentler the ramp, the longer the hill stays
        readable — which is exactly what a beginner is short of. */
-    id: 'hare', name: 'Arctic Hare', price: 900, currency: 'fish',
+    id: 'hare', name: 'Arctic Hare', price: 1250, currency: 'fish',
     blurb: 'Paces herself. The hill never gets away from her.',
     perkText: 'The run speeds up far more gently.',
     perk: { slowRamp: 0.72 },
@@ -145,7 +145,7 @@ var SKINS = [
   {
     /* Grey, not white, with dark rosettes and a tail as long as she is:
        the pale cat on pale ice would have been the fox all over again. */
-    id: 'leopard', name: 'Snow Leopard', price: 1100, currency: 'fish',
+    id: 'leopard', name: 'Snow Leopard', price: 1500, currency: 'fish',
     blurb: 'Lives on the edge of things, and likes it there.',
     perkText: 'Close calls pay double, and count from further away.',
     perk: { closeBonus: 2, closeWide: 1.6 },
@@ -158,7 +158,7 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'compass', name: 'Compass', price: 1300, currency: 'fish',
+    id: 'compass', name: 'Compass', price: 1750, currency: 'fish',
     blurb: 'Knows where the shoals are.',
     perkText: 'Finds far more shoals, and bigger ones.',
     perk: { shoal: 1.6 },
@@ -169,7 +169,7 @@ var SKINS = [
     accent: '#f0b429', accessory: 'cap'
   },
   {
-    id: 'owl', name: 'Snowy Owl', price: 1700, currency: 'fish',
+    id: 'owl', name: 'Snowy Owl', price: 2300, currency: 'fish',
     blurb: 'Sees the line before the line is there.',
     perkText: 'Always knows where the next opening is.',
     perk: { foresight: 1 },
@@ -185,7 +185,7 @@ var SKINS = [
     accent: '#f2b733', accessory: null
   },
   {
-    id: 'walrus', name: 'Walrus', price: 2000, currency: 'fish',
+    id: 'walrus', name: 'Walrus', price: 2700, currency: 'fish',
     blurb: 'Goes through things, not round them.',
     perkText: 'Reads the crystal rings — they open wider for him, and pay triple.',
     perk: { gateBonus: 3, gateWide: 1.55 },
@@ -199,7 +199,7 @@ var SKINS = [
   {
     /* Same lesson the walrus taught: make the risky thing less risky, not
        just better paid. The ramp over a crevasse is simply wider for him. */
-    id: 'narwhal', name: 'Narwhal', price: 2500, currency: 'fish',
+    id: 'narwhal', name: 'Narwhal', price: 3400, currency: 'fish',
     blurb: 'Knows every hole in this ice, and how to clear it.',
     perkText: 'The ramp over a crevasse runs much wider for him.',
     perk: { rampWide: 1.6 },
@@ -213,7 +213,7 @@ var SKINS = [
     accent: '#f0e6d2', accessory: 'tusk'
   },
   {
-    id: 'reindeer', name: 'Reindeer', price: 2800, currency: 'fish',
+    id: 'reindeer', name: 'Reindeer', price: 3800, currency: 'fish',
     blurb: 'Knows every inch of this hill.',
     perkText: 'Sure-footed — tucks in tight, and the glacier cannot swing him wide.',
     /* The grip alone was worth nothing, and measurably so: the spawner

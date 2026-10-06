@@ -6,7 +6,9 @@
    purchase actually costs them. A shop nobody can afford is a wall; a
    shop cleared in three runs is not a shop.
    =========================================================== */
-var H = require('./harness.js'); var G = global.Game;
+var H = require('./harness.js');
+/* the trophies and today's tasks: they pay into the same purse as runs do */
+eval(require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'achievements.js'), 'utf8')); var G = global.Game;
 var fail = 0;
 function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++; }
 
@@ -139,6 +141,34 @@ ok(table['casual'].seal.gold >= table['casual'].snowcap.gold,
 ok(table['first-timer'].bubbles.dist > table['first-timer'].snowcap.dist,
    'the shield perk actually keeps a weak player alive longer (' +
    table['first-timer'].bubbles.dist + 'm vs ' + table['first-timer'].snowcap.dist + 'm)');
+
+/* ---- everything a player is paid, not only what runs pay ----
+   Trophies, today's tasks and frozen finds all feed the same purse. Left
+   out of the reckoning, they quietly bought half the Market in ten minutes
+   once there were enough of them. A casual player's first half-hour or so
+   is counted here with all of it in: the run pay measured above, the easy
+   trophies anyone collects early, one day's tasks, and a find or two. */
+(function () {
+  var easy = ['first', 'dist500', 'runfish30', 'fish500', 'gold1', 'jump1', 'wear3', 'find1',
+              'lines1', 'revive1', 'rush5', 'daily1', 'rush500', 'av500', 'smash50'];
+  var trophies = ACHIEVEMENTS.filter(function (a) { return easy.indexOf(a.id) >= 0; })
+                             .reduce(function (t, a) { return t + a.reward; }, 0);
+  var tasks = TASK_PAY * 3 + TASK_BONUS, finds = 2 * 73;      // a find pays about 73 fish on average
+  var fishSkins = SKINS.filter(function (sk) { return sk.currency === 'fish' && sk.price > 0; })
+                       .sort(function (x, y) { return x.price - y.price; });
+  var half = fishSkins.slice(0, Math.ceil(fishSkins.length / 2))
+                      .reduce(function (t, sk) { return t + sk.price; }, 0);
+  var perRun = table['casual'].mitten.coins;                  // what he rides once the first is bought
+  var runs = Math.ceil(Math.max(0, half - trophies - tasks - finds) / perRun);
+  /* a casual run's length in seconds, from its distance and the hill's ramp */
+  var D = table['casual'].snowcap.dist * 8;
+  var secs = Math.log((3 + 0.000155 * D) / 3) / 0.000155 / 60;
+  var minutes = Math.round(runs * secs / 60);
+  console.log('\nFirst half of the Market (' + half + ' fish) for a casual player, everything counted:');
+  console.log('  ' + trophies + ' from early trophies, ' + tasks + ' from a day\'s tasks, ' + finds +
+              ' from finds, the rest at ' + Math.round(perRun) + ' a run: ' + runs + ' runs of ~' + Math.round(secs) + ' s');
+  ok(minutes >= 25 && minutes <= 60, 'it takes about ' + minutes + ' minutes of play, not ten');
+})();
 
 /* The two "a dearer skin must be a better skin" checks used to sit here and
    have moved to ladder.js. They could not be answered on the 12 and 24

@@ -20,9 +20,9 @@
      spare life is the thing worth chasing, and it is rare enough that it
      never becomes the way you stock up — the market is. */
   var FIND_PRIZES = [
-    { w: 32, kind: 'fish', n: 80 },
-    { w: 25, kind: 'fish', n: 150 },
-    { w: 16, kind: 'fish', n: 300 },
+    { w: 32, kind: 'fish', n: 50 },
+    { w: 25, kind: 'fish', n: 100 },
+    { w: 16, kind: 'fish', n: 200 },
     { w: 13, kind: 'gold', n: 1 },
     { w: 9,  kind: 'life', n: 1 },
     { w: 5,  kind: 'gold', n: 3 }
