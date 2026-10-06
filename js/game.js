@@ -3587,7 +3587,28 @@ var Game = (function () {
         c.lineTo(k * 5, 17);
         c.quadraticCurveTo(k * 9, 4, k * 3, -11);
         c.closePath(); c.fill();
+        if (DETAIL) {                                 // fringe at each tail
+          c.strokeStyle = S.accent; c.lineWidth = 0.8;
+          for (var fr = 0; fr < 4; fr++) {
+            c.beginPath(); c.moveTo(k * (5.6 + fr * 1.6), 18 - fr * 0.4); c.lineTo(k * (5.4 + fr * 1.8), 22.5 - fr * 0.3); c.stroke();
+          }
+        }
       });
+      if (DETAIL) {
+        /* the knit: ribs round the collar and down the tails, and a darker
+           fold where it wraps */
+        c.save();
+        c.beginPath(); c.ellipse(0, -15, 15.5, 7.5, 0, 0, 6.2832); c.clip();
+        c.strokeStyle = 'rgba(120,20,20,.35)'; c.lineWidth = 0.6;
+        for (var rb = -15; rb <= 15; rb += 1.8) {
+          c.beginPath(); c.moveTo(rb, -22); c.lineTo(rb + 1.2, -8); c.stroke();
+        }
+        c.strokeStyle = 'rgba(255,200,200,.25)'; c.lineWidth = 0.5;
+        for (rb = -14; rb <= 15; rb += 1.8) {
+          c.beginPath(); c.moveTo(rb + 0.6, -22); c.lineTo(rb + 1.8, -8); c.stroke();
+        }
+        c.restore();
+      }
     } else if (S.accessory === 'cap') {
       c.fillStyle = S.accent;
       c.beginPath(); c.ellipse(0, -26, 10.5, 9.5, 0, 0, 6.2832); c.fill();
@@ -3622,6 +3643,19 @@ var Game = (function () {
         c.fillStyle = '#eef2f6';
         c.beginPath(); c.ellipse(k * 8, -27, 6.4, 7.4, k * 0.25, 0, 6.2832); c.fill();
         c.strokeStyle = 'rgba(60,70,84,.35)'; c.lineWidth = 0.8; c.stroke();
+        if (DETAIL) {
+          /* close up, the puffin's eye: dark, in a red-orange ring, with
+             the grey mark above it that makes it look so solemn */
+          var ex2 = k * 8.6, ey2 = -28.4;
+          c.fillStyle = '#6f7d8c';
+          c.beginPath(); c.moveTo(ex2 - k * 2.6, ey2 - 2.8); c.lineTo(ex2 + k * 1.8, ey2 - 2.2); c.lineTo(ex2 - k * 0.2, ey2 - 1.2); c.closePath(); c.fill();
+          c.fillStyle = '#e8553a';
+          c.beginPath(); c.ellipse(ex2, ey2, 1.9, 1.7, 0, 0, 6.2832); c.fill();
+          c.fillStyle = '#14181d';
+          c.beginPath(); c.ellipse(ex2, ey2, 1.25, 1.15, 0, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.9)';
+          c.beginPath(); c.arc(ex2 - 0.4, ey2 - 0.45, 0.4, 0, 6.2832); c.fill();
+        }
       });
       function beak(cc) {
         cc.beginPath();
@@ -3812,10 +3846,37 @@ var Game = (function () {
 
     drawSkinExtra(c, S);
 
-    c.fillStyle = S.trim;                             // beak past the head
-    c.beginPath();
-    c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
-    c.closePath(); c.fill();
+    if (S.accessory === 'puffin') {
+      /* the puffin's own banded beak is his accessory; the plain penguin
+         beak drawn over it hid half of it (too small to see on the hill,
+         plain in a comic's close-up) */
+    } else if (DETAIL) {
+      /* close up, a real beak: a curved upper mandible over a lower one,
+         a light along the ridge, a nostril each side and a darker tip */
+      var bk = c.createLinearGradient(-5, -30, 5, -40);
+      bk.addColorStop(0, S.trim); bk.addColorStop(1, '#ffd08a');
+      c.fillStyle = bk;
+      c.beginPath();
+      c.moveTo(-5.6, -29.5); c.quadraticCurveTo(-3.6, -36.5, 0, -40.2);
+      c.quadraticCurveTo(3.6, -36.5, 5.6, -29.5); c.quadraticCurveTo(0, -31.4, -5.6, -29.5);
+      c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(120,60,10,.55)'; c.lineWidth = 0.5; c.stroke();
+      c.strokeStyle = 'rgba(120,60,10,.45)'; c.lineWidth = 0.45;          // the gape
+      c.beginPath(); c.moveTo(-4.8, -30.4); c.quadraticCurveTo(-1.6, -34.6, 0, -39); c.stroke();
+      c.strokeStyle = 'rgba(255,240,210,.8)'; c.lineWidth = 0.55;         // the ridge
+      c.beginPath(); c.moveTo(0.6, -31); c.quadraticCurveTo(1.4, -35.5, 0.2, -39.4); c.stroke();
+      c.fillStyle = 'rgba(80,40,10,.7)';                                  // nostrils
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); c.ellipse(k * 1.9, -33, 0.55, 0.25, k * 1.2, 0, 6.2832); c.fill();
+      });
+      c.fillStyle = 'rgba(90,40,0,.35)';                                  // the tip
+      c.beginPath(); c.moveTo(-1.1, -38.2); c.lineTo(0, -40.2); c.lineTo(1.1, -38.2); c.closePath(); c.fill();
+    } else {
+      c.fillStyle = S.trim;                           // beak past the head
+      c.beginPath();
+      c.moveTo(-5, -30); c.lineTo(0, -39); c.lineTo(5, -30);
+      c.closePath(); c.fill();
+    }
     if (S.beakStripe) {                               // the emperor's orange streak
       c.fillStyle = S.beakStripe;
       c.beginPath(); c.moveTo(-1.6, -30.5); c.lineTo(0, -36); c.lineTo(1.6, -30.5); c.closePath(); c.fill();
@@ -3903,6 +3964,10 @@ var Game = (function () {
      and null for a portrait: a blink now and then, a glance at the nearest
      fish, wide with alarm for a moment after a close call. */
   var EYE = null;
+  /* Close-up detail: on when a comic paints a creature large. At the size
+     it rides the hill a beak is a triangle and nothing finer would show;
+     four times bigger, the triangle is all you see. */
+  var DETAIL = false;
   function eyeState() {
     return EYE || { shut: 1, wide: 1, lx: 0, ly: 0 };
   }
@@ -3924,6 +3989,19 @@ var Game = (function () {
       var px = ex + E.lx * r * 0.35, py = ey + E.ly * r * 0.35;   // a glance
       c.fillStyle = dark || '#121418';
       c.beginPath(); c.ellipse(px, py, rr, rr * 0.95 * E.shut, 0, 0, 6.2832); c.fill();
+      if (DETAIL) {
+        /* close up: a dark brown iris round the pupil, a wet rim, and two
+           lights — a window and the sky */
+        var ig = c.createRadialGradient(px, py, rr * 0.2, px, py, rr * 0.82);
+        ig.addColorStop(0, '#0a0b0d'); ig.addColorStop(0.45, '#0a0b0d');
+        ig.addColorStop(0.5, '#4a2c1a'); ig.addColorStop(1, '#2a1a10');
+        c.fillStyle = ig;
+        c.beginPath(); c.ellipse(px, py, rr * 0.82, rr * 0.78 * E.shut, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = rr * 0.12;
+        c.beginPath(); c.ellipse(px, py, rr * 0.96, rr * 0.91 * E.shut, 0, 3.6, 5.9); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.55)';
+        c.beginPath(); c.arc(px + rr * 0.32, py + rr * 0.3, rr * 0.13, 0, 6.2832); c.fill();
+      }
       c.fillStyle = 'rgba(255,255,255,.85)';         // catchlight, same side on both
       c.beginPath(); c.arc(px - rr * 0.34, py - rr * 0.34, rr * 0.34, 0, 6.2832); c.fill();
     });
@@ -4263,8 +4341,30 @@ var Game = (function () {
     sheen(c, -4, -32, 6, 4.5, -0.4, 0.18);
     c.fillStyle = S.mark;
     c.beginPath(); c.ellipse(0, -36, 7, 5.5, 0, 0, 6.2832); c.fill();
-    c.fillStyle = S.nose;
-    c.beginPath(); c.ellipse(0, -39, 3.2, 2.6, 0, 0, 6.2832); c.fill();
+    if (DETAIL) {
+      /* close up: whisker pads either side, dotted where the whiskers grow,
+         two V-shaped nostrils and the line of the mouth */
+      [-1, 1].forEach(function (k) {
+        c.fillStyle = 'rgba(255,255,255,.22)';
+        c.beginPath(); c.ellipse(k * 3.4, -35.5, 3.6, 2.8, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(40,50,60,.45)';
+        for (var wd = 0; wd < 6; wd++)
+          { c.beginPath(); c.arc(k * (2 + (wd % 3) * 1.5), -36.6 + Math.floor(wd / 3) * 1.6, 0.32, 0, 6.2832); c.fill(); }
+      });
+      c.fillStyle = S.nose;
+      c.beginPath(); c.ellipse(0, -39.2, 3.3, 2.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.35)';
+      c.beginPath(); c.ellipse(-1, -40.2, 1.2, 0.6, -0.3, 0, 6.2832); c.fill();
+      c.strokeStyle = '#0d1014'; c.lineWidth = 0.6;
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); c.moveTo(k * 0.6, -39.6); c.lineTo(k * 1.8, -38.4); c.lineTo(k * 2.2, -39.8); c.stroke();
+      });
+      c.strokeStyle = 'rgba(30,38,46,.55)'; c.lineWidth = 0.55;
+      c.beginPath(); c.moveTo(0, -37.4); c.lineTo(0, -34.6); c.moveTo(-2.4, -33.6); c.quadraticCurveTo(0, -32.4, 2.4, -33.6); c.stroke();
+    } else {
+      c.fillStyle = S.nose;
+      c.beginPath(); c.ellipse(0, -39, 3.2, 2.6, 0, 0, 6.2832); c.fill();
+    }
     c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.1;
     [-1, 1].forEach(function (k) {
       c.beginPath(); c.moveTo(k * 3.5, -37); c.lineTo(k * 15, -41); c.stroke();
@@ -6378,6 +6478,7 @@ var Game = (function () {
       try {
         if (kind === 'creature') {
           EYE = opts.eye || null;
+          DETAIL = size >= 200;
           c.save(); c.translate(x, y); c.rotate(opts.ang || 0);
           paintCreature(c, skinById(opts.skin || 'snowcap'),
                         { ang: 0, wag: 0, scale: size / 112, shield: -1, still: !opts.gait, gait: opts.gait || 0 });
@@ -6389,7 +6490,7 @@ var Game = (function () {
           ctx.restore();
         }
       } catch (e) { /* a missing picture is not a crash */ }
-      ctx = keepCtx; W = keepW; EYE = keepEye;
+      ctx = keepCtx; W = keepW; EYE = keepEye; DETAIL = false;
     },
     /* paint a creature into any context, for tests and portraits */
     _paint: function (c, skinId, opts) { paintCreature(c, skinById(skinId), opts); },
