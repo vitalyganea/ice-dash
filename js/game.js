@@ -31,7 +31,8 @@ var Game = (function () {
   /* Avalanche: the lead you start with, how much faster than your clean
      pace the snow comes, what a crystal ring knocks it back by (less as the
      hill hardens, so a run always ends), and the most lead you can bank. */
-  var AV_GAP0 = 560, AV_K = 1.10, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 900;
+  var AV_GAP0 = 800, AV_K = 1.06, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 1000;
+  var AV_EASE = 4000;          // the snow builds to its full pace over the first 500 m
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
 
@@ -1504,7 +1505,13 @@ var Game = (function () {
      loss; deep snow, a crash or a cold draught you did not need cost lead. */
   function avalancheStep(mySpeed) {
     var clean = Math.min(SPEED_MAX, SPEED0 + W.dist * SPEED_RAMP * rampOf()) * slowmo();
-    W.avGap += mySpeed - clean * AV_K;
+    /* It starts at his own pace and builds to its full lead over the first
+       500 m, so a new rider has time to find the rhythm before it presses.
+       At 10% faster from the first frame, with a 70 m start, a real player
+       — who clips the deep snow and crashes now and then — was caught in a
+       few hundred metres, and the mode played as a punishment. */
+    var k = 1 + (AV_K - 1) * Math.min(1, W.dist / AV_EASE);
+    W.avGap += mySpeed - clean * k;
     if (W.avPush > 0) W.avPush--;
     if (W.avGap <= 0) {
       W.avGap = 0; W.state = 'caught'; W.endT = 0; W.rushT = 0; W.shake = 18;
@@ -5534,31 +5541,62 @@ var Game = (function () {
       if (W.rows[i].d > W.dist + 20) rows.push(W.rows[i]);
     if (!rows.length) return;
 
+    /* A path of light, the way the lens shows it: a smooth curve from him
+       through the next openings, gold lights flowing along it towards
+       them, smaller and fainter as they go, and a pool of light on the ice
+       in each opening. It was a straight green ribbon broken at every
+       opening, with a ring drawn round each — a diagram, not a light. */
+    var pts = [[scrX(W.px), PLAYER_Y - 18]];
+    for (i = 0; i < rows.length; i++) pts.push([scrX(chuteAt(rows[i].d) + rows[i].gap), scrY(rows[i].d)]);
+    /* sample a Catmull-Rom curve through them */
+    var path = [];
+    for (i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      for (var tt = 0; tt < 1; tt += 0.05) {
+        var t2 = tt * tt, t3 = t2 * tt;
+        path.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * tt + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                   0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * tt + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]);
+      }
+    }
+    path.push(pts[pts.length - 1]);
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    /* a ribbon threaded through the openings, brightest at the first */
+    /* a faint glow under the whole path, so it reads as one line */
     ctx.beginPath();
-    ctx.moveTo(scrX(W.px), PLAYER_Y - 10);
-    for (i = 0; i < rows.length; i++)
-      ctx.lineTo(scrX(chuteAt(rows[i].d) + rows[i].gap), scrY(rows[i].d));
-    ctx.strokeStyle = 'rgba(126,232,170,' + (0.5 * fade).toFixed(3) + ')';
-    ctx.lineWidth = 9;
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(236,255,244,' + (0.8 * fade).toFixed(3) + ')';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    /* and a mark in each opening, smaller as they get further off */
-    for (i = 0; i < rows.length; i++) {
-      var rx = scrX(chuteAt(rows[i].d) + rows[i].gap), ry = scrY(rows[i].d);
-      var k = 1 - i * 0.26;
-      ctx.globalAlpha = fade * k;
-      ctx.strokeStyle = 'rgba(126,232,170,.95)';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, 26 * k, 11 * k, 0, 0, 6.2832);
-      ctx.stroke();
+    path.forEach(function (q, n) { n ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
+    ctx.strokeStyle = 'rgba(255,200,90,' + (0.2 * fade).toFixed(3) + ')';
+    ctx.lineWidth = 12; ctx.stroke();
+    /* lights every 16px along it, flowing forward */
+    var total = 0, seg = [];
+    for (i = 1; i < path.length; i++) {
+      var dl = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+      seg.push(dl); total += dl;
     }
-    ctx.globalAlpha = 1;
+    var gapPx = 16, off = (W.t * 0.9) % gapPx, at = off, si = 0, acc = 0;
+    while (at < total && si < seg.length) {
+      while (si < seg.length && acc + seg[si] < at) { acc += seg[si]; si++; }
+      if (si >= seg.length) break;
+      var f = (at - acc) / seg[si];
+      var lx = path[si][0] + (path[si + 1][0] - path[si][0]) * f;
+      var ly = path[si][1] + (path[si + 1][1] - path[si][1]) * f;
+      var u = at / total, a = fade * (1 - u * 0.65), r = 4.2 - u * 2;
+      ctx.fillStyle = 'rgba(255,196,60,' + (0.4 * a).toFixed(3) + ')';            // warm halo
+      ctx.beginPath(); ctx.arc(lx, ly, r * 2.1, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,186,40,' + (0.95 * a).toFixed(3) + ')';           // the light
+      ctx.beginPath(); ctx.arc(lx, ly, r, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,252,230,' + (0.9 * a).toFixed(3) + ')';           // its bright heart
+      ctx.beginPath(); ctx.arc(lx - r * 0.25, ly - r * 0.25, r * 0.45, 0, 6.2832); ctx.fill();
+      at += gapPx;
+    }
+    /* a pool of light on the ice in each opening, the nearest strongest */
+    for (i = 0; i < rows.length; i++) {
+      var rx = pts[i + 1][0], ry = pts[i + 1][1], k = 1 - i * 0.28;
+      var pool = ctx.createRadialGradient(rx, ry, 1, rx, ry, 34 * k);
+      pool.addColorStop(0, 'rgba(255,206,90,' + (0.6 * fade * k).toFixed(3) + ')');
+      pool.addColorStop(1, 'rgba(255,206,90,0)');
+      ctx.fillStyle = pool;
+      ctx.beginPath(); ctx.ellipse(rx, ry, 34 * k, 15 * k, 0, 0, 6.2832); ctx.fill();
+    }
     ctx.restore();
   }
 
