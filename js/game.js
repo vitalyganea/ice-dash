@@ -1222,11 +1222,13 @@ var Game = (function () {
               W.state === 'run' && !airborne() && !rushing() && W.grace <= 0) {
             W.closes++; W.score += Math.round(15 * (perk().closeBonus || 1)) * comboMult();
             /* A PERFECT is a close call he made himself: the tap that turned
-               him away from this very obstacle came in the last moment
-               before he reached it (within about half a second of it), and
-               he scraped past. A close call with no such tap is just CLOSE. */
+               him away from this very obstacle came in the last moment —
+               within about half a second before he reached it, or while he
+               was alongside it — and he scraped past. A close call with no
+               such tap is just CLOSE. `lead` is how far ahead the obstacle
+               was at the tap; below zero he was already level with it. */
             var lead = o.d - W.tapD;
-            if (lead > 0 && lead <= W.speed * 33 && W.tapDir * (W.tapX - o.x) > 0) {
+            if (lead > -hitR(o) && lead <= W.speed * 33 && W.tapDir * (W.tapX - o.x) > 0) {
               /* PERFECTs within three seconds of each other chain: x2, x3...
                  each one worth that much more, the flourish climbing */
               W.perfChain = (W.t - W.lastPerfT <= PERF_CHAIN) ? W.perfChain + 1 : 1;

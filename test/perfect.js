@@ -45,13 +45,15 @@ var p = pass(28);
 ok(p.alive && p.closes === 1 && p.perfects === 1, 'a tap away from the boulder 12 frames before it, a scrape past: PERFECT');
 ok(p.combo === 1, 'and a step on the combo');
 ok(p.speedOk, 'and no change of speed');
+var lv = pass(41);
+ok(lv.perfects === 1, 'a tap when already level with it, still scraping past, is a PERFECT too');
 
 console.log('\nB. what is only CLOSE');
 var n = pass(null);
 ok(n.closes === 1 && n.perfects === 0, 'the same scrape with no tap is a close call, not a PERFECT');
 ok(pass(0).perfects === 0, 'a tap 40 frames out, well before it, is not');
 ok(pass(28, true).perfects === 0, 'a tap towards the boulder is not');
-ok(pass(50).perfects === 0, 'a tap after it has gone by is not');
+ok(pass(56).perfects === 0, 'a tap after it has gone by is not');
 
 console.log('\nC. PERFECTs in a row chain');
 /* two boulders, one each side, the second just after the first: two dodges */
