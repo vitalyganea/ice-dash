@@ -902,7 +902,7 @@ body{
   padding:12px 16px 16px; margin:0 0 14px;
   box-shadow:0 3px 0 rgba(0,0,0,.07);
 }
-.find-art{ display:block; margin:0 auto 4px; }
+.find-art{ display:block; margin:-30px auto -26px; }   /* room for the light to fade out; the find itself stays 90px */
 .find-count{ font-weight:800; color:var(--ink-soft); margin:0 0 8px; }
 .find-prize{
   font-weight:800; color:#0f7a54; margin:0 0 10px;

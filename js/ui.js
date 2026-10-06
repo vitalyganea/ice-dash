@@ -674,7 +674,7 @@
        nothing ever turned it back on, so with two or more finds the second
        could never be opened. */
     btn.disabled = opening;
-    if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 140);
+    if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 200);
   }
 
   var opening = false;
@@ -720,7 +720,7 @@
       screenBurst(kind, r.left + r.width / 2, r.top + r.height / 2);
     }
     if (Game.playFindOpen) {
-      Game.playFindOpen($('find-art'), 140, kind, function () { finish(); }, onBreak);
+      Game.playFindOpen($('find-art'), 200, kind, function () { finish(); }, onBreak);
     } else { onBreak(); finish(); }
 
     function finish() {

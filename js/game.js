@@ -6108,7 +6108,7 @@ var Game = (function () {
       c.setTransform(k, 0, 0, k, 0, 0);
       c.clearRect(0, 0, size, size);
       c.lineJoin = 'round'; c.lineCap = 'round';
-      drawFind(size / 2, size / 2, { r: size * 0.32, ph: 0.8 }, c);
+      drawFind(size / 2, size / 2, { r: Math.min(size * 0.32, 45), ph: 0.8 }, c);
     },
 
     /* Cracking one open. Pressing a button and having a line of text appear
@@ -6137,7 +6137,7 @@ var Game = (function () {
       var tone = kind === 'life' ? ['#ffd0dc', '#e03b6a', '255,120,170']
                : kind === 'gold' ? ['#fff0b0', '#e0a81f', '255,210,90']
                                  : ['#d6f1ff', '#3f93cc', '150,215,255'];
-      var R = size * 0.32, cx = size / 2, cy = size / 2, i;
+      var R = Math.min(size * 0.32, 45), cx = size / 2, cy = size / 2, i;
       /* cracks: fixed paths out from the middle, drawn longer as it strains */
       var cracks = [];
       for (i = 0; i < 7; i++) {
@@ -6265,6 +6265,18 @@ var Game = (function () {
           c.globalAlpha = 1;
           c.restore();
         }
+
+        /* Everything fades out in a soft circle well inside the canvas. The
+           glow, the rays and the burst all reached past its edges, and the
+           canvas cut them off straight — a square of light behind the find. */
+        c.setTransform(k, 0, 0, k, 0, 0);
+        c.globalCompositeOperation = 'destination-in';
+        var mask = c.createRadialGradient(cx, cy, size * 0.3, cx, cy, size * 0.5);
+        mask.addColorStop(0, 'rgba(0,0,0,1)');
+        mask.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = mask;
+        c.fillRect(0, 0, size, size);
+        c.globalCompositeOperation = 'source-over';
 
         if (T < DUR) raf = requestAnimationFrame(frame);
         else if (done) done();
