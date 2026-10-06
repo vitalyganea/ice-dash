@@ -1151,7 +1151,7 @@ var Game = (function () {
         o.passed = true;
         if (Math.abs(dx) < o.w / 2) {
           var gb = perk().gateBonus || 1;
-          o.scored = true;                   // green means you took it,
+          o.scored = true; o.passT = W.t;    // green means you took it,
           W.gates++;                         // not merely that it is behind you
           comboUp();
           W.score += Math.round(50 * gb) * comboMult();
@@ -1837,7 +1837,7 @@ var Game = (function () {
         if (o.kind === 'tree') drawTree(x, y, o, B); else drawRock(x, y, o, B);
         ctx.globalAlpha = 1;
       }
-      else if (o.t === 'gate')   drawGate(x, y, o, hoopAhead(o) ? null : 'back');
+      else if (o.t === 'gate')   drawGate(x, y, o, 'back');
       else if (o.t === 'fish')   { if (!o.got) drawFish(x, y, o, false); }
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
@@ -3234,9 +3234,23 @@ var Game = (function () {
      The same width and the same place on the run as ever, so where it pays
      has not moved. Gold when taken, grey when passed by.
      `part` is 'back', 'front', or nothing for the whole thing (icons). */
+  /* The crystal ring is an arch standing across the run: its two feet set
+     in tufts of snow at the edges of the opening, the arch rising over it,
+     and the animal slides underneath. The camera looks down from behind,
+     so the arch's top shows further up the screen than its feet.
+     Drawn in two parts: on the ice (its shadow, the light held in the
+     opening, the snow at its feet) under everything, and the arch itself
+     after the creature, because it stands over him — it used to be a flat
+     ring lying on the ice whose near half jumped over him at the last
+     moment, and read as a hoop round his middle. */
   function drawGate(x, y, o, part) {
-    var hw = o.w / 2, hh = 20;
-    var back = part !== 'front', front = part !== 'back';   // null or undefined: the whole hoop
+    /* The ring scores on his centre, so his body passes as far again to
+       either side: the arch stands that much wider than the scoring zone
+       (and tall enough to clear him), or a scoring pass looked like the
+       ring had caught round his head. The light on the ice still shows
+       the zone itself. */
+    var zone = o.w / 2, hw = zone + PR * 0.95, H = hw * 0.8;
+    var ice = part !== 'front', arch = part !== 'back';   // null or undefined: all of it
     ctx.save();
     ctx.translate(x, y);
 
@@ -3246,101 +3260,94 @@ var Game = (function () {
     var rim = lit ? 'rgba(140,86,0,.85)' : gone ? 'rgba(110,126,140,.6)' : 'rgba(26,92,146,.8)';
     if (gone) ctx.globalAlpha = 0.6;
 
-    if (back) {
-      /* its shadow, thrown on the ice beside it */
-      ctx.fillStyle = 'rgba(30,70,110,.18)';
-      ctx.beginPath(); ctx.ellipse(10, hh * 0.9, hw * 0.98, hh * 0.32, 0, 0, 6.2832); ctx.fill();
-      /* the light held inside it: the part you aim for */
-      var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, hw);
+    if (ice) {
+      /* the arch's shadow, thrown across the ice beside it */
+      ctx.strokeStyle = 'rgba(30,70,110,.16)'; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.ellipse(12, 6, hw, H * 0.35, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+      /* the light held in the opening: the part you aim for */
+      var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, zone);
       glow.addColorStop(0, lit ? 'rgba(255,224,120,.5)' : gone ? 'rgba(200,210,220,.1)'
-                                                           : 'rgba(170,232,255,.38)');
+                                                           : 'rgba(170,232,255,.4)');
       glow.addColorStop(1, 'rgba(170,232,255,0)');
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, 6.2832); ctx.fill();
-      /* where it stands in the ice: a tuft of snow at each foot */
+      ctx.beginPath(); ctx.ellipse(0, 0, zone, 14, 0, 0, 6.2832); ctx.fill();
+      /* the snow it stands in, at each foot */
       [-1, 1].forEach(function (k) {
-        ctx.fillStyle = 'rgba(255,255,255,.92)';
-        ctx.beginPath(); ctx.ellipse(k * hw, 3, 9, 5, 0, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.95)';
+        ctx.beginPath(); ctx.ellipse(k * hw, 2, 10, 6, 0, 0, 6.2832); ctx.fill();
         ctx.strokeStyle = 'rgba(70,120,160,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
       });
     }
 
-    /* the hoop: the far half (upper arc) behind him, the near half in front */
-    function band(a0, a1) {
-      ctx.lineWidth = 8; ctx.strokeStyle = rim;
-      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, a0, a1); ctx.stroke();
-      ctx.lineWidth = 4.6; ctx.strokeStyle = hi;
-      ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, a0, a1); ctx.stroke();
-    }
-    if (back) band(Math.PI, 2 * Math.PI);
-    if (front) band(0, Math.PI);
+    if (arch) {
+      /* the arch: a thick band of ice from foot to foot over the top */
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 9; ctx.strokeStyle = rim;
+      ctx.beginPath(); ctx.ellipse(0, 0, hw, H, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+      ctx.lineWidth = 5.4; ctx.strokeStyle = hi;
+      ctx.beginPath(); ctx.ellipse(0, 0, hw, H, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+      /* light down the inner face of the band */
+      ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.ellipse(0, 0, hw - 2, H - 2, 0, Math.PI * 1.15, Math.PI * 1.55); ctx.stroke();
 
-    /* the crystals set into it: short and blunt, gems rather than thorns */
-    var per = Math.PI * (3 * (hw + hh) - Math.sqrt((3 * hw + hh) * (hw + 3 * hh)));
-    var n = Math.max(8, Math.round(per / 22));
-    var sz = clamp(hw * 0.12, 5, 9);
-    var twinkle = Math.floor(W.t * 0.09 + (o.d % 31)) % n;
-    ctx.lineJoin = 'round';
-    for (var i = 0; i < n; i++) {
-      var a = i / n * 6.2832 + 0.001;
-      var near = Math.sin(a) > 0;
-      if ((near && !front) || (!near && !back)) continue;
-      var cx = Math.cos(a) * hw, cy = Math.sin(a) * hh;
-      var nrm = Math.atan2(Math.sin(a) * hw, Math.cos(a) * hh);   // outward
-      var s2 = sz * (i % 2 ? 0.82 : 1.05) * (near ? 1.08 : 0.9);  // nearer looks bigger
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(nrm + Math.PI / 2);
-      var tp = -s2 * 1.05, sd = s2 * 0.62, bt = s2 * 0.62;
-      ctx.beginPath();
-      ctx.moveTo(0, tp); ctx.lineTo(-sd, tp * 0.35); ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(0, bt);
-      ctx.closePath(); ctx.fillStyle = hi; ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
-      ctx.closePath(); ctx.fillStyle = lo; ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
-      ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(-sd, tp * 0.35); ctx.closePath();
-      ctx.strokeStyle = rim; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.restore();
-
-      if (i === twinkle && !gone) {                  // light running round the ring
+      /* the crystals set along it: short and blunt, gems rather than thorns */
+      var n = Math.max(6, Math.round((hw + H) / 13));
+      var sz = clamp(hw * 0.12, 5, 9);
+      var twinkle = Math.floor(W.t * 0.09 + (o.d % 31)) % n;
+      ctx.lineJoin = 'round';
+      for (var i = 0; i < n; i++) {
+        var a = Math.PI + (i + 0.5) / n * Math.PI;
+        var cx = Math.cos(a) * hw, cy = Math.sin(a) * H;
+        var nrm = Math.atan2(Math.sin(a) * hw, Math.cos(a) * H);   // outward
+        var s2 = sz * (i % 2 ? 0.82 : 1.05);
         ctx.save();
-        ctx.translate(cx + Math.cos(nrm) * s2, cy + Math.sin(nrm) * s2);
-        ctx.fillStyle = '#ffffff';
+        ctx.translate(cx, cy);
+        ctx.rotate(nrm + Math.PI / 2);
+        var tp = -s2 * 1.05, sd = s2 * 0.62, bt = s2 * 0.62;
         ctx.beginPath();
-        var k = sz * 0.9;
-        ctx.moveTo(0, -k); ctx.lineTo(k * 0.22, -k * 0.22); ctx.lineTo(k, 0);
-        ctx.lineTo(k * 0.22, k * 0.22); ctx.lineTo(0, k); ctx.lineTo(-k * 0.22, k * 0.22);
-        ctx.lineTo(-k, 0); ctx.lineTo(-k * 0.22, -k * 0.22); ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(0, tp); ctx.lineTo(-sd, tp * 0.35); ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(0, bt);
+        ctx.closePath(); ctx.fillStyle = hi; ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
+        ctx.closePath(); ctx.fillStyle = lo; ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, tp); ctx.lineTo(sd, tp * 0.35); ctx.lineTo(sd, bt * 0.45); ctx.lineTo(0, bt);
+        ctx.lineTo(-sd, bt * 0.45); ctx.lineTo(-sd, tp * 0.35); ctx.closePath();
+        ctx.strokeStyle = rim; ctx.lineWidth = 1.2; ctx.stroke();
         ctx.restore();
+        if (i === twinkle && !gone) {                  // light running along the arch
+          ctx.save();
+          ctx.translate(cx + Math.cos(nrm) * s2, cy + Math.sin(nrm) * s2);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          var kk = sz * 0.9;
+          ctx.moveTo(0, -kk); ctx.lineTo(kk * 0.22, -kk * 0.22); ctx.lineTo(kk, 0);
+          ctx.lineTo(kk * 0.22, kk * 0.22); ctx.lineTo(0, kk); ctx.lineTo(-kk * 0.22, kk * 0.22);
+          ctx.lineTo(-kk, 0); ctx.lineTo(-kk * 0.22, -kk * 0.22); ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
       }
-    }
-
-    if (lit && front) {                              // sparks thrown off as it is taken
-      ctx.fillStyle = 'rgba(255,236,160,.9)';
-      for (i = 0; i < 8; i++) {
-        var a2 = i / 8 * 6.2832 + 0.4;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a2) * hw * 1.22, Math.sin(a2) * hh * 1.6, 2.4, 0, 6.2832);
-        ctx.fill();
+      /* taken: a shower of glints falling off the arch onto him */
+      if (lit && o.passT !== undefined && W.t - o.passT < 30) {
+        var age = (W.t - o.passT) / 30;
+        ctx.fillStyle = 'rgba(255,236,160,' + (1 - age).toFixed(3) + ')';
+        for (i = 0; i < 12; i++) {
+          var a2 = Math.PI + (i + 0.5) / 12 * Math.PI;
+          var gx = Math.cos(a2) * hw, gy = Math.sin(a2) * H + age * 34 * (0.6 + (i % 3) * 0.25);
+          ctx.beginPath(); ctx.arc(gx, gy, 2.6 * (1 - age * 0.5), 0, 6.2832); ctx.fill();
+        }
       }
     }
     ctx.restore();
   }
-  /* The near halves of the hoops, drawn after the creature so he passes
-     through them rather than over them. */
-  /* Still ahead of him: he is nearer the camera than it, so the whole hoop
-     is drawn under him. Only once he reaches it does its near half come
-     over the top. */
-  function hoopAhead(o) { return o.d - W.dist > 26; }
+  /* The arches, drawn after the creature: they stand over him. */
   function drawGateFronts() {
     for (var i = 0; i < W.objects.length; i++) {
       var o = W.objects[i];
-      if (o.t !== 'gate' || hoopAhead(o)) continue;
+      if (o.t !== 'gate') continue;
       var y = scrY(o.d);
-      if (y < -60 || y > VIEW_H + 60) continue;
+      if (y < -80 || y > VIEW_H + 60) continue;
       drawGate(scrX(o.x), y, o, 'front');
     }
   }
