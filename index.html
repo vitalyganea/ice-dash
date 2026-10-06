@@ -298,6 +298,19 @@
   </div>
 </section>
 
+<!-- A creature's comic: three pages of three panels, revealed one panel
+     at a time. A new player reads Snowcap's before the tutorial. -->
+<section id="screen-comic" class="screen hidden">
+  <div class="panel comic-page">
+    <div id="comic-panels" class="comic-panels"></div>
+    <div class="comic-foot">
+      <button id="comic-skip" class="btn btn-ghost btn-sm" data-i18n="comic.skip">Skip</button>
+      <span id="comic-pageno" class="comic-pageno"></span>
+      <button id="comic-next" class="btn btn-green"></button>
+    </div>
+  </div>
+</section>
+
 <section id="screen-runs" class="screen hidden">
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="runs.title">Known Lines</h2>
@@ -354,6 +367,7 @@
     <canvas id="sheet-skin-pic" class="skin-pic sheet-pic"></canvas>
     <h3 id="sheet-skin-name" class="sheet-name"></h3>
     <p id="sheet-skin-perk" class="sheet-perk"></p>
+    <div class="btn-row comic-row hidden" id="sheet-skin-comic-row"><button id="sheet-skin-comic" class="btn btn-sm btn-purple" data-i18n="comic.read">Read the comic</button></div>
     <div id="sheet-skin-album" class="album"></div>
     <div class="btn-row"><button id="sheet-skin-btn" class="btn"></button><span id="sheet-skin-tag" class="chosen-tag hidden"></span></div>
     <p id="sheet-skin-need" class="shop-note hidden"></p>
@@ -375,6 +389,7 @@
 <script src="js/courses.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/album.js"></script>
+<script src="js/comic.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ui.js"></script>
 </body>

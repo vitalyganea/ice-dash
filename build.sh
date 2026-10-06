@@ -17,6 +17,7 @@ js/skins.js
 js/courses.js
 js/achievements.js
 js/album.js
+js/comic.js
 js/game.js
 js/ui.js
 img/logo.png

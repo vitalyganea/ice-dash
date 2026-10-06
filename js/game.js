@@ -6367,6 +6367,30 @@ var Game = (function () {
     /* stepping the world by hand, for tests and screenshots */
     _step: function (n) { for (var i = 0; i < n; i++) if (W) step(); },
     _render: function () { if (W) render(); },
+    /* For the comic: a creature or any thing off the hill, painted at (x, y)
+       and `size` across into any context — the game's own painters, so the
+       pages look like the hill. opts: skin, ang, eye (as EYE), gait, t. */
+    comicDraw: function (c, kind, x, y, size, opts) {
+      opts = opts || {};
+      var keepCtx = ctx, keepW = W, keepEye = EYE;
+      if (!W || opts.t !== undefined)
+        W = { t: opts.t || 0, dist: 0, px: 0, speed: 0, objects: [], rows: [], biome: 0, biomeT: 0 };
+      try {
+        if (kind === 'creature') {
+          EYE = opts.eye || null;
+          c.save(); c.translate(x, y); c.rotate(opts.ang || 0);
+          paintCreature(c, skinById(opts.skin || 'snowcap'),
+                        { ang: 0, wag: 0, scale: size / 112, shield: -1, still: !opts.gait, gait: opts.gait || 0 });
+          c.restore();
+        } else {
+          ctx = c;
+          ctx.save(); ctx.translate(x - size / 2, y - size / 2);
+          paintHint(kind, size);
+          ctx.restore();
+        }
+      } catch (e) { /* a missing picture is not a crash */ }
+      ctx = keepCtx; W = keepW; EYE = keepEye;
+    },
     /* paint a creature into any context, for tests and portraits */
     _paint: function (c, skinId, opts) { paintCreature(c, skinById(skinId), opts); },
     _screen: function (x, d) { return { x: scrX(x), y: scrY(d) }; },

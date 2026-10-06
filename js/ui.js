@@ -61,7 +61,9 @@
              marketSeen: [], modesSeen: '',
              /* per creature: running totals and how many of its three
                 stories are open (album.js) */
-             album: {} };
+             album: {},
+             /* the creatures whose comic has been read through (or skipped) */
+             comicSeen: {} };
   }
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
@@ -100,6 +102,9 @@
       save.marketSeen = Object.prototype.toString.call(o.marketSeen) === '[object Array]'
                       ? o.marketSeen.filter(function (id) { return !!SKIN_BY_ID[id]; }) : [];
       save.modesSeen = typeof o.modesSeen === 'string' ? o.modesSeen : '';
+      save.comicSeen = {};
+      if (o.comicSeen && typeof o.comicSeen === 'object')
+        for (var cid2 in o.comicSeen) if (SKIN_BY_ID[cid2] && o.comicSeen[cid2]) save.comicSeen[cid2] = true;
       save.album = {};
       if (o.album && typeof o.album === 'object')
         for (var aid in o.album) {
@@ -172,7 +177,7 @@
   var screens = { title: $('screen-title'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
-                  ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'),
+                  ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'), comic: $('screen-comic'),
                   revive: $('screen-revive'), tutdone: $('screen-tutdone') };
   var hud = $('hud');
   var currentScreen = 'title';
@@ -774,6 +779,7 @@
       case 'lang':       Sfx.click(); buildLangs(); $('sheet-lang').classList.remove('hidden'); break;
       case 'back-title':
         Sfx.click();
+        if (currentScreen === 'comic') { finishComic(); break; }   // the arrow and Esc leave a comic
         /* The back arrow and Esc close an open window before they leave
            the screen under it. */
         if (closeSheet()) break;
@@ -989,6 +995,7 @@
     Game.drawSkinPreview($('sheet-skin-pic'), sk.id, 140);
     $('sheet-skin-name').textContent = t('skin.' + sk.id + '.name', null, sk.name);
     $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
+    $('sheet-skin-comic-row').classList.toggle('hidden', !(comicFor(sk.id) && owns(sk.id)));
     buildAlbum(sk.id);
     var b = $('sheet-skin-btn'), need = $('sheet-skin-need'), tag = $('sheet-skin-tag');
     b.textContent = ''; b.disabled = false; b.className = 'btn'; b.removeAttribute('data-go');
@@ -1023,6 +1030,94 @@
     if (!b.classList.contains('hidden')) b.focus({ preventScroll: true });
   }
   /* Closes whichever window is open; says whether one was. */
+  /* ------------------------ the comic ------------------------- */
+  /* A comic is read a panel at a time: each tap shows the next panel of the
+     page, and once all three are up the next page. The panels move a little
+     as they come in, so they are drawn on an animation frame of their own
+     while the comic is open. */
+  var comic = null;
+  function openComic(id, done) {
+    var pages = comicFor(id);
+    if (!pages) { if (done) done(); return; }
+    comic = { id: id, pages: pages, page: 0, shown: 0, done: done, raf: null, starts: [] };
+    show('comic');
+    buildComicPage();
+    (function tick() {
+      if (!comic) return;
+      drawComic();
+      comic.raf = requestAnimationFrame(tick);
+    })();
+  }
+  function buildComicPage() {
+    var box = $('comic-panels');
+    box.textContent = '';
+    comic.shown = 0; comic.starts = [];
+    comic.pages[comic.page].forEach(function (p) {
+      var cell = document.createElement('div');
+      cell.className = 'comic-panel';
+      var cv = document.createElement('canvas');
+      cv.className = 'comic-art';
+      cell.appendChild(cv);
+      var cap = document.createElement('div');
+      cap.className = 'comic-cap'; cap.textContent = t(p.cap);
+      cell.appendChild(cap);
+      box.appendChild(cell);
+    });
+    revealPanel();
+    $('comic-pageno').textContent = (comic.page + 1) + ' / ' + comic.pages.length;
+  }
+  function revealPanel() {
+    var cells = $('comic-panels').children;
+    if (comic.shown < cells.length) {
+      cells[comic.shown].classList.add('shown');
+      comic.starts[comic.shown] = 0;
+      comic.shown++;
+    }
+    var last = comic.page === comic.pages.length - 1 && comic.shown === cells.length;
+    $('comic-next').textContent = last ? t('comic.go') : t('comic.next') + '  \u203a';
+  }
+  function nextComic() {
+    if (!comic) return;
+    Sfx.click();
+    if (comic.shown < comic.pages[comic.page].length) { revealPanel(); return; }
+    if (comic.page < comic.pages.length - 1) { comic.page++; buildComicPage(); return; }
+    finishComic();
+  }
+  function finishComic() {
+    if (!comic) return;
+    if (comic.raf != null) cancelAnimationFrame(comic.raf);
+    save.comicSeen[comic.id] = true;
+    store();
+    var done = comic.done;
+    comic = null;
+    if (done) done(); else show('title');
+  }
+  function drawComic() {
+    var cells = $('comic-panels').children;
+    var k = Math.min(window.devicePixelRatio || 1, 2.5);
+    for (var i = 0; i < comic.shown; i++) {
+      var cv = cells[i].querySelector('canvas');
+      var w = cv.clientWidth || 300, h = Math.round(w * COMIC_H / COMIC_W);
+      if (cv.width !== Math.round(w * k)) { cv.width = Math.round(w * k); cv.height = Math.round(h * k); }
+      var c = cv.getContext('2d');
+      c.setTransform(k * w / COMIC_W, 0, 0, k * w / COMIC_W, 0, 0);
+      c.clearRect(0, 0, COMIC_W, COMIC_H);
+      c.lineJoin = 'round'; c.lineCap = 'round';
+      c.save();
+      c.beginPath(); c.rect(0, 0, COMIC_W, COMIC_H); c.clip();
+      comic.pages[comic.page][i].draw(c, comic.starts[i]++);
+      c.restore();
+    }
+  }
+  $('comic-next').addEventListener('click', nextComic);
+  $('comic-panels').addEventListener('click', nextComic);
+  $('comic-skip').addEventListener('click', function () { Sfx.click(); finishComic(); });
+  $('sheet-skin-comic').addEventListener('click', function () {
+    var id = sheetSkin;
+    closeSheet();
+    openComic(id, function () { show('shop'); });
+  });
+
   /* The creature's three stories, under its perk in its window: an open
      chapter reads as its story; a closed one says what opens it and how
      far along it is. */
@@ -1623,6 +1718,8 @@
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       if (closeSheet()) { Sfx.click(); return; }
+      /* the comic has its own Skip where the back arrow would sit */
+      if (currentScreen === 'comic') { Sfx.click(); finishComic(); return; }
       if (BACKABLE[currentScreen]) { act('back-title'); }
       else if (currentScreen === 'pause') act('resume');
       else if (Game.isRunning() && !Game.isPaused()) { Game.pause(); show('pause'); }
@@ -1683,7 +1780,12 @@
       /* Someone who has never ridden at all goes straight into the
          tutorial instead of a menu of things they have no words for yet.
          An existing save with runs in it never sees it unasked. */
-      if (!save.tutDone && !save.runs && currentScreen === 'title') ride('tutorial');
+      if (!save.tutDone && !save.runs && currentScreen === 'title') {
+        /* and before that, Snowcap's three pages: who he is and what the
+           hill asks of him, so the first tap has a story behind it */
+        if (!save.comicSeen.snowcap) openComic('snowcap', function () { ride('tutorial'); });
+        else ride('tutorial');
+      }
       else show(currentScreen === 'title' ? 'title' : currentScreen);
       pushScore();
       announce('gameReady');

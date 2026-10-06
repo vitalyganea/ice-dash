@@ -710,6 +710,11 @@ async function walk(cdp, sid, P) {
   await clickFor('[data-action="shop"]', '#screen-shop');
   var tTag = await ev("(function(){var e=document.querySelector('#shop-grid [data-pick=\"aurora\"] .tag-trophy');return e?e.textContent:null;})()");
   ok(tTag && /\d+\/\d+/.test(tTag), 'Aurora is on the shelf with the trophies still to go (' + tTag + ')');
+  /* Snowcap's window offers his comic; reading it from there returns to the Market */
+  await clickFor('#shop-grid [data-pick="snowcap"]', '#sheet-skin');
+  ok(await visible('#sheet-skin-comic'), 'Snowcap\'s window offers his comic');
+  ok(await clickFor('#sheet-skin-comic', '#screen-comic') >= 0, 'which opens it');
+  ok(await clickFor('#comic-skip', '#screen-shop') >= 0, 'and Skip returns to the Market');
   /* the seal has been ridden: her window shows her stories */
   await clickFor('#shop-grid [data-pick="seal"]', '#sheet-skin');
   var alb = await ev("({rows:document.querySelectorAll('#sheet-skin-album .album-row').length,open:document.querySelectorAll('#sheet-skin-album .album-row.open').length,txt:(document.querySelector('#sheet-skin-album .album-row.open .album-txt')||{}).textContent||''})");
@@ -786,7 +791,27 @@ async function walk(cdp, sid, P) {
 
   await ev("sessionStorage.setItem('fresh','1');localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  /* first, Snowcap's comic: three pages, a panel a tap, then the tutorial */
+  ok(await waitFor('#screen-comic', 8000), 'a brand-new player first reads Snowcap\'s comic');
+  var comicPages = 0;
+  for (var cp = 0; cp < 3; cp++) {
+    for (var pn = 0; pn < 3; pn++) {
+      if (pn > 0) await click('#comic-next');
+      await sleep(260);
+    }
+    var cinfo = await ev("({panels:document.querySelectorAll('#comic-panels .comic-panel.shown').length," +
+      "drawn:Array.from(document.querySelectorAll('#comic-panels canvas')).filter(function(c){return c.width>0;}).length," +
+      "caps:Array.from(document.querySelectorAll('#comic-panels .comic-cap')).map(function(e){return e.textContent;}).join(' | ')})");
+    if (cinfo.panels === 3 && cinfo.drawn === 3 && cinfo.caps.indexOf('comic.') < 0) comicPages++;
+    await shot('13b-comic-' + (cp + 1));
+    if (cp < 2) await click('#comic-next');
+    await sleep(200);
+  }
+  ok(comicPages === 3, 'three pages of three drawn panels, every caption in words (' + comicPages + ' pages)');
+  ok(/go|vamos|hai|bora|los/i.test(await ev("document.getElementById('comic-next').textContent")), 'the last button says let\'s go');
+  await click('#comic-next');
   ok(await waitFor('#tut-card', 8000), 'a brand-new player is dropped straight into the tutorial');
+  ok((await readSave()).comicSeen && (await readSave()).comicSeen.snowcap === true, 'and the save remembers the comic was read');
   ok(!(await visible('#screen-title')) && await visible('#tut-skip'),
      'with no menu in the way, and a Skip button on screen');
   var first = await ev("document.getElementById('tut-text').textContent");
