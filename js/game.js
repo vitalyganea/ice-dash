@@ -6739,24 +6739,67 @@ var Game = (function () {
        Skip button lives there, so they sit below it. */
     var rY = padT + ((W.course && W.course.tut) ? 56 : 0);
 
-    /* How much rush is left, as metres rather than a bar: the player is
-       already reading metres, and a bar says nothing about the hill. */
-    if (W.rushT > 0) {
-      var leftM = (W.rushT / 60).toFixed(1);
-      ctx.textAlign = 'center';
-      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
-      var rt = leftM + tr('hud.s', 'S');
-      var rw = ctx.measureText(rt).width + u * 2.2;
-      var rx = CSS_W - padL - rw / 2;
-      ctx.fillStyle = 'rgba(255,255,255,.92)';
-      rr(ctx, rx - rw / 2, rY, rw, u * 1.8, u * 0.9); ctx.fill();
+    /* Everything that runs out, each in its own pill: what it is (its
+       picture), how long it has left in seconds, and a bar emptying under
+       it; the last two seconds blink, so nothing simply stops. The rush
+       ball had the only clock; the magnet, the cold snap and the lens ran
+       out with no warning at all. */
+    function timerPill(left, max, kind) {
+      var txt = (left / 60).toFixed(1) + tr('hud.s', 'S');
+      ctx.font = '800 ' + Math.round(u * 0.95) + FONT;
+      var tw = measureAt(tab(txt), Math.round(u * 0.95));
+      var ph2 = u * 1.8, pw = tw + u * 2.9, px2 = CSS_W - padL - pw;
+      var warn = left < 120 ? 0.45 + 0.55 * Math.abs(Math.sin(W.t * 0.3)) : 1;
+      ctx.save();
+      ctx.globalAlpha = warn;
+      ctx.fillStyle = 'rgba(255,255,255,.93)';
+      rr(ctx, px2, rY, pw, ph2, ph2 / 2); ctx.fill();
       ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.12);
-      rr(ctx, rx - rw / 2, rY, rw, u * 1.8, u * 0.9); ctx.stroke();
-      ctx.fillStyle = '#1d5f8e';
-      ctx.fillText(rt, rx, rY + u * 1.3);
+      rr(ctx, px2, rY, pw, ph2, ph2 / 2); ctx.stroke();
+      /* the bar, emptying along the bottom */
+      var bw = (pw - ph2) * Math.max(0, left / max);
+      ctx.fillStyle = kind === 'call' ? '#e2453c' : kind === 'sight' ? '#7cc443' : kind === 'chill' ? '#55b8f0' : '#3f93cc';
+      rr(ctx, px2 + ph2 / 2, rY + ph2 - u * 0.42, bw, u * 0.22, u * 0.11); ctx.fill();
+      /* its picture */
+      var ix = px2 + u * 0.95, iy = rY + ph2 * 0.46, ir = u * 0.48;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (kind === 'call') {                         // a horseshoe magnet, red with silver tips
+        ctx.lineWidth = ir * 0.62; ctx.strokeStyle = '#e2453c';
+        ctx.beginPath(); ctx.arc(ix, iy + ir * 0.1, ir * 0.62, Math.PI * 0.05, Math.PI * 0.95, false); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ix - ir * 0.62, iy + ir * 0.1); ctx.lineTo(ix - ir * 0.62, iy - ir * 0.55);
+        ctx.moveTo(ix + ir * 0.62, iy + ir * 0.1); ctx.lineTo(ix + ir * 0.62, iy - ir * 0.55); ctx.stroke();
+        ctx.strokeStyle = '#dfe6ee'; ctx.lineCap = 'butt';
+        ctx.beginPath(); ctx.moveTo(ix - ir * 0.62, iy - ir * 0.45); ctx.lineTo(ix - ir * 0.62, iy - ir * 0.85);
+        ctx.moveTo(ix + ir * 0.62, iy - ir * 0.45); ctx.lineTo(ix + ir * 0.62, iy - ir * 0.85); ctx.stroke();
+      } else if (kind === 'chill') {                 // a snowflake
+        ctx.strokeStyle = '#2f8fd0'; ctx.lineWidth = Math.max(1.4, ir * 0.2);
+        for (var sf = 0; sf < 3; sf++) {
+          var sa3 = sf * Math.PI / 3;
+          ctx.beginPath(); ctx.moveTo(ix - Math.cos(sa3) * ir, iy - Math.sin(sa3) * ir); ctx.lineTo(ix + Math.cos(sa3) * ir, iy + Math.sin(sa3) * ir); ctx.stroke();
+        }
+      } else if (kind === 'sight') {                 // a lens with the gold line in it
+        ctx.fillStyle = '#e9f8d8'; ctx.strokeStyle = '#4f9a3c'; ctx.lineWidth = Math.max(1.4, ir * 0.2);
+        ctx.beginPath(); ctx.arc(ix - ir * 0.1, iy - ir * 0.1, ir * 0.68, 0, 6.2832); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ix + ir * 0.38, iy + ir * 0.38); ctx.lineTo(ix + ir * 0.85, iy + ir * 0.85); ctx.stroke();
+        ctx.fillStyle = '#ffcd3a';
+        for (var sd = 0; sd < 3; sd++) { ctx.beginPath(); ctx.arc(ix - ir * 0.45 + sd * ir * 0.35, iy + ir * 0.12 - sd * ir * 0.22, ir * 0.11, 0, 6.2832); ctx.fill(); }
+      } else {                                       // the rush: a ball of packed powder
+        var bgr = ctx.createRadialGradient(ix - ir * 0.3, iy - ir * 0.3, 1, ix, iy, ir);
+        bgr.addColorStop(0, '#ffffff'); bgr.addColorStop(1, '#a9d8f2');
+        ctx.fillStyle = bgr; ctx.strokeStyle = '#3f93cc'; ctx.lineWidth = Math.max(1.2, ir * 0.16);
+        ctx.beginPath(); ctx.arc(ix, iy, ir * 0.8, 0, 6.2832); ctx.fill(); ctx.stroke();
+      }
       ctx.textAlign = 'left';
-      rY += u * 2.3;
+      ctx.font = '800 ' + Math.round(u * 0.95) + FONT;
+      ctx.fillStyle = '#0b3d7a';
+      ctx.fillText(txt, px2 + u * 1.75, rY + ph2 * 0.66);
+      ctx.restore();
+      rY += ph2 + u * 0.45;
     }
+    if (W.rushT > 0)  timerPill(W.rushT, RUSH_FRAMES, 'rush');
+    if (W.callT > 0)  timerPill(W.callT, CALL_FRAMES, 'call');
+    if (W.chillT > 0) timerPill(W.chillT, CHILL_FRAMES, 'chill');
+    if (W.sightT > 0) timerPill(W.sightT, SIGHT_FRAMES, 'sight');
 
     if (W.shield > 0) {
       ctx.save();
