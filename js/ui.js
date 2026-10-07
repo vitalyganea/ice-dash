@@ -1065,7 +1065,53 @@
     });
     revealPanel();
     $('comic-pageno').textContent = (comic.page + 1) + ' / ' + comic.pages.length;
+    fitComic();
   }
+  /* Size the page to this screen. The panels take whatever height is left
+     after the captions, the buttons and the margins, and their width
+     follows from the picture's shape — so a tall phone, a short phone and
+     a desktop each get a page that fits exactly, without scrolling. The
+     captions wrap to the new width and change height, so it settles over
+     a couple of passes. */
+  function fitComic() {
+    if (!comic) return;
+    var scr = $('screen-comic'), page = scr.querySelector('.comic-page'), box = $('comic-panels');
+    var cells = box.children, n = cells.length;
+    if (!n || !scr.clientHeight) return;
+    var px = function (el, k) { return parseFloat(getComputedStyle(el)[k]) || 0; };
+    var row = getComputedStyle(box).display === 'grid';
+    var gap = px(box, 'rowGap') || 10;
+    var availH = scr.clientHeight - px(scr, 'paddingTop') - px(scr, 'paddingBottom');
+    var availW = scr.clientWidth - px(scr, 'paddingLeft') - px(scr, 'paddingRight');
+    var padX = px(page, 'paddingLeft') + px(page, 'paddingRight') + px(page, 'borderLeftWidth') + px(page, 'borderRightWidth');
+    var padY = px(page, 'paddingTop') + px(page, 'paddingBottom') + px(page, 'borderTopWidth') + px(page, 'borderBottomWidth');
+    var foot = page.querySelector('.comic-foot');
+    var footH = foot.offsetHeight + px(foot, 'marginTop') + 12;      // and the panel's own drop shadow
+    var pageMax = Math.min(row ? 1400 : 560, availW);
+    var cellMax = (pageMax - padX - (row ? gap * 2 : 0)) / (row ? 3 : 1);
+    var w = cellMax;
+    for (var pass = 0; pass < 4; pass++) {
+      /* the caption's type follows the panel down on a small screen, or a
+         narrow panel wraps it onto line after line and squeezes itself */
+      var fs = Math.max(11, Math.min(15.5, w * 0.05));
+      for (var i = 0; i < n; i++) { cells[i].style.width = w + 'px'; cells[i].querySelector('.comic-cap').style.fontSize = fs + 'px'; }
+      var caps = 0, edge = 0;
+      for (i = 0; i < n; i++) {
+        var ch = cells[i].querySelector('.comic-cap').offsetHeight;
+        edge = cells[i].offsetHeight - cells[i].clientHeight + 4;   // border and shadow
+        caps = row ? Math.max(caps, ch) : caps + ch;
+      }
+      var room = availH - padY - footH - caps - (row ? edge : edge * n + gap * (n - 1));
+      var artH = row ? room : room / n;
+      var fit = Math.max(120, Math.min(cellMax, artH * COMIC_W / COMIC_H + 6));
+      if (Math.abs(fit - w) < 1) break;
+      w = fit;
+    }
+    /* never narrower than its buttons need: on a short phone the panels
+       shrink, and the page stays wide enough for Skip, 1 / 3 and Next */
+    page.style.width = Math.min(availW, Math.max(300, (row ? w * 3 + gap * 2 : w) + padX)) + 'px';
+  }
+  window.addEventListener('resize', function () { if (comic) fitComic(); });
   function revealPanel() {
     var cells = $('comic-panels').children;
     if (comic.shown < cells.length) {

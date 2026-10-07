@@ -1527,23 +1527,29 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 @keyframes chosenPop{ 0%{ transform:scale(.88); } 60%{ transform:scale(1.07); } 100%{ transform:scale(1); } }
 @media (prefers-reduced-motion: reduce){ .skin-card.just-chosen, .skin-card.just-chosen .tag-worn{ animation:none; } }
 
-/* ---- a creature's comic ---- */
-.comic-page{ width:min(560px,100%); padding:18px 16px 14px; }
-.comic-panels{ display:flex; flex-direction:column; gap:10px; cursor:pointer; }
+/* ---- a creature's comic ----
+   The page is sized to the screen it is on (ui.js fitComic): the three
+   panels and their captions always fit the height, so no device scrolls,
+   and the page hugs them rather than standing taller than every other
+   panel. Each panel is one card — the picture with its caption under it —
+   instead of a picture with a yellowed label stuck on below. */
+.comic-page{ width:min(560px,100%); max-width:100%; padding:16px 16px 14px; }
+.comic-panels{ display:flex; flex-direction:column; align-items:center; gap:10px; cursor:pointer; }
 .comic-panel{
+  width:100%; max-width:100%;
+  background:#ffffff; border:3px solid #062a78; border-radius:14px; overflow:hidden;
+  box-shadow:0 4px 0 rgba(6,42,120,.28);
   opacity:0; transform:translateY(10px) scale(.97);
   transition:opacity .35s ease, transform .35s cubic-bezier(.2,1.4,.4,1);
 }
 .comic-panel.shown{ opacity:1; transform:none; }
-.comic-art{
-  display:block; width:100%; aspect-ratio:16 / 10; height:auto;
-  border:3px solid #062a78; border-radius:10px; background:#e6f3fb;
-  box-shadow:0 3px 0 rgba(6,42,120,.35);
-}
+.comic-art{ display:block; width:100%; aspect-ratio:16 / 10; height:auto; background:#e6f3fb; }
 .comic-cap{
-  margin:5px 2px 0; padding:6px 10px; border-radius:8px;
-  background:#fff8d6; border:2px solid #062a78;
-  font-weight:800; font-size:clamp(13px,2.2vw,16px); line-height:1.3; color:#062a78; text-align:left;
+  padding:7px 12px 8px;
+  background:linear-gradient(180deg,#ffffff 0%,#eef7fd 100%);
+  border-top:2px solid rgba(6,42,120,.14);
+  font-weight:700; font-size:clamp(13px,1.9vw,15.5px); line-height:1.32; color:#173a7a; text-align:left;
+  letter-spacing:.1px;
 }
 .comic-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; }
 .comic-pageno{ font-weight:800; color:var(--ink-soft); font-size:14px; }
@@ -1551,10 +1557,6 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .comic-row.hidden{ display:none; }
 /* three panels side by side wherever the screen is wider than tall */
 @media (min-aspect-ratio: 1/1){
-  .comic-page{ width:min(1040px,100%); }
-  .comic-panels{ display:grid; grid-template-columns:repeat(3,1fr); }
-}
-/* on a phone, small enough that a page of three fits without scrolling */
-@media (max-aspect-ratio: 1/1){
-  .comic-panel .comic-art{ max-height:calc((100vh - 290px) / 3); width:auto; max-width:100%; margin:0 auto; }
+  .comic-page{ width:min(1400px,100%); }
+  .comic-panels{ display:grid; grid-template-columns:repeat(3,auto); justify-content:center; align-items:start; }
 }
