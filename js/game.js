@@ -6693,7 +6693,7 @@ var Game = (function () {
 
     /* metres · the catch · spare lives, each in its own pill */
     var ph = Math.round(fM * 1.45), py = y1 + gap + u * 0.25, pp = u * 0.5, ic = u * 1.15;
-    var wDist = ic + measureAt(tab(distTxt), fM), wFish = ic * 1.18 + measureAt(tab(fishTxt), fM);
+    var wDist = ic + measureAt(tab(distTxt), fM), wFish = ic * 1.08 + measureAt(tab(fishTxt), fM);
     var wLife = lifeTxt ? ic + measureAt(tab(lifeTxt), fM) : 0;
     var tY = py + ph / 2 + fM * 0.34;
     ctx.font = '800 ' + fM + FONT;
@@ -6713,10 +6713,10 @@ var Game = (function () {
     if (hudCoinsSeen >= 0 && W.coins > hudCoinsSeen) hudBump = 1;
     hudCoinsSeen = W.coins;
     if (hudBump > 0) hudBump = Math.max(0, hudBump - 0.06);
-    hudFish(fx + pp + ic * 0.5, py + ph / 2, u * 0.58, hudBump > 0 ? 1 - hudBump : 0);
+    hudFish(fx + pp + ic * 0.48, py + ph / 2, u * 0.47, hudBump > 0 ? 1 - hudBump : 0);
     ctx.font = '800 ' + fM + FONT;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(fishTxt, fx + pp + ic * 1.18, tY);
+    ctx.fillText(fishTxt, fx + pp + ic * 1.08, tY);
     var w = fx + wFish + pp * 2 - x0;
     if (lifeTxt) {
       var lx = fx + wFish + pp * 2 + u * 0.35;
