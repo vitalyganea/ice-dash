@@ -2198,7 +2198,7 @@ var Game = (function () {
       /* lifted off the hill: a soft shadow falling towards you */
       ctx.save();
       ctx.shadowColor = 'rgba(' + ROOF_RGB + ',' + (ink * 0.9).toFixed(3) + ')';
-      ctx.shadowBlur = 18; ctx.shadowOffsetY = 10;
+      ctx.shadowBlur = 30; ctx.shadowOffsetY = 20;          // it stands high: the shadow falls further
       ctx.fillStyle = B.snowA;
       ctx.fill();
       ctx.restore();
@@ -2212,6 +2212,11 @@ var Game = (function () {
         tracePts(near, -(5 + sh * 9)); ctx.stroke();
         tracePts(far, 5 + sh * 9); ctx.stroke();
       }
+      /* the back of the hill: a lit ridge along the middle of the roof */
+      var midY = (yIn + yOut) / 2;
+      var rg = ctx.createLinearGradient(0, midY - 60, 0, midY + 60);
+      rg.addColorStop(0, 'rgba(255,255,255,0)'); rg.addColorStop(0.5, 'rgba(255,255,255,.55)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = rg; ctx.fillRect(-40, midY - 60, VIEW_W + 80, 120);
 
       /* The run showing through: its two edges, faint, the whole way
          across. This is what says the way on is under here. */
@@ -2280,6 +2285,47 @@ var Game = (function () {
         creatureShade(pxx, py, Math.atan2(W.vx, Math.max(W.speed, 3)) * 0.85);
       }
       ctx.restore();
+
+      /* ---- the face of the overhang ----
+         Hanging down from the near lip over the run: the front of the
+         rock and ice the cave is cut into, lit at the top and falling into
+         blue shade, layered where the ice built up, so the roof has height
+         and is not a sheet laid over the run. */
+      var FACE = 58, cxF = scrX(chuteAt(o.d)), facePts = [];
+      for (var fq = 0; fq <= 36; fq++) {
+        var fxx = cxF - CHUTE * 1.02 + fq / 36 * CHUTE * 2.04;
+        var ft = (fxx - cxF) / (CHUTE * 0.98), fs = Math.max(0, 1 - Math.pow(Math.abs(ft), 6));
+        facePts.push([fxx, archAt(fxx, yIn, 1, o.ph), fs]);
+      }
+      ctx.beginPath();
+      for (fq = 0; fq < facePts.length; fq++) ctx.lineTo(facePts[fq][0], facePts[fq][1]);
+      for (fq = facePts.length - 1; fq >= 0; fq--) ctx.lineTo(facePts[fq][0], facePts[fq][1] + FACE * facePts[fq][2] + Math.sin(fq * 1.7 + o.ph) * 2.5 * facePts[fq][2]);
+      ctx.closePath();
+      var fgr = ctx.createLinearGradient(0, yIn - ARCH, 0, yIn + FACE);
+      fgr.addColorStop(0, '#e2f1fa'); fgr.addColorStop(0.45, '#8fb4cf'); fgr.addColorStop(0.8, '#4d6f8c'); fgr.addColorStop(1, '#2c445c');
+      ctx.fillStyle = fgr; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5;                 // the layers in the ice
+      for (var lay = 1; lay <= 3; lay++) {
+        ctx.beginPath();
+        for (fq = 0; fq < facePts.length; fq++)
+          ctx.lineTo(facePts[fq][0], facePts[fq][1] + FACE * facePts[fq][2] * lay / 4 + Math.sin(fq * 0.9 + lay * 2 + o.ph) * 2);
+        ctx.stroke();
+      }
+      for (fq = 1; fq < facePts.length - 1; fq += 2) {                                // stone showing through the ice
+        var hs2 = hh(fq, Math.floor(o.ph * 10)), fy0 = facePts[fq][1] + FACE * facePts[fq][2] * (0.35 + 0.4 * hs2);
+        if (facePts[fq][2] < 0.3 || hs2 < 0.35) continue;
+        var rw = 8 + hs2 * 14, rh = 6 + hs2 * 9;
+        ctx.fillStyle = 'rgba(40,58,80,.45)';
+        ctx.beginPath(); ctx.ellipse(facePts[fq][0], fy0, rw, rh, hs2 - 0.5, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(200,225,245,.35)';
+        ctx.beginPath(); ctx.ellipse(facePts[fq][0] - rw * 0.3, fy0 - rh * 0.4, rw * 0.5, rh * 0.3, -0.3, 0, 6.2832); ctx.fill();
+      }
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(10,30,60,.45)'; ctx.lineWidth = 2;                     // its bottom edge, over the dark
+      ctx.beginPath();
+      for (fq = 0; fq < facePts.length; fq++) ctx.lineTo(facePts[fq][0], facePts[fq][1] + FACE * facePts[fq][2] + Math.sin(fq * 1.7 + o.ph) * 2.5 * facePts[fq][2]);
+      ctx.stroke();
 
       /* ---- the lips ----
        The mouth's edge is a rim of ice-glazed stones, each its own size,
@@ -2772,75 +2818,105 @@ var Game = (function () {
   /* A ball of packed powder, still spinning where the wind rolled it. */
 
   
-  /* A nodule of glacier ice with something caught inside it, still turning
-     slowly in the light. Deliberately not a box: there is nothing on this
-     hill that anybody made, so the prize comes out of the ice itself. */
-  /* Takes its context so the results screen can paint one into its own
-     canvas without the module's `ctx` being swapped out underneath the
-     frame that is mid-render. */
+  /* An ice cube with something frozen inside it: a block of clear blue
+     glacier ice, seen from above and a little to the side so you get its
+     top and two of its faces, bevelled and frosted at the edges, and a
+     golden fish caught stiff in the middle, glowing through the ice. It
+     was a lumpy nodule — asked to become a cube, and a cube is what you
+     would want to crack open. Bobs gently where it lies. */
+  /* the three faces (top, left, right) for a cube of half-size s, round
+     the corner nearest you at the centre */
+  function cubeFaces(s) {
+    return [
+      [[0, -s * 1.1], [s, -s * 0.55], [0, 0], [-s, -s * 0.55]],
+      [[-s, -s * 0.55], [0, 0], [0, s * 1.1], [-s, s * 0.55]],
+      [[0, 0], [s, -s * 0.55], [s, s * 0.55], [0, s * 1.1]]
+    ];
+  }
+  var CUBE_TONE = [['#f2fbff', '#bfe7fa'], ['#a6dcf5', '#6cbbe6'], ['#5fa9db', '#3a82c0']];
+  function polyPath(c, pts, dx, dy) {
+    c.beginPath();
+    for (var q = 0; q < pts.length; q++) {
+      var px = pts[q][0] + (dx || 0), py = pts[q][1] + (dy || 0);
+      q ? c.lineTo(px, py) : c.moveTo(px, py);
+    }
+    c.closePath();
+  }
+  function cubeFill(c, f, pts, s, alpha) {
+    var g = c.createLinearGradient(-s, -s, s, s);
+    g.addColorStop(0, CUBE_TONE[f][0]); g.addColorStop(1, CUBE_TONE[f][1]);
+    c.globalAlpha = alpha;
+    c.fillStyle = g; polyPath(c, pts); c.fill();
+    c.globalAlpha = 1;
+  }
+  function drawGoldFish(c, r, pulse) {
+    c.save();
+    c.rotate(-0.45);
+    var fg = c.createLinearGradient(0, -r * 0.2, 0, r * 0.2);
+    fg.addColorStop(0, '#ffe58a'); fg.addColorStop(1, '#e09a12');
+    c.fillStyle = fg;
+    c.beginPath(); c.ellipse(0, 0, r * 0.4, r * 0.18, 0, 0, 6.2832); c.fill();
+    c.beginPath();                                   // tail
+    c.moveTo(-r * 0.33, 0); c.quadraticCurveTo(-r * 0.5, -r * 0.08, -r * 0.6, -r * 0.2);
+    c.lineTo(-r * 0.54, 0); c.lineTo(-r * 0.6, r * 0.2); c.quadraticCurveTo(-r * 0.5, r * 0.08, -r * 0.33, 0); c.fill();
+    c.beginPath();                                   // fin
+    c.moveTo(-r * 0.06, -r * 0.15); c.quadraticCurveTo(r * 0.04, -r * 0.32, r * 0.16, -r * 0.14); c.closePath(); c.fill();
+    c.fillStyle = '#7a4a00';                         // eye
+    c.beginPath(); c.arc(r * 0.25, -r * 0.03, r * 0.05, 0, 6.2832); c.fill();
+    c.fillStyle = '#ffffff';
+    c.beginPath(); c.arc(r * 0.26, -r * 0.045, r * 0.018, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,252,230,' + (0.4 + 0.5 * pulse).toFixed(3) + ')';   // glint along it
+    c.beginPath(); c.ellipse(r * 0.04, -r * 0.08, r * 0.22, r * 0.045, 0, 0, 6.2832); c.fill();
+    c.restore();
+  }
   function drawFind(x, y, o, c) {
     c = c || ctx;
     var r = o.r, a = (W ? W.t : 0) * 0.021 + o.ph, k;
+    var s = r * 0.8, bob = Math.sin(a * 1.4) * r * 0.05;
     c.save();
     c.translate(x, y);
-
-    c.fillStyle = 'rgba(40,100,150,.22)';
-    c.beginPath(); c.ellipse(4, 7, r * 1.02, r * 0.9, 0, 0, 6.2832); c.fill();
-
-    /* the lump: a few flats, so it reads as cleaved ice and not a ball */
-    c.rotate(Math.sin(a * 0.4) * 0.16);
-    c.beginPath();
-    for (k = 0; k < 9; k++) {
-      var ang = k / 9 * 6.2832;
-      var rad = r * (0.86 + 0.20 * Math.sin(k * 2.3 + o.ph));
-      k ? c.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.94)
-        : c.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.94);
-    }
-    c.closePath();
-    var g = c.createLinearGradient(-r, -r, r, r);
-    g.addColorStop(0, 'rgba(226,248,255,.95)');
-    g.addColorStop(0.5, 'rgba(150,215,245,.92)');
-    g.addColorStop(1, 'rgba(78,164,212,.95)');
-    c.fillStyle = g; c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2.4; c.stroke();
-
-    /* the thing frozen inside, glinting as it turns */
-    var pulse = 0.55 + 0.45 * Math.sin(a * 2.1);
-    var cg = c.createRadialGradient(-r * 0.1, -r * 0.12, 1, 0, 0, r * 0.62);
-    cg.addColorStop(0, 'rgba(255,246,196,' + (0.55 + 0.4 * pulse).toFixed(3) + ')');
-    cg.addColorStop(0.6, 'rgba(255,208,86,' + (0.35 * pulse).toFixed(3) + ')');
-    cg.addColorStop(1, 'rgba(255,190,60,0)');
-    c.fillStyle = cg;
-    c.beginPath(); c.arc(0, 0, r * 0.62, 0, 6.2832); c.fill();
-
-    /* What is inside, plain to see: a golden fish, stiff in the ice, a
-       glint running along it. It was a four-pointed sparkle, which said
-       "something shiny" and not "something to crack out". */
-    c.save();
-    c.rotate(-0.5);
-    c.fillStyle = 'rgba(255,196,60,' + (0.75 + 0.25 * pulse).toFixed(3) + ')';
-    c.beginPath(); c.ellipse(0, 0, r * 0.38, r * 0.17, 0, 0, 6.2832); c.fill();
-    c.beginPath();                                   // tail
-    c.moveTo(-r * 0.32, 0); c.lineTo(-r * 0.56, -r * 0.17); c.lineTo(-r * 0.56, r * 0.17); c.closePath(); c.fill();
-    c.beginPath();                                   // fin
-    c.moveTo(-r * 0.04, -r * 0.14); c.lineTo(r * 0.06, -r * 0.27); c.lineTo(r * 0.14, -r * 0.13); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(122,74,0,.85)';               // eye
-    c.beginPath(); c.arc(r * 0.24, -r * 0.03, r * 0.045, 0, 6.2832); c.fill();
-    c.fillStyle = 'rgba(255,252,230,' + (0.35 + 0.6 * pulse).toFixed(3) + ')';
-    c.beginPath(); c.ellipse(r * 0.04, -r * 0.07, r * 0.2, r * 0.04, 0, 0, 6.2832); c.fill();
+    /* its shadow on the ice, away from the sun, shrinking as it bobs up */
+    c.fillStyle = 'rgba(30,80,130,.2)';
+    c.beginPath(); c.ellipse(s * 0.3, s * 1.0, s * (0.95 - bob / r), s * 0.34, 0.25, 0, 6.2832); c.fill();
+    c.translate(0, bob - s * 0.05);
+    var F = cubeFaces(s), pulse = 0.55 + 0.45 * Math.sin(a * 2.1);
+    /* the light of what is inside, and the thing itself, under the ice */
+    var cg = c.createRadialGradient(0, s * 0.05, 1, 0, s * 0.05, s * 1.1);
+    cg.addColorStop(0, 'rgba(255,240,170,' + (0.75 + 0.25 * pulse).toFixed(3) + ')');
+    cg.addColorStop(0.55, 'rgba(255,214,100,' + (0.3 + 0.2 * pulse).toFixed(3) + ')');
+    cg.addColorStop(1, 'rgba(255,200,80,0)');
+    for (k = 0; k < 3; k++) cubeFill(c, k, F[k], s, 1);
+    c.save(); polyPath(c, F[0]); polyPath(c, F[1]); polyPath(c, F[2]);
+    c.beginPath(); for (k = 0; k < 3; k++) { var P = F[k]; c.moveTo(P[0][0], P[0][1]); for (var q = 1; q < 4; q++) c.lineTo(P[q][0], P[q][1]); c.closePath(); }
+    c.clip();
+    c.fillStyle = cg; c.fillRect(-s * 1.5, -s * 1.5, s * 3, s * 3);
+    c.translate(0, s * 0.1); drawGoldFish(c, s * 1.35, pulse);
     c.restore();
-    /* and fine cracks through the ice round it */
-    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 0.9;
-    c.beginPath();
-    c.moveTo(r * 0.5, -r * 0.4); c.lineTo(r * 0.28, -r * 0.18); c.lineTo(r * 0.36, r * 0.02);
-    c.moveTo(-r * 0.46, r * 0.42); c.lineTo(-r * 0.26, r * 0.26);
-    c.stroke();
-
-    /* one clean highlight on the ice above it */
-    c.fillStyle = 'rgba(255,255,255,.75)';
-    c.beginPath();
-    c.ellipse(-r * 0.34, -r * 0.44, r * 0.3, r * 0.15, -0.5, 0, 6.2832);
-    c.fill();
+    /* the ice over it: each face a little milky, so the fish is inside */
+    for (k = 0; k < 3; k++) cubeFill(c, k, F[k], s, 0.2);
+    /* bubbles frozen in it */
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = Math.max(0.6, s * 0.03);
+    [[-0.5, 0.3, 0.07], [-0.3, 0.65, 0.05], [0.55, 0.45, 0.06], [0.35, -0.6, 0.05]].forEach(function (b) {
+      c.beginPath(); c.arc(b[0] * s, b[1] * s, b[2] * s, 0, 6.2832); c.stroke();
+    });
+    /* bevelled edges: bright along the top, a soft dark line where the
+       faces turn away */
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = Math.max(1.2, s * 0.09);
+    polyPath(c, F[0]); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = Math.max(0.8, s * 0.05);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(0, s * 1.1); c.stroke();
+    c.strokeStyle = 'rgba(20,70,130,.45)'; c.lineWidth = Math.max(0.8, s * 0.05);
+    c.beginPath(); c.moveTo(-s, -s * 0.55); c.lineTo(-s, s * 0.55); c.lineTo(0, s * 1.1); c.lineTo(s, s * 0.55); c.lineTo(s, -s * 0.55); c.stroke();
+    /* frost in the top corners and a gloss streak down the left face */
+    c.fillStyle = 'rgba(255,255,255,.7)';
+    c.beginPath(); c.ellipse(-s * 0.2, -s * 0.72, s * 0.32, s * 0.1, 0.48, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)';
+    c.beginPath(); c.moveTo(-s * 0.82, -s * 0.35); c.lineTo(-s * 0.62, -s * 0.25); c.lineTo(-s * 0.62, s * 0.5); c.lineTo(-s * 0.82, s * 0.4); c.closePath(); c.fill();
+    /* a glint that travels along the top edge */
+    var gp = (a * 0.35) % 1, gx = -s + gp * 2 * s, gy = gx < 0 ? -s * 0.55 - (gx + s) * 0.55 : -s * 1.1 + gx * 0.55;
+    c.fillStyle = 'rgba(255,255,255,' + (0.9 * Math.sin(gp * Math.PI)).toFixed(3) + ')';
+    c.beginPath(); c.arc(gx, gy, s * 0.09, 0, 6.2832); c.fill();
     c.restore();
   }
 
@@ -6593,7 +6669,7 @@ var Game = (function () {
 
     /* metres · the catch · spare lives, each in its own pill */
     var ph = Math.round(fM * 1.45), py = y1 + gap + u * 0.25, pp = u * 0.5, ic = u * 1.15;
-    var wDist = ic + measureAt(tab(distTxt), fM), wFish = ic + measureAt(tab(fishTxt), fM);
+    var wDist = ic + measureAt(tab(distTxt), fM), wFish = ic * 1.18 + measureAt(tab(fishTxt), fM);
     var wLife = lifeTxt ? ic + measureAt(tab(lifeTxt), fM) : 0;
     var tY = py + ph / 2 + fM * 0.34;
     ctx.font = '800 ' + fM + FONT;
@@ -6609,10 +6685,14 @@ var Game = (function () {
     ctx.fillText(distTxt, px1 + pp + ic, tY);
     var fx = px1 + wDist + pp * 2 + u * 0.35;
     pill(fx, py, wFish + pp * 2, ph);
-    hudFish(fx + pp + ic * 0.4, py + ph / 2, u * 0.5);
+    /* it jumps when you catch one */
+    if (hudCoinsSeen >= 0 && W.coins > hudCoinsSeen) hudBump = 1;
+    hudCoinsSeen = W.coins;
+    if (hudBump > 0) hudBump = Math.max(0, hudBump - 0.06);
+    hudFish(fx + pp + ic * 0.5, py + ph / 2, u * 0.58, hudBump > 0 ? 1 - hudBump : 0);
     ctx.font = '800 ' + fM + FONT;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(fishTxt, fx + pp + ic, tY);
+    ctx.fillText(fishTxt, fx + pp + ic * 1.18, tY);
     var w = fx + wFish + pp * 2 - x0;
     if (lifeTxt) {
       var lx = fx + wFish + pp * 2 + u * 0.35;
@@ -6690,25 +6770,61 @@ var Game = (function () {
   /* The fish on the readout: still, and drawn for its size. The swimming
      fish off the hill, shrunk into the panel, flicked its tail and bobbed
      beside a number that was trying to be read. */
-  function hudFish(x, y, r) {
+  /* Drawn as a game's icon now: a plump fish with a pale belly, a forked
+     tail and fins, fine scales, a gloss along its back and an eye with a
+     light in it, outlined in the buttons' deep blue. `bump` (0..1) is the
+     little jump it gives when you catch one. */
+  function hudFish(x, y, r, bump) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.beginPath();                                  // tail
-    ctx.moveTo(-r * 0.7, 0); ctx.lineTo(-r * 1.45, -r * 0.7); ctx.lineTo(-r * 1.45, r * 0.7);
+    if (bump) { var bs = 1 + 0.35 * Math.sin(bump * Math.PI); ctx.scale(bs, bs); ctx.rotate(-0.25 * Math.sin(bump * Math.PI)); }
+    var ow = Math.max(1, r * 0.12);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = '#062a78'; ctx.lineWidth = ow;
+    /* forked tail */
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.72, 0);
+    ctx.quadraticCurveTo(-r * 1.1, -r * 0.2, -r * 1.42, -r * 0.72);
+    ctx.quadraticCurveTo(-r * 1.2, -r * 0.05, -r * 1.3, 0);
+    ctx.quadraticCurveTo(-r * 1.2, r * 0.05, -r * 1.42, r * 0.72);
+    ctx.quadraticCurveTo(-r * 1.1, r * 0.2, -r * 0.72, 0);
     ctx.closePath();
-    ctx.fillStyle = '#2f8fd0'; ctx.fill();
-    ctx.lineWidth = Math.max(1, r * 0.16); ctx.strokeStyle = '#062a78'; ctx.stroke();
+    ctx.fillStyle = '#2a86cc'; ctx.fill(); ctx.stroke();
+    /* dorsal fin */
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.35, -r * 0.55); ctx.quadraticCurveTo(-r * 0.05, -r * 1.05, r * 0.3, -r * 0.6); ctx.closePath();
+    ctx.fillStyle = '#2a86cc'; ctx.fill(); ctx.stroke();
+    /* body */
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.02, r * 0.7, 0, 0, 6.2832);
     var g = ctx.createLinearGradient(0, -r * 0.7, 0, r * 0.7);
-    g.addColorStop(0, '#8fd6ff'); g.addColorStop(1, '#2f8fd0');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.0, r * 0.66, 0, 0, 6.2832); ctx.fill();
-    ctx.stroke();
+    g.addColorStop(0, '#4fb2f0'); g.addColorStop(0.55, '#7fcdf8'); g.addColorStop(1, '#d9f3ff');
+    ctx.fillStyle = g; ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(20,90,160,.3)'; ctx.lineWidth = Math.max(0.7, r * 0.08);   // scales
+    for (var sc = 0; sc < 3; sc++) {
+      ctx.beginPath(); ctx.arc(-r * 0.45 + sc * r * 0.32, -r * 0.08, r * 0.22, -1.2, 1.2); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.55)';                                             // gloss
+    ctx.beginPath(); ctx.ellipse(-r * 0.1, -r * 0.38, r * 0.55, r * 0.14, -0.08, 0, 6.2832); ctx.fill();
+    ctx.restore();
+    /* pectoral fin */
+    ctx.beginPath();
+    ctx.moveTo(r * 0.05, r * 0.12); ctx.quadraticCurveTo(-r * 0.1, r * 0.5, -r * 0.4, r * 0.38); ctx.closePath();
+    ctx.fillStyle = '#3c9ee0'; ctx.fill();
+    ctx.lineWidth = ow * 0.7; ctx.stroke();
+    /* the eye, with a light in it, and a smile */
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(r * 0.45, -r * 0.12, r * 0.2, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.5, -r * 0.12, r * 0.24, 0, 6.2832); ctx.fill();
+    ctx.lineWidth = ow * 0.6; ctx.stroke();
     ctx.fillStyle = '#062a78';
-    ctx.beginPath(); ctx.arc(r * 0.5, -r * 0.12, r * 0.1, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.56, -r * 0.1, r * 0.12, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(r * 0.6, -r * 0.15, r * 0.045, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = '#062a78'; ctx.lineWidth = ow * 0.55;
+    ctx.beginPath(); ctx.arc(r * 0.72, r * 0.18, r * 0.14, 0.4, 1.9); ctx.stroke();
     ctx.restore();
   }
+  var hudCoinsSeen = -1, hudBump = 0;
 
   /* Measuring at a size other than the one currently set, without leaving
      the font changed behind us. */
@@ -7005,65 +7121,87 @@ var Game = (function () {
                : kind === 'gold' ? ['#fff0b0', '#e0a81f', '255,210,90']
                                  : ['#d6f1ff', '#3f93cc', '150,215,255'];
       var R = Math.min(size * 0.32, 45), cx = size / 2, cy = size / 2, i;
-      /* cracks: fixed paths out from the middle, drawn longer as it strains */
-      var cracks = [];
-      for (i = 0; i < 7; i++) {
-        var a0 = i / 7 * 6.2832 + 0.3, pts = [[0, 0]], x = 0, y = 0;
-        for (var sgi = 1; sgi <= 4; sgi++) {
-          var aa = a0 + Math.sin(i * 3.1 + sgi * 1.7) * 0.45, step = R * 0.27;
-          x += Math.cos(aa) * step; y += Math.sin(aa) * step;
-          pts.push([x, y]);
+      var S = R * 0.8;
+      /* The cube is struck three times. Each knock jolts it and runs a
+         crack further across its faces — tock, tock, TOCK — and on the
+         third it gives: the cube comes apart into its own pieces, each a
+         bit of a face in that face's colour, spinning out and falling, and
+         what was inside rises in its light. It used to shake harder and
+         harder at random and throw triangles that had never been part of
+         anything. */
+      var KNOCKS = [0.12, 0.27, 0.42], BREAK = 0.5;
+      var cracks = [                                   // fixed, across the faces from the near corner
+        [[0, 0], [-S * 0.3, -S * 0.3], [-S * 0.55, -S * 0.42], [-S * 0.9, -S * 0.5]],
+        [[0, 0], [S * 0.2, S * 0.35], [S * 0.45, S * 0.5], [S * 0.85, S * 0.45]],
+        [[0, 0], [-S * 0.15, S * 0.4], [-S * 0.5, S * 0.55], [-S * 0.8, S * 0.3]],
+        [[0, 0], [S * 0.25, -S * 0.3], [S * 0.2, -S * 0.7], [S * 0.05, -S * 1.0]]
+      ];
+      /* the pieces: each face cut into three from its middle */
+      var F = cubeFaces(S), pieces = [];
+      for (var f = 0; f < 3; f++) {
+        var P = F[f], mx = 0, my = 0;
+        for (i = 0; i < 4; i++) { mx += P[i][0] / 4; my += P[i][1] / 4; }
+        var cuts = [[P[0], P[1]], [P[1], P[2], P[3]], [P[3], P[0]]];
+        for (i = 0; i < 3; i++) {
+          var poly = [[mx, my]].concat(cuts[i]);
+          if (i === 0) poly.push([(P[1][0] + P[2][0]) / 2, (P[1][1] + P[2][1]) / 2]);
+          var pcx = 0, pcy = 0;
+          for (var q = 0; q < poly.length; q++) { pcx += poly[q][0] / poly.length; pcy += poly[q][1] / poly.length; }
+          var dl = Math.hypot(pcx, pcy) || 1;
+          pieces.push({ f: f, pts: poly.map(function (p) { return [p[0] - pcx, p[1] - pcy]; }), x: pcx, y: pcy,
+                        vx: pcx / dl * (1.6 + ((f * 3 + i) % 3) * 0.5), vy: pcy / dl * 1.4 - 2.6 - (i % 2),
+                        spin: ((f + i) % 2 ? 1 : -1) * (0.08 + ((f * 5 + i) % 3) * 0.05) });
         }
-        cracks.push(pts);
       }
-      var sh = [];
-      for (i = 0; i < 14; i++) {
-        var sa = i / 14 * 6.2832 + 0.4;
-        sh.push({ a: sa, sp: 0.7 + ((i * 7) % 5) * 0.22,
-                  rot: (i % 2 ? 1 : -1) * (0.08 + (i % 3) * 0.05),
-                  w: R * (0.24 + ((i * 5) % 4) * 0.08) });
+      var T = 0, DUR = 150, broke = false, raf = null;
+      function knockAt(t) {                             // how hard the last knock still shakes it
+        var j = 0;
+        for (var n = 0; n < KNOCKS.length; n++) if (t >= KNOCKS[n]) j = n + 1;
+        var since = j ? t - KNOCKS[j - 1] : 1;
+        return { n: j, jolt: j ? Math.max(0, 1 - since * 18) * (0.6 + 0.4 * j) : 0 };
       }
-      var T = 0, DUR = 150, BREAK = 0.6, broke = false, raf = null;
       function frame() {
         T++;
         var t = T / DUR;
         c.setTransform(k, 0, 0, k, 0, 0);
         c.clearRect(0, 0, size, size);
 
-        if (t < BREAK) {                              /* it strains */
-          var q = t / BREAK, amp = q * q * 10;
-          var jx = (Math.random() - 0.5) * amp, jy = (Math.random() - 0.5) * amp;
-          /* light building inside, pulsing faster as it goes */
-          var pulse = 0.5 + 0.5 * Math.sin(T * (0.15 + q * 0.5));
+        if (t < BREAK) {                              /* struck, and struck again */
+          var kn = knockAt(t), q = kn.n / KNOCKS.length;
+          var jx = Math.sin(T * 2.3) * kn.jolt * 5, jy = -kn.jolt * 6;
+          var squash = 1 + kn.jolt * 0.12;
+          var pulse = 0.5 + 0.5 * Math.sin(T * (0.15 + q * 0.4));
           var gl = c.createRadialGradient(cx, cy, 1, cx, cy, R * (1.2 + q));
-          gl.addColorStop(0, 'rgba(' + tone[2] + ',' + (0.25 + 0.45 * q * pulse).toFixed(3) + ')');
+          gl.addColorStop(0, 'rgba(' + tone[2] + ',' + (0.2 + 0.5 * q * pulse).toFixed(3) + ')');
           gl.addColorStop(1, 'rgba(' + tone[2] + ',0)');
           c.fillStyle = gl;
           c.beginPath(); c.arc(cx, cy, R * (1.2 + q), 0, 6.2832); c.fill();
-          c.save(); c.translate(cx + jx, cy + jy);
+          c.save(); c.translate(cx + jx, cy + jy); c.scale(squash, 2 - squash);
           drawFind(0, 0, { r: R, ph: 0.8 }, c);
-          /* the cracks of light, running further each frame */
+          /* the cracks: each knock runs one more across, glowing */
+          c.translate(0, -S * 0.05);
           c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 1.8;
-          c.shadowColor = 'rgba(' + tone[2] + ',1)'; c.shadowBlur = 8;
-          for (i = 0; i < cracks.length; i++) {
-            var reach = Math.max(0, Math.min(4, q * 6 - i * 0.35));
-            if (reach <= 0) continue;
+          c.shadowColor = 'rgba(' + tone[2] + ',1)'; c.shadowBlur = 6 + 10 * kn.jolt;
+          for (i = 0; i < Math.min(cracks.length, kn.n + (kn.n === 3 ? 1 : 0)); i++) {
             var pts2 = cracks[i];
             c.beginPath(); c.moveTo(pts2[0][0], pts2[0][1]);
-            for (var pi = 1; pi <= Math.ceil(reach); pi++) {
-              var f = Math.min(1, reach - (pi - 1));
-              c.lineTo(pts2[pi - 1][0] + (pts2[pi][0] - pts2[pi - 1][0]) * f,
-                       pts2[pi - 1][1] + (pts2[pi][1] - pts2[pi - 1][1]) * f);
-            }
+            for (var pi = 1; pi < pts2.length; pi++) c.lineTo(pts2[pi][0], pts2[pi][1]);
             c.stroke();
           }
           c.restore();
+          if (kn.jolt > 0.5) {                         /* a puff of frost knocked off it */
+            c.fillStyle = 'rgba(255,255,255,' + ((kn.jolt - 0.5) * 1.2).toFixed(3) + ')';
+            for (i = 0; i < 6; i++) {
+              var fa = i * 1.05 + kn.n, fd = R * (1.1 + (1 - kn.jolt) * 0.8);
+              c.beginPath(); c.arc(cx + Math.cos(fa) * fd, cy + Math.sin(fa) * fd * 0.8, 2 + (i % 3), 0, 6.2832); c.fill();
+            }
+          }
         } else {                                      /* it gives */
           if (!broke) { broke = true; if (onBreak) onBreak(); }
           var q2 = (t - BREAK) / (1 - BREAK);
           /* the flash */
-          if (q2 < 0.18) {
-            c.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - q2 / 0.18)).toFixed(3) + ')';
+          if (q2 < 0.15) {
+            c.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - q2 / 0.15)).toFixed(3) + ')';
             c.fillRect(0, 0, size, size);
           }
           /* rays turning behind it */
@@ -7083,30 +7221,27 @@ var Game = (function () {
           c.fillStyle = bg;
           c.beginPath(); c.arc(cx, cy, R * (0.8 + burst * 2.4), 0, 6.2832); c.fill();
 
-          for (i = 0; i < sh.length; i++) {           /* the shell, leaving */
-            var p = sh[i];
-            var fly = q2 * q2 * 1.5 + q2 * 0.6;
-            var px = cx + Math.cos(p.a) * R * (0.7 + fly * 2.8);
-            var py = cy + Math.sin(p.a) * R * (0.7 + fly * 2.8) + fly * fly * 26;
+          var tt = (T - BREAK * DUR);                   /* the cube's own pieces, flying and falling */
+          for (i = 0; i < pieces.length; i++) {
+            var pc = pieces[i];
+            var px = cx + pc.x + pc.vx * tt * 1.3, py = cy + pc.y - S * 0.05 + pc.vy * tt * 1.3 + 0.09 * tt * tt;
             c.save();
-            c.translate(px, py);
-            c.rotate(p.rot * T * 0.5);
-            c.globalAlpha = Math.max(0, 1 - q2 * 1.25);
-            c.fillStyle = '#dff2ff';
-            c.beginPath();
-            c.moveTo(-p.w, p.w * 0.5); c.lineTo(0, -p.w);
-            c.lineTo(p.w, p.w * 0.4); c.closePath(); c.fill();
-            c.strokeStyle = 'rgba(120,180,220,.8)'; c.lineWidth = 1.2; c.stroke();
+            c.translate(px, py); c.rotate(pc.spin * tt);
+            c.globalAlpha = Math.max(0, 1 - q2 * 1.4);
+            var pg2 = c.createLinearGradient(-S * 0.4, -S * 0.4, S * 0.4, S * 0.4);
+            pg2.addColorStop(0, CUBE_TONE[pc.f][0]); pg2.addColorStop(1, CUBE_TONE[pc.f][1]);
+            c.fillStyle = pg2; polyPath(c, pc.pts); c.fill();
+            c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.3; c.stroke();
             c.restore();
           }
           c.globalAlpha = 1;
 
-          /* and what was inside, settling in with a bounce */
+          /* and what was inside, rising and settling with a bounce */
           var pop = Math.min(1, q2 * 2.4);
           var ease = 1 + 0.25 * Math.sin(pop * Math.PI) * (1 - pop) - Math.pow(1 - pop, 3);
           var pr = R * (0.2 + 0.72 * Math.max(0, ease));
           c.save();
-          c.translate(cx, cy);
+          c.translate(cx, cy - (1 - pop) * R * 0.3);
           c.rotate(Math.sin(T * 0.07) * 0.18);
           var pg = c.createRadialGradient(-pr * 0.3, -pr * 0.35, 1, 0, 0, pr);
           pg.addColorStop(0, tone[0]);
@@ -7116,6 +7251,27 @@ var Game = (function () {
           c.ellipse(0, 0, pr, pr * 0.86, 0, 0, 6.2832);
           c.fill();
           c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2.4; c.stroke();
+          /* what it is, in the middle of its light: a fish, a golden fish
+             or a heart — not just a coloured ball */
+          c.save();
+          if (kind === 'life') {
+            c.fillStyle = '#ffffff';
+            c.beginPath();
+            c.moveTo(0, pr * 0.42);
+            c.bezierCurveTo(-pr * 0.75, -pr * 0.05, -pr * 0.32, -pr * 0.62, 0, -pr * 0.22);
+            c.bezierCurveTo(pr * 0.32, -pr * 0.62, pr * 0.75, -pr * 0.05, 0, pr * 0.42);
+            c.fill();
+          } else if (kind === 'gold') {
+            drawGoldFish(c, pr * 1.45, 0.5 + 0.5 * Math.sin(T * 0.2));
+          } else {
+            c.rotate(-0.45);
+            c.fillStyle = '#ffffff';
+            c.beginPath(); c.ellipse(0, 0, pr * 0.55, pr * 0.25, 0, 0, 6.2832); c.fill();
+            c.beginPath(); c.moveTo(-pr * 0.45, 0); c.lineTo(-pr * 0.82, -pr * 0.28); c.lineTo(-pr * 0.82, pr * 0.28); c.closePath(); c.fill();
+            c.fillStyle = tone[1];
+            c.beginPath(); c.arc(pr * 0.33, -pr * 0.04, pr * 0.07, 0, 6.2832); c.fill();
+          }
+          c.restore();
           c.fillStyle = 'rgba(255,255,255,.6)';
           c.beginPath();
           c.ellipse(-pr * 0.32, -pr * 0.36, pr * 0.26, pr * 0.16, -0.5, 0, 6.2832);
