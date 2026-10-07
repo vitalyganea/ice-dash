@@ -1723,6 +1723,104 @@ var Game = (function () {
   }
 
   /* the ice run and the snow banks that wind along either side */
+  /* ---- the ground, with some volume to it ----
+     A hash for things fixed to the hill: the same patch of deep ice or the
+     same glint on the snow is in the same place every time you pass it,
+     and scrolls with the hill instead of swimming on the screen. */
+  function hh(n, k) { var v = Math.sin(n * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); }
+  function bankX(d, side) {
+    var wob = Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4;
+    return VIEW_W / 2 + (chuteAt(d) - chuteAt(W.dist)) + side * (CHUTE + wob);
+  }
+  /* The ice: deeper and clearer in patches, darker there; frost dulling it
+     in others; old bubbles caught in it; the left bank's shadow lying
+     across its edge (the sun is upper left, so the right bank throws none
+     onto it); and a broad soft sheen of sky that holds still on the screen
+     while the ice runs under it — which is what reflections do, and what
+     makes a floor read as glassy rather than painted. */
+  function iceBody(B) {
+    var dTop = W.dist + PLAYER_Y + 160, dBot = W.dist + PLAYER_Y - VIEW_H - 160, cell, k, d, x, y, r;
+    for (cell = Math.floor(dBot / 170); cell <= Math.floor(dTop / 170); cell++) {
+      for (k = 0; k < 2; k++) {
+        d = cell * 170 + hh(cell, k) * 170;
+        x = scrX(chuteAt(d) + (hh(cell, k + 7) - 0.5) * CHUTE * 1.7); y = scrY(d);
+        r = 50 + hh(cell, k + 13) * 90;
+        var deep = hh(cell, k + 19) < 0.55;
+        var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, deep ? 'rgba(30,120,200,.07)' : 'rgba(255,255,255,.16)');
+        g.addColorStop(1, deep ? 'rgba(30,120,200,0)' : 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r * 0.8, hh(cell, k + 23) * 3, 0, 6.2832); ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1;          // bubbles held in it
+      for (k = 0; k < 4; k++) {
+        d = cell * 170 + hh(cell, k + 30) * 170;
+        x = scrX(chuteAt(d) + (hh(cell, k + 40) - 0.5) * CHUTE * 1.8); y = scrY(d);
+        ctx.beginPath(); ctx.arc(x, y, 1.5 + hh(cell, k + 50) * 2.5, 0, 6.2832); ctx.stroke();
+      }
+    }
+    /* the left bank's shadow across the edge of the ice */
+    ctx.fillStyle = B.bankShade;
+    for (var pass = 0; pass < 2; pass++) {
+      ctx.globalAlpha = pass ? 0.22 : 0.18;
+      var wd = pass ? 16 : 34;
+      ctx.beginPath();
+      for (y = -40; y <= VIEW_H + 40; y += 12) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, -1) - 4, y); }
+      for (y = VIEW_H + 40; y >= -40; y -= 12) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, -1) + wd + Math.sin(d * 0.02) * 4, y); }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    /* the sky's sheen, fixed on the screen */
+    var sh = ctx.createLinearGradient(VIEW_W * 0.1, 0, VIEW_W * 0.9, VIEW_H * 0.6);
+    sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.42, 'rgba(255,255,255,0)');
+    sh.addColorStop(0.5, 'rgba(255,255,255,.13)'); sh.addColorStop(0.58, 'rgba(255,255,255,0)');
+    sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  /* A bank: snow heaped up beside the run, not a flat white margin. The
+     slope down to the ice faces the run — in shade on the left, in the sun
+     on the right — and the top of the bank rolls in soft drifts, with now
+     and then a glint where a crystal catches the sun. Called with the
+     bank's own outline as the current path. */
+  function bankBody(B, side) {
+    var y, d, k, cell, x;
+    ctx.save();
+    ctx.clip();
+    /* the slope: a band along the edge, shaded or lit */
+    var strokes = side < 0 ? [[76, 0.12], [46, 0.15], [22, 0.2]] : [[64, 0.18], [36, 0.22]];
+    ctx.strokeStyle = side < 0 ? B.bankShade : '#ffffff';
+    ctx.lineJoin = 'round';
+    for (k = 0; k < strokes.length; k++) {
+      ctx.globalAlpha = strokes[k][1]; ctx.lineWidth = strokes[k][0];
+      ctx.beginPath();
+      for (y = -40; y <= VIEW_H + 40; y += 10) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, side), y); }
+      ctx.stroke();
+    }
+    /* drifts rolling across the top, each lit on its upper left */
+    var dTop = W.dist + PLAYER_Y + 160, dBot = W.dist + PLAYER_Y - VIEW_H - 160;
+    for (cell = Math.floor(dBot / 120); cell <= Math.floor(dTop / 120); cell++) {
+      d = cell * 120 + hh(cell, side + 3) * 120;
+      x = bankX(d, side) + side * (40 + hh(cell, side + 5) * 110); y = scrY(d);
+      var rr = 26 + hh(cell, side + 9) * 34;
+      ctx.globalAlpha = 0.1; ctx.fillStyle = B.bankShade;
+      ctx.beginPath(); ctx.ellipse(x + rr * 0.25, y + rr * 0.2, rr * 1.5, rr * 0.7, -0.3, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(x - rr * 0.2, y - rr * 0.15, rr * 1.3, rr * 0.55, -0.3, 0, 6.2832); ctx.fill();
+    }
+    /* glints */
+    for (cell = Math.floor(dBot / 46); cell <= Math.floor(dTop / 46); cell++) {
+      var tw = Math.sin(W.t * 0.045 + hh(cell, side + 60) * 40);
+      if (tw < 0.8) continue;
+      d = cell * 46 + hh(cell, side + 61) * 46;
+      x = bankX(d, side) + side * (14 + hh(cell, side + 62) * 150); y = scrY(d);
+      var a = (tw - 0.8) * 5, sz = 2.2 + hh(cell, side + 63) * 2.5;
+      ctx.globalAlpha = a; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x - sz, y); ctx.lineTo(x + sz, y); ctx.moveTo(x, y - sz); ctx.lineTo(x, y + sz); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function drawChute() {
     var B = pal(), y, d, c, i;
 
@@ -1747,6 +1845,7 @@ var Game = (function () {
     ctx.fillStyle = ice; ctx.fill();
 
     ctx.save(); ctx.clip();
+    iceBody(B);
     /* The one thing a run is ABOUT is that it gets faster, and at 1127m it
        used to look exactly as quick as at 76m. The streaks carry it: they
        stretch, thin and brighten as he picks up, so the floor is visibly
@@ -1783,6 +1882,7 @@ var Game = (function () {
       ctx.lineTo(side < 0 ? -60 : VIEW_W + 60, -40);
       ctx.closePath();
       ctx.fillStyle = B.snowA; ctx.fill();
+      bankBody(B, side);
       /* a blue shadow where the bank drops onto the ice, then a bright lip:
          without it the snow and the ice read as one flat field */
       ctx.strokeStyle = B.bankShade; ctx.lineWidth = 11;
