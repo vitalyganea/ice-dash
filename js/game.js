@@ -2824,13 +2824,42 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* ---- one sun for the whole hill ----
+     Low in the upper left, where every highlight in the game already sits.
+     Each thing standing on the ice throws its shadow the same way, down
+     and to the right, as long as the thing is tall: a pine a long one, a
+     boulder a short one. It used to be a round disc under everything, the
+     same for a tree as for a stone, which is what made them read as
+     stickers laid on the ice rather than things standing on it. Under the
+     long shadow a tight, darker one where it meets the ice — the contact
+     that says it is heavy and it is there. */
+  var SUN_DX = 0.6, SUN_DY = 0.8;
+  function castShadow(r, h, col) {
+    var L = h, ang = Math.atan2(SUN_DY, SUN_DX), w = r * 0.78;
+    ctx.save();
+    ctx.translate(SUN_DX * r * 0.2, SUN_DY * r * 0.2);   // starts under its far side, no halo on the lit one
+    ctx.rotate(ang);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(0, -w);
+    ctx.bezierCurveTo(L * 0.45, -w, L * 0.8, -w * 0.62, L, -w * 0.34);
+    ctx.quadraticCurveTo(L + w * 0.5, 0, L, w * 0.34);
+    ctx.bezierCurveTo(L * 0.8, w * 0.62, L * 0.45, w, 0, w);
+    ctx.arc(0, 0, w, Math.PI / 2, Math.PI * 1.5);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.5;                            // softer towards its tip
+    ctx.beginPath(); ctx.ellipse(L * 0.35, 0, L * 0.55 + w * 0.3, w * 1.15, 0, 0, 6.2832); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(16,40,72,.22)';             // contact
+    ctx.beginPath(); ctx.ellipse(r * 0.1, r * 0.14, r * 0.84, r * 0.78, 0, 0, 6.2832); ctx.fill();
+  }
+
   function drawRock(x, y, o, B) {
     var r = o.r, k, a, rad;
     ctx.save();
-    ctx.translate(x, y); ctx.rotate(o.rot);
-
-    ctx.fillStyle = B.shadow || 'rgba(86,132,176,.26)';
-    ctx.beginPath(); ctx.ellipse(5, 8, r * 1.02, r * 0.9, 0, 0, 6.2832); ctx.fill();
+    ctx.translate(x, y);
+    castShadow(r, r * (formOf(o, 4) === 2 ? 0.45 : formOf(o, 4) === 1 ? 1.0 : 0.7), B.shadow || 'rgba(86,132,176,.26)');
+    ctx.rotate(o.rot);
 
     function outline(scale) {
       var f = formOf(o, 4);
@@ -2918,8 +2947,7 @@ var Game = (function () {
     var r = o.r, n = 6 + formOf(o, 3), k;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(30,80,70,.26)';
-    ctx.beginPath(); ctx.ellipse(6, 9, r * 1.0, r * 0.92, 0, 0, 6.2832); ctx.fill();
+    castShadow(r, r * 1.0, 'rgba(30,80,70,.24)');
     ctx.rotate(o.rot);
     for (k = 0; k < n; k++) {
       ctx.save();
@@ -2949,8 +2977,7 @@ var Game = (function () {
     var r = o.r * 1.12, n = 7 + formOf(o, 3), k, j;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(10,0,30,.38)';
-    ctx.beginPath(); ctx.ellipse(7, 10, r * 1.0, r * 0.9, 0, 0, 6.2832); ctx.fill();
+    castShadow(r * 0.8, r * 2.2, 'rgba(10,0,30,.32)');
     ctx.rotate(o.rot);
     for (k = 0; k < n; k++) {
       ctx.save();
@@ -3018,8 +3045,7 @@ var Game = (function () {
     var r = o.r, n = 5 + formOf(o, 3), k;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(40,20,70,.28)';
-    ctx.beginPath(); ctx.ellipse(6, 9, r * 0.98, r * 0.9, 0, 0, 6.2832); ctx.fill();
+    castShadow(r, r * 1.9, 'rgba(40,20,70,.24)');
     ctx.rotate(o.rot);
     ctx.lineJoin = 'round';
     for (k = 0; k < n; k++) {
@@ -3051,8 +3077,7 @@ var Game = (function () {
     ctx.save();
     ctx.translate(x, y);
 
-    ctx.fillStyle = 'rgba(66,104,144,.28)';
-    ctx.beginPath(); ctx.ellipse(6, 9, r * 1.02, r * 0.94, 0, 0, 6.2832); ctx.fill();
+    castShadow(r, r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9), 'rgba(66,104,144,.24)');
 
     ctx.rotate(o.rot);
     function ring(scale, spin, pinch) {
@@ -5311,7 +5336,7 @@ var Game = (function () {
     c.save();
     c.scale(o.scale, o.scale);
     c.beginPath();
-    c.ellipse(5 + lift * 10, 7 + lift * 34, 30 - lift * 9, 34 - lift * 11, 0, 0, 6.2832);
+    c.ellipse(7 + lift * 12, 10 + lift * 34, 28 - lift * 9, 32 - lift * 11, 0, 0, 6.2832);
     c.fill();
     c.restore();
     c.scale(o.scale * (1 + 0.5 * lift), o.scale * (1 + 0.5 * lift));
