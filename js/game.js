@@ -2961,7 +2961,7 @@ var Game = (function () {
     castShadow(r, r * (formOf(o, 4) === 2 ? 0.45 : formOf(o, 4) === 1 ? 1.0 : 0.7), B.shadow || 'rgba(86,132,176,.26)');
     ctx.rotate(o.rot);
 
-    function outline(scale) {
+    function outline(scale, noLump) {
       var f = formOf(o, 4);
       var n = o.pts.length, pt = [];
       var squashY = f === 2 ? 0.66 : 0.94;           // the slab lies flat
@@ -2987,7 +2987,7 @@ var Game = (function () {
         }
       }
       ctx.closePath();
-      if (f === 3) {                                 // a second lump beside it
+      if (f === 3 && !noLump) {                      // a second lump beside it
         ctx.moveTo(r * 0.52 * scale, -r * 0.1 * scale);
         ctx.arc(r * 0.22 * scale, r * 0.16 * scale, r * 0.44 * scale, 0, 6.2832);
       }
@@ -2997,7 +2997,13 @@ var Game = (function () {
        slab, 3 a pair leaning together. The outline helper takes the
        per-form squash so the footprint stays the same size. */
     var rform = formOf(o, 4);
-    outline(1); ctx.fillStyle = B.rockDark; ctx.fill();
+    /* the dark outline drawn first and the stone over it, so only its
+       outer half shows: stroked last, the pair's second lump drew a whole
+       circle across the middle of the stone */
+    outline(1, true);
+    ctx.strokeStyle = 'rgba(52,72,92,.4)'; ctx.lineWidth = 4; ctx.stroke();
+    outline(1);
+    ctx.fillStyle = B.rockDark; ctx.fill();
 
     ctx.save();
     outline(1); ctx.clip();
@@ -3026,11 +3032,28 @@ var Game = (function () {
     for (t = -1.25; t <= 1.25; t += 0.16) ctx.lineTo(r * t, capY(t));
     for (t = 1.25; t >= -1.25; t -= 0.16) ctx.lineTo(r * t, capY(t) + r * 0.11);
     ctx.closePath(); ctx.fill();
+
+    /* facets: a darker plane turned away from the sun and a lighter one
+       facing it, with the crease between them; and a crack */
+    ctx.fillStyle = 'rgba(30,40,56,.16)';
+    ctx.beginPath(); ctx.moveTo(r * 0.05, r * 0.05); ctx.lineTo(r * 1.2, -r * 0.1); ctx.lineTo(r * 1.2, r * 1.2); ctx.lineTo(-r * 0.3, r * 1.2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,40,56,.22)'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(r * 0.05, r * 0.05); ctx.lineTo(r * 1.2, -r * 0.1);
+    ctx.moveTo(r * 0.05, r * 0.05); ctx.lineTo(-r * 0.3, r * 1.2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(30,40,56,.3)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-r * 0.15, r * 0.25); ctx.lineTo(-r * 0.32, r * 0.42); ctx.lineTo(-r * 0.3, r * 0.6); ctx.stroke();
     ctx.restore();
 
-    outline(1);
-    ctx.strokeStyle = 'rgba(52,72,92,.35)'; ctx.lineWidth = 2;
-    ctx.stroke();
+    /* the edges: lit along the upper left, dark along the lower right */
+    function edgeLine(dx, dy, col, wdt) {
+      ctx.save();
+      outline(1); ctx.clip();
+      ctx.rotate(-o.rot); ctx.translate(dx, dy); ctx.rotate(o.rot);
+      outline(1, true); ctx.strokeStyle = col; ctx.lineWidth = wdt; ctx.stroke();
+      ctx.restore();
+    }
+    edgeLine(2.2, 2.2, 'rgba(255,255,255,.45)', 2);
+    edgeLine(-2.4, -2.4, 'rgba(20,30,46,.3)', 2.4);
     ctx.restore();
   }
 
@@ -3180,16 +3203,44 @@ var Game = (function () {
     castShadow(r, r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9), 'rgba(66,104,144,.24)');
 
     ctx.rotate(o.rot);
+    /* A tier is a ring of fir branches seen end-on from above: each a
+       pointed spray with full curved sides, the tips of one tier falling
+       between those of the tier under it. */
+    var LOBES = 9;
     function ring(scale, spin, pinch) {
       rad = r * scale;
+      var vIn = rad * (0.42 + pinch * 0.42), n = LOBES, span = 6.2832 / n, jag = rad * 0.05;
+      /* each side of a spray is ragged with needles: points along the
+         curve from the notch to the tip, pushed in and out in turn */
+      function side(a0, am, tip, dir) {
+        for (var q = 1; q <= 6; q++) {
+          var u = q / 6;
+          var ang = dir > 0 ? a0 + (am - a0) * Math.pow(u, 0.7) : am + (a0 - am) * (1 - Math.pow(1 - u, 1.4));
+          var rr = dir > 0 ? vIn + (tip - vIn) * u : tip + (vIn - tip) * u;
+          var bulge = Math.sin(Math.PI * u) * rad * 0.1;
+          var out = (q % 2 ? 1 : -0.6) * jag * Math.sin(Math.PI * u);
+          ctx.lineTo(Math.cos(ang) * (rr + bulge + out), Math.sin(ang) * (rr + bulge + out));
+        }
+      }
       ctx.beginPath();
-      for (k = 0; k < 22; k++) {
-        a = k / 22 * 6.2832 + spin;
-        var q = (k % 2) ? rad * pinch : rad;
-        var px = Math.cos(a) * q, py = Math.sin(a) * q;
-        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      ctx.moveTo(Math.cos(spin) * vIn, Math.sin(spin) * vIn);
+      for (k = 0; k < n; k++) {
+        var a0 = spin + k * span, am = a0 + span / 2, a1 = a0 + span;
+        var tip = rad * (1.04 + ((k * 5) % 3) * 0.035);
+        side(a0, am, tip, 1);
+        side(a1, am, tip, -1);
       }
       ctx.closePath();
+    }
+    function needles(scale, spin, col) {               // the rib down each branch
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(0.7, r * 0.03); ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (k = 0; k < LOBES; k++) {
+        var am = spin + (k + 0.5) / LOBES * 6.2832;
+        ctx.moveTo(Math.cos(am) * r * scale * 0.45, Math.sin(am) * r * scale * 0.45);
+        ctx.lineTo(Math.cos(am) * r * scale * 0.92, Math.sin(am) * r * scale * 0.92);
+      }
+      ctx.stroke();
     }
     /* 0 a full spruce, 1 a narrow spire, 2 an old one with the crown
        mostly gone. Same radius in every case, so nothing about the hill
@@ -3208,6 +3259,13 @@ var Game = (function () {
          [0.52, 0.72, 0.80, B.tree],
          [0.30, 1.08, 0.82, B.tree]];
     for (ri = 0; ri < tiers.length; ri++) {
+      if (ri > 0) {                                  // the tier above throws its shadow on this one
+        ctx.save();
+        ctx.rotate(-o.rot); ctx.translate(r * 0.07, r * 0.1); ctx.rotate(o.rot);
+        ring(tiers[ri][0] * 1.04, tiers[ri][1], tiers[ri][2]);
+        ctx.fillStyle = 'rgba(6,30,24,.32)'; ctx.fill();
+        ctx.restore();
+      }
       ring(tiers[ri][0], tiers[ri][1], tiers[ri][2]);
       ctx.fillStyle = tiers[ri][3];
       ctx.fill();
@@ -3216,33 +3274,44 @@ var Game = (function () {
         ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.globalAlpha = 1;
       }
+      needles(tiers[ri][0], tiers[ri][1], 'rgba(0,30,20,.2)');
     }
     ctx.rotate(-o.rot);                              // light comes from one place
 
-    /* In midwinter the load is what you notice before the tree: the snow
-       reaches the lower tiers and the green is only what shows through. */
+    /* Snow on the branches that face the sun: the outer part of each
+       sunward spray, thicker the more squarely it faces the light (and the
+       deeper the winter), none on the far side. */
     var load = B.snowyTrees || 0;
-    ctx.save();                                      // snow settled on the branches
-    ring(1.02, 0, 0.76); ctx.clip();
-    ctx.globalAlpha = 0.42 + 0.40 * load;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.34, -r * 0.40, r * (0.62 + 0.30 * load),
-                r * (0.42 + 0.28 * load), -0.6, 0, 6.2832);
-    ctx.fill();
-    ctx.globalAlpha = 0.3 + 0.36 * load;
-    ctx.beginPath();
-    ctx.ellipse(r * 0.30, -r * 0.46, r * (0.34 + 0.30 * load),
-                r * (0.2 + 0.26 * load), 0.5, 0, 6.2832);
-    ctx.fill();
+    ctx.fillStyle = B.cap || '#ffffff';
+    for (ri = 0; ri < tiers.length; ri++) {
+      var trad = r * tiers[ri][0], span = 6.2832 / LOBES;
+      for (k = 0; k < LOBES; k++) {
+        var am = tiers[ri][1] + o.rot + (k + 0.5) * span;
+        var face = Math.cos(am - (-2.3));                // the sun is up and to the left
+        if (face < 0.15) continue;
+        var from = 1 - (0.28 + 0.3 * load) * face;
+        var tip = trad * (1.04 + ((k * 5) % 3) * 0.035);
+        ctx.globalAlpha = Math.min(1, 0.55 + 0.4 * face + 0.3 * load);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(am - span * 0.3) * trad * from * 0.95, Math.sin(am - span * 0.3) * trad * from * 0.95);
+        ctx.quadraticCurveTo(Math.cos(am - span * 0.2) * trad * 0.94, Math.sin(am - span * 0.2) * trad * 0.94,
+                             Math.cos(am) * tip * 0.99, Math.sin(am) * tip * 0.99);
+        ctx.quadraticCurveTo(Math.cos(am + span * 0.12) * trad * 0.9, Math.sin(am + span * 0.12) * trad * 0.9,
+                             Math.cos(am + span * 0.16) * trad * from, Math.sin(am + span * 0.16) * trad * from);
+        ctx.quadraticCurveTo(Math.cos(am - span * 0.05) * trad * (from + 0.06), Math.sin(am - span * 0.05) * trad * (from + 0.06),
+                             Math.cos(am - span * 0.3) * trad * from * 0.95, Math.sin(am - span * 0.3) * trad * from * 0.95);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
     if (load > 0.02) {                               // and a cap right on the crown
-      ctx.globalAlpha = 0.5 * load;
+      ctx.globalAlpha = 0.6 * load;
+      ctx.fillStyle = B.cap || '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(0, -r * 0.06, r * 0.40, r * 0.34, 0, 0, 6.2832);
+      ctx.ellipse(-r * 0.04, -r * 0.08, r * 0.3, r * 0.26, 0, 0, 6.2832);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
     ctx.restore();
   }
 
