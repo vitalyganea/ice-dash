@@ -2295,8 +2295,32 @@ var Game = (function () {
       for (var fq = 0; fq <= 36; fq++) {
         var fxx = cxF - CHUTE * 1.02 + fq / 36 * CHUTE * 2.04;
         var ft = (fxx - cxF) / (CHUTE * 0.98), fs = Math.max(0, 1 - Math.pow(Math.abs(ft), 6));
-        facePts.push([fxx, archAt(fxx, yIn, 1, o.ph), fs]);
+        /* an arch cut into it: shallow over the middle of the run, the
+           full height at the sides — the mouth, with its pillars */
+        facePts.push([fxx, archAt(fxx, yIn, 1, o.ph), fs * (0.4 + 0.6 * Math.pow(Math.abs(ft), 2.5))]);
       }
+      /* The dark inside, seen through the mouth: deepest right under the
+         arch, falling away across the ice towards you. Laid down first, so
+         the face sits over its top. This is what says you go IN there. */
+      ctx.save();
+      traceRun(yIn - ARCH, yIn + FACE + 160);
+      ctx.clip();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 5;
+      for (var dk = 0; dk < 34; dk++) {                 // fine steps: no bands
+        ctx.strokeStyle = 'rgba(4,14,34,' + (0.5 * Math.pow(1 - dk / 34, 1.8)).toFixed(3) + ')';
+        ctx.beginPath();
+        for (var fq0 = 0; fq0 <= 36; fq0++) {
+          var fp0 = facePts[fq0];
+          ctx.lineTo(fp0[0], fp0[1] + FACE * fp0[2] - 6 + dk * 3.3);
+        }
+        ctx.stroke();
+      }
+      /* and a glimpse of the way on, far inside: a faint blue glow of
+         daylight at the other end */
+      var gl2 = ctx.createRadialGradient(cxF, yIn + FACE * 0.4 + 10, 2, cxF, yIn + FACE * 0.4 + 10, CHUTE * 0.6);
+      gl2.addColorStop(0, 'rgba(120,190,240,.28)'); gl2.addColorStop(1, 'rgba(120,190,240,0)');
+      ctx.fillStyle = gl2; ctx.fillRect(cxF - CHUTE, yIn - 20, CHUTE * 2, FACE + 80);
+      ctx.restore();
       ctx.beginPath();
       for (fq = 0; fq < facePts.length; fq++) ctx.lineTo(facePts[fq][0], facePts[fq][1]);
       for (fq = facePts.length - 1; fq >= 0; fq--) ctx.lineTo(facePts[fq][0], facePts[fq][1] + FACE * facePts[fq][2] + Math.sin(fq * 1.7 + o.ph) * 2.5 * facePts[fq][2]);
