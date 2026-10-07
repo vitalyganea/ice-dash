@@ -63,6 +63,19 @@ body{
 }
 
 .hidden{ display:none !important; }
+.light{
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 75% 60% at 50% 55%, rgba(8,24,52,0) 55%, rgba(8,24,52,.24) 100%),
+    radial-gradient(circle at -10% -5%, rgba(255,244,214,.2) 0%, rgba(255,244,214,0) 70%),
+    linear-gradient(118deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.1) 50%, rgba(255,255,255,0) 58%);
+}
+.light.moon{
+  background:
+    radial-gradient(ellipse 75% 60% at 50% 55%, rgba(8,24,52,0) 55%, rgba(8,24,52,.26) 100%),
+    radial-gradient(circle at -10% -5%, rgba(170,190,255,.1) 0%, rgba(170,190,255,0) 70%),
+    linear-gradient(118deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 58%);
+}
 
 /* ------------------- HUD ------------------- */
 /* The readouts are painted on the canvas down the left, so the pause button

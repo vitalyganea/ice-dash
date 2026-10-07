@@ -15,6 +15,11 @@
 
 <div id="stage">
   <canvas id="game"></canvas>
+  <!-- The light over the picture: the sun's warmth from the upper left,
+       the sky's sheen and the corners falling off. Painted by the browser
+       over the canvas rather than into it, where three full-screen
+       gradients a frame cost a slow phone a third of its frame rate. -->
+  <div id="light" class="light" aria-hidden="true"></div>
   <!-- The readouts are painted on the canvas; the only thing the HUD holds
        is the pause control. It sits bottom-right, where a thumb already is:
        the top-right corner meant reaching across the whole phone. -->

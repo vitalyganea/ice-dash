@@ -233,7 +233,7 @@ var Game = (function () {
       rushT: 0, lastRush: -1e9, smashed: 0, rushes: 0, grace: 0,
       chillT: 0, sightT: 0, callT: 0, bog: 0,
       px: 0, vx: 0, dir: 1, tilt: 0,
-      objects: [], rows: [], flakes: [], puffs: [], streaks: [],
+      objects: [], rows: [], flakes: [], puffs: [], spray: [], squash: 0, impact: 0, streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
       airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0,
       roofTo: -1e9, forkTo: -1e9, forceGap: null, forceGapW: 0, forks: 0,
@@ -948,6 +948,12 @@ var Game = (function () {
     Sfx.turn();
     for (var i = 0; i < 4; i++)
       W.puffs.push({ x: W.px - W.dir * 8, d: W.dist - 6, life: 18, max: 18, s: frnd(5, 11) });
+    /* He digs in to turn: his body gives for a moment, and the edge he
+       carves throws a fan of snow out of the turn and behind him. */
+    W.squash = 1;
+    for (i = 0; i < 12; i++)
+      W.spray.push({ x: W.px - W.dir * 6, d: W.dist - 4, vx: -W.dir * frnd(1.2, 4.2), vd: -frnd(0.5, 3.4),
+                     life: 26, max: 26, s: frnd(1.6, 3.4) });
   }
 
   /* Two fingers pause, and the first of them has already turned him. Put
@@ -969,6 +975,8 @@ var Game = (function () {
     W.gait = (W.gait || 0) + 0.15 + (W.state === 'run' && !W.hold ? W.speed : 0) * 0.038;
     if (W.shake > 0) { W.shake *= 0.86; if (W.shake < 0.05) W.shake = 0; }
     if (W.tapFlash > 0) W.tapFlash--;
+    if (W.squash > 0) W.squash = Math.max(0, W.squash - 0.075);
+    if (W.impact > 0) W.impact = Math.max(0, W.impact - 0.05);
 
     if (W.state !== 'run') {
       W.endT++;
@@ -1606,7 +1614,7 @@ var Game = (function () {
   function bank() { W.shake = Math.max(W.shake, 6); Sfx.bank(); }
 
   function crash(o) {
-    W.state = 'crash'; W.endT = 0; W.shake = 24;
+    W.state = 'crash'; W.endT = 0; W.shake = 24; W.impact = 1;
     W.combo = 0; fx('crash');
     W.rushT = 0; Sfx.excite(false);
     W.crashAt = { x: o.x, d: o.d, r: o.r, spin: 0 };
@@ -1656,6 +1664,11 @@ var Game = (function () {
       var p = W.puffs[i];
       p.s *= 1.035; p.life--;
       if (p.life <= 0) W.puffs.splice(i, 1);
+    }
+    for (i = W.spray.length - 1; i >= 0; i--) {
+      var q = W.spray[i];
+      q.x += q.vx; q.d += q.vd; q.vx *= 0.9; q.vd *= 0.9; q.life--;
+      if (q.life <= 0) W.spray.splice(i, 1);
     }
   }
   /* Snow falls with the run; an ember climbs against it. `rise` is taken
@@ -1719,6 +1732,7 @@ var Game = (function () {
     ctx.translate(shx, shy);
     drawFlakes();         /* falling snow is in front of the lens, not on the hill */
     ctx.restore();
+    drawLight();
     drawHud();
   }
 
@@ -1739,18 +1753,15 @@ var Game = (function () {
      while the ice runs under it — which is what reflections do, and what
      makes a floor read as glassy rather than painted. */
   function iceBody(B) {
+    if (LITE) return iceStrip(B);
     var dTop = W.dist + PLAYER_Y + 160, dBot = W.dist + PLAYER_Y - VIEW_H - 160, cell, k, d, x, y, r;
     for (cell = Math.floor(dBot / 170); cell <= Math.floor(dTop / 170); cell++) {
-      for (k = 0; k < 2; k++) {
+      for (k = 0; k < 1; k++) {
         d = cell * 170 + hh(cell, k) * 170;
         x = scrX(chuteAt(d) + (hh(cell, k + 7) - 0.5) * CHUTE * 1.7); y = scrY(d);
-        r = 50 + hh(cell, k + 13) * 90;
-        var deep = hh(cell, k + 19) < 0.55;
-        var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, deep ? 'rgba(30,120,200,.07)' : 'rgba(255,255,255,.16)');
-        g.addColorStop(1, deep ? 'rgba(30,120,200,0)' : 'rgba(255,255,255,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r * 0.8, hh(cell, k + 23) * 3, 0, 6.2832); ctx.fill();
+        r = 40 + hh(cell, k + 13) * 60;
+        var deep = hh(cell, k + 19) < 0.55, blob = iceBlob(deep);
+        if (blob) ctx.drawImage(blob, x - r * 1.3, y - r * 0.8, r * 2.6, r * 1.6);   // unrotated: a turned image is dear to paint
       }
       ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1;          // bubbles held in it
       for (k = 0; k < 4; k++) {
@@ -1759,7 +1770,11 @@ var Game = (function () {
         ctx.beginPath(); ctx.arc(x, y, 1.5 + hh(cell, k + 50) * 2.5, 0, 6.2832); ctx.stroke();
       }
     }
-    /* the left bank's shadow across the edge of the ice */
+    iceStrip(B);
+  }
+  /* the left bank's shadow across the edge of the ice */
+  function iceStrip(B) {
+    var y, d;
     ctx.fillStyle = B.bankShade;
     for (var pass = 0; pass < 2; pass++) {
       ctx.globalAlpha = pass ? 0.22 : 0.18;
@@ -1770,12 +1785,23 @@ var Game = (function () {
       ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    /* the sky's sheen, fixed on the screen */
-    var sh = ctx.createLinearGradient(VIEW_W * 0.1, 0, VIEW_W * 0.9, VIEW_H * 0.6);
-    sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.42, 'rgba(255,255,255,0)');
-    sh.addColorStop(0.5, 'rgba(255,255,255,.13)'); sh.addColorStop(0.58, 'rgba(255,255,255,0)');
-    sh.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sh; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    /* (the sky's sheen holds still on the screen, so it is part of the
+       light laid over the canvas — index.html #light) */
+  }
+  var blobs = {};
+  function iceBlob(deep) {
+    var k = deep ? 'd' : 'f';
+    if (blobs[k] !== undefined) return blobs[k];
+    blobs[k] = null;
+    if (typeof document === 'undefined') return null;
+    var cv = document.createElement('canvas'), cx = cv && cv.getContext ? cv.getContext('2d') : null;
+    if (!cx) return null;
+    cv.width = 64; cv.height = 64;
+    var g = cx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, deep ? 'rgba(30,120,200,.07)' : 'rgba(255,255,255,.16)');
+    g.addColorStop(1, deep ? 'rgba(30,120,200,0)' : 'rgba(255,255,255,0)');
+    cx.fillStyle = g; cx.fillRect(0, 0, 64, 64);
+    return (blobs[k] = cv);
   }
   /* A bank: snow heaped up beside the run, not a flat white margin. The
      slope down to the ice faces the run — in shade on the left, in the sun
@@ -1786,16 +1812,19 @@ var Game = (function () {
     var y, d, k, cell, x;
     ctx.save();
     ctx.clip();
-    /* the slope: a band along the edge, shaded or lit */
-    var strokes = side < 0 ? [[76, 0.12], [46, 0.15], [22, 0.2]] : [[64, 0.18], [36, 0.22]];
-    ctx.strokeStyle = side < 0 ? B.bankShade : '#ffffff';
-    ctx.lineJoin = 'round';
-    for (k = 0; k < strokes.length; k++) {
-      ctx.globalAlpha = strokes[k][1]; ctx.lineWidth = strokes[k][0];
+    /* the slope: bands along the edge, shaded or lit — filled, not
+       stroked; a stroke seventy wide down the whole screen was one of the
+       dearest things in the frame */
+    var bands = side < 0 ? [[36, 0.16], [15, 0.22]] : [[28, 0.26]];
+    ctx.fillStyle = side < 0 ? B.bankShade : '#ffffff';
+    for (k = 0; k < bands.length; k++) {
+      ctx.globalAlpha = bands[k][1];
       ctx.beginPath();
-      for (y = -40; y <= VIEW_H + 40; y += 10) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, side), y); }
-      ctx.stroke();
+      for (y = -40; y <= VIEW_H + 40; y += 14) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, side) - side * 2, y); }
+      for (y = VIEW_H + 40; y >= -40; y -= 14) { d = W.dist + (PLAYER_Y - y); ctx.lineTo(bankX(d, side) + side * bands[k][0], y); }
+      ctx.closePath(); ctx.fill();
     }
+    if (LITE) { ctx.globalAlpha = 1; ctx.restore(); return; }
     /* drifts rolling across the top, each lit on its upper left */
     var dTop = W.dist + PLAYER_Y + 160, dBot = W.dist + PLAYER_Y - VIEW_H - 160;
     for (cell = Math.floor(dBot / 120); cell <= Math.floor(dTop / 120); cell++) {
@@ -1963,6 +1992,14 @@ var Game = (function () {
       ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.75;
       ctx.fillStyle = p.tint || B.snowA;     // pure white glares on the night run
       ctx.beginPath(); ctx.arc(scrX(p.x), scrY(p.d), p.s, 0, 6.2832); ctx.fill();
+    }
+    ctx.strokeStyle = B.snowA; ctx.lineCap = 'round';
+    for (i = 0; i < W.spray.length; i++) {              // the fan of snow off his edge
+      var q = W.spray[i], qx = scrX(q.x), qy = scrY(q.d);
+      ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.95;
+      ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(qx - q.vx * 2.2, qy + q.vd * 2.2);
+      ctx.strokeStyle = B.bankShade; ctx.lineWidth = q.s * 2.2; ctx.stroke();      // a rim, so it shows on pale ice
+      ctx.strokeStyle = B.snowA; ctx.lineWidth = q.s * 1.5; ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
@@ -2924,6 +2961,30 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* ---- painted once, blitted after ----
+     A pine is a few hundred points and a stone four clipped passes; the
+     scenery past the banks alone is dozens of them, every frame. None of
+     it moves, so each is painted once into a little canvas of its own at
+     the screen's resolution and copied from then on. Not while one
+     stretch is fading into the next: the colours change every frame then,
+     so it draws directly for those few seconds. */
+  /* The box runs from (x0, y0) to (x1, y1) around the thing's centre, with
+     room for the shadow it throws, which is painted into it too. */
+  function spriteOf(x0, y0, x1, y1, paint) {
+    if (typeof document === 'undefined') return null;
+    var cv = document.createElement('canvas');
+    var cx = cv && cv.getContext ? cv.getContext('2d') : null;
+    if (!cx) return null;
+    var w = x1 - x0, h = y1 - y0;
+    cv.width = Math.ceil(w * drawK); cv.height = Math.ceil(h * drawK);
+    cx.setTransform(cv.width / w, 0, 0, cv.height / h, 0, 0);
+    var keep = ctx; ctx = cx;
+    try { paint(-x0, -y0); } finally { ctx = keep; }
+    return { cv: cv, x0: x0, y0: y0, w: w, h: h };
+  }
+  function cacheable() { return W && (W.course || W.biome === 0 || W.biomeT >= FADE); }
+  function blit(spr, x, y) { ctx.drawImage(spr.cv, x + spr.x0, y + spr.y0, spr.w, spr.h); }
+
   /* ---- one sun for the whole hill ----
      Low in the upper left, where every highlight in the game already sits.
      Each thing standing on the ice throws its shadow the same way, down
@@ -2954,11 +3015,21 @@ var Game = (function () {
     ctx.beginPath(); ctx.ellipse(r * 0.1, r * 0.14, r * 0.84, r * 0.78, 0, 0, 6.2832); ctx.fill();
   }
 
-  function drawRock(x, y, o, B) {
+  function drawRock(x, y, o, B, bare) {
     var r = o.r, k, a, rad;
+    var rsh = r * (formOf(o, 4) === 2 ? 0.45 : formOf(o, 4) === 1 ? 1.0 : 0.7);
+    if (!bare && cacheable()) {
+      var rkey = B.rock + B.rockDark + (B.cap || '') + '|' + drawK;
+      if (o._sk !== rkey) {
+        o._spr = spriteOf(-r * 1.6, -r * 1.6, r * 1.6 + rsh * 0.7, r * 1.6 + rsh * 0.9,
+                          function (cx, cy) { drawRock(cx, cy, o, B, 'shadow'); });
+        o._sk = rkey;
+      }
+      if (o._spr) { blit(o._spr, x, y); return; }
+    }
     ctx.save();
     ctx.translate(x, y);
-    castShadow(r, r * (formOf(o, 4) === 2 ? 0.45 : formOf(o, 4) === 1 ? 1.0 : 0.7), B.shadow || 'rgba(86,132,176,.26)');
+    if (!bare || bare === 'shadow') castShadow(r, rsh, B.shadow || 'rgba(86,132,176,.26)');
     ctx.rotate(o.rot);
 
     function outline(scale, noLump) {
@@ -3012,11 +3083,19 @@ var Game = (function () {
     ctx.rotate(-o.rot);
     ctx.fillStyle = B.rock;                       // lit face
     ctx.beginPath(); ctx.ellipse(-r * 0.22, -r * 0.22, r * 0.92, r * 0.82, -0.35, 0, 6.2832); ctx.fill();
+    /* each stone its own: a warmer or a colder grey, and more or less snow
+       on it (from its own shape, so it is the same stone every pass) */
+    var rtone = (o.pts[2] * 7.7) % 1;
+    if (rtone < 0.33 || rtone > 0.66) {
+      ctx.fillStyle = rtone < 0.33 ? 'rgba(130,96,60,.13)' : 'rgba(50,80,120,.12)';
+      ctx.fillRect(-r * 1.5, -r * 1.5, r * 3, r * 3);
+    }
+    var capLift = (o.pts[1] - 0.92) * r * 0.9;
 
     /* The cap follows the curve of the boulder, so it thins out towards the
        sides instead of cutting straight across like a lid. */
     var t, capY = function (u) {
-      return r * (-0.04 - 0.46 * u * u + Math.sin(u * 4.1 + o.pts[0] * 9) * 0.08);
+      return r * (-0.04 - 0.46 * u * u + Math.sin(u * 4.1 + o.pts[0] * 9) * 0.08) + capLift;
     };
     ctx.fillStyle = B.cap || '#ffffff';
     ctx.beginPath();
@@ -3192,21 +3271,47 @@ var Game = (function () {
     ctx.restore();
   }
 
-  function drawTree(x, y, o, B) {
+  function drawTree(x, y, o, B, bare) {
     if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
     if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
     if (B.flora === 'palm')    return drawPalm(x, y, o, B);
     var r = o.r, k, a, rad, ri;
+    var tsh = r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9);
+    if (!bare && cacheable()) {
+      var tkey = B.tree + B.treeDark + (B.cap || '') + (B.snowyTrees || 0) + '|' + drawK;
+      if (o._sk !== tkey) {
+        o._spr = spriteOf(-r * 1.35, -r * 1.35, r * 1.35 + tsh * 0.7, r * 1.35 + tsh * 0.95,
+                          function (cx, cy) { drawTree(cx, cy, o, B, 'shadow'); });
+        o._sk = tkey;
+      }
+      if (o._spr) { blit(o._spr, x, y); return; }
+    }
     ctx.save();
     ctx.translate(x, y);
 
-    castShadow(r, r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9), 'rgba(66,104,144,.24)');
+    if (!bare || bare === 'shadow') castShadow(r, tsh, 'rgba(66,104,144,.24)');
 
     ctx.rotate(o.rot);
+    /* No two trees alike. Turning one round did nothing you could see —
+       a ring of branches looks the same from every side, and the light and
+       the snow are fixed to the sun — so each tree draws its own: how many
+       branches, how far each one reaches, how big each tier is, which way
+       it leans and how far, a darker or a yellower green, and how much
+       snow it is carrying. From a seed of its own, so the same tree is
+       the same every time you pass it. Its footprint never changes. */
+    var seed = o.rot * 7.13 + (o.d || 0) * 0.0173 + (o.x || 0) * 0.031;
+    function rs(i) { var v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453; return v - Math.floor(v); }
+    var leanA = rs(2) * 6.2832, leanR = r * (0.04 + rs(3) * 0.13);
+    var tone = rs(4), snowK = 0.7 + rs(5) * 0.6;
+    function lean(ri, n) {                             // how far up the tree this tier is, pushed over
+      var f = n > 1 ? ri / (n - 1) : 0;
+      return [Math.cos(leanA) * leanR * f, Math.sin(leanA) * leanR * f];
+    }
     /* A tier is a ring of fir branches seen end-on from above: each a
        pointed spray with full curved sides, the tips of one tier falling
        between those of the tier under it. */
-    var LOBES = 9;
+    var LOBES = 8 + Math.floor(rs(1) * 4);
+    function tipOf(k) { return 0.97 + rs(20 + k) * 0.17; }
     function ring(scale, spin, pinch) {
       rad = r * scale;
       var vIn = rad * (0.42 + pinch * 0.42), n = LOBES, span = 6.2832 / n, jag = rad * 0.05;
@@ -3226,7 +3331,7 @@ var Game = (function () {
       ctx.moveTo(Math.cos(spin) * vIn, Math.sin(spin) * vIn);
       for (k = 0; k < n; k++) {
         var a0 = spin + k * span, am = a0 + span / 2, a1 = a0 + span;
-        var tip = rad * (1.04 + ((k * 5) % 3) * 0.035);
+        var tip = rad * tipOf(k);
         side(a0, am, tip, 1);
         side(a1, am, tip, -1);
       }
@@ -3258,7 +3363,13 @@ var Game = (function () {
          [0.76, 0.36, 0.78, B.tree],
          [0.52, 0.72, 0.80, B.tree],
          [0.30, 1.08, 0.82, B.tree]];
-    for (ri = 0; ri < tiers.length; ri++) {
+    for (ri = 1; ri < tiers.length; ri++)            // the upper tiers each a little bigger or smaller
+      tiers[ri] = [tiers[ri][0] * (0.9 + rs(40 + ri) * 0.18), tiers[ri][1] + rs(50 + ri) * 0.6, tiers[ri][2], tiers[ri][3]];
+    var NT = tiers.length;
+    for (ri = 0; ri < NT; ri++) {
+      var lo = lean(ri, NT);
+      ctx.save();
+      ctx.rotate(-o.rot); ctx.translate(lo[0], lo[1]); ctx.rotate(o.rot);
       if (ri > 0) {                                  // the tier above throws its shadow on this one
         ctx.save();
         ctx.rotate(-o.rot); ctx.translate(r * 0.07, r * 0.1); ctx.rotate(o.rot);
@@ -3274,7 +3385,12 @@ var Game = (function () {
         ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.globalAlpha = 1;
       }
+      if (tone < 0.34 || tone > 0.66) {              // this one's own green
+        ctx.fillStyle = tone < 0.34 ? 'rgba(0,26,16,.16)' : 'rgba(214,236,150,.13)';
+        ctx.fill();
+      }
       needles(tiers[ri][0], tiers[ri][1], 'rgba(0,30,20,.2)');
+      ctx.restore();
     }
     ctx.rotate(-o.rot);                              // light comes from one place
 
@@ -3284,14 +3400,15 @@ var Game = (function () {
     var load = B.snowyTrees || 0;
     ctx.fillStyle = B.cap || '#ffffff';
     for (ri = 0; ri < tiers.length; ri++) {
-      var trad = r * tiers[ri][0], span = 6.2832 / LOBES;
+      var trad = r * tiers[ri][0], span = 6.2832 / LOBES, lo2 = lean(ri, NT);
+      ctx.save(); ctx.translate(lo2[0], lo2[1]);
       for (k = 0; k < LOBES; k++) {
         var am = tiers[ri][1] + o.rot + (k + 0.5) * span;
         var face = Math.cos(am - (-2.3));                // the sun is up and to the left
         if (face < 0.15) continue;
-        var from = 1 - (0.28 + 0.3 * load) * face;
-        var tip = trad * (1.04 + ((k * 5) % 3) * 0.035);
-        ctx.globalAlpha = Math.min(1, 0.55 + 0.4 * face + 0.3 * load);
+        var from = 1 - Math.min(0.75, (0.28 + 0.3 * load) * face * snowK);
+        var tip = trad * tipOf(k);
+        ctx.globalAlpha = Math.min(1, (0.55 + 0.4 * face + 0.3 * load) * (0.8 + 0.2 * snowK));
         ctx.beginPath();
         ctx.moveTo(Math.cos(am - span * 0.3) * trad * from * 0.95, Math.sin(am - span * 0.3) * trad * from * 0.95);
         ctx.quadraticCurveTo(Math.cos(am - span * 0.2) * trad * 0.94, Math.sin(am - span * 0.2) * trad * 0.94,
@@ -3302,13 +3419,15 @@ var Game = (function () {
                              Math.cos(am - span * 0.3) * trad * from * 0.95, Math.sin(am - span * 0.3) * trad * from * 0.95);
         ctx.fill();
       }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     if (load > 0.02) {                               // and a cap right on the crown
+      var top = lean(NT - 1, NT);
       ctx.globalAlpha = 0.6 * load;
       ctx.fillStyle = B.cap || '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(-r * 0.04, -r * 0.08, r * 0.3, r * 0.26, 0, 0, 6.2832);
+      ctx.ellipse(top[0] - r * 0.04, top[1] - r * 0.08, r * 0.3, r * 0.26, 0, 0, 6.2832);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -5487,6 +5606,52 @@ var Game = (function () {
     return Math.sin((o.gait || 0) + phase) * (amp === undefined ? 0.18 : amp);
   }
 
+  /* ---- the creature, in the same light as the hill ----
+     The animals were lit from inside themselves: each body has its own
+     sheens, but nothing tied them to the sun that throws every shadow on
+     the hill. Now the body is painted into a buffer of its own, and the
+     sun is laid over it — warm on the upper left, falling into a cool
+     shade on the lower right — on the body's own pixels only, then the
+     whole is copied in. Turning, he turns under the light, not with it.
+     Where the canvas cannot say how it is transformed (an old browser, the
+     test harness) he is painted as he always was. */
+  var litBuf = null, litCtx = null;
+  function litBody(c, paint) {
+    var T = c.getTransform ? c.getTransform() : null;
+    if (!T || typeof document === 'undefined') { paint(c); return; }
+    var k = Math.sqrt(T.a * T.a + T.b * T.b);
+    var half = Math.ceil(88 * k);                    // the body, antlers and all, fits in 88 units
+    if (half < 8 || half > 1400) { paint(c); return; }
+    if (!litBuf) {
+      litBuf = document.createElement('canvas');
+      litCtx = litBuf && litBuf.getContext ? litBuf.getContext('2d') : null;
+      if (!litCtx) { litBuf = null; paint(c); return; }
+    }
+    if (litBuf.width < half * 2 || litBuf.height < half * 2) {   // a new canvas is 300 by 150
+      litBuf.width = Math.max(litBuf.width, half * 2); litBuf.height = Math.max(litBuf.height, half * 2);
+    }
+    var L = litCtx;
+    L.setTransform(1, 0, 0, 1, 0, 0);
+    L.globalCompositeOperation = 'source-over'; L.globalAlpha = 1;
+    L.clearRect(0, 0, half * 2, half * 2);
+    L.setTransform(T.a, T.b, T.c, T.d, half, half);
+    L.lineJoin = 'round'; L.lineCap = 'round';
+    paint(L);
+    L.setTransform(1, 0, 0, 1, 0, 0);
+    L.globalCompositeOperation = 'source-atop';
+    var g = L.createLinearGradient(half * 0.35, half * 0.25, half * 1.65, half * 1.8);
+    g.addColorStop(0, 'rgba(255,246,222,.30)');
+    g.addColorStop(0.42, 'rgba(255,255,255,0)');
+    g.addColorStop(0.62, 'rgba(14,32,64,0)');
+    g.addColorStop(1, 'rgba(14,32,64,.34)');
+    L.fillStyle = g; L.fillRect(0, 0, half * 2, half * 2);
+    L.globalCompositeOperation = 'source-over';
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(litBuf, 0, 0, half * 2, half * 2, T.e - half, T.f - half, half * 2, half * 2);
+    c.restore();
+  }
+
   function paintCreature(c, S, o) {
     var ang = o.ang || 0, wag = o.wag || 0, lift = o.lift || 0;
     var gait = o.gait || 0, turn = o.turn || 0;
@@ -5509,8 +5674,12 @@ var Game = (function () {
     c.fill();
     c.restore();
     c.scale(o.scale * (1 + 0.5 * lift), o.scale * (1 + 0.5 * lift));
+    if (o.squash) {                                   // the give as he digs in, springing back
+      var sq = Math.sin(o.squash * Math.PI * 1.5) * o.squash;
+      c.scale(1 + 0.13 * sq, 1 - 0.11 * sq);
+    }
 
-    (BODIES[S.shape] || bodyPenguin)(c, S, ang, wag, o);
+    litBody(c, function (cc) { (BODIES[S.shape] || bodyPenguin)(cc, S, ang, wag, o); });
 
     if (o.shield >= 0) {
       var r = 48;
@@ -5656,7 +5825,7 @@ var Game = (function () {
     var turn = clamp(W.vx / Math.max(1, DRIFT * W.speed), -1, 1);
     paintCreature(ctx, S, {
       ang: ang, wag: Math.sin(gait) * 0.1, gait: gait, turn: turn,
-      scale: 1.45, lift: lift, air: airborne(),
+      scale: 1.45, lift: lift, air: airborne(), squash: W.squash || 0,
       shield: (W.shield > 0 && !crashed) ? W.t : -1
     });
 
@@ -6020,6 +6189,34 @@ var Game = (function () {
     }
   }
 
+  /* The light over the whole picture, the way a camera sees it: the sun's
+     warmth spilling in from the upper left, the corners falling off a
+     little, and on a crash a flash of white and a ring of snow thrown out
+     from where he hit. Cached: the gradients only change with the screen
+     size, and two full-screen gradients built every frame are not free. */
+  var lightMoon = null;
+  function drawLight() {
+    var B = pal(), ib = String(B.iceBot || '#8ccbec');
+    /* the light itself is a layer over the canvas (index.html #light);
+       on a dark stretch it turns to moonlight, cool and fainter */
+    var dark = ib.charCodeAt(0) === 35 && ib.length >= 7 &&
+      (parseInt(ib.substr(1, 2), 16) * 0.3 + parseInt(ib.substr(3, 2), 16) * 0.59 + parseInt(ib.substr(5, 2), 16) * 0.11) < 120;
+    if (dark !== lightMoon && typeof document !== 'undefined') {
+      var el = document.getElementById('light');
+      if (el && el.classList) el.classList.toggle('moon', dark);
+      lightMoon = dark;
+    }
+    if (W.impact > 0) {
+      var im = W.impact;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * im * im).toFixed(3) + ')';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      var cx = scrX(W.px), cy = PLAYER_Y, rad = 30 + (1 - im) * 140;
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.8 * im).toFixed(3) + ')';
+      ctx.lineWidth = 3 + 9 * im;
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.2832); ctx.stroke();
+    }
+  }
+
   function drawPaceVignette() {
     var sp = pace();
     if (sp < 0.12) return;
@@ -6197,8 +6394,15 @@ var Game = (function () {
        that collided with it on a phone, and the lives on a chip of their
        own. They are one slab of the same ice as the menus now, sized to
        what it holds, so nothing can run into anything else. */
-    var pad = u * 0.75, gap = u * 0.5;
-    var fS = Math.round(u * 1.75), fM = Math.round(u * 1.05), fB = Math.round(u * 0.78);
+    /* ---- what you are reading, as a game shows it ----
+       It was one white slab of menu ice in the corner — tidy, and exactly
+       what a form looks like. Now the score stands on the hill by itself,
+       big, white, outlined in the deep blue of the buttons and lifted by
+       a shadow, readable over snow and over a night run alike; and the
+       metres, the catch and the spare lives each sit in a small dark pill
+       with its own picture, the way a game's counters do. */
+    var gap = u * 0.45;
+    var fS = Math.round(u * 1.95), fM = Math.round(u * 0.98), fB = Math.round(u * 0.74), fL = Math.round(u * 0.6);
     /* Time Rush reads the clock where the score would be: it is the thing
        you are racing, and the score there is the distance underneath. */
     var timed = W.mode === 'rush';
@@ -6221,103 +6425,103 @@ var Game = (function () {
     var mult = comboMult();
     /* Widths are taken as if every digit were the widest one. The font's
        digits are proportional — a 1 is narrower than an 8 — so measured as
-       they stood, the panel and everything after the metres shuffled a
-       pixel or two every frame as the numbers ticked over. Now the layout
-       only moves when a number gains a digit. */
+       they stood, everything after the metres shuffled a pixel or two every
+       frame as the numbers ticked over. Now the layout only moves when a
+       number gains a digit. */
     function tab(t2) { return String(t2).replace(/[0-9]/g, '8'); }
-    var wScore = measureAt(tab(score), fS) + u * 0.4 + measureAt(scoreLab, Math.round(u * 0.62)) +
-                 ((timed || aval) ? u * 2.6 : 0) + (mult > 1 ? u * 2.4 : 0);
-    var icon = u * 1.5, sep = u * 0.9;
-    var wDist = measureAt(tab(distTxt), fM), wFish = icon + measureAt(tab(fishTxt), fM);
-    var wLife = lifeTxt ? icon + measureAt(tab(lifeTxt), fM) : 0;
-    var wRow2 = wDist + sep + wFish + (lifeTxt ? sep + wLife : 0);
-    var wBest = bestTxt ? measureAt(tab(bestTxt), fB) : 0;
-    var w = Math.max(u * 7.5, wScore, wRow2, wBest) + pad * 2;
-    var h = pad + fS * 0.95 + gap + fM * 0.95 + (bestTxt ? gap * 0.8 + fB * 0.95 : 0) + pad;
-
-    /* The slab itself — blurred shadow, gradient, rim — only changes when
-       its size does, so it is drawn once into a canvas of its own and then
-       stamped. A blurred shadow redrawn sixty times a second is the single
-       most expensive thing a low-end phone's canvas does. Widths are
-       snapped so a score ticking over does not redraw it every frame. */
-    var wq = Math.ceil(w / 8) * 8;
-    var slab = hudSlab(wq, h, u);
-    if (slab) ctx.drawImage(slab, padL - u, padT - u, slab.width / hudK, slab.height / hudK);
-    else paintSlab(ctx, padL, padT, wq, h, u);
-    w = wq;
-
-    var x0 = padL + pad;
+    function outlined(txt, x, y, px, fill, ow) {
+      ctx.font = '800 ' + px + FONT;
+      ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+      ctx.lineWidth = ow; ctx.strokeStyle = 'rgba(2,18,52,.35)';
+      ctx.strokeText(txt, x, y + px * 0.07);                       // the drop under it
+      ctx.strokeStyle = '#062a78'; ctx.strokeText(txt, x, y);
+      ctx.fillStyle = fill; ctx.fillText(txt, x, y);
+    }
+    function pill(x, y, w2, h2) {
+      ctx.fillStyle = 'rgba(6,30,74,.5)';
+      rr(ctx, x, y, w2, h2, h2 / 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = Math.max(1, u * 0.07);
+      rr(ctx, x + 0.5, y + 0.5, w2 - 1, h2 - 1, h2 / 2); ctx.stroke();
+    }
+    var x0 = padL + u * 0.15;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
 
-    /* score, the big one */
-    var y1 = padT + pad + fS * 0.82;
-    ctx.font = '800 ' + fS + FONT;
+    /* the label over the score, then the score, the big one */
+    var yL = padT + fL * 0.9;
+    outlined(scoreLab, x0 + u * 0.1, yL, fL, 'rgba(255,255,255,.92)', Math.max(2, u * 0.22));
+    var y1 = yL + u * 0.15 + fS * 0.86;
     var secs = W.timeT / 60;
-    ctx.fillStyle = aval ? (lead < 15 ? '#d22b3f' : lead < 30 ? '#d9730d' : '#0b3d7a')
-                  : !timed ? '#0b3d7a' : secs < 5 ? '#d22b3f' : secs < 8 ? '#d9730d' : '#0b3d7a';
+    var sFill = aval ? (lead < 15 ? '#ff6b7d' : lead < 30 ? '#ffb24d' : '#ffffff')
+              : !timed ? '#ffffff' : secs < 5 ? '#ff6b7d' : secs < 8 ? '#ffb24d' : '#ffffff';
     if ((timed && secs < 5) || (aval && lead < 15)) ctx.globalAlpha = 0.65 + 0.35 * Math.abs(Math.sin(W.t * 0.15));
-    ctx.fillText(score, x0, y1);
+    outlined(score, x0, y1, fS, sFill, Math.max(4, u * 0.36));
     ctx.globalAlpha = 1;
-    ctx.font = '800 ' + Math.round(u * 0.62) + FONT;
-    ctx.fillStyle = 'rgba(11,61,122,.55)';
-    var labX = x0 + measureAt(tab(score), fS) + u * 0.4;
-    ctx.fillText(scoreLab, labX, y1);
+    var after = x0 + measureAt(tab(score), fS) + u * 0.5;
     /* the run of catches, as a multiplier on points */
     if (mult > 1) {
-      var mx = labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.45;
+      var mx = after;
       ctx.fillStyle = '#ffcd3a';
-      rr(ctx, mx, y1 - u * 1.05, u * 2.0, u * 1.2, u * 0.5); ctx.fill();
-      ctx.strokeStyle = '#ad6800'; ctx.lineWidth = Math.max(1.5, u * 0.1);
-      rr(ctx, mx, y1 - u * 1.05, u * 2.0, u * 1.2, u * 0.5); ctx.stroke();
-      ctx.font = '800 ' + Math.round(u * 0.85) + FONT;
+      rr(ctx, mx, y1 - u * 1.25, u * 2.1, u * 1.3, u * 0.65); ctx.fill();
+      ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.14);
+      rr(ctx, mx, y1 - u * 1.25, u * 2.1, u * 1.3, u * 0.65); ctx.stroke();
+      ctx.font = '800 ' + Math.round(u * 0.9) + FONT;
       ctx.fillStyle = '#7a4a00'; ctx.textAlign = 'center';
-      ctx.fillText('x' + mult, mx + u * 1.0, y1 - u * 0.15);
+      ctx.fillText('x' + mult, mx + u * 1.05, y1 - u * 0.28);
       ctx.textAlign = 'left';
+      after += u * 2.5;
     }
     /* what the last ring won back from the snow, for a moment */
     if (aval && W.avPush > 0) {
       ctx.globalAlpha = Math.min(1, W.avPush / 20);
-      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
-      ctx.fillStyle = '#1f9d63';
-      ctx.fillText('+' + Math.round(W.avPushN / 8) + ' ' + tr('hud.m', 'M'),
-                   labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.5, y1);
+      outlined('+' + Math.round(W.avPushN / 8) + ' ' + tr('hud.m', 'M'), after, y1 - u * 0.2, Math.round(u * 1.0), '#8dffb8', Math.max(3, u * 0.22));
       ctx.globalAlpha = 1;
     }
     /* what the last crash cost, for a moment */
     if (timed && W.penT > 0) {
       ctx.globalAlpha = Math.min(1, W.penT / 20);
-      ctx.font = '800 ' + Math.round(u * 1.0) + FONT;
-      ctx.fillStyle = '#d22b3f';
-      ctx.fillText('-' + Math.round(CRASH_COST / 60) + tr('hud.s', 's'),
-                   labX + measureAt(scoreLab, Math.round(u * 0.62)) + u * 0.5, y1);
+      outlined('-' + Math.round(CRASH_COST / 60) + tr('hud.s', 's'), after, y1 - u * 0.2, Math.round(u * 1.0), '#ff6b7d', Math.max(3, u * 0.22));
       ctx.globalAlpha = 1;
     }
 
-    /* metres · the catch · spare lives */
-    var y2 = y1 + gap + fM * 0.95;
+    /* metres · the catch · spare lives, each in its own pill */
+    var ph = Math.round(fM * 1.45), py = y1 + gap + u * 0.25, pp = u * 0.5, ic = u * 1.15;
+    var wDist = ic + measureAt(tab(distTxt), fM), wFish = ic + measureAt(tab(fishTxt), fM);
+    var wLife = lifeTxt ? ic + measureAt(tab(lifeTxt), fM) : 0;
+    var tY = py + ph / 2 + fM * 0.34;
     ctx.font = '800 ' + fM + FONT;
-    ctx.fillStyle = '#1d4f7c';
-    ctx.fillText(distTxt, x0, y2);
-    var fx = x0 + wDist + sep;
-    hudLayout = { w: w, fx: fx, digits: score.length + '|' + distTxt.length + '|' + fishTxt.length };
-    hudFish(fx + icon * 0.42, y2 - fM * 0.34, u * 0.5);
-    ctx.fillStyle = '#1d4f7c';
-    ctx.fillText(fishTxt, fx + icon, y2);
+    var px1 = x0;
+    pill(px1, py, wDist + pp * 2, ph);
+    /* a little flag on a pole: how far down the hill */
+    var flx = px1 + pp + ic * 0.32, fly = py + ph * 0.24;
+    ctx.strokeStyle = '#e8f6ff'; ctx.lineWidth = Math.max(1.5, u * 0.1);
+    ctx.beginPath(); ctx.moveTo(flx, fly); ctx.lineTo(flx, py + ph * 0.78); ctx.stroke();
+    ctx.fillStyle = '#ff6b5e';
+    ctx.beginPath(); ctx.moveTo(flx, fly); ctx.lineTo(flx + ic * 0.5, fly + ph * 0.13); ctx.lineTo(flx, fly + ph * 0.26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(distTxt, px1 + pp + ic, tY);
+    var fx = px1 + wDist + pp * 2 + u * 0.35;
+    pill(fx, py, wFish + pp * 2, ph);
+    hudFish(fx + pp + ic * 0.4, py + ph / 2, u * 0.5);
+    ctx.font = '800 ' + fM + FONT;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(fishTxt, fx + pp + ic, tY);
+    var w = fx + wFish + pp * 2 - x0;
     if (lifeTxt) {
-      var lx = fx + wFish + sep;
-      drawHeart(lx + icon * 0.42, y2 - fM * 0.32, u * 0.46);
+      var lx = fx + wFish + pp * 2 + u * 0.35;
+      pill(lx, py, wLife + pp * 2, ph);
+      drawHeart(lx + pp + ic * 0.4, py + ph / 2 + u * 0.02, u * 0.46);
       ctx.font = '800 ' + fM + FONT;
-      ctx.fillStyle = '#b8304a';
-      ctx.fillText(lifeTxt, lx + icon, y2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(lifeTxt, lx + pp + ic, tY);
+      w = lx + wLife + pp * 2 - x0;
     }
+    hudLayout = { w: Math.round(w), fx: Math.round(fx), digits: score.length + '|' + distTxt.length + '|' + fishTxt.length };
 
-    /* and the best, small, underneath */
+    /* and the best, small, in gold underneath */
     if (bestTxt) {
-      var y3 = y2 + gap * 0.8 + fB * 0.95;
-      ctx.font = '800 ' + fB + FONT;
-      ctx.fillStyle = '#a86a00';
-      ctx.fillText(bestTxt, x0, y3);
+      var y3 = py + ph + gap + fB * 0.95;
+      outlined(bestTxt, x0 + u * 0.1, y3, fB, '#ffd96a', Math.max(2, u * 0.22));
     }
 
     /* The right-hand corner holds the timed things. In the tutorial the
@@ -6374,37 +6578,7 @@ var Game = (function () {
     ctx.restore();
   }
 
-  function paintSlab(c, x, y, w, h, u) {
-    c.save();
-    c.shadowColor = 'rgba(3,28,70,.28)'; c.shadowBlur = u * 0.6; c.shadowOffsetY = u * 0.2;
-    c.fillStyle = '#062a78';                                   // the edge, for thickness
-    rr(c, x, y + u * 0.22, w, h, u * 0.8); c.fill();
-    c.restore();
-    var pg = c.createLinearGradient(0, y, 0, y + h);
-    pg.addColorStop(0, 'rgba(255,255,255,.95)'); pg.addColorStop(1, 'rgba(218,240,252,.93)');
-    c.fillStyle = pg;
-    rr(c, x, y, w, h, u * 0.8); c.fill();
-    c.strokeStyle = '#062a78'; c.lineWidth = Math.max(2, u * 0.14);
-    rr(c, x, y, w, h, u * 0.8); c.stroke();
-  }
   var hudLayout = null;
-  var slabCv = null, slabKey = '';
-  function hudSlab(w, h, u) {
-    if (typeof document === 'undefined' || !document.createElement) return null;
-    var key = w + '|' + h + '|' + u + '|' + hudK;
-    if (slabCv && slabKey === key) return slabCv;
-    if (!slabCv) slabCv = document.createElement('canvas');
-    if (!slabCv.getContext) return null;
-    slabCv.width = Math.ceil((w + u * 2) * hudK);
-    slabCv.height = Math.ceil((h + u * 2.6) * hudK);
-    var c = slabCv.getContext('2d');
-    if (!c) return null;
-    c.setTransform(hudK, 0, 0, hudK, 0, 0);
-    c.clearRect(0, 0, w + u * 2, h + u * 2.6);
-    paintSlab(c, u, u, w, h, u);
-    slabKey = key;
-    return slabCv;
-  }
 
   /* The fish on the readout: still, and drawn for its size. The swimming
      fish off the hill, shrunk into the panel, flicked its tail and bobbed
@@ -6530,7 +6704,7 @@ var Game = (function () {
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
 
     var dpr = window.devicePixelRatio || 1;
-    var eff = Math.max(1, Math.min(dpr, 2.5, 3840 / vw, 2160 / vh));
+    var eff = Math.max(1, Math.min(dpr, LITE ? 1.5 : 2.5, 3840 / vw, 2160 / vh));
     /* The readouts are drawn in CSS pixels, not world units. In world units
        a 22px label came out at 12.6 real pixels on a 390px phone, because
        one world unit is only `scale` CSS pixels there — which is exactly why
@@ -6551,12 +6725,30 @@ var Game = (function () {
     if (W && !suspended) render();
   }
 
+  /* Adaptive quality. If a run keeps missing frames — slower than about
+     42 a second for a couple of seconds — the device is told apart from a
+     hiccup and the picture steps down for the rest of the session: fewer
+     pixels (the cap on the screen's density drops from 2.5 to 1.5, which
+     is most of the cost on a slow phone), and the purely decorative layers
+     go — the patches in the ice, the drifts and glints on the banks.
+     Nothing that tells you anything about the hill is touched. */
+  var LITE = false, slowEma = 16, slowN = 0;
+  function watchPace(dt) {
+    if (LITE || paused || !W || W.state !== 'run') { slowN = 0; return; }
+    slowEma = slowEma * 0.95 + dt * 0.05;
+    /* counted in time, not frames: a phone this slow takes a long while
+       to show a hundred and fifty of them */
+    if (slowEma > 24) { slowN += dt; if (slowN > 2500) { LITE = true; resize(); } }
+    else slowN = 0;
+  }
+
   function loop(t) {
     if (suspended) { rafId = null; return; }
     rafId = requestAnimationFrame(loop);
     if (!W) return;
     if (!lastT) lastT = t;
     var dt = Math.min(120, t - lastT); lastT = t;
+    watchPace(dt);
     if (paused) {
       /* Nothing moves, so nothing needs repainting. The canvas keeps the
          last frame, which is exactly the frozen hill you want behind a
@@ -6638,6 +6830,7 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
+    _lite: function (v) { if (v !== undefined) { LITE = !!v; if (canvas) resize(); } return LITE; },
     /* draws one geyser at a chosen point of its cycle, for the eye checks */
     _drawGeyser: function (c, x, y, r, ph, t) {
       var keepCtx = ctx, keepW = W;
