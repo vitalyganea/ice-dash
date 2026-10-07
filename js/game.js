@@ -965,7 +965,42 @@ var Game = (function () {
   }
 
   /* ---------------------------- step -------------------------- */
+  /* ---- the hill behind the menu ----
+     On the title the hill is alive: the chosen animal sliding down it,
+     weaving gently, the stretches going by. A demo, not a run — nothing on
+     the ice but the scenery past the banks, nothing to hit, nothing scored
+     or saved, and not a sound: every Sfx call it makes goes to a silent
+     stand-in while it steps. Any real run simply replaces it. */
+  var SILENT = null;
+  function silentSfx() {
+    if (SILENT) return SILENT;
+    SILENT = {};
+    for (var k in Sfx) SILENT[k] = typeof Sfx[k] === 'function' ? function () {} : Sfx[k];
+    return SILENT;
+  }
+  /* It steers the way a player does — by turning, with a tap's give and
+     spray — towards a line that weaves gently down the middle. */
+  function demoPre() {
+    W.objects = W.objects.filter(function (o) { return o.t === 'deco'; });
+    W.invuln = 1e9; W.grace = 1e9; W.hold = false; W.lives = 0; W.zoneT = 0;
+    var want = chuteAt(W.dist + 140) + Math.sin(W.dist * 0.0037) * CHUTE * 0.4;
+    if ((want - W.px) * W.dir < -26 && W.t - (W.lastTapT || 0) > 24) {
+      W.dir = -W.dir; W.lastTapT = W.t; W.squash = 1;
+      for (var i = 0; i < 8; i++)
+        W.spray.push({ x: W.px - W.dir * 6, d: W.dist - 4, vx: -W.dir * frnd(1.2, 4), vd: -frnd(0.5, 3),
+                       life: 24, max: 24, s: frnd(1.4, 3) });
+    }
+  }
+  function demoPost() { W.speed = Math.min(W.speed, 5.2); }
   function step() {
+    if (W && W.demo) {
+      var keepS = Sfx; Sfx = silentSfx();
+      try { demoPre(); stepCore(); if (W) demoPost(); } finally { Sfx = keepS; }
+      return;
+    }
+    stepCore();
+  }
+  function stepCore() {
     W.t++;
     /* Where he is in his stride, advanced a frame at a time at the rate his
        speed sets now. It was W.t times that rate, so whenever the speed
@@ -1696,6 +1731,14 @@ var Game = (function () {
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.globalAlpha = 1;
     var shx = (frand() - 0.5) * W.shake, shy = (frand() - 0.5) * W.shake;
+    /* Behind the title on a wide screen the menu stands on the left, so
+       the demo's camera looks at the hill from the right half instead. */
+    var camX = (W.demo && VIEW_W > VIEW_H * 1.15) ? VIEW_W * 0.24 : 0;
+    if (camX) { ctx.fillStyle = pal().snowA; ctx.fillRect(0, 0, VIEW_W, VIEW_H); shx += camX; }
+    /* on a phone the menu fills the middle, so the demo's animal rides low,
+       in the strip of hill showing under it */
+    var keepPY0 = PLAYER_Y;
+    if (W.demo && VIEW_H > VIEW_W) PLAYER_Y = Math.round(VIEW_H * 0.93);
     ctx.save();
     ctx.translate(shx, shy);
     /* The camera breathes: it draws back as the hill speeds up, and leans
@@ -1733,6 +1776,7 @@ var Game = (function () {
     drawFlakes();         /* falling snow is in front of the lens, not on the hill */
     ctx.restore();
     drawLight();
+    PLAYER_Y = keepPY0;
     drawHud();
   }
 
@@ -2133,6 +2177,14 @@ var Game = (function () {
         tracePts(near, 3 + sh * 5);
         ctx.stroke();
       }
+      /* a cave, not a bridge: right under the lip the ice falls into a deep
+         blue dark, the mouth you are riding into */
+      ctx.lineWidth = 12;
+      for (sh = 0; sh < 4; sh++) {
+        ctx.strokeStyle = 'rgba(8,28,58,' + Math.min(0.75, ink * (2.6 - sh * 0.55)).toFixed(3) + ')';
+        tracePts(near, 4 + sh * 8);
+        ctx.stroke();
+      }
       ctx.restore();
 
       /* ---- the roof ---- */
@@ -2186,6 +2238,36 @@ var Game = (function () {
       }
       ctx.globalAlpha = 1;
 
+      /* The hill the cave runs under: stone breaking through the snow on
+         its back, each lit on the upper left and dark below, with snow
+         lying on top of it, and drifts banked against it. Pinned to the
+         roof's own distance, so it rides with it. */
+      var cxR = scrX(chuteAt(o.d + o.span / 2));
+      for (var rk = 0; rk < 7; rk++) {
+        var u1 = hh(Math.floor(o.ph * 97), rk), u2 = hh(Math.floor(o.ph * 97), rk + 20);
+        var rdd = o.d + o.span * (0.18 + 0.64 * u2), ry = scrY(rdd);
+        var rxx = cxR + (u1 - 0.5) * CHUTE * 2.3, rr2 = 14 + hh(Math.floor(o.ph * 97), rk + 40) * 22;
+        if (ry < top - 40 || ry > bot + 40) continue;
+        ctx.fillStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.35).toFixed(3) + ')';          // its shadow on the snow
+        ctx.beginPath(); ctx.ellipse(rxx + rr2 * 0.35, ry + rr2 * 0.45, rr2 * 1.15, rr2 * 0.75, 0, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = B.rockDark;
+        ctx.beginPath();
+        for (var rq = 0; rq < 8; rq++) {
+          var ra = rq / 8 * 6.2832, rrad = rr2 * (0.75 + 0.35 * hh(rk + 7, rq));
+          var qx = rxx + Math.cos(ra) * rrad, qy = ry + Math.sin(ra) * rrad * 0.78;
+          rq ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.clip();
+        ctx.fillStyle = B.rock;
+        ctx.beginPath(); ctx.ellipse(rxx - rr2 * 0.25, ry - rr2 * 0.25, rr2 * 0.85, rr2 * 0.65, -0.4, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = B.cap || '#ffffff';                                                  // snow lying on it
+        ctx.beginPath(); ctx.ellipse(rxx - rr2 * 0.1, ry - rr2 * 0.62, rr2 * 1.0, rr2 * 0.42, -0.15, 0, 6.2832); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = B.snowA;                                                             // a drift banked against it
+        ctx.beginPath(); ctx.ellipse(rxx - rr2 * 0.9, ry + rr2 * 0.3, rr2 * 0.7, rr2 * 0.35, 0.4, 0, 6.2832); ctx.fill();
+      }
+
       /* and him underneath, as light scattering up through the snow */
       var py = PLAYER_Y, pxx = scrX(W.px);
       if (py < archAt(pxx, yIn, 1, o.ph) + 8 && py > archAt(pxx, yOut, -1, o.ph + 2) - 8) {
@@ -2199,30 +2281,50 @@ var Game = (function () {
       }
       ctx.restore();
 
-      /* ---- the lips, and icicles off the near one ---- */
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.lineWidth = 7;
-      ctx.strokeStyle = B.lip || 'rgba(255,255,255,.95)';
-      tracePts(near); ctx.stroke();
-      tracePts(far); ctx.stroke();
-      /* Only over the run: an overhang drips; snow lying on a bank does not. */
-      var cxIn = scrX(chuteAt(o.d)), n = 0;
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = 'rgba(' + ROOF_RGB + ',' + (ink * 0.9).toFixed(3) + ')';
-      for (var ix = cxIn - CHUTE * 0.86; ix < cxIn + CHUTE * 0.86; ix += 31) {
-        n++;
-        var len = 15 + ((n * 7) % 5) * 5, w = 6 + (n % 3) * 1.5;
-        var iy = archAt(ix, yIn, 1, o.ph) + 2;
+      /* ---- the lips ----
+       The mouth's edge is a rim of ice-glazed stones, each its own size,
+       lit on top and dark under, with snow on them — not a white line with
+       a row of identical icicles hanging off it, which read as teeth. Only
+       here and there an icicle, each its own length. The far edge is a
+       cornice of snow curling over. */
+      var seedL = Math.floor(o.ph * 131), cxIn = scrX(chuteAt(o.d)), nS = 0;
+      for (var ix = cxIn - CHUTE * 1.02; ix < cxIn + CHUTE * 1.02; ) {
+        nS++;
+        var hs = hh(seedL, nS);
+        var sr = 6 + hs * hs * 20, iy = archAt(ix, yIn, 1, o.ph) - 2 + (hh(seedL, nS + 30) - 0.5) * 7;
+        ix += sr * (0.85 + hh(seedL, nS + 50) * 0.9);
         if (iy < -40 || iy > VIEW_H + 40) continue;
+        var sx2 = ix - sr * 0.6;
+        if (hh(seedL, nS + 90) < 0.22) {                                   // an icicle, now and then
+          var il = 10 + hh(seedL, nS + 110) * 22, iw = 3 + hh(seedL, nS + 120) * 3;
+          var ig = ctx.createLinearGradient(0, iy, 0, iy + il);
+          ig.addColorStop(0, 'rgba(240,250,255,.98)'); ig.addColorStop(1, 'rgba(150,205,236,.8)');
+          ctx.fillStyle = ig;
+          ctx.beginPath(); ctx.moveTo(sx2 - iw, iy + 2); ctx.lineTo(sx2 + iw, iy + 2); ctx.lineTo(sx2 + 0.5, iy + il); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = B.rockDark;                                        // a lumpy stone, not a bead
         ctx.beginPath();
-        ctx.moveTo(ix - w, iy); ctx.lineTo(ix + w, iy); ctx.lineTo(ix + 1, iy + len);
-        ctx.closePath();
-        var ig = ctx.createLinearGradient(0, iy, 0, iy + len);
-        ig.addColorStop(0, 'rgba(255,255,255,.98)');
-        ig.addColorStop(1, 'rgba(150,205,236,.85)');
-        ctx.fillStyle = ig; ctx.fill();
-        ctx.stroke();
+        for (var sq2 = 0; sq2 < 7; sq2++) {
+          var sa2 = sq2 / 7 * 6.2832 + hh(seedL, nS + 70), sd2 = sr * (0.72 + 0.4 * hh(seedL + sq2, nS));
+          var px2 = sx2 + Math.cos(sa2) * sd2, py2 = iy + 1 + Math.sin(sa2) * sd2 * 0.74;
+          sq2 ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = B.rock;
+        ctx.beginPath(); ctx.ellipse(sx2 - sr * 0.22, iy - sr * 0.18, sr * 0.72, sr * 0.48, -0.4, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = 'rgba(200,232,250,.35)';                         // the glaze of ice on it
+        ctx.beginPath(); ctx.ellipse(sx2 - sr * 0.35, iy - sr * 0.3, sr * 0.28, sr * 0.14, -0.5, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = B.cap || '#ffffff';
+        ctx.beginPath(); ctx.ellipse(sx2 - sr * 0.05, iy - sr * 0.5, sr * 0.82, sr * 0.34, -0.1, 0, 6.2832); ctx.fill();
       }
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.fillStyle = B.snowA;                                             // the cornice at the far edge
+      for (var fxp = 0; fxp < far.length; fxp += 2) {
+        var cr2 = 9 + hh(seedL + 3, fxp) * 8;
+        ctx.beginPath(); ctx.ellipse(far[fxp][0], far[fxp][1] + 2, cr2 * 1.3, cr2 * 0.7, 0, 0, 6.2832); ctx.fill();
+      }
+      ctx.strokeStyle = B.lip || 'rgba(255,255,255,.95)'; ctx.lineWidth = 4;
+      tracePts(far, -2); ctx.stroke();
     }
   }
 
@@ -3404,7 +3506,11 @@ var Game = (function () {
       ctx.save(); ctx.translate(lo2[0], lo2[1]);
       for (k = 0; k < LOBES; k++) {
         var am = tiers[ri][1] + o.rot + (k + 0.5) * span;
-        var face = Math.cos(am - (-2.3));                // the sun is up and to the left
+        /* The snow turns with the tree: asked for, every tree visibly
+           turned its own way — fifteen degrees, thirty, ninety — and with
+           the snow fixed to the sun no turn could be seen. The shadow on
+           the ice still falls away from the sun. */
+        var face = Math.cos(am - (-2.3 + o.rot));
         if (face < 0.15) continue;
         var from = 1 - Math.min(0.75, (0.28 + 0.3 * load) * face * snowK);
         var tip = trad * tipOf(k);
@@ -5728,7 +5834,7 @@ var Game = (function () {
        let the seams between a creature's lumps show through as circles,
        and blinking it out left you unable to see your own line for half
        of the second that matters most. */
-    var safe = W.invuln > 0 && !crashed;
+    var safe = W.invuln > 0 && !crashed && !W.demo;
 
     /* Rushing: he is inside a ball of packed powder, throwing a wake. Drawn
        under the creature so you can still read your own line through it —
@@ -6381,6 +6487,7 @@ var Game = (function () {
      the shorter edge of the screen — that keeps them chunky on a phone and
      stops them swelling to billboards on a desktop. */
   function drawHud() {
+    if (W.demo) return;
     ctx.save();
     ctx.setTransform(hudK, 0, 0, hudK, 0, 0);
 
@@ -6794,6 +6901,22 @@ var Game = (function () {
       if (rafId == null && !suspended) rafId = requestAnimationFrame(loop);
     },
     stop: function () { W = null; if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; } },
+    /* the hill behind the menu (see demoSteer); a run that is only paused
+       keeps its place */
+    attract: function (skinId) {
+      if (W && !W.demo) return;
+      if (W && W.demo) { if (typeof SKINS !== 'undefined') skin = skinById(skinId); return; }
+      if (!ctx) setup();
+      if (!ctx) return;
+      if (typeof SKINS !== 'undefined') skin = skinById(skinId);
+      pendingCourse = null; pendingMode = null;
+      hooks.hud = null; hooks.over = function () {}; hooks.lesson = null; hooks.fx = null;
+      var keepS = Sfx; Sfx = silentSfx();
+      try { newRun(); } finally { Sfx = keepS; }
+      W.demo = true; W.hold = false; W.invuln = 1e9; W.grace = 1e9; W.lives = 0;
+      paused = false; lastT = 0; accT = 0;
+      if (rafId == null && !suspended) rafId = requestAnimationFrame(loop);
+    },
     tap: tap,
     undoTap: undoTap,
     revive: revive,
@@ -6818,7 +6941,8 @@ var Game = (function () {
     },
     resume: function () { paused = false; lastT = 0; },
     isPaused:  function () { return paused; },
-    isRunning: function () { return !!W && W.state === 'run'; },
+    isRunning: function () { return !!W && W.state === 'run' && !W.demo; },
+    isDemo: function () { return !!W && !!W.demo; },
     hasRun:    function () { return !!W; },
     suspend: function () { suspended = true; if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; } },
     unsuspend: function () {

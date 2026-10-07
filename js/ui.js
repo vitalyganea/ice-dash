@@ -209,6 +209,8 @@
       refreshModes();
     }
     if (name === 'title') {
+      /* the hill comes alive behind the menu (unless a run is only paused) */
+      if (!Game.isRunning()) Game.attract(save.equipped);
       refreshModes();
       $('market-badge').classList.toggle('hidden', !marketNews().length);
       $('ach-badge').classList.toggle('hidden', !achUnclaimed(save).length);

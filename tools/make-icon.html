@@ -1,0 +1,68 @@
+<!doctype html><meta charset="utf-8"><title>Ice Dash icon</title>
+<!-- The launcher icon, drawn with the game's own painters. Open with a
+     hash: #full (assets/icon-only.png), #fg (icon-foreground.png, transparent)
+     or #bg (icon-background.png); right-click the canvas to save it at
+     1024px, then resize into android/app/src/main/res/mipmap-*. -->
+<body style="margin:0;background:#333"><canvas id="c" width="1024" height="1024" style="width:512px;height:512px"></canvas>
+<script src="../js/i18n.js"></script><script src="../js/audio.js"></script>
+<script src="../js/biomes.js"></script><script src="../js/skins.js"></script>
+<script src="../js/courses.js"></script><script src="../js/achievements.js"></script>
+<script src="../js/game.js"></script>
+<script>
+var mode = location.hash.slice(1) || 'full';
+var cv = document.getElementById('c'), x = cv.getContext('2d');
+function bg() {
+  var g = x.createLinearGradient(0, 0, 1024, 1024);
+  g.addColorStop(0, '#c9f0ff'); g.addColorStop(0.45, '#7cc8ee'); g.addColorStop(1, '#2f7fc0');
+  x.fillStyle = g; x.fillRect(0, 0, 1024, 1024);
+  /* deep patches in the ice */
+  [[760, 300, 260, .10], [260, 780, 300, .12], [820, 860, 200, .14]].forEach(function (p) {
+    var r = x.createRadialGradient(p[0], p[1], 0, p[0], p[1], p[2]);
+    r.addColorStop(0, 'rgba(10,70,140,' + p[3] + ')'); r.addColorStop(1, 'rgba(10,70,140,0)');
+    x.fillStyle = r; x.fillRect(0, 0, 1024, 1024);
+  });
+  /* polished streaks running down the hill */
+  x.strokeStyle = 'rgba(255,255,255,.35)'; x.lineCap = 'round';
+  [[120, 4, 14], [300, -60, 8], [610, 40, 18], [880, -20, 10], [470, 120, 6]].forEach(function (s) {
+    x.lineWidth = s[2]; x.beginPath(); x.moveTo(s[0], s[1]); x.lineTo(s[0] + 260, 1100); x.stroke();
+  });
+  /* the sky's sheen */
+  var sh = x.createLinearGradient(0, 0, 1024, 700);
+  sh.addColorStop(0.35, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,.28)'); sh.addColorStop(0.65, 'rgba(255,255,255,0)');
+  x.fillStyle = sh; x.fillRect(0, 0, 1024, 1024);
+  /* a snow bank in the corner, lit, with its shadow on the ice */
+  x.fillStyle = 'rgba(40,110,170,.25)';
+  x.beginPath(); x.moveTo(0, 560); x.bezierCurveTo(140, 600, 210, 760, 250, 1024); x.lineTo(0, 1024); x.closePath(); x.fill();
+  x.fillStyle = '#f4fbff';
+  x.beginPath(); x.moveTo(0, 520); x.bezierCurveTo(110, 560, 170, 740, 200, 1024); x.lineTo(0, 1024); x.closePath(); x.fill();
+  x.strokeStyle = '#ffffff'; x.lineWidth = 10; x.stroke();
+}
+function fg() {
+  var cx = 496, cy = 470;
+  x.save(); x.translate(cx, cy);
+  /* the groove he has cut, curving in from below */
+  x.lineCap = 'round';
+  x.strokeStyle = 'rgba(20,70,130,.3)'; x.lineWidth = 40;
+  x.beginPath(); x.moveTo(30, 150); x.bezierCurveTo(90, 300, -60, 380, -20, 560); x.stroke();
+  x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 9;
+  x.beginPath(); x.moveTo(8, 150); x.bezierCurveTo(68, 300, -82, 380, -42, 560); x.stroke();
+  /* the fan of snow flung out of the turn: streaks, rimmed, and a few flakes */
+  for (var i = 0; i < 15; i++) {
+    var a = -0.15 + (i / 15) * 1.75, d0 = 150 + (i * 29) % 60, d1 = d0 + 40 + (i * 41) % 80;
+    var w = 6 + (i * 7) % 8;
+    x.strokeStyle = 'rgba(70,130,190,.55)'; x.lineWidth = w + 6;
+    x.beginPath(); x.moveTo(Math.cos(a) * d0, Math.sin(a) * d0 + 60); x.lineTo(Math.cos(a) * d1, Math.sin(a) * d1 + 60); x.stroke();
+    x.strokeStyle = '#ffffff'; x.lineWidth = w;
+    x.beginPath(); x.moveTo(Math.cos(a) * d0, Math.sin(a) * d0 + 60); x.lineTo(Math.cos(a) * d1, Math.sin(a) * d1 + 60); x.stroke();
+  }
+  for (i = 0; i < 22; i++) {
+    var b = -0.2 + (i / 22) * 1.9, dd = 220 + (i * 53) % 130;
+    x.fillStyle = '#ffffff';
+    x.beginPath(); x.arc(Math.cos(b) * dd, Math.sin(b) * dd + 60, 6 + (i * 5) % 8, 0, 6.2832); x.fill();
+  }
+  x.restore();
+  /* Snowcap himself, leaning into the turn, eyes wide */
+  Game.comicDraw(x, 'creature', cx, cy, 760, { skin: 'snowcap', ang: 0.38, gait: 3.1, eye: { shut: 1, wide: 1.3, lx: -0.2, ly: -0.7 } });
+}
+try { if (mode !== 'fg') bg(); if (mode !== 'bg') fg(); window.ICON = cv.toDataURL('image/png'); } catch (e) { window.ICON = 'ERR,' + e.message; }
+</script></body>
