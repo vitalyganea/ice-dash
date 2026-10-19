@@ -6989,6 +6989,11 @@ var Game = (function () {
     var vw = Math.max(1, window.innerWidth || 960), vh = Math.max(1, window.innerHeight || 540);
 
     var scale = Math.min(vw / SAFE_W, vh / SAFE_H);   // world units per css pixel
+    /* A platform may ask for more hill above the penguin on a wide, short
+       window (crazygames.js: on a 16:9 desktop the safe region alone left
+       well under half the lookahead a phone gets). Unset everywhere else. */
+    var minH = (window.ICEDASH_PLATFORM || {}).minViewH;
+    if (minH > SAFE_H) scale = Math.min(scale, vh / minH);
     VIEW_W = Math.round(vw / scale);                  // both are >= the safe region,
     VIEW_H = Math.round(vh / scale);                  // and together they fill the screen
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';

@@ -45,8 +45,8 @@ bash build.sh               # builds icedash.zip from an allowlist
 ```
 
 A new runtime file must be added to the `FILES` list in `build.sh`, or it will
-not ship (to Playables or to the Android app — `build-android.sh` reads the
-same list).
+not ship (to Playables, to the Android app, to Yandex or to CrazyGames —
+`build-android.sh`, `build-yandex.sh` and `build-crazygames.sh` read the same list).
 
 ## Android
 
@@ -54,3 +54,22 @@ Capacitor in `android/`. `npm run android:sync`, then in `android/`
 `./gradlew assembleDebug` or `bundleRelease`, with `JAVA_HOME` set to JDK 21
 (Android Studio's bundled Java 25 is too new for this Gradle). `js/native.js`
 is the only Android-only code. The upload key lives outside the repo.
+
+## Yandex Games
+
+`bash build-yandex.sh` builds `yandex/game/` and `yandex/icedash-yandex.zip`
+(Playables SDK swapped for `/sdk.js`, `js/yandex.js` added). `js/yandex.js` is
+the only Yandex-only code: it answers the game's `window.ytgame` calls with
+Yandex ones. It and `js/crazygames.js` are the only places allowed to watch
+visibility (Yandex requires sound off when hidden); the game itself never does. `node yandex/media.js [--video]`
+regenerates the console's icon, cover, screenshots and videos;
+`yandex/README.md` says what goes where.
+
+## CrazyGames
+
+Same shape: `bash build-crazygames.sh` builds `crazygames/game/` and
+`crazygames/icedash-crazygames.zip` (Playables SDK swapped for CrazyGames
+SDK v3, `js/crazygames.js` added — the only CrazyGames-only code).
+`node crazygames/media.js [--video]` makes the three covers and two preview
+videos; `crazygames/README.md` has the upload steps. Both media scripts run
+on `tools/media-lib.js`.

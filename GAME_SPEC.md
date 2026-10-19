@@ -30,6 +30,18 @@ Esc to pause) on top of the same pointer control. Pause on mobile is a large
 bottom-right button plus a two-finger tap anywhere; the second finger is
 never a steering input, because steering is a single tap.
 
+**Yandex Games** — asked for by the user (October 2026): the same game,
+uploaded to Yandex Games from `yandex/`. Only an adapter and a build of its
+own; the game code is shared. Yandex requires monetisation, so that copy
+alone shows a full-screen ad when leaving a run's results, at most once in
+90 s.
+
+**CrazyGames** — asked for by the user (October 2026): the same game from
+`crazygames/`, with its own adapter and build. A midgame ad on leaving a
+run's results (CrazyGames sets how often, and shows none in Basic Launch),
+and a new player lands straight in the tutorial there, since CrazyGames
+wants play within one click; the comic waits in the Market. After CrazyGames' first review (rejected on quality) that build alone also shows more hill ahead on a wide window, opens Freeride from the start, words the tutorial for mouse and keyboard on desktop, and does not pause on Esc (SYSTEMS.md row 121).
+
 ## Art approach
 
 Vector / flat shapes, drawn on `<canvas>` at runtime. No sprite sheets, no

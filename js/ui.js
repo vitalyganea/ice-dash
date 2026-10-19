@@ -65,6 +65,9 @@
              /* the creatures whose comic has been read through (or skipped) */
              comicSeen: {} };
   }
+  /* Switches a platform's adapter may set before the game loads (only
+     crazygames.js does). Unset, everything behaves as it always has. */
+  var PLAT = window.ICEDASH_PLATFORM || {};
   var save = defaults();
   var canSave = false, saving = false, saveAgain = false;
 
@@ -322,12 +325,19 @@
     if (tutHideT) { clearTimeout(tutHideT); tutHideT = null; }
     $('tut').classList.add('hidden');
   }
+  /* With a mouse and no touch screen, a platform that asks for it
+     (deskWords) gets the lines that say click or Space instead of tap. */
+  function lessonKey(key) {
+    if (!PLAT.deskWords || !STRINGS[key + '.desk']) return key;
+    var coarse = window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches;
+    return coarse ? key : key + '.desk';
+  }
   function onLesson(m) {
     waitingFor = (m && m.wait) ? m : null;
     if (!m || !m.key) { hideLesson(); return; }
     if (tutHideT) { clearTimeout(tutHideT); tutHideT = null; }
     var box = $('tut'), card = $('tut-card'), ico = $('tut-ico'), tap = $('tut-tap');
-    $('tut-text').innerHTML = t(m.key);           // our own strings, some with <b>
+    $('tut-text').innerHTML = t(lessonKey(m.key)); // our own strings, some with <b>
     var hint = m.hint && Game.drawHint;
     ico.classList.toggle('hidden', !hint);
     if (hint) Game.drawHint(ico, m.hint, 52);
@@ -1298,7 +1308,7 @@
      it behind all six lines would also lock a beginner out of the shop, and
      they clear the sixth roughly never. One line is enough — it is the run
      that teaches you what a tap does, and it is passed in a few attempts. */
-  function freeUnlocked() { return (save.courses[COURSES[0].id] || 0) > 0; }
+  function freeUnlocked() { return !!PLAT.freeOpen || (save.courses[COURSES[0].id] || 0) > 0; }
 
   function refreshModes() {
     /* The .hidden class, not the hidden attribute: .btn-row sets
@@ -1796,7 +1806,9 @@
       if (currentScreen === 'comic') { Sfx.click(); finishComic(); return; }
       if (BACKABLE[currentScreen]) { act('back-title'); }
       else if (currentScreen === 'pause') act('resume');
-      else if (Game.isRunning() && !Game.isPaused()) { Game.pause(); show('pause'); }
+      /* Esc also leaves fullscreen; a platform that keeps it out of play
+         (noEscPause) pauses only by P or the button. */
+      else if (Game.isRunning() && !Game.isPaused() && !PLAT.noEscPause) { Game.pause(); show('pause'); }
       return;
     }
     if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
