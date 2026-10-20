@@ -235,7 +235,26 @@
       el.setAttribute('aria-label', t('title.best', { n: save.best }));
       el.classList.toggle('hidden', save.best <= 0);
     }
+    fitScreen();
   }
+  /* The screens that are one panel and nothing to scroll for: on a short
+     phone (an Oppo A9 in the app is about 360x730) the title was a few
+     pixels taller than the window and slid up and down under a thumb. The
+     panel is zoomed down until it fits instead. The lists — Market,
+     trophies, settings — still scroll; they are meant to. */
+  var FIT = { title: 1, pause: 1, over: 1, tutdone: 1, revive: 1, modes: 1 };
+  function fitScreen() {
+    var scr = screens[currentScreen], panel = scr && scr.querySelector('.panel');
+    if (!panel) return;
+    panel.style.zoom = '';
+    if (!FIT[currentScreen] || !scr.clientHeight) return;
+    var cs = getComputedStyle(scr);
+    var room = scr.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+             - 8;                                    // the panel's own thick edge below it
+    var k = room / panel.offsetHeight;
+    if (k < 1) panel.style.zoom = Math.max(0.5, k).toFixed(3);
+  }
+  window.addEventListener('resize', fitScreen);
   /* The pictures in How to play: the actual objects off the hill, painted
      by the game's own painters into a canvas on each line. Built when the
      panel opens rather than at boot, for two reasons — a hidden panel has
@@ -956,6 +975,9 @@
     cv.className = 'skin-pic';
     el.appendChild(cv);
     Game.drawSkinPreview(cv, sk.id, 80);
+    /* the drawing sets an inline 80px; the shelf's CSS sizes the tile
+       instead, or three to a row overflow a narrow phone */
+    cv.style.width = cv.style.height = '';
     if (save.equipped === sk.id) {
       var w = document.createElement('span');
       w.className = 'skin-tag tag-worn'; w.textContent = '✓';
@@ -1819,6 +1841,8 @@
   Sfx.sound(save.sfx);
   syncToggles();
   show('title');
+  /* the title was measured in the fallback font; measure it again in its own */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitScreen);
 
   requestAnimationFrame(function () {
     announce('firstFrameReady');

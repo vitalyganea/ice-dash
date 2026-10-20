@@ -1365,9 +1365,11 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 }
 .coin{ display:inline-block; vertical-align:middle; flex:0 0 auto; }
 @media (max-width:540px){
-  .shop-grid{ grid-template-columns:repeat(3,1fr); gap:14px 10px; }
+  /* minmax(0,…) so a column may shrink below the portrait's size; the
+     portrait then shrinks to its tile instead of pushing out of the frame */
+  .shop-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 10px; }
   .skin-card{ flex-direction:column; padding:10px 4px 16px; gap:0; }
-  .skin-card .skin-pic{ width:min(72px,22vw); height:min(72px,22vw); }
+  .skin-card .skin-pic{ width:min(72px,100%); height:auto; aspect-ratio:1; }
 }
 
 /* ---- a small window over the screen ----
