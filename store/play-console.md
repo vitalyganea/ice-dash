@@ -36,9 +36,10 @@ are in `listing.md`.
 |---|---|---|---|
 | 1.0.1 | 2 | Closed testing "1.0" | approved 5 Oct 2026 |
 | 1.0.2 | 3 | Closed testing "1.0" | built 5 Oct 2026: edge to edge for Android 15 |
+| 1.1.0 | 4 | Closed testing "1.0" | built 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **4**.
+number (`android/app/build.gradle`). The next one is **5**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
