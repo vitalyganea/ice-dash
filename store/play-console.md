@@ -39,6 +39,9 @@ are in `listing.md`.
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
 
+Applied for production access on 19 Oct 2026 (review usually up to 7 days;
+the answer comes by email to the account owner).
+
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
 number (`android/app/build.gradle`). The next one is **6**.
 
