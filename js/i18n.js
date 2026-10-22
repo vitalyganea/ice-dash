@@ -1293,7 +1293,7 @@ var RO = {
   'runs.locked': 'Termină {n} ca s-o deschizi',
   'runs.shut': 'Blocat',
   'mode.free.locked': 'Termină {n} ca să deschizi',
-  'runs.count': '{a} din {b} stele',
+  'runs.count': { one: '{a} din {b} stea', few: '{a} din {b} stele', other: '{a} din {b} de stele' },
   'runs.len': '{n} m',
   'over.finish': 'Ai reușit!',
   'over.stars': '{a} din 3 stele',

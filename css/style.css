@@ -1561,8 +1561,9 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 
 /* ---- a creature's comic ----
    The page is sized to the screen it is on (ui.js fitComic): the three
-   panels and their captions always fit the height, so no device scrolls,
-   and the page hugs them rather than standing taller than every other
+   panels and their captions fit the height wherever a panel can stay
+   120px wide (a shorter phone scrolls, each new panel brought up above
+   the buttons), and the page hugs them rather than standing taller than every other
    panel. Each panel is one card — the picture with its caption under it —
    instead of a picture with a yellowed label stuck on below. */
 .comic-page{ width:min(560px,100%); max-width:100%; padding:16px 16px 14px; }

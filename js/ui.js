@@ -1115,6 +1115,7 @@
   function buildComicPage() {
     var box = $('comic-panels');
     box.textContent = '';
+    $('screen-comic').scrollTop = 0;      // a page begins at its top, wherever the last one was left
     comic.shown = 0; comic.starts = [];
     comic.pages[comic.page].forEach(function (p) {
       var cell = document.createElement('div');
@@ -1203,6 +1204,13 @@
     var last = comic.page === comic.pages.length - 1 && comic.shown === cells.length;
     $('comic-next').textContent = last ? t('comic.go') : t('comic.next') + '  \u203a';
     if (last) fitComic();
+    /* on a phone too short for the whole page a panel opens under the
+       buttons; the page scrolls it up above them */
+    var cell = cells[comic.shown - 1], foot = $('screen-comic').querySelector('.comic-foot');
+    if (cell && foot.classList.contains('over')) {
+      var d = cell.getBoundingClientRect().bottom - foot.getBoundingClientRect().top + 6;
+      if (d > 0) $('screen-comic').scrollBy({ top: d, behavior: 'smooth' });
+    }
   }
   function nextComic() {
     if (!comic) return;
@@ -1457,7 +1465,7 @@
   function buildRuns() {
     var total = 0;
     for (var k = 0; k < COURSES.length; k++) total += (save.courses[COURSES[k].id] || 0);
-    $('runs-count').textContent = t('runs.count', { a: total, b: COURSES.length * 3 });
+    $('runs-count').textContent = t('runs.count', { a: total, b: COURSES.length * 3, n: COURSES.length * 3 });
 
     var list = $('runs-list');
     list.textContent = '';

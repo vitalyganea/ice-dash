@@ -64,7 +64,8 @@
   /* A plain link: the app's web view hands any address that is not its own
      to the phone's browser. */
   var setPanel = document.querySelector('#screen-settings .panel');
-  var setBack = setPanel && setPanel.querySelector('.btn-row');
+  var setRows = setPanel ? setPanel.querySelectorAll('.btn-row') : [];
+  var setBack = setRows[setRows.length - 1];   // Back; the language row is one too
   if (setBack) {
     var a = document.createElement('a');
     a.className = 'set-link';
