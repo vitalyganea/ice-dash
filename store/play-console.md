@@ -12,7 +12,7 @@ are in `listing.md`.
 | Type | Game, free, category Arcade |
 | Privacy policy | https://vitalyganea.github.io/ice-dash/privacy.html (`privacy.html` at the repo root, GitHub Pages from `/ (root)`) |
 | Contact email | zzzvitalii@gmail.com |
-| Upload key | `C:\Users\Vital\.icedash-signing\` — outside git, back it up |
+| Upload key | `C:\Users\Vital\.icedash-signing\` on Windows, `~/.icedash-signing/` on Linux — outside git, back it up. SHA-1 `B5:D4:14:38:4A:00:E2:1D:64:C0:A3:B1:06:02:03:22:E2:C0:FB:7D` |
 
 ## App content declarations (Dashboard → "Set up your app")
 
@@ -38,16 +38,25 @@ are in `listing.md`.
 | 1.0.2 | 3 | Closed testing "1.0" | built 5 Oct 2026: edge to edge for Android 15 |
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
+| 1.1.2 | 6 | Production (first) | built 22 Oct 2026 on Linux: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to d014ca0) |
 
-Applied for production access on 19 Oct 2026 (review usually up to 7 days;
-the answer comes by email to the account owner).
+Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
+(Dashboard: "Congratulations! Your game has been granted Google Play
+production access"). Open testing is open too. Production stays "Inactive"
+until a release is rolled out there: Dashboard → Create and publish a release
+→ Select countries and regions, then Create a new release.
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **6**.
+number (`android/app/build.gradle`). The next one is **7**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
-`android/app/build/outputs/bundle/release/app-release.aab`.
+`android/app/build/outputs/bundle/release/app-release.aab`. It is signed only
+if `android/keystore.properties` (git-ignored) points at the upload key; on
+Linux: `storeFile=/home/vitaliy/.icedash-signing/upload.jks`, JDK 21 in
+`~/.local/jdk-21`, and `bash ./gradlew` (the script is not executable there).
+Check the signer before uploading: `keytool -printcert -jarfile` on the
+bundle must show the SHA-1 above.
 
 Uploading: Test and release → Closed testing → track → Create new release
 (or Edit release) → upload or "Add from library" → Next → **Save** — and
