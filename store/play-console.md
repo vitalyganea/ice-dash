@@ -39,7 +39,8 @@ are in `listing.md`.
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
 | 1.1.2 | 6 | Production (first) | **published 22 Oct 2026 about 11:12**, an hour after it was sent for review (10:16, submission 6), full rollout, 178 countries and regions; built on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
-| 1.1.3 | 7 | Production | built 22 Oct 2026: one picture per step, so a 90 or 120 Hz phone no longer paints every picture twice (reported stutter after about five minutes of play) |
+| 1.1.3 | 7 | Production | built and uploaded 22 Oct 2026: one picture per step, so a 90 or 120 Hz phone no longer paints every picture twice (reported stutter after about five minutes of play) |
+| 1.1.4 | 8 | Production | built 22 Oct 2026: the hill changes stretch without a stall (reported slowdown each time the map changed in Freeride) |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play

@@ -4,12 +4,14 @@ const fs = require('fs');
 const DIR = require('path').join(__dirname, '..', 'js') + require('path').sep;
 /* paints: how many times the game's own canvas was set up for a picture
    (render() and resize() each begin with setTransform) */
-const calls={paints:0};
+/* ops: every method or property the game's canvas was asked for — a rough
+   measure of how much drawing a picture took */
+const calls={paints:0,ops:0};
 function fakeCtx(id){ const g={addColorStop(){}};
   const t={canvas:{width:960,height:540},createLinearGradient:()=>g,createRadialGradient:()=>g,
            measureText:()=>({width:24}),setTransform(){ if(id==='game') calls.paints++; }};
   const NOOP=()=>{};
-  return new Proxy(t,{get:(o,k)=>(k in o)?o[k]:NOOP,set:(o,k,v)=>{o[k]=v;return true;}}); }
+  return new Proxy(t,{get:(o,k)=>{ if(id==='game') calls.ops++; return (k in o)?o[k]:NOOP; },set:(o,k,v)=>{o[k]=v;return true;}}); }
 const byId={};
 function el(id){ const e={id,style:{},_cls:new Set(),_l:{},children:[]};
   e.classList={add:c=>e._cls.add(c),remove:c=>e._cls.delete(c),contains:c=>e._cls.has(c),

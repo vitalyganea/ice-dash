@@ -1729,6 +1729,7 @@ var Game = (function () {
   /* ========================= RENDERING ========================= */
   function render() {
     PAL = buildPal();
+    FADING = fadeOf(); NEXT = FADING ? null : nextOf(); spriteBudget = SPRITES_PER_FRAME;
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.globalAlpha = 1;
     var shx = (frand() - 0.5) * W.shake, shy = (frand() - 0.5) * W.shake;
@@ -1759,8 +1760,7 @@ var Game = (function () {
     drawObjects();
     drawSpeedStreaks();
     drawAurora();
-    drawHaze();
-    drawFog();
+    drawVeils();          /* the haze far up the hill, and the fog */
     drawPenguin();
     drawGateFronts();     /* after him: he goes THROUGH the hoop */
     drawCloseCall();
@@ -3168,9 +3168,68 @@ var Game = (function () {
      A pine is a few hundred points and a stone four clipped passes; the
      scenery past the banks alone is dozens of them, every frame. None of
      it moves, so each is painted once into a little canvas of its own at
-     the screen's resolution and copied from then on. Not while one
-     stretch is fading into the next: the colours change every frame then,
-     so it draws directly for those few seconds. */
+     the screen's resolution and copied from then on.
+     While one stretch fades into the next the colours change every frame.
+     That used to mean drawing everything fresh for the length of the fade,
+     which doubled the cost of a frame, and at its end every stone and pine
+     on screen painted its new picture in the same frame: thirty to sixty
+     canvases at once, which a phone felt as the game freezing each time the
+     hill changed. Now a thing keeps its picture in the old stretch's
+     colours and gets one in the new, and the two are crossfaded. Pictures
+     are made a few a frame (SPRITES_PER_FRAME); a thing whose picture is
+     not made yet is drawn fresh, exactly as before, so nothing pops. The
+     new stretch's are begun a second and a half before it (NEXT), so the
+     fade opens with them made. */
+  var SPRITES_PER_FRAME = 4, spriteBudget = SPRITES_PER_FRAME;
+  var FADING = null, NEXT = null;   // set by render(): { from, to, t } through a fade; the stretch about to come
+  function fadeOf() {
+    if (!W || W.course || W.biome === 0 || W.biomeT >= FADE) return null;
+    return { from: BIOMES[(W.biome - 1) % BIOMES.length], to: biome(), t: W.biomeT / FADE };
+  }
+  function nextOf() {
+    if (!W || W.course || W.biomeT < zoneLen() - W.speed * 90) return null;
+    return BIOMES[(W.biome + 1) % BIOMES.length];
+  }
+  /* o's picture under key, made now by make() if the frame can afford it.
+     A thing holds one picture; through a fade, and the run-up to one, two. */
+  function pictureOf(o, key, make, keep) {
+    var P = o._pics || (o._pics = []), s = null, i;
+    for (i = 0; i < P.length; i++) if (P[i].k === key) { s = P[i].s; break; }
+    if (i === P.length) {
+      if (spriteBudget <= 0) return null;
+      spriteBudget--;
+      s = make();
+      P.push({ k: key, s: s });
+    }
+    while (P.length > keep) free(P.splice(P[0].k === key ? 1 : 0, 1)[0]);   // the oldest: the stretch behind
+    return s;
+  }
+  function free(p) { if (p.s) p.s.cv.width = p.s.cv.height = 0; }   // its memory now, not at the next GC
+  function forget(o) { o._pics.forEach(free); o._pics = null; }
+  /* Draws o from its pictures and says whether it could; when it could
+     not, the caller draws it fresh in B. key(P) names o's picture in a
+     palette P, paint(P) makes it. */
+  function drawPictured(o, x, y, B, key, paint) {
+    var F = (B === PAL) ? FADING : null, N = (B === PAL) ? NEXT : null;
+    if (!F) {
+      var one = pictureOf(o, key(B), function () { return paint(B); }, N ? 2 : 1);
+      if (N && spriteBudget > 2)            // what is on the hill now goes first
+        pictureOf(o, key(N), function () { return paint(N); }, 2);
+      if (one) blit(one, x, y);
+      return !!one;
+    }
+    var kf = key(F.from), kt = key(F.to);
+    var sf = pictureOf(o, kf, function () { return paint(F.from); }, 2);
+    var st = pictureOf(o, kt, function () { return paint(F.to); }, 2);
+    if (!sf || !st) return false;
+    /* the new over the old, at alphas that sum, for an opaque pixel, to
+       the alpha this thing is drawn at and to a mix of t of the new one */
+    var a0 = ctx.globalAlpha, an = a0 * F.t, ao = an >= 1 ? 1 : a0 * (1 - F.t) / (1 - an);
+    ctx.globalAlpha = ao; blit(sf, x, y);
+    ctx.globalAlpha = an; blit(st, x, y);
+    ctx.globalAlpha = a0;
+    return true;
+  }
   /* The box runs from (x0, y0) to (x1, y1) around the thing's centre, with
      room for the shadow it throws, which is painted into it too. */
   function spriteOf(x0, y0, x1, y1, paint) {
@@ -3185,7 +3244,8 @@ var Game = (function () {
     try { paint(-x0, -y0); } finally { ctx = keep; }
     return { cv: cv, x0: x0, y0: y0, w: w, h: h };
   }
-  function cacheable() { return W && (W.course || W.biome === 0 || W.biomeT >= FADE); }
+  function rockKey(P) { return P.rock + P.rockDark + (P.cap || '') + '|' + drawK; }
+  function treeKey(P) { return P.tree + P.treeDark + (P.cap || '') + (P.snowyTrees || 0) + '|' + drawK; }
   function blit(spr, x, y) { ctx.drawImage(spr.cv, x + spr.x0, y + spr.y0, spr.w, spr.h); }
 
   /* ---- one sun for the whole hill ----
@@ -3221,15 +3281,10 @@ var Game = (function () {
   function drawRock(x, y, o, B, bare) {
     var r = o.r, k, a, rad;
     var rsh = r * (formOf(o, 4) === 2 ? 0.45 : formOf(o, 4) === 1 ? 1.0 : 0.7);
-    if (!bare && cacheable()) {
-      var rkey = B.rock + B.rockDark + (B.cap || '') + '|' + drawK;
-      if (o._sk !== rkey) {
-        o._spr = spriteOf(-r * 1.6, -r * 1.6, r * 1.6 + rsh * 0.7, r * 1.6 + rsh * 0.9,
-                          function (cx, cy) { drawRock(cx, cy, o, B, 'shadow'); });
-        o._sk = rkey;
-      }
-      if (o._spr) { blit(o._spr, x, y); return; }
-    }
+    if (!bare && drawPictured(o, x, y, B, rockKey, function (P) {
+      return spriteOf(-r * 1.6, -r * 1.6, r * 1.6 + rsh * 0.7, r * 1.6 + rsh * 0.9,
+                      function (cx, cy) { drawRock(cx, cy, o, P, 'shadow'); });
+    })) return;
     ctx.save();
     ctx.translate(x, y);
     if (!bare || bare === 'shadow') castShadow(r, rsh, B.shadow || 'rgba(86,132,176,.26)');
@@ -3475,20 +3530,20 @@ var Game = (function () {
   }
 
   function drawTree(x, y, o, B, bare) {
-    if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
-    if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
-    if (B.flora === 'palm')    return drawPalm(x, y, o, B);
+    /* 'shadow' is the pine being painted into its picture: in a fade the
+       new stretch's palette may grow leaves, but this picture is a pine */
+    if (bare !== 'shadow') {
+      if (B.flora && o._pics) forget(o);   // its pine pictures, past a fade into leaves
+      if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
+      if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
+      if (B.flora === 'palm')    return drawPalm(x, y, o, B);
+    }
     var r = o.r, k, a, rad, ri;
     var tsh = r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9);
-    if (!bare && cacheable()) {
-      var tkey = B.tree + B.treeDark + (B.cap || '') + (B.snowyTrees || 0) + '|' + drawK;
-      if (o._sk !== tkey) {
-        o._spr = spriteOf(-r * 1.35, -r * 1.35, r * 1.35 + tsh * 0.7, r * 1.35 + tsh * 0.95,
-                          function (cx, cy) { drawTree(cx, cy, o, B, 'shadow'); });
-        o._sk = tkey;
-      }
-      if (o._spr) { blit(o._spr, x, y); return; }
-    }
+    if (!bare && drawPictured(o, x, y, B, treeKey, function (P) {
+      return spriteOf(-r * 1.35, -r * 1.35, r * 1.35 + tsh * 0.7, r * 1.35 + tsh * 0.95,
+                      function (cx, cy) { drawTree(cx, cy, o, P, 'shadow'); });
+    })) return;
     ctx.save();
     ctx.translate(x, y);
 
@@ -6067,31 +6122,43 @@ var Game = (function () {
      would hand the phone player several extra seconds of warning, so past a
      fixed budget of clearly-readable hill the distance hazes over: shapes
      still show through, but not sharply enough to plan on. */
-  function drawHaze() {
-    var top = PLAYER_Y - CLEAR_AHEAD;
-    if (top <= 8) return;
-    var B = pal();
-    var rgb = B.hazeRGB || '220,238,250';
-    var g = ctx.createLinearGradient(0, top, 0, 0);
-    g.addColorStop(0, 'rgba(' + rgb + ',0)');
-    g.addColorStop(0.55, 'rgba(' + rgb + ',0.5)');
-    g.addColorStop(1, 'rgba(' + rgb + ',0.82)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, VIEW_W, top);
+  /* Haze over the far end of the hill, above what you can always read
+     plainly: clear at CLEAR_AHEAD, 0.82 at the top edge. */
+  function hazeA(y, top) {
+    if (y >= top) return 0;
+    var u = (top - y) / top;
+    return u < 0.55 ? 0.5 * u / 0.55 : 0.5 + 0.32 * (u - 0.55) / 0.45;
   }
-
   /* Night closes the hill in: the far end of the run fades out, so a tap has
-     to be committed to before the next row is fully in view. */
-  function drawFog() {
-    var B = pal();
-    if (!B.fog || !B.fogRGB) return;
-    var h = PLAYER_Y - 40;
-    var g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, 'rgba(' + B.fogRGB + ',' + B.fog.toFixed(3) + ')');
-    g.addColorStop(0.65, 'rgba(' + B.fogRGB + ',' + (B.fog * 0.28).toFixed(3) + ')');
-    g.addColorStop(1, 'rgba(' + B.fogRGB + ',0)');
+     to be committed to before the next row is fully in view. The fog is f
+     at the top edge, f·0.28 at 0.65 of the way down to h, clear at h. */
+  function fogA(y, h, f) {
+    var v = y / h;
+    return v < 0.65 ? f * (1 - 0.72 * v / 0.65) : f * 0.28 * (1 - (v - 0.65) / 0.35);
+  }
+  /* The two lie over the same top of the screen, and painted one over the
+     other they were two passes over half its pixels on every frame (twelve
+     stretches of fourteen have fog). A veil over a veil is one veil, alpha
+     1 − (1 − a)(1 − b) with the colours weighted to match, so they go down
+     together in one pass, stopped wherever either has a stop and every
+     sixteenth of the way between, since their product is not a straight
+     line. */
+  function drawVeils() {
+    var B = pal(), top = PLAYER_Y - CLEAR_AHEAD, h = PLAYER_Y - 40;
+    var haze = top > 8, fog = !!(B.fog && B.fogRGB);
+    if (!haze && !fog) return;
+    var hr = (B.hazeRGB || '220,238,250').split(','), fr = fog ? B.fogRGB.split(',') : hr;
+    var H = fog ? h : top, g = ctx.createLinearGradient(0, 0, 0, H), N = 16, ys = [0, top * 0.45, top, h * 0.65, H], i;
+    for (i = 1; i < N; i++) ys.push(H * i / N);
+    ys = ys.filter(function (y) { return y >= 0 && y <= H; }).sort(function (p, q) { return p - q; });
+    for (i = 0; i < ys.length; i++) {
+      var y = ys[i], a = haze ? hazeA(y, top) : 0, b = fog ? fogA(y, h, B.fog) : 0;
+      var A = 1 - (1 - a) * (1 - b), wa = A > 0 ? a * (1 - b) / A : 0, wb = 1 - wa;
+      g.addColorStop(y / H, 'rgba(' + Math.round(hr[0] * wa + fr[0] * wb) + ',' + Math.round(hr[1] * wa + fr[1] * wb) + ',' +
+                                      Math.round(hr[2] * wa + fr[2] * wb) + ',' + A.toFixed(3) + ')');
+    }
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, VIEW_W, h);
+    ctx.fillRect(0, 0, VIEW_W, H);
   }
 
   function drawFlakes() {
@@ -6429,14 +6496,16 @@ var Game = (function () {
     if (sp < 0.12) return;
     var k = clamp((sp - 0.12) / 0.6, 0, 1);
     var w = VIEW_W * (0.34 - 0.10 * k);
-    var g = ctx.createLinearGradient(0, 0, VIEW_W, 0);
-    var a = (0.26 * k).toFixed(3);
-    g.addColorStop(0, 'rgba(22,52,82,' + a + ')');
-    g.addColorStop(w / VIEW_W, 'rgba(22,52,82,0)');
-    g.addColorStop(1 - w / VIEW_W, 'rgba(22,52,82,0)');
-    g.addColorStop(1, 'rgba(22,52,82,' + a + ')');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    var a = 'rgba(22,52,82,' + (0.26 * k).toFixed(3) + ')', clear = 'rgba(22,52,82,0)';
+    /* two strips, one down each side: the middle of a gradient across the
+       whole screen was clear, and filling it was a pass over every pixel
+       for nothing */
+    var gl = ctx.createLinearGradient(0, 0, w, 0);
+    gl.addColorStop(0, a); gl.addColorStop(1, clear);
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, w, VIEW_H);
+    var gr = ctx.createLinearGradient(VIEW_W - w, 0, VIEW_W, 0);
+    gr.addColorStop(0, clear); gr.addColorStop(1, a);
+    ctx.fillStyle = gr; ctx.fillRect(VIEW_W - w, 0, w, VIEW_H);
   }
 
   /* Where the next few openings are, drawn on the ice. The one find that
@@ -7000,7 +7069,7 @@ var Game = (function () {
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
 
     var dpr = window.devicePixelRatio || 1;
-    var eff = Math.max(1, Math.min(dpr, LITE ? 1.5 : 2.5, 3840 / vw, 2160 / vh));
+    var eff = Math.max(1, Math.min(dpr, LOWRES ? 1.5 : DENSITY, 3840 / vw, 2160 / vh));
     /* The readouts are drawn in CSS pixels, not world units. In world units
        a 22px label came out at 12.6 real pixels on a 390px phone, because
        one world unit is only `scale` CSS pixels there — which is exactly why
@@ -7021,20 +7090,36 @@ var Game = (function () {
     if (W && !suspended) render();
   }
 
+  /* The canvas is never denser than DENSITY pixels to a CSS pixel. A
+     phone's screen is 2 to 3.5; past 2 a soft, painted hill gains nothing
+     you can see, and 2.5 cost a 412px phone 56% more pixels to fill on every
+     frame than 2 does — fill the GPU pays for in heat. */
+  var DENSITY = 2;
+
   /* Adaptive quality. If a run keeps missing frames — slower than about
-     42 a second for a couple of seconds — the device is told apart from a
-     hiccup and the picture steps down for the rest of the session: fewer
-     pixels (the cap on the screen's density drops from 2.5 to 1.5, which
-     is most of the cost on a slow phone), and the purely decorative layers
-     go — the patches in the ice, the drifts and glints on the banks.
-     Nothing that tells you anything about the hill is touched. */
-  var LITE = false, slowEma = 16, slowN = 0;
+     50 a second for two seconds — the device is told apart from a hiccup
+     and the picture steps down for the rest of the session, one step at a
+     time, each given two seconds more to show whether it was enough:
+     first fewer pixels (LOWRES: the density cap drops to 1.5, most of the
+     cost on a slow phone), then the purely decorative layers (LITE: the
+     patches in the ice, the drifts and glints on the banks). Nothing that
+     tells you anything about the hill is touched. It used to wait for 42
+     frames a second and take both steps at once; by then a phone that was
+     heating up had been struggling for a while. */
+  var LOWRES = false, LITE = false, slowEma = 16, slowN = 0;
   function watchPace(dt) {
     if (LITE || paused || !W || W.state !== 'run') { slowN = 0; return; }
     slowEma = slowEma * 0.95 + dt * 0.05;
     /* counted in time, not frames: a phone this slow takes a long while
-       to show a hundred and fifty of them */
-    if (slowEma > 24) { slowN += dt; if (slowN > 2500) { LITE = true; resize(); } }
+       to show a hundred and twenty of them */
+    if (slowEma > 20) {
+      slowN += dt;
+      if (slowN > 2000) {
+        if (!LOWRES) LOWRES = true; else LITE = true;
+        slowN = 0; slowEma = 16;
+        resize();
+      }
+    }
     else slowN = 0;
   }
 
@@ -7149,7 +7234,8 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
-    _lite: function (v) { if (v !== undefined) { LITE = !!v; if (canvas) resize(); } return LITE; },
+    _lite: function (v) { if (v !== undefined) { LITE = LOWRES = !!v; if (canvas) resize(); } return LITE; },
+    _lowres: function () { return LOWRES; },
     /* draws one geyser at a chosen point of its cycle, for the eye checks */
     _drawGeyser: function (c, x, y, r, ph, t) {
       var keepCtx = ctx, keepW = W;

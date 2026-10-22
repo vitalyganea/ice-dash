@@ -1047,14 +1047,17 @@ body{
 .panel-title{ padding-top:34px; }
 /* The title stands over the live hill (Game.attract): no dimming or blur
    over the whole screen — only the corners fall off a little — and the
-   panel is frosted glass, so the hill and the animal on it show through. */
+   panel is frosted, so the hill and the animal on it show through. Not
+   through a blur: under the title the hill moves, so a blur behind the
+   panel was worked out again on every frame, which kept a phone warm the
+   whole time it sat on the menu. A little more white looks the same. */
 #screen-title{
   background:radial-gradient(ellipse 80% 70% at 50% 50%, rgba(6,22,60,0) 40%, rgba(6,22,60,.42) 100%);
   backdrop-filter:none; -webkit-backdrop-filter:none;
 }
 #screen-title .panel-title{
-  background:linear-gradient(180deg, rgba(247,252,255,.84) 0%, rgba(221,241,251,.78) 100%);
-  backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2);
+  background:linear-gradient(180deg, rgba(247,252,255,.93) 0%, rgba(221,241,251,.89) 100%);
+  backdrop-filter:none; -webkit-backdrop-filter:none;
 }
 /* wide screens: the menu to the left, the hill and the animal on the right */
 @media (min-aspect-ratio: 23/20){

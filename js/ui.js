@@ -198,6 +198,11 @@
        whenever a run started before loadData() came back, taking away the
        only way to pause for the rest of that run. */
     hud.classList.toggle('hidden', name !== 'game');
+    /* The hill behind the title is alive; behind any other menu it holds
+       still. Those menus lie over the whole screen through a blur, and a
+       hill moving under a blur is the blur worked out again on every frame:
+       a phone grew warm while somebody read the Market. */
+    if (name !== 'title' && name !== 'game' && Game.isDemo() && !Game.isPaused()) Game.pause();
     $('btn-back').classList.toggle('hidden', !BACKABLE[name]);
     tutChrome();
     if (name === 'tutdone')
@@ -214,6 +219,7 @@
     if (name === 'title') {
       /* the hill comes alive behind the menu (unless a run is only paused) */
       if (!Game.isRunning()) Game.attract(save.equipped);
+      if (Game.isDemo() && Game.isPaused()) Game.resume();
       refreshModes();
       $('market-badge').classList.toggle('hidden', !marketNews().length);
       $('ach-badge').classList.toggle('hidden', !achUnclaimed(save).length);
