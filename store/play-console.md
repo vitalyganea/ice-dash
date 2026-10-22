@@ -38,13 +38,18 @@ are in `listing.md`.
 | 1.0.2 | 3 | Closed testing "1.0" | built 5 Oct 2026: edge to edge for Android 15 |
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
-| 1.1.2 | 6 | Production (first) | built 22 Oct 2026 on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
+| 1.1.2 | 6 | Production (first) | sent for review 22 Oct 2026 10:16 (submission 6), full rollout, 178 countries and regions; built on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
 production access"). Open testing is open too. Production stays "Inactive"
 until a release is rolled out there: Dashboard → Create and publish a release
 → Select countries and regions, then Create a new release.
+Done on 22 Oct 2026: all 177 countries plus rest of world, then 1.1.2 with
+release notes in en-US only — the store listing had no other language yet,
+and Play refuses notes for a language the listing lacks ("Unsupported
+language translation found"). Managed publishing is off, so the release goes
+live by itself once approved.
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
 number (`android/app/build.gradle`). The next one is **7**.
