@@ -38,7 +38,7 @@ are in `listing.md`.
 | 1.0.2 | 3 | Closed testing "1.0" | built 5 Oct 2026: edge to edge for Android 15 |
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
-| 1.1.2 | 6 | Production (first) | built 22 Oct 2026 on Linux: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to d014ca0) |
+| 1.1.2 | 6 | Production (first) | built 22 Oct 2026 on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
