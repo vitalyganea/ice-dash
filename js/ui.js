@@ -234,7 +234,7 @@
       var el = $('title-best');
       $('bp-lab').textContent = t('title.best.lab');
       $('bp-num').textContent = num(save.best);
-      $('bp-unit').textContent = t('title.best.unit');
+      $('bp-unit').textContent = t('title.best.unit', { n: save.best });
       el.setAttribute('aria-label', t('title.best', { n: save.best }));
       el.classList.toggle('hidden', save.best <= 0);
     }
@@ -243,19 +243,37 @@
   /* The screens that are one panel and nothing to scroll for: on a short
      phone (an Oppo A9 in the app is about 360x730) the title was a few
      pixels taller than the window and slid up and down under a thumb. The
-     panel is zoomed down until it fits instead. The lists — Market,
-     trophies, settings — still scroll; they are meant to. */
+     lists — Market, trophies, settings — still scroll; they are meant to.
+     A panel that does not fit first changes shape, and is scaled only for
+     what is left: scaled alone, on a phone held sideways it went to half
+     size, with 23px buttons and 5px words. In order: on a screen wider than
+     tall, the panel's two groups side by side; then without what it can
+     spare (both in css/style.css, .fit-wide and .fit-tight); then scaled,
+     but not below MIN_ZOOM — past that the screen scrolls. */
   var FIT = { title: 1, pause: 1, over: 1, tutdone: 1, revive: 1, modes: 1 };
+  var TWO = { title: 1, over: 1 };                 // panels built as two groups
+  var MIN_ZOOM = 0.8;
   function fitScreen() {
     var scr = screens[currentScreen], panel = scr && scr.querySelector('.panel');
     if (!panel) return;
     panel.style.zoom = '';
+    scr.classList.remove('fit-wide', 'fit-tight');
     if (!FIT[currentScreen] || !scr.clientHeight) return;
-    var cs = getComputedStyle(scr);
-    var room = scr.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
-             - 8;                                    // the panel's own thick edge below it
-    var k = room / panel.offsetHeight;
-    if (k < 1) panel.style.zoom = Math.max(0.5, k).toFixed(3);
+    function room() {
+      var cs = getComputedStyle(scr);
+      return scr.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+             - 8;                                  // the panel's own thick edge below it
+    }
+    if (panel.offsetHeight <= room()) return;
+    var steps = TWO[currentScreen] && scr.clientWidth >= scr.clientHeight * 1.25
+      ? [['fit-wide'], ['fit-wide', 'fit-tight']] : [['fit-tight']];
+    for (var i = 0; i < steps.length; i++) {
+      scr.classList.remove('fit-wide', 'fit-tight');
+      for (var j = 0; j < steps[i].length; j++) scr.classList.add(steps[i][j]);
+      if (panel.offsetHeight <= room()) return;
+    }
+    var k = room() / panel.offsetHeight;
+    panel.style.zoom = Math.max(MIN_ZOOM, k).toFixed(3);
   }
   window.addEventListener('resize', fitScreen);
   /* The pictures in How to play: the actual objects off the hill, painted
@@ -365,8 +383,8 @@
     save.gold += res.gold || 0;
     endTutorial();
     var bits = [];
-    if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
-    if (res.gold)  bits.push('+' + res.gold + ' ' + t('cur.gold'));
+    if (res.coins) bits.push('+' + res.coins + '\u00a0' + t('cur.fish', { n: res.coins }));
+    if (res.gold)  bits.push('+' + res.gold + '\u00a0' + t('cur.gold', { n: res.gold }));
     $('tutdone-earned').textContent = bits.join('   ');
     $('tutdone-earned').classList.toggle('hidden', !bits.length);
     Game.stop();
@@ -508,9 +526,9 @@
     showWon(won, taskWon, storyWon);
     var earned = $('over-earned');
     var bits = [];
-    if (res.coins) bits.push('+' + res.coins + ' ' + t('cur.fish'));
+    if (res.coins) bits.push('+' + res.coins + '\u00a0' + t('cur.fish', { n: res.coins }));
     if (starPay) bits.push(t('over.starpay', { n: starPay }));
-    if (res.gold)  bits.push('+' + res.gold + ' ' + t('cur.gold'));
+    if (res.gold)  bits.push('+' + res.gold + '\u00a0' + t('cur.gold', { n: res.gold }));
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
     $('new-best').classList.toggle('hidden', !beat);
@@ -539,9 +557,9 @@
     var again = document.querySelector('#screen-over [data-action="play"], #screen-over [data-action="retry"]');
     again.setAttribute('data-action', (cd || mRun) ? 'retry' : 'play');
     again.textContent = t(cd ? 'btn.retry' : 'btn.again');
-    $('over-score').textContent = mRun ? res.dist + ' ' + t('unit.m')
+    $('over-score').textContent = mRun ? res.dist + '\u00a0' + t('unit.m')
                                           : t('over.points', { n: res.score });
-    var bits = [res.dist + ' ' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
+    var bits = [res.dist + '\u00a0' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
@@ -699,18 +717,26 @@
 
   /* ------------------------ frozen finds --------------------- */
   function buildFinds(reset) {
-    var box = $('over-finds'), n = save.finds || 0;
-    box.classList.toggle('hidden', n <= 0);
-    if (n <= 0) return;
+    var box = $('over-finds'), n = save.finds || 0, prize = $('find-prize');
+    if (reset) prize.classList.add('hidden');
+    /* Opening the last find empties the stock, and the box used to go with
+       it — on the very frame the prize was written into it, so the player
+       saw the ice break and never learned what was inside. It stays while
+       a prize is showing; only the count and the button go. */
+    var showing = !prize.classList.contains('hidden');
+    box.classList.toggle('hidden', n <= 0 && !showing);
+    if (n <= 0 && !showing) return;
+    $('find-count').classList.toggle('hidden', n <= 0);
     $('find-count').textContent = t('find.have', { n: n });
-    if (reset) $('find-prize').classList.add('hidden');
     var btn = box.querySelector('[data-action="open-find"]');
+    btn.classList.toggle('hidden', n <= 0);
     btn.textContent = t(reset ? 'find.open' : 'find.again');
     /* openFind() disables the button for the length of the animation and
        nothing ever turned it back on, so with two or more finds the second
        could never be opened. */
     btn.disabled = opening;
-    if (Game.drawFindPreview) Game.drawFindPreview($('find-art'), 200);
+    /* with none left, the broken one stays as it fell */
+    if (n > 0 && Game.drawFindPreview) Game.drawFindPreview($('find-art'), 200);
   }
 
   var opening = false;
@@ -766,6 +792,8 @@
       /* restart the reveal even when the same prize comes up twice */
       p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
       buildFinds(false);
+      /* the prize is a line more than the panel was measured with */
+      fitScreen();
       flyPrize(kind);
     }
   }
@@ -903,7 +931,7 @@
       var b = document.createElement('b');
       b.textContent = num(w[2]);
       el.appendChild(b);
-      el.setAttribute('aria-label', w[2] + ' ' + t('cur.' + w[1]));
+      el.setAttribute('aria-label', w[2] + ' ' + t('cur.' + w[1], { n: w[2] }));
     });
   }
 
@@ -949,7 +977,7 @@
     buy.setAttribute('data-buy-life', '1');
     buy.disabled = full || broke;
     buy.textContent = full ? t('shop.life.full')
-                           : t('shop.buy') + '  ' + LIFE_PRICE + ' ' + t('cur.fish');
+                           : t('shop.buy') + '  ' + LIFE_PRICE + '\u00a0' + t('cur.fish', { n: LIFE_PRICE });
     card.appendChild(buy);
 
     box.appendChild(card);
@@ -1017,7 +1045,9 @@
     if (Game.drawHint) Game.drawHint(cv, cur === 'gold' ? 'gold' : 'fish', size);
     return cv;
   }
-  function num(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  /* thousands apart by a narrow space that does not break: with a thin space
+     "4 200" could end one line and start the next */
+  function num(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f'); }
 
   var sheetSkin = null;
   function openSheet(id) {
@@ -1120,30 +1150,47 @@
     var padX = px(page, 'paddingLeft') + px(page, 'paddingRight') + px(page, 'borderLeftWidth') + px(page, 'borderRightWidth');
     var padY = px(page, 'paddingTop') + px(page, 'paddingBottom') + px(page, 'borderTopWidth') + px(page, 'borderBottomWidth');
     var foot = page.querySelector('.comic-foot');
-    var footH = foot.offsetHeight + px(foot, 'marginTop') + 12;      // and the panel's own drop shadow
     var pageMax = Math.min(row ? 1400 : 560, availW);
     var cellMax = (pageMax - padX - (row ? gap * 2 : 0)) / (row ? 3 : 1);
-    var w = cellMax;
-    for (var pass = 0; pass < 4; pass++) {
-      /* the caption's type follows the panel down on a small screen, or a
-         narrow panel wraps it onto line after line and squeezes itself */
-      var fs = Math.max(11, Math.min(15.5, w * 0.05));
-      for (var i = 0; i < n; i++) { cells[i].style.width = w + 'px'; cells[i].querySelector('.comic-cap').style.fontSize = fs + 'px'; }
-      var caps = 0, edge = 0;
-      for (i = 0; i < n; i++) {
-        var ch = cells[i].querySelector('.comic-cap').offsetHeight;
-        edge = cells[i].offsetHeight - cells[i].clientHeight + 4;   // border and shadow
-        caps = row ? Math.max(caps, ch) : caps + ch;
+    function size() {
+      var footH = foot.offsetHeight + px(foot, 'marginTop') + 12;      // and the panel's own drop shadow
+      var w = cellMax;
+      for (var pass = 0; pass < 4; pass++) {
+        /* the caption's type follows the panel down on a small screen, or a
+           narrow panel wraps it onto line after line and squeezes itself */
+        var fs = Math.max(11, Math.min(15.5, w * 0.05));
+        for (var i = 0; i < n; i++) { cells[i].style.width = w + 'px'; cells[i].querySelector('.comic-cap').style.fontSize = fs + 'px'; }
+        var caps = 0, edge = 0;
+        for (i = 0; i < n; i++) {
+          var ch = cells[i].querySelector('.comic-cap').offsetHeight;
+          edge = cells[i].offsetHeight - cells[i].clientHeight + 4;   // border and shadow
+          caps = row ? Math.max(caps, ch) : caps + ch;
+        }
+        var room = availH - padY - footH - caps - (row ? edge : edge * n + gap * (n - 1));
+        var artH = row ? room : room / n;
+        var fit = Math.max(120, Math.min(cellMax, artH * COMIC_W / COMIC_H + 6));
+        if (Math.abs(fit - w) < 1) break;
+        w = fit;
       }
-      var room = availH - padY - footH - caps - (row ? edge : edge * n + gap * (n - 1));
-      var artH = row ? room : room / n;
-      var fit = Math.max(120, Math.min(cellMax, artH * COMIC_W / COMIC_H + 6));
-      if (Math.abs(fit - w) < 1) break;
-      w = fit;
+      /* never narrower than its buttons need: on a short phone the panels
+         shrink, and the page stays wide enough for Skip, 1 / 3 and Next */
+      var pw = Math.min(availW, Math.max(300, (row ? w * 3 + gap * 2 : w) + padX));
+      page.style.width = pw + 'px';
+      return pw;
     }
-    /* never narrower than its buttons need: on a short phone the panels
-       shrink, and the page stays wide enough for Skip, 1 / 3 and Next */
-    page.style.width = Math.min(availW, Math.max(300, (row ? w * 3 + gap * 2 : w) + padX)) + 'px';
+    /* Skip, the count and Next share a row while they fit in it. The words
+       are the language's, so whether they fit is measured, not assumed: if
+       not, the count moves above the buttons and the page is sized again
+       around the taller row. */
+    foot.classList.remove('tight', 'stack');
+    var pw = size(), cg = px(foot, 'columnGap');
+    var skipW = $('comic-skip').offsetWidth, nextW = $('comic-next').offsetWidth, countW = $('comic-pageno').offsetWidth;
+    if (skipW + countW + nextW + cg * 2 > pw - padX) {
+      foot.classList.add(skipW + nextW + cg > pw - padX ? 'stack' : 'tight');
+      if (foot.classList.contains('stack')) foot.classList.add('tight');
+      size();
+    }
+    foot.classList.toggle('over', scr.scrollHeight > scr.clientHeight + 1);
   }
   window.addEventListener('resize', function () { if (comic) fitComic(); });
   function revealPanel() {
@@ -1155,6 +1202,7 @@
     }
     var last = comic.page === comic.pages.length - 1 && comic.shown === cells.length;
     $('comic-next').textContent = last ? t('comic.go') : t('comic.next') + '  \u203a';
+    if (last) fitComic();
   }
   function nextComic() {
     if (!comic) return;
@@ -1482,13 +1530,13 @@
     tasks.forEach(function (tk) {
       var row = document.createElement('div');
       row.className = 'won-row won-task';
-      row.textContent = t('tasks.done', { s: taskText(tk) }) + '   +' + TASK_PAY + ' ' + t('cur.fish');
+      row.textContent = t('tasks.done', { s: taskText(tk) }) + '   +' + TASK_PAY + '\u00a0' + t('cur.fish', { n: TASK_PAY });
       box.appendChild(row);
     });
     if (tasks.length && save.tasks.done.length === 3) {
       var all = document.createElement('div');
       all.className = 'won-row won-task';
-      all.textContent = t('tasks.all') + '   +' + TASK_BONUS + ' ' + t('cur.fish');
+      all.textContent = t('tasks.all') + '   +' + TASK_BONUS + '\u00a0' + t('cur.fish', { n: TASK_BONUS });
       box.appendChild(all);
     }
     won.forEach(function (a) {
@@ -1583,7 +1631,7 @@
         right.textContent = got ? ('✓ ' + t('ach.earned'))
                                 : (p.cur + ' / ' + p.goal);
         var rew = document.createElement('small');
-        rew.textContent = '+' + a.reward + ' ' + t('cur.fish');
+        rew.textContent = '+' + a.reward + '\u00a0' + t('cur.fish', { n: a.reward });
         right.appendChild(rew);
       }
       row.appendChild(right);

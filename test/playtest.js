@@ -254,6 +254,15 @@ async function walk(cdp, sid, P) {
               "if(st.display==='none'||st.visibility==='hidden')return false;" +
               "var r=e.getBoundingClientRect();return r.width>1&&r.height>1;})()");
   }
+  /* The characters in `chars` that the game font does NOT draw. Each one is
+     measured with two different fallbacks behind the game font: if the
+     width changes with the fallback, the fallback is what drew it. */
+  function notOwnGlyphs(chars) {
+    return ev("(async function(c){for(var w of [600,800])await document.fonts.load(w+' 40px \"Baloo 2\"',c);" +
+      "var x=document.createElement('canvas').getContext('2d'),out='';Array.from(c).forEach(function(ch){" +
+      "x.font='800 40px \"Baloo 2\", monospace';var a=x.measureText(ch).width;x.font='800 40px \"Baloo 2\", serif';" +
+      "if(Math.abs(a-x.measureText(ch).width)>0.01)out+=ch;});return out;})(" + JSON.stringify(chars) + ")");
+  }
   async function waitFor(sel, ms) {
     for (var i = 0; i < (ms || 4000) / 100; i++) {
       if (await visible(sel)) return true;
@@ -319,16 +328,19 @@ async function walk(cdp, sid, P) {
   var roTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
   ok(roTitle === 'Setări', 'Romanian is there too (' + roTitle + ')');
   /* ă, ș and ț come from their own cut of the font: it has to be the
-     game's font that draws them, not whatever the device falls back to. */
-  var roFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ăȘț').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ăȘț');})");
-  ok(roFont === true, 'and the game font has its own ă, ș and ț');
+     game's font that draws them, not whatever the device falls back to.
+     A loaded face proves nothing — fonts.check() was true all the while
+     the cut was never used — so each letter is measured instead. */
+  ok(await notOwnGlyphs('★') === '★', 'the glyph check can tell a letter the font lacks (★)');
+  var roMissing = await notOwnGlyphs('ăâîșțĂÂÎȘȚ');
+  ok(roMissing === '', 'and the game font draws ă, â, î, ș and ț itself (' + (roMissing || 'all its own') + ')');
   await shot('04b-settings-ro');
   await clickFor('#lang-open', '#sheet-lang');
   await click('#lang-row [data-lang="de"]');
   var deTitle = await ev("document.querySelector('#screen-settings .panel-title-text').textContent.trim()");
   ok(deTitle === 'Einstellungen', 'German switches too (' + deTitle + ')');
-  var latinFont = await ev("document.fonts.load('800 20px \"Baloo 2\"', 'ñßãçüé¡¿').then(function(f){return f.length>0 && document.fonts.check('800 20px \"Baloo 2\"', 'ñßãçüé¡¿');})");
-  ok(latinFont === true, 'and the game font draws ñ ß ã ç ü ¡ ¿ itself');
+  var latinMissing = await notOwnGlyphs('ñßãçüé¡¿öäÖÄÜ');
+  ok(latinMissing === '', 'and the game font draws ñ ß ã ç ü ¡ ¿ itself (' + (latinMissing || 'all its own') + ')');
   /* the longest words: the title and the Market in German, Spanish and Portuguese */
   for (var lg of ['de', 'es', 'pt']) {
     await clickFor('#lang-open', '#sheet-lang');
@@ -592,6 +604,12 @@ async function walk(cdp, sid, P) {
     }
     ok(opened >= 1, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');
     ok(opened >= 2, 'and the second one opens too, not just the first (' + opened + ' opened)');
+    /* The last one took its box with it: the prize was written into a box
+       that vanished on the same frame. Its class said shown all along, so
+       the check above could not see it; this one looks at the screen. */
+    ok(await visible('#find-prize'), 'and the last one\'s prize stays on screen to be read (' + prize + ')');
+    ok(await ev("(function(){var s=document.getElementById('screen-over');return s.scrollHeight<=s.clientHeight+1;})()"),
+       'and the results still fit without scrolling once the prize is up');
     await shot('13-find');
   }
 
@@ -662,7 +680,7 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-over', 8000), 'when the time runs out the results come up');
   var rTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
   var rScore = await ev("document.getElementById('over-score').textContent");
-  ok(/time is up/i.test(rTitle) && / m$/.test(rScore), 'saying the time is up, scored in metres (' + rScore + ')');
+  ok(/time is up/i.test(rTitle) && /\sm$/.test(rScore), 'saying the time is up, scored in metres (' + rScore + ')');
   ok((await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).bestRush")) > 0, 'and Time Rush has a best of its own');
   await shot('18-rush-over');
   ok(await clickFor('#screen-over [data-action="retry"]', '#hud') >= 0 &&
@@ -687,7 +705,7 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-over', 8000), 'when the snow arrives the results come up');
   var aTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
   var aScore = await ev("document.getElementById('over-score').textContent");
-  ok(/avalanche/i.test(aTitle) && / m$/.test(aScore), 'saying the avalanche got you, scored in metres (' + aTitle + ' / ' + aScore + ')');
+  ok(/avalanche/i.test(aTitle) && /\sm$/.test(aScore), 'saying the avalanche got you, scored in metres (' + aTitle + ' / ' + aScore + ')');
   ok((await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).bestAv")) > 0, 'and Avalanche has a best of its own');
   ok(!(await visible('#btn-free .todo-dot')), 'Freeride, ridden on this save, has no mark on the title');
   await shot('18d-avalanche-over');

@@ -76,6 +76,10 @@
       <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
       <i></i><i></i><i></i><i></i><i></i><i></i>
     </div>
+    <!-- The panel is two groups so that a screen too short for one column
+         can set them side by side (ui.js fitScreen): what the game is and
+         your best, then the way into it. -->
+    <div class="title-head">
     <!-- The logo is a picture now. The heading stays in the markup so the
          page still has a real <h1> for a screen reader and for search; CSS
          hides the text and shows the artwork in its place. WebP first, with
@@ -110,6 +114,8 @@
       <span class="bp-text"><span class="bp-lab" id="bp-lab">Best</span><b class="bp-num" id="bp-num">0</b></span>
       <span class="bp-unit" id="bp-unit">points</span>
     </div>
+    </div>
+    <div class="title-menu">
     <!-- Only there when a run is sitting paused. Pressing Menu from the
          pause screen used to destroy the run outright, and the title had no
          way back to it. -->
@@ -142,6 +148,7 @@
       <button class="btn btn-ghost" data-action="help" data-i18n="btn.help">How to play</button>
       <button class="btn btn-ghost market-btn" data-action="trophies"><span data-i18n="btn.trophies">Trophies</span><span id="ach-badge" class="badge hidden" aria-hidden="true">!</span></button>
       <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
+    </div>
     </div>
   </div>
 </section>
@@ -216,7 +223,9 @@
 
 <section id="screen-over" class="screen hidden">
   <div class="panel panel-win">
-    
+    <!-- Two groups, side by side where the screen is too short for one
+         column (ui.js fitScreen): what the run was, and what to do next. -->
+    <div class="over-main">
     <h2 class="panel-title-text" data-i18n="over.title">Ouch!</h2>
     <p id="new-best" class="big-score hidden" data-i18n="over.newbest">New best!</p>
     <p id="over-score" class="subtitle">0 points</p>
@@ -227,6 +236,8 @@
     <div id="over-goals" class="goals hidden"></div>
     <p id="over-lives" class="over-lives hidden"></p>
     <div id="over-won" class="won-box hidden"></div>
+    </div>
+    <div class="over-side">
     <!-- Nodules picked up on the hill, cracked open here. -->
     <div id="over-finds" class="finds-box hidden">
       <canvas id="find-art" class="find-art" width="140" height="140" aria-hidden="true"></canvas>
@@ -238,6 +249,7 @@
     <div class="btn-row">
       <button class="btn btn-gold" data-action="shop" data-i18n="btn.market">Market</button>
       <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">Menu</button>
+    </div>
     </div>
   </div>
 </section>
@@ -372,10 +384,12 @@
     <canvas id="sheet-skin-pic" class="skin-pic sheet-pic"></canvas>
     <h3 id="sheet-skin-name" class="sheet-name"></h3>
     <p id="sheet-skin-perk" class="sheet-perk"></p>
-    <div class="btn-row comic-row hidden" id="sheet-skin-comic-row"><button id="sheet-skin-comic" class="btn btn-sm btn-purple" data-i18n="comic.read">Read the comic</button></div>
-    <div id="sheet-skin-album" class="album"></div>
+    <!-- Buy / Choose right under what the creature does: below the stories
+         it sat under the bottom edge of a short screen with nothing to say so. -->
     <div class="btn-row"><button id="sheet-skin-btn" class="btn"></button><span id="sheet-skin-tag" class="chosen-tag hidden"></span></div>
     <p id="sheet-skin-need" class="shop-note hidden"></p>
+    <div class="btn-row comic-row hidden" id="sheet-skin-comic-row"><button id="sheet-skin-comic" class="btn btn-sm btn-purple" data-i18n="comic.read">Read the comic</button></div>
+    <div id="sheet-skin-album" class="album"></div>
   </div>
 </div>
 

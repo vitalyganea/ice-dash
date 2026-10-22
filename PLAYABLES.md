@@ -30,7 +30,7 @@ you to do in the Developer Portal.
 | No orientation lock | none requested |
 | State survives resize | `Game.resize()` reframes the live run; distance, score and the penguin's position are untouched |
 | Touch **and mouse** for everything | the single control is a tap anywhere on the window, driven by Pointer Events, so mouse, touch and pen all work; every menu is ordinary buttons |
-| Touch targets | every button is at least 44×44 css px. During a run the only one is pause (64 px); in the first-run tutorial a Skip button joins it. Both sit clear of the steering area, which buttons never pass taps to |
+| Touch targets | every button is at least 44×44 css px. During a run the only one is pause (64 px); in the first-run tutorial a Skip button joins it. Both sit clear of the steering area, which buttons never pass taps to. The one exception is a screen too short for the title or results panel even after the panel changes shape (two columns, then without its tagline and sub-lines): only then is it scaled, never below 80%, and its buttons with it — 38 px at the smallest, on a 640×360 phone held sideways. At 390×844 and up, on tablets, at 1366×768 and in an 800×450 game frame nothing is scaled |
 | No input dropped | one control, no held state to get stuck |
 | Esc closes modals | every panel closes on Esc — How to play, Market, Trophies, Known Lines, Settings — and pause resumes on it |
 | No `preventDefault()` on Esc | the Esc branch returns before any other handling |
