@@ -2,9 +2,12 @@ const fs = require('fs');
 /* Relative to this file, so the suite travels with the repo instead of
    depending on where the project happens to sit on one machine. */
 const DIR = require('path').join(__dirname, '..', 'js') + require('path').sep;
-function fakeCtx(){ const g={addColorStop(){}};
+/* paints: how many times the game's own canvas was set up for a picture
+   (render() and resize() each begin with setTransform) */
+const calls={paints:0};
+function fakeCtx(id){ const g={addColorStop(){}};
   const t={canvas:{width:960,height:540},createLinearGradient:()=>g,createRadialGradient:()=>g,
-           measureText:()=>({width:24}),setTransform(){}};
+           measureText:()=>({width:24}),setTransform(){ if(id==='game') calls.paints++; }};
   const NOOP=()=>{};
   return new Proxy(t,{get:(o,k)=>(k in o)?o[k]:NOOP,set:(o,k,v)=>{o[k]=v;return true;}}); }
 const byId={};
@@ -13,7 +16,7 @@ function el(id){ const e={id,style:{},_cls:new Set(),_l:{},children:[]};
     toggle:(c,on)=>{const v=on===undefined?!e._cls.has(c):!!on;v?e._cls.add(c):e._cls.delete(c);return v;}};
   e.addEventListener=(t,f)=>{(e._l[t]=e._l[t]||[]).push(f);};
   e.fire=(t,ev)=>(e._l[t]||[]).forEach(f=>f(ev||{preventDefault(){}}));
-  e.getContext=fakeCtx; e.getBoundingClientRect=()=>({left:0,top:0,width:960,height:540});
+  e.getContext=()=>fakeCtx(id); e.getBoundingClientRect=()=>({left:0,top:0,width:960,height:540});
   e.setAttribute=()=>{}; e.getAttribute=()=>null; e.appendChild=c=>c;
   e.querySelector=()=>el(''); e.querySelectorAll=()=>[]; e.closest=()=>null;
   byId[id]=e; return e; }
@@ -40,5 +43,7 @@ global.courseById=courseById; global.courseStars=courseStars; global.TUTORIAL=TU
 global.dailyKey=dailyKey; global.dailyCourse=dailyCourse; global.dailyPrevKey=dailyPrevKey; global.dailyRng=dailyRng;
 eval(fs.readFileSync(DIR+'game.js','utf8'));   global.Game=Game;
 let T=0;
-module.exports={ setSeed:s=>{seed=s;}, byId,
-  frames(n){for(let i=0;i<n;i++){T+=1000/60;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}} };
+module.exports={ setSeed:s=>{seed=s;}, byId, calls,
+  frames(n){for(let i=0;i<n;i++){T+=1000/60;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}},
+  /* the same, on a screen that refreshes hz times a second */
+  framesAt(hz,n){for(let i=0;i<n;i++){T+=1000/hz;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}} };

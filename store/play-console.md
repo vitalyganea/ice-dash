@@ -39,6 +39,7 @@ are in `listing.md`.
 | 1.1.0 | 4 | Closed testing "1.0" | approved 20 Oct 2026: comics, economy, new icon, cave, timers (everything up to cc65ae6) |
 | 1.1.1 | 5 | Closed testing "1.0" | built 21 Oct 2026: Market fits narrow phones; fixed screens zoom to fit instead of scrolling |
 | 1.1.2 | 6 | Production (first) | **published 22 Oct 2026 about 11:12**, an hour after it was sent for review (10:16, submission 6), full rollout, 178 countries and regions; built on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
+| 1.1.3 | 7 | Production | built 22 Oct 2026: one picture per step, so a 90 or 120 Hz phone no longer paints every picture twice (reported stutter after about five minutes of play) |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
@@ -52,7 +53,7 @@ language translation found"). Managed publishing is off, so the release went
 live by itself once approved: https://play.google.com/store/apps/details?id=com.veetalea.icedash
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **7**.
+number (`android/app/build.gradle`). The next one is **8**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is

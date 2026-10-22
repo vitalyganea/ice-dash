@@ -96,6 +96,7 @@ var Game = (function () {
   var pendingCourse = null;
   function perk() { return (skin && skin.perk) || {}; }
   var rafId = null, lastT = 0, accT = 0, paused = false, suspended = false;
+  var drawnW = null;                                  // the world the canvas last showed (loop)
   var hooks = { hud: null, over: null, fx: null };
   /* Moments worth feeling in the hand: the UI turns these into a buzz on
      a phone, if the player has it on. The engine only says what happened. */
@@ -7059,7 +7060,13 @@ var Game = (function () {
        engine — so the world can be gone by the next line. */
     while (W && accT >= STEP_MS && n < 5) { step(); accT -= STEP_MS; n++; }
     if (accT > 400) accT = 0;
-    if (W) render();
+    /* The picture is the world's alone, and the world moves only in step():
+       a frame that ran no step would paint what the canvas already shows.
+       A 90 or 120 Hz phone calls this 90 or 120 times a second, so every
+       picture was painted twice, or one in three twice — and after a few
+       minutes of that a phone grew hot, slowed itself down, and the game
+       stuttered with it. A new world is painted at once. */
+    if (W && (n || W !== drawnW)) { render(); drawnW = W; }
   }
 
   if (typeof document !== 'undefined' && document.getElementById('game')) setup();
