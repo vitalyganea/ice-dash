@@ -125,7 +125,8 @@ one side. A tap sends him the other way. That is the whole game.
 - 🏅 **24 trophies**, each paying out in fish — distance, catches, crevasses
   cleared, creatures owned. Progress is shown whether or not you have earned
   one, so a locked row still tells you how close you are
-- A **settings** screen: sound, music, and the language
+- A **settings** screen: sound, music, vibration, graphics (effects and sharpness,
+  each Auto or High, Medium, Low) and the language
 - **English and Russian.** English is the fallback for every string. Baloo 2
   has no Cyrillic at all, so a subset of Nunito is embedded alongside it and
   `unicode-range` picks between them per glyph — an English player downloads
@@ -172,7 +173,9 @@ The same game, packaged with [Capacitor](https://capacitorjs.com) so it runs
 offline inside the app. `build-android.sh` builds `www/` from exactly the
 files `build.sh` ships to Playables, minus the YouTube SDK tag, plus
 `js/native.js` (the Android back button as the Esc key, haptics through the
-native plugin, the status bar hidden). The game code itself is unchanged.
+native plugin, the status bar hidden, a run paused and the sound stopped
+while the app is out of sight, rewarded ads, the Freeride board on Play
+Games, Play's review card). The game code itself is unchanged.
 
 Needs JDK 21 (Microsoft OpenJDK 21) and the Android SDK (platform 36,
 build-tools 36). Android Studio's bundled Java is 25, which this Gradle
@@ -181,7 +184,7 @@ does not support yet — point `JAVA_HOME` at the JDK 21.
 ```bash
 npm install
 npm run android:sync                 # www/ + copy into android/
-cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk ("Ice Dash debug", installs beside the Play app)
 cd android && ./gradlew bundleRelease    # app/build/outputs/bundle/release/app-release.aab
 ```
 

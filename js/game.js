@@ -138,6 +138,10 @@ var Game = (function () {
   function chuteAt(d) {
     return Math.sin(d * 0.0016) * 96 + Math.sin(d * 0.00061 + 1.7) * 62;
   }
+  /* chuteHere(), which every point of every edge asks for, a few
+     hundred times a frame: worked out once for each distance */
+  var hereD = NaN, hereC = 0;
+  function chuteHere() { if (W.dist !== hereD) { hereD = W.dist; hereC = chuteAt(hereD); } return hereC; }
   function biome() { return BIOMES[W.biome % BIOMES.length]; }
 
   /* BIOME_LEN is in metres and eight world units make a metre. This used to
@@ -830,6 +834,7 @@ var Game = (function () {
      Called from inside drawChute's clip, so none of it can stray onto the
      banks. */
   function drawIceDetail(B) {
+    if (SPARE) return;                 // grooves, cracks and air in the ice: looks only
     var i, k, d, y, cx, h;
     /* A mark in the ice is the ice with light taken out of it. Keying the
        colour to B.bankShade looked right and was invisible: on most of the
@@ -934,7 +939,7 @@ var Game = (function () {
   }
 
   /* world position -> screen. One to one: no perspective anywhere. */
-  function scrX(worldX) { return VIEW_W / 2 + (worldX - chuteAt(W.dist)); }
+  function scrX(worldX) { return VIEW_W / 2 + (worldX - chuteHere()); }
   function scrY(d) { return PLAYER_Y - (d - W.dist); }
 
   /* --------------------------- input -------------------------- */
@@ -1055,7 +1060,8 @@ var Game = (function () {
                      rushes: W.rushes, smashed: W.smashed, forks: W.forks,
                      /* Only a crash can be walked back, and only while a
                         life is in hand. Crossing the line is final. */
-                     canRevive: W.state === 'crash' && W.lives > 0 });
+                     canRevive: W.state === 'crash' && W.lives > 0,
+                     crashed: W.state === 'crash' });
       return;
     }
 
@@ -1075,7 +1081,7 @@ var Game = (function () {
     W.vx = lerp(W.vx, target, turnRate());
     W.px += W.vx;
 
-    var c = chuteAt(W.dist);
+    var c = chuteHere();
     if (W.px < c - CHUTE + PR) { W.px = c - CHUTE + PR; W.dir = 1;  bank(); }
     if (W.px > c + CHUTE - PR) { W.px = c + CHUTE - PR; W.dir = -1; bank(); }
     W.tilt = lerp(W.tilt, clamp(W.vx / Math.max(1, W.speed), -1.1, 1.1), 0.18);
@@ -1227,7 +1233,7 @@ var Game = (function () {
       if (o.t === 'nunatak') {
         if (W.dist > o.d - 6 && W.dist < o.d + o.span + 6 &&
             !airborne() && W.invuln <= 0 && !rushing()) {
-          var nnx = chuteAt(W.dist) + o.rel, nrel = W.px - nnx;
+          var nnx = chuteHere() + o.rel, nrel = W.px - nnx;
           if (nrel > -(nunEdge(o, W.dist, -1) + PR * 0.74) &&
               nrel <  (nunEdge(o, W.dist,  1) + PR * 0.74)) {
             if (W.shield > 0) { W.shield = 0; W.saved++; W.invuln = 80; W.shake = 16; }
@@ -1789,7 +1795,7 @@ var Game = (function () {
   function hh(n, k) { var v = Math.sin(n * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); }
   function bankX(d, side) {
     var wob = Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4;
-    return VIEW_W / 2 + (chuteAt(d) - chuteAt(W.dist)) + side * (CHUTE + wob);
+    return VIEW_W / 2 + (chuteAt(d) - chuteHere()) + side * (CHUTE + wob);
   }
   /* The ice: deeper and clearer in patches, darker there; frost dulling it
      in others; old bubbles caught in it; the left bank's shadow lying
@@ -1856,7 +1862,11 @@ var Game = (function () {
   function bankBody(B, side) {
     var y, d, k, cell, x;
     ctx.save();
-    ctx.clip();
+    /* LITE draws only the slope, which reaches past the outline by two
+       units at most, under the lip drawn next; the clip, dear on a slow
+       phone, is kept for the drifts and glints (34 -> 40 frames a second
+       on the A9 2020, row 134) */
+    if (!LITE) ctx.clip();
     /* the slope: bands along the edge, shaded or lit — filled, not
        stroked; a stroke seventy wide down the whole screen was one of the
        dearest things in the frame */
@@ -1907,18 +1917,24 @@ var Game = (function () {
     ctx.beginPath();                                  // left edge, top to bottom
     for (y = -40; y <= VIEW_H + 40; y += 10) {
       d = W.dist + (PLAYER_Y - y);
-      c = chuteAt(d) - chuteAt(W.dist);
+      c = chuteAt(d) - chuteHere();
       ctx.lineTo(VIEW_W / 2 + c - CHUTE, y);
     }
     for (y = VIEW_H + 40; y >= -40; y -= 10) {        // back up the right edge
       d = W.dist + (PLAYER_Y - y);
-      c = chuteAt(d) - chuteAt(W.dist);
+      c = chuteAt(d) - chuteHere();
       ctx.lineTo(VIEW_W / 2 + c + CHUTE, y);
     }
     ctx.closePath();
     ctx.fillStyle = ice; ctx.fill();
 
-    ctx.save(); ctx.clip();
+    /* What lies in the ice is not clipped to it: whatever runs over its
+       edge is covered by the banks, which are filled out to that edge
+       below. The clip was the dearest thing in the frame on a slow
+       phone: an OPPO A9 2020 drew 23 frames a second with it and 34
+       without, and the picture is the same to the pixel but for the
+       edge's own anti-aliasing (27 Oct 2026). */
+    ctx.save();
     iceBody(B);
     /* The one thing a run is ABOUT is that it gets faster, and at 1127m it
        used to look exactly as quick as at 76m. The streaks carry it: they
@@ -1945,20 +1961,33 @@ var Game = (function () {
 
     /* the lip of snow where the banks meet the ice */
     [-1, 1].forEach(function (side) {
-      ctx.beginPath();
-      for (y = -40; y <= VIEW_H + 40; y += 10) {
-        d = W.dist + (PLAYER_Y - y);
-        c = chuteAt(d) - chuteAt(W.dist);
-        var wob = Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4;
-        ctx.lineTo(VIEW_W / 2 + c + side * (CHUTE + wob), y);
+      /* The bank's outline wobbles, and where it stands back from the ice
+         the snow between is the background showing through. The fill goes
+         out to the ice's own edge there (cover), which hides what ran over
+         that edge; the true outline is then traced again for the bank's
+         slope and its lip. */
+      function outline(cover) {
+        ctx.beginPath();
+        for (y = -40; y <= VIEW_H + 40; y += 10) {
+          d = W.dist + (PLAYER_Y - y);
+          c = chuteAt(d) - chuteHere();
+          var wob = Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4;
+          if (cover && wob > 0) wob = 0;
+          ctx.lineTo(VIEW_W / 2 + c + side * (CHUTE + wob), y);
+        }
+        ctx.lineTo(side < 0 ? -60 : VIEW_W + 60, VIEW_H + 40);
+        ctx.lineTo(side < 0 ? -60 : VIEW_W + 60, -40);
+        ctx.closePath();
       }
-      ctx.lineTo(side < 0 ? -60 : VIEW_W + 60, VIEW_H + 40);
-      ctx.lineTo(side < 0 ? -60 : VIEW_W + 60, -40);
-      ctx.closePath();
+      outline(true);
       ctx.fillStyle = B.snowA; ctx.fill();
+      if (!LITE) outline(false);        // bankBody clips to it; LITE does not
       bankBody(B, side);
       /* a blue shadow where the bank drops onto the ice, then a bright lip:
-         without it the snow and the ice read as one flat field */
+         without it the snow and the ice read as one flat field. Traced
+         again, since bankBody leaves its own last shape as the path: the
+         lip used to be stroked round an off-screen drift (row 135). */
+      outline(false);
       ctx.strokeStyle = B.bankShade; ctx.lineWidth = 11;
       ctx.stroke();
       ctx.strokeStyle = B.lip || '#ffffff'; ctx.lineWidth = 4;
@@ -1975,7 +2004,7 @@ var Game = (function () {
         var fd = base + fi * 96;
         var fy = scrY(fd);
         if (fy < -160 || fy > VIEW_H + 160) continue;
-        var fc = chuteAt(fd) - chuteAt(W.dist);
+        var fc = chuteAt(fd) - chuteHere();
         var wob2 = Math.sin(fd * 0.011 + side * 2.1) * 9 + Math.sin(fd * 0.03) * 4;
         var ex = VIEW_W / 2 + fc + side * (CHUTE + wob2);
         var off = 10 + ((fi * 29) % 26);
@@ -2122,7 +2151,7 @@ var Game = (function () {
        so it reads as an opening rather than as a wave. dir is +1 for the
        near mouth (bows up the screen), -1 for the far one. */
     var d = W.dist + (PLAYER_Y - my);
-    var cx = VIEW_W / 2 + chuteAt(d) - chuteAt(W.dist);
+    var cx = VIEW_W / 2 + chuteAt(d) - chuteHere();
     var t = (x - cx) / (CHUTE * 0.94);
     var t2 = t * t, s = Math.abs(t) < 1 ? 1 - t2 * t2 * t2 : 0;
     return my - dir * ARCH * s + Math.sin(x * 0.045 + ph) * 3;
@@ -3205,7 +3234,6 @@ var Game = (function () {
     return s;
   }
   function free(p) { if (p.s) p.s.cv.width = p.s.cv.height = 0; }   // its memory now, not at the next GC
-  function forget(o) { o._pics.forEach(free); o._pics = null; }
   /* Draws o from its pictures and says whether it could; when it could
      not, the caller draws it fresh in B. key(P) names o's picture in a
      palette P, paint(P) makes it. */
@@ -3246,6 +3274,7 @@ var Game = (function () {
   }
   function rockKey(P) { return P.rock + P.rockDark + (P.cap || '') + '|' + drawK; }
   function treeKey(P) { return P.tree + P.treeDark + (P.cap || '') + (P.snowyTrees || 0) + '|' + drawK; }
+  function plantKey(P) { return (P.flora ? P.flora + P.trunk : '') + treeKey(P); }
   function blit(spr, x, y) { ctx.drawImage(spr.cv, x + spr.x0, y + spr.y0, spr.w, spr.h); }
 
   /* ---- one sun for the whole hill ----
@@ -3472,7 +3501,7 @@ var Game = (function () {
      everything on the hill, and only as strong as the stretch is Neon. */
   function drawNeon() {
     var B = pal(), amt = B.neon || 0;
-    if (amt <= 0.01) return;
+    if (amt <= 0.01 || SPARE) return;
     ctx.save();
     var cx = VIEW_W / 2, cy = VIEW_H * 0.2, R = Math.min(VIEW_W, VIEW_H) * 0.34;
     var sg = ctx.createLinearGradient(0, cy - R, 0, cy + R);
@@ -3529,21 +3558,31 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* The box a tree's picture needs, for a pine or for what grows instead:
+     its reach, and its shadow down and to the right. */
+  function plantBox(o, P) {
+    var r = o.r, R = r, sh;
+    if (P.flora === 'palm') { R = r * 1.21; sh = r * 1.12 * 2.2; }
+    else if (P.flora) { R = r * 1.04; sh = r * (P.flora === 'crystal' ? 1.9 : 1.0); }
+    else sh = r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9);
+    return [-R * 1.35, -R * 1.35, R * 1.35 + sh * 0.7, R * 1.35 + sh * 0.95];
+  }
   function drawTree(x, y, o, B, bare) {
-    /* 'shadow' is the pine being painted into its picture: in a fade the
-       new stretch's palette may grow leaves, but this picture is a pine */
-    if (bare !== 'shadow') {
-      if (B.flora && o._pics) forget(o);   // its pine pictures, past a fade into leaves
-      if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
-      if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
-      if (B.flora === 'palm')    return drawPalm(x, y, o, B);
-    }
+    /* What grows where it is not pine keeps a picture as the pine does
+       (bare 'shadow' is that picture being painted). Painted fresh, the
+       leaves, palms and crystals were most of a frame on a slow phone: on
+       the OPPO A9 2020 the frozen jungle ran at 25 frames a second with
+       them and 53 without (row 135). Through a fade the old picture and the
+       new crossfade, pine into leaf, where the plant used to swap halfway. */
+    if (!bare && drawPictured(o, x, y, B, plantKey, function (P) {
+      var m = plantBox(o, P);
+      return spriteOf(m[0], m[1], m[2], m[3], function (cx, cy) { drawTree(cx, cy, o, P, 'shadow'); });
+    })) return;
+    if (B.flora === 'leaf')    return drawLeafPlant(x, y, o, B);
+    if (B.flora === 'crystal') return drawCrystalSpire(x, y, o, B);
+    if (B.flora === 'palm')    return drawPalm(x, y, o, B);
     var r = o.r, k, a, rad, ri;
     var tsh = r * (formOf(o, 3) === 1 ? 2.3 : formOf(o, 3) === 2 ? 1.2 : 1.9);
-    if (!bare && drawPictured(o, x, y, B, treeKey, function (P) {
-      return spriteOf(-r * 1.35, -r * 1.35, r * 1.35 + tsh * 0.7, r * 1.35 + tsh * 0.95,
-                      function (cx, cy) { drawTree(cx, cy, o, P, 'shadow'); });
-    })) return;
     ctx.save();
     ctx.translate(x, y);
 
@@ -3700,8 +3739,8 @@ var Game = (function () {
      the walls catch the light, the depth does not. */
   function drawCrevasse(y, o, B) {
     var top = scrY(o.d + o.span), bot = y;
-    var cTop = chuteAt(o.d + o.span) - chuteAt(W.dist);
-    var cBot = chuteAt(o.d) - chuteAt(W.dist);
+    var cTop = chuteAt(o.d + o.span) - chuteHere();
+    var cBot = chuteAt(o.d) - chuteHere();
     var lTop = VIEW_W / 2 + cTop - CHUTE - 30, rTop = VIEW_W / 2 + cTop + CHUTE + 30;
     var lBot = VIEW_W / 2 + cBot - CHUTE - 30, rBot = VIEW_W / 2 + cBot + CHUTE + 30;
 
@@ -6163,13 +6202,13 @@ var Game = (function () {
 
   function drawFlakes() {
     var A = (pal().air) || AIR0, hot = A.hot || 0, f, i, a;
-    var lim = Math.round(W.flakes.length * (0.34 + 0.66 * (A.n === undefined ? 0 : A.n)));
+    var lim = Math.round(W.flakes.length * (0.34 + 0.66 * (A.n === undefined ? 0 : A.n)) * (SPARE ? 0.4 : 1));
     if (hot > 0.02) ctx.globalCompositeOperation = 'lighter';
     for (i = 0; i < lim; i++) {
       f = W.flakes[i];
       /* An ember is a coal, not a flake: it pulses as it burns down. */
       a = A.a * (hot ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(W.t * 0.13 + f.ph)) : 1);
-      if (hot > 0.02) {                              // the heat it throws
+      if (hot > 0.02 && !SPARE) {                    // the heat it throws
         ctx.globalAlpha = a * 0.3 * hot;
         ctx.fillStyle = 'rgb(' + A.rgb + ')';
         ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 3.4, 0, 6.2832); ctx.fill();
@@ -6187,7 +6226,7 @@ var Game = (function () {
   /* The bank edge, as drawChute lays it down. Anything that has to sit ON
      the bank has to follow the same wobble or it drifts off the edge. */
   function bankX(d, side) {
-    var c = chuteAt(d) - chuteAt(W.dist);
+    var c = chuteAt(d) - chuteHere();
     var wob = Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4;
     return VIEW_W / 2 + c + side * (CHUTE + wob);
   }
@@ -6294,6 +6333,7 @@ var Game = (function () {
   /* Wind along the sides, and only once he is really moving. Kept off the
      middle third so it never competes with the line he is reading. */
   function drawSpeedStreaks() {
+    if (SPARE) return;                 // atmosphere only (low effects)
     /* a perfect tap throws the streaks out as if he had surged */
     var sp = Math.min(1, pace() + (W.perfT > 0 ? 0.45 * W.perfT / 50 : 0));
     if (sp < 0.10) return;
@@ -6493,7 +6533,7 @@ var Game = (function () {
 
   function drawPaceVignette() {
     var sp = pace();
-    if (sp < 0.12) return;
+    if (sp < 0.12 || SPARE) return;
     var k = clamp((sp - 0.12) / 0.6, 0, 1);
     var w = VIEW_W * (0.34 - 0.10 * k);
     var a = 'rgba(22,52,82,' + (0.26 * k).toFixed(3) + ')', clear = 'rgba(22,52,82,0)';
@@ -6584,7 +6624,7 @@ var Game = (function () {
      pattern never repeats within a run. */
   function drawAurora() {
     var B = pal(), amt = B.aurora ? (B.auroraA === undefined ? 1 : B.auroraA) : 0;
-    if (amt <= 0.01) return;
+    if (amt <= 0.01 || SPARE) return;
     ctx.save();
     /* Rotating the whole band is the simple way to lean it. Skewing it with
        a transform put two of the three off the side of the screen. */
@@ -6613,7 +6653,7 @@ var Game = (function () {
      heat actually shows from above: brightest against the banks. */
   function drawEmberGlow() {
     var B = pal(), amt = B.ember || 0;
-    if (amt <= 0.01) return;
+    if (amt <= 0.01 || SPARE) return;  // the lava itself (drawGround) stays
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     var puls = 0.78 + 0.22 * Math.sin(W.t * 0.021) + 0.08 * Math.sin(W.t * 0.071);
@@ -7069,7 +7109,7 @@ var Game = (function () {
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
 
     var dpr = window.devicePixelRatio || 1;
-    var eff = Math.max(1, Math.min(dpr, LOWRES ? 1.5 : DENSITY, 3840 / vw, 2160 / vh));
+    var eff = Math.max(1, Math.min(dpr, RES_CAP[RES], 3840 / vw, 2160 / vh));
     /* The readouts are drawn in CSS pixels, not world units. In world units
        a 22px label came out at 12.6 real pixels on a 390px phone, because
        one world unit is only `scale` CSS pixels there — which is exactly why
@@ -7096,28 +7136,62 @@ var Game = (function () {
      frame than 2 does — fill the GPU pays for in heat. */
   var DENSITY = 2;
 
-  /* Adaptive quality. If a run keeps missing frames — slower than about
-     50 a second for two seconds — the device is told apart from a hiccup
-     and the picture steps down for the rest of the session, one step at a
-     time, each given two seconds more to show whether it was enough:
-     first fewer pixels (LOWRES: the density cap drops to 1.5, most of the
-     cost on a slow phone), then the purely decorative layers (LITE: the
-     patches in the ice, the drifts and glints on the banks). Nothing that
-     tells you anything about the hill is touched. It used to wait for 42
+  /* Quality, in two parts, each 0 (high), 1 (medium) or 2 (low): how sharp
+     the picture is (RES: the density cap, 2, 1.5, then 1 pixel to a CSS
+     pixel) and how much is painted on it that tells you nothing about the
+     hill (FX: at 1 LITE, the patches in the ice and the drifts and glints
+     on the banks; at 2 SPARE as well, the weather thinned and the glows put
+     out). Nothing that tells you about the hill is ever touched: the fog
+     that hides the way ahead, the lava, the hazards all stay.
+     Each part is the player's choice in Settings, or left to the device
+     (auto, the default). Left to it, the picture steps down the LADDER
+     when a run keeps missing frames — slower than about 50 a second for two
+     seconds, so a hiccup is told apart from a slow device — one tier at a
+     time, each given two seconds more to show whether it was enough. The
+     tier reached is handed out (onQualityStep) for ui.js to remember on
+     that device, so a slow phone starts where it ended instead of
+     stuttering down the ladder again every time. It used to wait for 42
      frames a second and take both steps at once; by then a phone that was
      heating up had been struggling for a while. */
-  var LOWRES = false, LITE = false, slowEma = 16, slowN = 0;
+  var RES_CAP = [DENSITY, 1.5, 1];
+  /* [RES, FX] at each tier: fewer pixels first, the decoration next, then
+     the weather and the glows. Density 1 is not on it: on the A9 2020,
+     once the clips were gone (row 134), it gained nothing in seven
+     stretches out of seven and made the picture soft; it is there to be
+     chosen, for a big screen on a weak chip. */
+  var LADDER = [[0, 0], [1, 0], [1, 1], [1, 2]];
+  var RES = 0, FX = 0, LOWRES = false, LITE = false, SPARE = false;
+  var qWant = { res: 'auto', fx: 'auto' }, qTier = 0, qNext = 1, onQStep = null;
+  var slowEma = 16, slowN = 0;
+  function applyQuality() {
+    var t = LADDER[qTier];
+    RES = qWant.res === 'auto' ? t[0] : qWant.res;
+    FX = qWant.fx === 'auto' ? t[1] : qWant.fx;
+    LOWRES = RES >= 1; LITE = FX >= 1; SPARE = FX >= 2;
+    /* the light laid over the canvas (index.html #light) is one more pass
+       over the whole screen, for looks only */
+    if (typeof document !== 'undefined') {
+      var lt = document.getElementById('light');
+      if (lt && lt.classList) lt.classList.toggle('spare', SPARE);
+    }
+    /* the next tier that changes something left to the device, or -1 */
+    qNext = -1;
+    for (var i = qTier + 1; i < LADDER.length && qNext < 0; i++)
+      if ((qWant.res === 'auto' && LADDER[i][0] !== t[0]) || (qWant.fx === 'auto' && LADDER[i][1] !== t[1])) qNext = i;
+    slowN = 0; slowEma = 16;
+  }
   function watchPace(dt) {
-    if (LITE || paused || !W || W.state !== 'run') { slowN = 0; return; }
+    if (qNext < 0 || paused || !W || W.state !== 'run') { slowN = 0; return; }
     slowEma = slowEma * 0.95 + dt * 0.05;
     /* counted in time, not frames: a phone this slow takes a long while
        to show a hundred and twenty of them */
     if (slowEma > 20) {
       slowN += dt;
       if (slowN > 2000) {
-        if (!LOWRES) LOWRES = true; else LITE = true;
-        slowN = 0; slowEma = 16;
+        qTier = qNext;
+        applyQuality();
         resize();
+        if (onQStep) { try { onQStep(qTier); } catch (e) {} }
       }
     }
     else slowN = 0;
@@ -7200,6 +7274,13 @@ var Game = (function () {
     tap: tap,
     undoTap: undoTap,
     revive: revive,
+    /* A revive paid for with something other than a spare life (a short ad,
+       in the Android app): the life is handed over and spent at once. */
+    reviveFree: function () {
+      if (!W || W.state !== 'crash') return false;
+      W.lives++;
+      return revive();
+    },
     livesLeft: function () { return W ? W.lives : 0; },
     /* Paint one last frame on the way in, so what sits behind the menu is
        the moment it stopped rather than whatever was up a frame earlier. */
@@ -7234,8 +7315,22 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
-    _lite: function (v) { if (v !== undefined) { LITE = LOWRES = !!v; if (canvas) resize(); } return LITE; },
+    /* for tests: the second tier (fewer pixels, no decoration) or none */
+    _lite: function (v) { if (v !== undefined) { qWant = { res: 'auto', fx: 'auto' }; qTier = v ? 2 : 0; applyQuality(); if (canvas) resize(); } return LITE; },
     _lowres: function () { return LOWRES; },
+    /* Settings and the device's own record (ui.js): what the player chose
+       for each part ('auto', or 0 high to 2 low) and the tier the device
+       had come down to. Either may be left out. Returns what is in use. */
+    quality: function (want, tier) {
+      function lvl(v) { return v === 0 || v === 1 || v === 2 ? v : 'auto'; }
+      if (want) qWant = { res: lvl(want.res), fx: lvl(want.fx) };
+      if (tier !== undefined) qTier = Math.max(0, Math.min(LADDER.length - 1, tier | 0));
+      applyQuality();
+      if (canvas) resize();
+      return { res: RES, fx: FX, tier: qTier };
+    },
+    qualityNow: function () { return { res: RES, fx: FX, tier: qTier }; },
+    onQualityStep: function (fn) { onQStep = fn; },
     /* draws one geyser at a chosen point of its cycle, for the eye checks */
     _drawGeyser: function (c, x, y, r, ph, t) {
       var keepCtx = ctx, keepW = W;

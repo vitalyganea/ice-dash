@@ -142,6 +142,9 @@
     </div>
     <div class="btn-row">
       <button class="btn btn-gold market-btn" data-action="shop"><span data-i18n="btn.market">Market</span><span id="market-badge" class="badge hidden" aria-hidden="true">!</span></button>
+      <!-- The Freeride board on Google Play Games: only in the Android app,
+           and only once js/native.js says there is one. -->
+      <button class="btn btn-blue hidden" id="title-board" data-action="board" data-i18n="btn.board">Leaderboard</button>
     </div>
     <button id="title-tasks" class="tasks-chip hidden" data-action="trophies"></button>
     <div class="btn-row row-three">
@@ -232,6 +235,10 @@
     <div id="over-detail" class="total-stars">0 m · 0 berries · 0 gates</div>
     <p id="over-stars" class="run-stars hidden"></p>
     <p id="over-earned" class="earned hidden">+0</p>
+    <!-- Android only: the run's fish again for a short ad, if one is ready. -->
+    <div class="btn-row ad-row hidden" id="over-double">
+      <button class="btn btn-gold" data-action="ad-double"><span class="ad-mark" aria-hidden="true"></span><span data-i18n="over.double">Double the fish with an ad</span></button>
+    </div>
     <div id="over-unlock" class="unlock-box hidden"></div>
     <div id="over-goals" class="goals hidden"></div>
     <p id="over-lives" class="over-lives hidden"></p>
@@ -249,6 +256,7 @@
     <div class="btn-row">
       <button class="btn btn-gold" data-action="shop" data-i18n="btn.market">Market</button>
       <button class="btn btn-purple" data-action="back-title" data-i18n="btn.menu">Menu</button>
+      <button class="btn btn-blue hidden" id="over-board" data-action="board" data-i18n="btn.board">Leaderboard</button>
     </div>
     </div>
   </div>
@@ -269,12 +277,14 @@
 <section id="screen-revive" class="screen hidden">
   <div class="panel">
     <h2 class="panel-title-text" data-i18n="revive.title">That was close</h2>
-    <p class="revive-sub" data-i18n="revive.sub">Use a spare life and carry on from where you fell?</p>
+    <p class="revive-sub" id="revive-sub" data-i18n="revive.sub">Use a spare life and carry on from where you fell?</p>
     <div class="revive-hearts" id="revive-hearts" aria-hidden="true"></div>
     <p class="revive-count" id="revive-count" data-i18n="revive.left">Spare lives: 0</p>
     <div id="revive-tick" class="revive-tick hidden" aria-live="polite"></div>
     <div class="btn-row" id="revive-buttons">
       <button class="btn btn-big btn-green" data-action="use-life" data-i18n="revive.use">Use a life</button>
+      <!-- Android only: with no life in hand, a short ad stands in for one -->
+      <button class="btn btn-big btn-green hidden" data-action="ad-life"><span class="ad-mark" aria-hidden="true"></span><span data-i18n="revive.ad">Watch an ad</span></button>
       <button class="btn btn-big btn-blue" data-action="no-life" data-i18n="revive.skip">End the run</button>
     </div>
   </div>
@@ -365,6 +375,29 @@
       <button class="switch" id="t-music"><span data-i18n="set.music">Music</span><span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span></button>
       <button class="switch" id="t-vib"><span data-i18n="set.vibrate">Vibration</span><span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span></button>
     </div>
+
+    <!-- Graphics: each part Auto (left to the device, the default) or a
+         level of the player's own. ui.js marks the level Auto is using. -->
+    <h3 class="set-head" data-i18n="set.graphics">Graphics</h3>
+    <div class="q-row">
+      <span class="q-label" id="q-fx-l" data-i18n="set.effects">Effects</span>
+      <div class="q-opts" role="radiogroup" aria-labelledby="q-fx-l">
+        <button class="q-opt" role="radio" data-q="fx" data-v="auto" data-i18n="q.auto">Auto</button>
+        <button class="q-opt" role="radio" data-q="fx" data-v="0" data-i18n="q.high">High</button>
+        <button class="q-opt" role="radio" data-q="fx" data-v="1" data-i18n="q.mid">Medium</button>
+        <button class="q-opt" role="radio" data-q="fx" data-v="2" data-i18n="q.low">Low</button>
+      </div>
+    </div>
+    <div class="q-row">
+      <span class="q-label" id="q-res-l" data-i18n="set.sharp">Sharpness</span>
+      <div class="q-opts" role="radiogroup" aria-labelledby="q-res-l">
+        <button class="q-opt" role="radio" data-q="res" data-v="auto" data-i18n="q.auto">Auto</button>
+        <button class="q-opt" role="radio" data-q="res" data-v="0" data-i18n="q.high">High</button>
+        <button class="q-opt" role="radio" data-q="res" data-v="1" data-i18n="q.mid">Medium</button>
+        <button class="q-opt" role="radio" data-q="res" data-v="2" data-i18n="q.low">Low</button>
+      </div>
+    </div>
+    <p class="q-note" data-i18n="set.qauto">Auto adjusts to this device.</p>
 
     <h3 class="set-head" data-i18n="set.language">Language</h3>
     <!-- The language in use, flag and name; a tap opens the list. -->

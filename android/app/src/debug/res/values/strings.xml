@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- the debug build's name on the phone, beside the Play one (build.gradle) -->
+    <string name="app_name">Ice Dash debug</string>
+    <string name="title_activity_main">Ice Dash debug</string>
+</resources>

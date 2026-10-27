@@ -55,6 +55,9 @@
              tasks: { key: '', done: [] },
              /* a short buzz on a phone for the big moments */
              vibrate: true,
+             /* Graphics, as chosen in Settings: effects and sharpness, each
+                'auto' (left to the device) or 0 high, 1 medium, 2 low */
+             gfx: { fx: 'auto', res: 'auto' },
              /* What the badges have already shown: the creatures seen on the
                 shelf while affordable, and the day More modes was last opened.
                 A badge says something new, and looking at it puts it out. */
@@ -81,6 +84,7 @@
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
       save.vibrate = o.vibrate !== false;
+      save.gfx = { fx: gfxLvl(o.gfx && o.gfx.fx), res: gfxLvl(o.gfx && o.gfx.res) };
       save.fish  = Math.max(0, parseInt(o.fish, 10) || 0);
       save.gold  = Math.max(0, parseInt(o.gold, 10) || 0);
       /* Only ids this build actually knows about survive the load, so a save
@@ -159,7 +163,7 @@
     if (!canSave) return;
     if (saving) { saveAgain = true; return; }
     var data = JSON.stringify(save);
-    if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} return; }
+    if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} pushScore(); return; }
     saving = true;
     window.ytgame.game.saveData(data).then(done, function () {
       window.ytgame.game.saveData(data).then(done, done);
@@ -168,6 +172,9 @@
   }
   var lastSent = -1;
   function pushScore() {
+    /* The Android app's Freeride board keeps its own count of what it has
+       been sent; handing it the best on every save costs nothing. */
+    if (PLAT.boardScore) PLAT.boardScore(save.best);
     if (!IN_YT || !window.ytgame.engagement) return;
     if (save.best === lastSent) return;
     lastSent = save.best;
@@ -317,6 +324,7 @@
   var lastCourse = null, lastMode = null;
   function ride(courseId, mode) {
     pendingRes = null;
+    adLifeUsed = false;
     if (tickT) { clearInterval(tickT); tickT = null; }
     lastCourse = courseId || null;
     lastMode = (!courseId && mode) || null;
@@ -410,12 +418,31 @@
   var pendingRes = null;
   function onOver(res) {
     if (res.course === 'tutorial') { finishTutorial(res); return; }
-    if (res.canRevive) { pendingRes = res; showRevive(); return; }
+    if (res.canRevive) { pendingRes = res; showRevive(false); return; }
+    /* With no life in hand, the Android app can offer a short ad instead —
+       once a run, and only when one is loaded and ready to play. */
+    if (res.crashed && !adLifeUsed && adReady()) { pendingRes = res; showRevive(true); return; }
     commitRun(res);
   }
 
-  function showRevive() {
-    var n = save.lives || 0;
+  /* ---- rewarded ads (the Android app only) ----
+     PLAT.adReady / PLAT.showAd come from js/native.js. Everywhere else they
+     are missing and none of this is ever shown. */
+  var adLifeUsed = false, adWaiting = false;
+  function adReady() { return !adWaiting && !!(PLAT.adReady && PLAT.adReady()); }
+  function playAd(done) {
+    adWaiting = true;
+    PLAT.showAd(function (earned) { adWaiting = false; done(!!earned); });
+  }
+
+  function showRevive(ad) {
+    var n = ad ? 0 : (save.lives || 0);
+    var sub = $('revive-sub'), key = ad ? 'revive.adsub' : 'revive.sub';
+    sub.setAttribute('data-i18n', key);
+    sub.textContent = t(key);
+    $('revive-count').classList.toggle('hidden', ad);
+    document.querySelector('#revive-buttons [data-action="use-life"]').classList.toggle('hidden', ad);
+    document.querySelector('#revive-buttons [data-action="ad-life"]').classList.toggle('hidden', !ad);
     $('revive-count').textContent = t('revive.left', { n: n });
     var hs = $('revive-hearts');
     hs.textContent = '';
@@ -442,6 +469,32 @@
   var tickT = null;
   function useLife() {
     if ((save.lives || 0) <= 0) { noLife(); return; }
+    countIn(function () {
+      save.lives = Math.max(0, (save.lives || 0) - 1);
+      store();
+      return Game.revive();
+    });
+  }
+  /* The ad is played first; only an ad watched to the end pays. Closed
+     early, or none to play after all, the choice is put back as it was —
+     minus the ad button if there is no other ad ready behind it. */
+  function adLife() {
+    var r = pendingRes;
+    if (!r || !adReady()) return;
+    $('revive-buttons').classList.add('hidden');
+    playAd(function (earned) {
+      if (pendingRes !== r) return;            // the run was ended meanwhile
+      if (earned) { adLifeUsed = true; countIn(function () { return Game.reviveFree(); }); return; }
+      $('revive-buttons').classList.remove('hidden');
+      if (!adReady()) {
+        document.querySelector('#revive-buttons [data-action="ad-life"]').classList.add('hidden');
+        $('revive-sub').textContent = t('ad.none');
+      }
+    });
+  }
+  /* Three, two, one, and back on the hill; `spend` pays for it and says
+     whether the revive happened. */
+  function countIn(spend) {
     $('revive-buttons').classList.add('hidden');
     var el = $('revive-tick');
     el.classList.remove('hidden');
@@ -454,11 +507,10 @@
       if (n > 0) { el.textContent = String(n); Sfx.click(); return; }
       clearInterval(tickT); tickT = null;
       el.textContent = t('revive.go');
-      save.lives = Math.max(0, (save.lives || 0) - 1);
-      store();
+      var r = pendingRes;
       pendingRes = null;
-      if (Game.revive()) { showGame(); Game.resume(); }
-      else { commitRun(pendingRes || { score: 0, dist: 0, fish: 0, gold: 0 }); }
+      if (spend()) { showGame(); Game.resume(); }
+      else { commitRun(r || { score: 0, dist: 0, fish: 0, gold: 0 }); }
     }, 800);
   }
   function noLife() {
@@ -466,6 +518,49 @@
     var r = pendingRes; pendingRes = null;
     commitRun(r || { score: 0, dist: 0, fish: 0, gold: 0, coins: 0 });
   }
+
+  /* What the run paid, as the results show it. Kept, because a rewarded ad
+     can double the fish after the screen is up. */
+  var paid = { coins: 0, starPay: 0, gold: 0, doubled: false };
+  function showEarned() {
+    var earned = $('over-earned');
+    var bits = [];
+    if (paid.coins) bits.push('+' + paid.coins + '\u00a0' + t('cur.fish', { n: paid.coins }));
+    if (paid.starPay) bits.push(t('over.starpay', { n: paid.starPay }));
+    if (paid.gold)  bits.push('+' + paid.gold + '\u00a0' + t('cur.gold', { n: paid.gold }));
+    earned.textContent = bits.join('   ');
+    earned.classList.toggle('hidden', !bits.length);
+  }
+  /* The run's fish once more, for an ad watched to the end. Once a run:
+     the button goes for good the moment it pays. */
+  function adDouble() {
+    var n = paid.coins, row = $('over-double');
+    if (!n || paid.doubled || !adReady()) return;
+    row.classList.add('hidden');
+    playAd(function (earned) {
+      if (!earned) { row.classList.toggle('hidden', !adReady()); return; }
+      save.fish += n;
+      paid.coins += n;
+      paid.doubled = true;
+      store();
+      showEarned();
+      var el = $('over-earned'), r = el.getBoundingClientRect();
+      el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+      screenBurst('fish', r.left + r.width / 2, r.top + r.height / 2);
+      Sfx.gold();
+    });
+  }
+
+  /* ---- the Freeride board (the Android app only) ---- */
+  function boardReady() { return !!(PLAT.boardReady && PLAT.boardReady()); }
+  /* native.js finds out whether there is a board after the page is up,
+     and says so with this event. */
+  function boardButtons() {
+    $('title-board').classList.toggle('hidden', !boardReady());
+    if (!boardReady()) $('over-board').classList.add('hidden');
+  }
+  window.addEventListener('icedash-board', boardButtons);
+  boardButtons();
 
   function commitRun(res) {
     var wasOpen = freeUnlocked();
@@ -477,7 +572,7 @@
     var stars = cd ? courseStars(cd, res) : 0;
     /* The Daily Line keeps its own stars, for today only, and a streak of
        days finished; it never touches the marked lines' board. */
-    var streakNow = 0, starPay = 0;
+    var streakNow = 0, starPay = 0, threeNow = false;
     if (cd && cd.daily) {
       starPay = dailyStarPay(save.equipped, stars, res.finished);
       save.fish += starPay;
@@ -492,6 +587,7 @@
       }
       streakNow = save.dailyLast === today ? save.dailyStreak : 0;
     } else if (cd) {
+      threeNow = stars === 3 && (save.courses[cd.id] || 0) < 3;
       if (stars > (save.courses[cd.id] || 0)) save.courses[cd.id] = stars;
     }
     var rushRun = res.mode === 'rush', avRun = res.mode === 'avalanche';
@@ -530,13 +626,10 @@
     var won = achCheck(save);
     store();
     showWon(won, taskWon, storyWon);
-    var earned = $('over-earned');
-    var bits = [];
-    if (res.coins) bits.push('+' + res.coins + '\u00a0' + t('cur.fish', { n: res.coins }));
-    if (starPay) bits.push(t('over.starpay', { n: starPay }));
-    if (res.gold)  bits.push('+' + res.gold + '\u00a0' + t('cur.gold', { n: res.gold }));
-    earned.textContent = bits.join('   ');
-    earned.classList.toggle('hidden', !bits.length);
+    paid = { coins: res.coins || 0, starPay: starPay, gold: res.gold || 0, doubled: false };
+    showEarned();
+    $('over-double').classList.toggle('hidden', !(paid.coins > 0 && adReady()));
+    $('over-board').classList.toggle('hidden', !(boardReady() && !cd && !mRun));
     $('new-best').classList.toggle('hidden', !beat);
     /* What you are carrying into the next one. Spare lives were invisible
        everywhere except the market and the moment you spent one. */
@@ -586,6 +679,8 @@
     }, 350);
     Game.pause();
     show('over');
+    /* A high point, for the app to ask for a review (native.js). */
+    if ((beat || threeNow) && PLAT.goodMoment) PLAT.goodMoment(save.runs);
   }
 
   /* ------------------------ bursts ---------------------------- */
@@ -819,6 +914,9 @@
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null); break;
       case 'use-life':   useLife(); break;
+      case 'ad-life':    Sfx.click(); adLife(); break;
+      case 'ad-double':  Sfx.click(); adDouble(); break;
+      case 'board':      Sfx.click(); if (PLAT.boardShow) PLAT.boardShow(); break;
       case 'open-find':  openFind(); break;
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
@@ -884,6 +982,52 @@
   });
 
   /* ----------------------- audio toggles --------------------- */
+  /* ---- graphics ----
+     What the player chose for effects and sharpness is in the save, like
+     the sound. What auto settled on is the device's own and stays on it,
+     in localStorage outside the save (never inside Playables, where the SDK
+     is the only store; there auto starts over each time): the tier the
+     picture came down to on this device, and when. */
+  var Q_KEY = 'icedash-quality', WEEK = 7 * 864e5;
+  function gfxLvl(v) { return v === 0 || v === 1 || v === 2 ? v : 'auto'; }
+  function qKeep(tier) {
+    if (IN_YT) return;
+    try { localStorage.setItem(Q_KEY, JSON.stringify({ tier: tier, t: Date.now() })); } catch (e) {}
+  }
+  function qRecord() {
+    if (IN_YT) return 0;
+    try {
+      var r = JSON.parse(localStorage.getItem(Q_KEY) || 'null');
+      if (!r || typeof r.tier !== 'number') return 0;
+      var tier = Math.max(0, r.tier | 0);
+      /* A week on, one tier up again, to see: a phone that was only hot or
+         busy that day is not held down for good. Too much still, and it
+         comes back down in two seconds. */
+      if (tier > 0 && !(Date.now() - (r.t || 0) < WEEK)) { tier--; qKeep(tier); }
+      return tier;
+    } catch (e) { return 0; }
+  }
+  function syncQuality() {
+    var now = Game.qualityNow();
+    Array.prototype.forEach.call(document.querySelectorAll('.q-opt'), function (b) {
+      var q = b.getAttribute('data-q'), v = b.getAttribute('data-v'), want = save.gfx[q];
+      var on = String(want) === v;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      /* with Auto chosen, the level it is using now is marked as well */
+      b.classList.toggle('in-use', want === 'auto' && v === String(now[q]));
+    });
+  }
+  function applyGfx(tier) { Game.quality(save.gfx, tier); syncQuality(); }
+  Game.onQualityStep(function (tier) { qKeep(tier); syncQuality(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.q-opt'), function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-v');
+      save.gfx[b.getAttribute('data-q')] = v === 'auto' ? 'auto' : +v;
+      store(); Sfx.click(); applyGfx();
+    });
+  });
+
   function syncToggles() {
     [['t-sfx', 't-sfx2', save.sfx], ['t-music', 't-music2', save.music],
      ['t-vib', 't-vib2', save.vibrate]].forEach(function (g) {
@@ -1914,6 +2058,7 @@
   applyI18n();
   Sfx.sound(save.sfx);
   syncToggles();
+  applyGfx(qRecord());
   show('title');
   /* the title was measured in the fallback font; measure it again in its own */
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitScreen);
@@ -1926,6 +2071,7 @@
       applyI18n();
       achCheck(save);               // anything the loaded save already earned
       syncToggles();
+      applyGfx();                   // the save's own choice; the device's tier stays
       Sfx.sound(save.sfx);
       /* Someone who has never ridden at all goes straight into the
          tutorial instead of a menu of things they have no words for yet.

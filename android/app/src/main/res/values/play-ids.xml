@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ids Google gives the app, all in one place.
+
+     admob_app_id: AdMob → Apps → Ice Dash → App settings, "App ID"
+       (ca-app-pub-…~…). Google's test app id is ca-app-pub-3940256099942544~3347511713.
+       The rewarded ad unit (ca-app-pub-…/…) goes in js/native.js, AD_UNIT.
+     game_services_project_id: Play Console → Play Games Services →
+       Setup and management → Configuration, the project id (digits only).
+     leaderboard_freeride: Play Games Services → Leaderboards → Freeride,
+       the leaderboard id (CgkI…).
+     While the last two are empty the app has no board and shows no button
+     for one (PlayGamesPlugin.java). -->
+<resources>
+    <string name="admob_app_id" translatable="false">ca-app-pub-6104904420104536~8263726642</string>
+    <string name="game_services_project_id" translatable="false">378437852809</string>
+    <string name="leaderboard_freeride" translatable="false">CgkIib2d5YELEAIQAQ</string>
+</resources>

@@ -9,7 +9,7 @@ you to do in the Developer Portal.
 |---|---|
 | SDK loaded before any game code | `index.html` — `<script src="https://www.youtube.com/game_api/v1">` is the first element in `<head>` |
 | `firstFrameReady()` then `gameReady()` | `js/ui.js` — `firstFrameReady` fires in the first `requestAnimationFrame`; `gameReady` only after `loadData()` settles and the game is interactive — the title menu, or for a save with no runs in it the first-run tutorial, which holds the hill still until the first tap |
-| Progress saved only via `saveData` | `js/ui.js` `store()` — inside Playables the SDK is the sole mechanism; `localStorage` is used only when the SDK is absent |
+| Progress saved only via `saveData` | `js/ui.js` `store()` — inside Playables the SDK is the sole mechanism; `localStorage` is used only when the SDK is absent. The graphics level Auto settles on is kept on the device the same way (`qKeep`): outside Playables only; inside, Auto starts over each time |
 | `loadData()` awaited before `saveData()` | `canSave` stays `false` until the load promise settles; `store()` returns early before that |
 | Old saves must still load | `adopt()` parses defensively and falls back to defaults; only skin ids this build knows about survive the load, so a save from a later version cannot equip something that is not here |
 | Save at milestones | when a run ends, and on `onPause` |

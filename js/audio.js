@@ -5,6 +5,7 @@ var Sfx = (function () {
   var ctx = null, master = null, sfxBus = null, musBus = null;
   var sfxOn = true, musOn = true;
   var platformOn = true;          // YouTube's own audio setting — overrides everything
+  var held = false;               // the Android app is out of sight (api.hold)
   var musicTimer = null, step = 0, nextTime = 0;
 
   /* The hill's own tempo, and the one it runs at while a snow rush is on.
@@ -27,7 +28,7 @@ var Sfx = (function () {
 
   function resume() {
     init();
-    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (ctx && ctx.state === 'suspended' && !held) ctx.resume();
   }
 
   /* ---------- a simple enveloped tone ---------- */
@@ -379,6 +380,18 @@ var Sfx = (function () {
     master.gain.cancelScheduledValues(t);
     master.gain.setValueAtTime(master.gain.value, t);
     master.gain.linearRampToValueAtTime(platformOn ? 0.85 : 0, t + 0.15);
+  };
+  /* The Android app out of sight: the phone locked, or another app on top
+     (native.js). The web view does not stop its sound by itself, and the
+     tune went on playing behind the lock screen. The whole sound engine
+     stops rather than being turned down, so the phone is not kept busy
+     making silence, and no notes pile up to be played all at once on the
+     way back: the music's clock stops with it. */
+  api.hold = function (on) {
+    held = !!on;
+    if (!ctx) return;
+    var p = held ? ctx.suspend() : ctx.resume();
+    if (p && p.catch) p.catch(function () {});
   };
   api.isPlatformAudio = function () { return platformOn; };
   api.isMusic = function () { return musOn; };

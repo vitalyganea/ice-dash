@@ -70,6 +70,8 @@ body{
     radial-gradient(circle at -10% -5%, rgba(255,244,214,.2) 0%, rgba(255,244,214,0) 70%),
     linear-gradient(118deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.1) 50%, rgba(255,255,255,0) 58%);
 }
+/* low effects (game.js SPARE): one pass over the whole screen less */
+.light.spare{ display:none; }
 .light.moon{
   background:
     radial-gradient(ellipse 75% 60% at 50% 55%, rgba(8,24,52,0) 55%, rgba(8,24,52,.26) 100%),
@@ -680,8 +682,40 @@ body{
   color:var(--ink-soft);
 }
 .set-head:first-of-type{ margin-top:6px; }
-/* Android only (js/native.js) */
-.set-link{ display:block; margin-top:18px; text-align:center; font-size:14px; color:inherit; opacity:.75; }
+/* Graphics: a label over four choices in a row, two by two on a narrow
+   phone rather than three and one left over. The one chosen is filled;
+   with Auto chosen, the level Auto is using has a dashed edge. */
+.q-row{ margin-top:8px; }
+.q-label{ display:block; margin:4px 0 6px; font-size:14px; font-weight:800; color:var(--ink); text-align:center; }
+.q-opts{ display:grid; grid-template-columns:repeat(4, auto); gap:6px; justify-content:center; }
+@media (max-width:380px){ .q-opts{ grid-template-columns:repeat(2, minmax(0, 1fr)); max-width:250px; margin:0 auto; } }
+.q-opt{
+  min-height:44px; min-width:60px; padding:6px 12px;
+  font:inherit; font-size:14px; font-weight:800; color:var(--ink);
+  background:linear-gradient(180deg,#ffffff 0%,#e6f4fb 100%);
+  border:2px solid rgba(43,93,134,.45); border-radius:14px;
+  box-shadow:0 3px 0 rgba(43,93,134,.35);
+  cursor:pointer;
+}
+.q-opt:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(43,93,134,.35); }
+.q-opt:focus-visible{ outline:3px solid #ffd84a; outline-offset:3px; }
+.q-opt.on{ background:linear-gradient(180deg,#3ad6a0 0%,#21c48a 100%); border-color:#178a62; color:#fff; }
+.q-opt.in-use{ border-style:dashed; border-color:#21c48a; }
+.q-note{ margin:8px 0 0; font-size:13px; text-align:center; color:var(--ink-soft); }
+
+/* Android only (js/native.js). Padded out to a 44px target: the links
+   are small words, but they are still things to press. */
+.set-link{ display:block; margin-top:6px; padding:12px 0; text-align:center; font-size:14px; color:inherit; opacity:.75; }
+.set-link + .set-link{ margin-top:0; }
+/* Android only: a button that plays an ad says so with a play mark in
+   front of its words, white with the same navy edge as the letters. */
+.ad-mark{
+  display:inline-block; width:0; height:0; margin-right:.45em; vertical-align:-.02em;
+  border-style:solid; border-width:.42em 0 .42em .66em;
+  border-color:transparent transparent transparent currentColor;
+  filter:drop-shadow(0 2px 0 var(--line));
+}
+.btn-row.ad-row{ margin-top:16px; }
 
 /* ------------------- TROPHIES -------------------
    One row each: badge, what it is, how far along, and what it pays. The

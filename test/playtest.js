@@ -12,7 +12,11 @@
    No dependencies: Chrome is driven over the DevTools protocol through
    node's own WebSocket.
 
-     node test/playtest.js            both platforms
+   A third walk is the Android app's page (native.js in it, the way
+   build-android.sh makes it) over stand-ins for the native plugins: the
+   rewarded ads and the Freeride board, which only the app has.
+
+     node test/playtest.js            all three
      node test/playtest.js desktop    just the one
    =========================================================== */
 var http = require('http'), fs = require('fs'), path = require('path');
@@ -37,6 +41,15 @@ function serve() {
     var s = http.createServer(function (q, r) {
       var p = decodeURIComponent(q.url.split('?')[0]);
       if (p === '/') p = '/index.html';
+      /* The app's page, as build-android.sh writes it into www/. */
+      if (p === '/android.html') {
+        var html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+          .split('\n').filter(function (l) { return !/youtube\.com\/game_api/.test(l); }).join('\n')
+          .replace('<script src="js/i18n.js"></script>', '<script src="js/native.js"></script>\n<script src="js/i18n.js"></script>');
+        r.writeHead(200, { 'content-type': 'text/html' });
+        r.end(html);
+        return;
+      }
       var f = path.join(ROOT, p);
       if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) {
         r.writeHead(404); r.end('no'); return;
@@ -113,8 +126,37 @@ function CDP(url) {
 /* ---------------------------------------------------------- the walk */
 var PLATFORMS = {
   desktop: { w: 1280, h: 800, mobile: false, touch: 0, name: 'desktop 1280x800' },
-  mobile:  { w: 390,  h: 844, mobile: true,  touch: 1, name: 'phone 390x844' }
+  mobile:  { w: 390,  h: 844, mobile: true,  touch: 1, name: 'phone 390x844' },
+  android: { w: 390,  h: 844, mobile: true,  touch: 1, name: 'android 390x844', android: true }
 };
+
+/* Capacitor as the app has it, with AdMob, the app's PlayGames plugin and
+   Play's review card answered here. An ad "plays" for a moment and pays,
+   unless __adSkip is set, when it is closed early. Everything asked of
+   them is counted. */
+var FAKE_NATIVE = "(function(){var L={};" +
+  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0};window.__reviews=0;" +
+  "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
+  "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
+  "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
+  "window.Capacitor={isNativePlatform:function(){return true;},Plugins:{" +
+  "App:{addListener:on,exitApp:function(){}}," +
+  "AdMob:{requestConsentInfo:function(){return Promise.resolve({status:'OBTAINED',canRequestAds:true," +
+  "  privacyOptionsRequirementStatus:'REQUIRED'});}," +
+  " showConsentForm:function(){return Promise.resolve({status:'OBTAINED',canRequestAds:true});}," +
+  " showPrivacyOptionsForm:function(){__ads.privacy++;return Promise.resolve();}," +
+  " initialize:function(){return Promise.resolve();}," +
+  " prepareRewardVideoAd:function(){__ads.prepared++;return Promise.resolve({adUnitId:'test'});}," +
+  " showRewardVideoAd:function(){__ads.shown++;return new Promise(function(res){setTimeout(function(){" +
+  "   if(window.__adSkip){fire('onRewardedVideoAdDismissed');return;}" +
+  "   fire('onRewardedVideoAdReward',{type:'',amount:1});res({type:'',amount:1});" +
+  "   fire('onRewardedVideoAdDismissed');},400);});}," +
+  /* as on the phone: the handle itself, not a promise of one */
+  " addListener:on}," +
+  "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
+  " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
+  " show:function(){__board.shown++;return Promise.resolve();}}," +
+  "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
   var errs = [];
@@ -145,10 +187,12 @@ async function walk(cdp, sid, P) {
       best: 4200, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,
       owned: ['snowcap', 'mitten', 'seal'], equipped: 'seal', lang: 'en',
       ach: ['first'], totFish: 900, totGold: 4, totGates: 20, totJumps: 3,
-      totSaves: 1, bestDist: 980, bestRunFish: 60, lives: 2, finds: 2,
+      totSaves: 1, bestDist: 980, bestRunFish: 60, lives: P.android ? 0 : 2, finds: 2,
       totRevives: 0, totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
       courses: { firstlight: 2 }
     })) + ")}catch(e){}" }, sid);
+
+  if (P.android) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: FAKE_NATIVE }, sid);
 
   async function ev(expr) {
     var r = await cdp.send('Runtime.evaluate',
@@ -271,10 +315,137 @@ async function walk(cdp, sid, P) {
     return false;
   }
 
+  /* ---- the Android app: rewarded ads and the Freeride board ---- */
+  async function androidWalk() {
+    await sleep(600);
+    ok(await visible('#title-board'), 'the title offers the leaderboard once Play Games says there is one');
+    var fit = await ev("(function(){var b=document.querySelector('.row-three').getBoundingClientRect();" +
+      "return {rowBottom:Math.round(b.bottom),vh:innerHeight};})()");
+    ok(fit.rowBottom <= fit.vh, 'and the title still fits the window with it (' + JSON.stringify(fit) + ')');
+    await shot('a1-title');
+    await clickFor('#title-board', null);
+    await sleep(200);
+    ok(await ev("__board.shown") === 1, 'the button opens the Play Games board');
+    ok((await ev("__board.submits")).indexOf(4200) >= 0,
+       'the best already in the save is sent to the board (' + JSON.stringify(await ev("__board.submits")) + ')');
+
+    await clickFor('[data-action="settings"]', '#screen-settings');
+    var links = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .set-link'),function(a){" +
+      "var r=a.getBoundingClientRect();return a.textContent+' '+Math.round(r.height);})");
+    ok(links.length === 2 && /Ad privacy/.test(links[1]), 'Settings has the privacy policy and the ad privacy choices (' + links.join(' | ') + ')');
+    ok(links.every(function (l) { return +l.split(' ').pop() >= 44; }), 'both at least 44 px tall');
+    await click('#screen-settings .set-link:last-of-type');
+    await sleep(200);
+    ok(await ev("__ads.privacy") === 1, 'which opens Google\'s ad privacy form');
+    await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+
+    /* A crash with no life in hand: the ad stands in for one. */
+    async function crashOut() {
+      for (var c = 0; c < 900 && (await ev("Game.isRunning() && Game.debug() && Game.debug().state==='run'")); c++)
+        await sleep(20);
+      for (var w = 0; w < 60 && !(await visible('#screen-revive')) && !(await visible('#screen-over')); w++)
+        await sleep(100);
+    }
+    ok(await ev("__ads.prepared") >= 1, 'an ad is loaded ahead of need');
+    await clickFor('#btn-free', '#hud');
+    await crashOut();
+    ok(await visible('#screen-revive'), 'a crash with no life in hand offers an ad instead');
+    ok(await visible('[data-action="ad-life"]') && !(await visible('[data-action="use-life"]')) &&
+       !(await visible('#revive-count')), 'with the ad button in place of the life');
+    ok(/short ad/.test(await ev("document.getElementById('revive-sub').textContent")), 'and words saying so');
+    await shot('a2-revive-ad');
+    await click('[data-action="ad-life"]');
+    for (var r2 = 0; r2 < 80 && !(await ev("Game.debug() && Game.debug().state==='run'")); r2++) await sleep(100);
+    ok(await ev("__ads.shown") === 1, 'the ad plays');
+    ok(await ev("Game.debug() && Game.debug().state==='run'"), 'and once it has paid he is back on the hill');
+    ok(await ev("Game.debug().grace > 0 || Game.debug().invuln > 0"), 'safe for the first moments, as with a life');
+    ok((await readSave()).lives === 0, 'no life was spent or given');
+
+    /* Once a run: the next crash ends it. Fish in hand, so the results
+       have something to double. */
+    await ev("Game.debug().coins = 12; 1");
+    await crashOut();
+    ok(!(await visible('#screen-revive')) && await waitFor('#screen-over', 6000), 'the second crash ends the run: one ad revive a run');
+    ok(await visible('#over-board'), 'a Freeride result offers the board');
+    ok(await visible('#over-double'), 'and doubling the fish for an ad');
+    await shot('a3-over');
+    /* Fish picked up after the 12 count too, so the results say how many. */
+    var won = +(/\+(\d+)/.exec(await ev("document.getElementById('over-earned').textContent")) || [0, 0])[1];
+    var f0 = (await readSave()).fish;
+    await click('#over-double button');
+    await sleep(1200);
+    var f1 = (await readSave()).fish;
+    ok(won >= 12 && f1 - f0 === won, 'the ad pays the run\'s fish once more (+' + won + ': ' + f0 + ' -> ' + f1 + ')');
+    ok(new RegExp('\\+' + 2 * won + '\\D').test(await ev("document.getElementById('over-earned').textContent")),
+       'and the results say +' + 2 * won);
+    ok(!(await visible('#over-double')), 'and the button is gone: once a run');
+    await shot('a4-doubled');
+
+    /* An ad closed before its end pays nothing. */
+    await ev("window.__adSkip = true; 1");
+    await clickFor('#screen-over [data-action="play"]', '#hud');
+    await crashOut();
+    ok(await visible('#screen-revive'), 'a new run, a new ad revive on offer');
+    await click('[data-action="ad-life"]');
+    await sleep(1200);
+    ok(await visible('#screen-revive') && await ev("Game.debug().state==='crash'"), 'an ad closed early does not revive him');
+    ok(await visible('[data-action="no-life"]'), 'and ending the run is still there');
+    await clickFor('[data-action="no-life"]', '#screen-over');
+    ok(await visible('#screen-over'), 'which ends it');
+
+    /* Play's review card: only after a high point, a moment after the
+       results, never into a new run, and once in the month. */
+    ok(await ev("__reviews") === 0, 'no review is asked for after an ordinary run');
+    async function bestRun(n, quick) {
+      await clickFor('#screen-over [data-action="play"]', '#hud');
+      await ev("Game.debug().score = " + n + "; 1");
+      await crashOut();
+      if (await visible('#screen-revive')) await clickFor('[data-action="no-life"]', '#screen-over');
+      ok(await visible('#new-best'), 'a new best of ' + n);
+      if (quick) await clickFor('#screen-over [data-action="play"]', '#hud');
+      await sleep(3200);
+    }
+    await bestRun(9000, true);
+    ok(await ev("__reviews") === 0, 'straight into the next run: the card does not break into it');
+    await ev("Game.debug().score = 15000; 1");
+    await crashOut();
+    if (await visible('#screen-revive')) await clickFor('[data-action="no-life"]', '#screen-over');
+    await sleep(3200);
+    ok(await ev("__reviews") === 1, 'a new best, with the results left up: Google\'s review card is asked for');
+    await bestRun(20000);
+    ok(await ev("__reviews") === 1, 'another best the same month does not ask again');
+
+    /* The phone locked in the middle of a run (Capacitor's App pause):
+       the run waits on the pause screen and the sound stops outright,
+       until the app is back. The tune once went on behind the lock. */
+    await ev("(function(){var A=window.AudioContext,s=A.prototype.suspend;" +
+      "A.prototype.suspend=function(){window.__ac=this;return s.apply(this,arguments);};return 1;})()");
+    await clickFor('#screen-over [data-action="play"]', '#hud');
+    await sleep(300);
+    await ev("__fire('pause'); 1");
+    await sleep(300);
+    ok(await visible('#screen-pause') && await ev("Game.isPaused()"), 'the phone locked mid-run: the run waits on the pause screen');
+    ok(await ev("!!window.__ac && __ac.state") === 'suspended', 'and the sound stops (' + await ev("window.__ac && __ac.state") + ')');
+    await ev("__fire('resume'); 1");
+    await sleep(300);
+    ok(await ev("__ac.state") === 'running', 'back in the app, the sound comes back (' + await ev("__ac.state") + ')');
+    ok(await visible('#screen-pause') && await ev("Game.isPaused()"), 'and the run still waits for the player');
+    await clickFor('#screen-pause [data-action="resume"]', '#hud');
+    await ev("__fire('pause'); 1");
+    await sleep(300);
+    ok(await ev("__ac.state") === 'suspended' && await visible('#screen-pause'), 'locked again: paused and silent again');
+    await ev("__fire('resume'); 1");
+    await sleep(300);
+
+    ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
+  }
+
   console.log('\n--- ' + P.name + ' ---\n');
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + (P.android ? '/android.html' : '/index.html') }, sid);
   for (var i = 0; i < 60 && !(await visible('#screen-title')); i++) await sleep(200);
   ok(await visible('#screen-title'), 'the title screen comes up');
+  if (P.android) { await androidWalk(); return errs; }
+  ok(!(await visible('#title-board')), 'no leaderboard button off Android');
   ok(await ev("!!(window.Game && Game.isRunning)"), 'the engine is on the page');
   await shot('01-title');
   /* the whole title in the window without scrolling: the plaque at the top,
@@ -366,6 +537,20 @@ async function walk(cdp, sid, P) {
   ok(sfx1 === !sfx0 && shows === sfx1, 'the Sounds switch turns sound ' + (sfx1 ? 'on' : 'off') +
      ' and shows it (' + sfx0 + ' -> ' + sfx1 + ')');
   await click('#t-sfx');
+  /* Graphics: Auto by default; a level chosen is used at once, saved, and
+     shown; Auto again gives the picture back to the device. */
+  var qo = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .q-opt'),function(b){" +
+    "var r=b.getBoundingClientRect();return {q:b.getAttribute('data-q'),v:b.getAttribute('data-v'),on:b.classList.contains('on'),h:Math.round(r.height),w:Math.round(r.width)};})");
+  ok(qo.length === 8 && qo.every(function (o) { return o.h >= 44 && o.w >= 44; }),
+     'Settings offers Effects and Sharpness, four choices each, every one at least 44 px (' + qo.map(function (o) { return o.w + 'x' + o.h; }).join(' ') + ')');
+  ok(qo.filter(function (o) { return o.on; }).map(function (o) { return o.q + ':' + o.v; }).join(' ') === 'fx:auto res:auto', 'both start on Auto');
+  var fx0 = await ev("Game.qualityNow().fx");
+  await click('#screen-settings .q-opt[data-q="fx"][data-v="2"]');
+  var qs = await ev("JSON.stringify({save:JSON.parse(localStorage.getItem('icedash-save-v1')).gfx,now:Game.qualityNow(),on:document.querySelector('.q-opt[data-q=\"fx\"][data-v=\"2\"]').classList.contains('on'),light:document.getElementById('light').classList.contains('spare')})");
+  qs = JSON.parse(qs);
+  ok(qs.save.fx === 2 && qs.now.fx === 2 && qs.on && qs.light, 'Low effects is used at once, saved and shown (' + JSON.stringify(qs) + ')');
+  await click('#screen-settings .q-opt[data-q="fx"][data-v="auto"]');
+  ok(await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).gfx.fx === 'auto' && Game.qualityNow().fx === " + fx0), 'and Auto gives it back to the device');
   await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
   ok(await waitFor('#screen-title'), 'Back returns to the title');
 

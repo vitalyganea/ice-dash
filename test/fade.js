@@ -34,11 +34,20 @@ G.attract('snowcap');                   // steers itself and never ends
 H.frames(240);                          // four seconds: the hill fills with stones and pines
 var W = G.debug();
 
-var worst = 0, held = 0, fadeOps = [], steadyOps = [], changes = 0, opening = [];
+var worst = 0, held = 0, fadeOps = [], steadyOps = [], changes = 0, opening = [], floraSeen = 0, floraBare = 0;
 for (var z = 0; z < BIOMES.length; z++) {
   var steady = [];
   for (var i = 0; i < 60; i++) { var f = frame(); steady.push(f.ops); worst = Math.max(worst, f.made); }
   steadyOps.push(avg(steady));
+  /* Leaves, palms and crystals were painted fresh on every frame, most of
+     a frame on a slow phone (SYSTEMS row 135); now they are pictures too. */
+  if (BIOMES[W.biome % BIOMES.length].flora)
+    scenery(W).forEach(function (o) {
+      if (o.t === 'rock' || (o.t === 'deco' && o.kind !== 'tree')) return;
+      var sy = G._screen(o.x, o.d).y;
+      if (sy < 40 || sy > 500) return;   // well inside the picture, drawn for a while
+      floraSeen++; if (!(o._pics && o._pics.length)) floraBare++;
+    });
   var from = W.biome;
   W.biomeT = ZONE - W.speed * 150;      // two and a half seconds from the next stretch
   var inFade = [], newPics = 0;
@@ -60,6 +69,8 @@ for (var z = 0; z < BIOMES.length; z++) {
 }
 G.stop();
 
+ok(floraSeen > 10 && floraBare === 0, 'where leaves, palms and crystals grow, each is copied from its picture (' +
+   floraSeen + ' seen, ' + floraBare + ' painted fresh)');
 ok(changes === BIOMES.length, 'the hill went through every stretch (' + changes + ' of ' + BIOMES.length + ')');
 ok(worst <= PER_FRAME, 'no frame paints more than ' + PER_FRAME + ' new pictures, in a fade, at its end or between (worst ' + worst + ')');
 ok(held <= 2, 'through a fade a thing holds at most two pictures, the old and the new (' + held + ')');

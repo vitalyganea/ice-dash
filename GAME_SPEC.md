@@ -42,6 +42,16 @@ run's results (CrazyGames sets how often, and shows none in Basic Launch),
 and a new player lands straight in the tutorial there, since CrazyGames
 wants play within one click; the comic waits in the Market. After CrazyGames' first review (rejected on quality) that build alone also shows more hill ahead on a wide window, opens Freeride from the start, words the tutorial for mouse and keyboard on desktop, and does not pause on Esc (SYSTEMS.md row 121).
 
+**Android app** — on Google Play (October 2026), the same game through
+Capacitor. Asked for by the user after launch: rewarded ads only, never one
+nobody asked for — a crash with no spare life can be walked back once a run
+for a short ad, and the results can double a run's fish for one — and a
+Freeride leaderboard on Google Play Games. Both live in `js/native.js` and
+the app's own Play Games plugin; no other build shows either. The app also
+asks for a Play review with Google's own card — only after a new best or a
+first three stars, from the tenth run on, at most once a month, and never
+with a question of its own before it.
+
 ## Art approach
 
 Vector / flat shapes, drawn on `<canvas>` at runtime. No sprite sheets, no
