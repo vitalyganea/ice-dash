@@ -19,7 +19,9 @@ first build with ads:
 - **Name.** Google Play weighs the name most, then the short description.
   Each name carries the words people type, not just the brand: penguin, snow,
   slide / пингвин, лёд / pinguin, gheață / pingüino, hielo / pinguim, gelo /
-  Pinguin, Eis.
+  Pinguin, Eis. **Not used:** on 27 Oct 2026 the owner kept the bare name
+  "Ice Dash" in every language; the names below are only a proposal, and
+  those words now live in the short and full descriptions.
 - **Short description.** It says it is a penguin game, one tap, endless, on
   ice, and that it plays without internet. Players search for that last one
   in every language ("offline games", "игры без интернета", "jocuri fără
@@ -304,7 +306,7 @@ safety) are kept in `play-console.md`; this table is the listing side.
 |---|---|
 | App or game | Game |
 | Category | Arcade |
-| Tags (Store settings → Tags, up to five) | the closest of Play's own list: Casual, Arcade, Endless runner, Offline, Single player — whichever of them Play offers |
+| Tags (Store settings → Tags, up to five) | Arcade, Casual, Hyper-casual, Runner (set 27 Oct 2026, replacing Adventure, Brain training and Minigames; Play's list has no Offline, Single player or Endless runner) |
 | Free or paid | Free |
 | Contains ads | **Yes from 1.2.0** (rewarded only); No up to 1.1.4 |
 | In-app purchases | **No** |
