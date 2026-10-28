@@ -330,3 +330,14 @@ safety) are kept in `play-console.md`; this table is the listing side.
   `1-title`, `2-freeride`, `3-time-rush`, `4-crystal-caves`, `5-market`,
   `6-known-lines`, `7-tutorial` — all in `store/screenshots/`. Taken from the
   real game by `node store/shots.js`; run it again after visual changes.
+- Since 28 Oct 2026 the listing has the dressed set instead: 8 per language
+  (`01-one-tap` … `08-offline`), the real game from the Android page in a
+  frame with the headline in a penguin's speech bubble, ice, polar lights and
+  a neon edge. `bash build-android.sh`, then `node store/promo.js` (or
+  `node store/promo.js en ro`) writes `store/promo/<lang>/`, not kept in git.
+  The penguin is the user's own 3D art (AI-made), cut out to
+  `store/promo/mascot/penguin3d.png`; the AI asset declaration was left at
+  "Don't label assets" by the owner's choice. Captions and their checked
+  wording are in `TEXT` in `store/promo.js`. `node store/poster.js` makes a
+  2400×3000 poster (`store/promo/poster-en.png`) with the two screenshots
+  pasted in at 1:1 and checked pixel by pixel.

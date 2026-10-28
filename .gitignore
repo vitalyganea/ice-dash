@@ -24,3 +24,6 @@ crazygames/*.zip
 crazygames/covers/
 crazygames/video/
 .idea/
+# store/promo.js and poster.js write these; they are made again in minutes
+store/promo/*
+!store/promo/mascot/

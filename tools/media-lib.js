@@ -110,13 +110,15 @@ async function start(root, port, dport) {
       ws.send(JSON.stringify({ id: n, method: method, params: params || {}, sessionId: sid })); });
   }
 
-  async function open(shape, save) {
+  /* pre: optional script run before the page's own, e.g. stand-ins for
+     the Android app's plugins when the root is its www/ */
+  async function open(shape, save, pre) {
     var tgt = (await send('Target.createTarget', { url: 'about:blank' })).result.targetId;
     var sid = (await send('Target.attachToTarget', { targetId: tgt, flatten: true })).result.sessionId;
     await send('Page.enable', {}, sid);
     await send('Emulation.setDeviceMetricsOverride', shape, sid);
     await send('Page.addScriptToEvaluateOnNewDocument', { source:
-      "try{localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify(save)) + ")}catch(e){}" }, sid);
+      "try{localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify(save)) + ")}catch(e){}" + (pre || '') }, sid);
     await send('Page.navigate', { url: 'http://127.0.0.1:' + port + '/index.html' }, sid);
     await sleep(2000);
     return { tgt: tgt, sid: sid, ev: async function (x) {
