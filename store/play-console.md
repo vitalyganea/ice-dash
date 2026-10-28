@@ -42,6 +42,8 @@ are in `listing.md`.
 | 1.1.3 | 7 | Production | built and uploaded 22 Oct 2026: one picture per step, so a 90 or 120 Hz phone no longer paints every picture twice (reported stutter after about five minutes of play) |
 | 1.1.4 | 8 | Production | built 22 Oct 2026: the hill changes stretch without a stall (reported slowdown each time the map changed in Freeride) |
 | 1.2.0 | 9 | Production | **published 27 Oct 2026 18:08**, full rollout, notes in all six languages (begun 23 Oct 2026): rewarded ads (a revive with no spare life, double the fish) and the Freeride board on Play Games; Play's review card; silent behind the lock screen (the music used to play on); the hill half again as fast on a slow phone (no clip to the ice, plants from pictures, SYSTEMS rows 134-135); Graphics in Settings (effects and sharpness, Auto by default). **Internal testing 27 Oct 2026 16:16** (list "Internal testers": the owner and one more address; opt-in https://play.google.com/apps/internaltest/4701354801625932493). Play Games project 378437852809 on Cloud project `ice-dash-512913`, OAuth consent in production, Android credential with the app signing SHA-1 `E4:C6:8C:…:7E:A3`, board Freeride `CgkIib2d5YELEAIQAQ`, all published 27 Oct. Sent for review 27 Oct 2026 (9 changes): Ads and Advertising ID = Yes, Data safety, store listing in six languages (name "Ice Dash" in each), tags Arcade, Casual, Hyper-casual, Runner |
+| 1.2.1 | 10 | Internal testing | 28 Oct 2026 16:30: the Freeride board in the game's own panel (cups for the first three), the score's answer from Google logged under `IceDashBoard`; splash pictures as WebP, the bundle 8.7 MB instead of 11.8 (uploaded from the browser, which takes at most 10 MB). Its log showed nothing at all for a best of 5183, which led to the cause below |
+| 1.2.2 | 11 | Internal testing | 28 Oct 2026 16:47: the score reaches the board at last (Capacitor's `getLong` gave null for an Integer, so no score had ever been sent). On the OPPO: `score 1767 taken … StatusCode=0 … NewBest=true` for day, week and all time, and the panel showed it first with the gold cup. To go to Production next |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
@@ -55,7 +57,7 @@ language translation found"). Managed publishing is off, so the release went
 live by itself once approved: https://play.google.com/store/apps/details?id=com.veetalea.icedash
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **10**.
+number (`android/app/build.gradle`). The next one is **12**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
