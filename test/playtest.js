@@ -156,12 +156,12 @@ var FAKE_NATIVE = "(function(){var L={};" +
   "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
   " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
   " show:function(){__board.shown++;return Promise.resolve();}," +
-  /* the board's rows: five on top for all time, the player far below
-     them; nobody yet today */
+  /* the board's rows: a hundred players for all time, the player 345th
+     and so below them all; nobody yet today */
   " top:function(o){__board.tops.push(o.span);if(o.span!=='all')return Promise.resolve({rows:[]});" +
-  "  return Promise.resolve({rows:[{rank:1,name:'Pingu',score:52310,me:false},{rank:2,name:'Snowcap',score:40120,me:false}," +
-  "  {rank:3,name:'Ana',score:31000,me:false},{rank:4,name:'A very long Play Games name that will not fit',score:22000,me:false}," +
-  "  {rank:5,name:'Lemming',score:9100,me:false}],me:{rank:31,name:'Me',score:4200,me:true}});}}," +
+  "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
+  "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false});" +
+  "  return Promise.resolve({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
@@ -337,9 +337,17 @@ async function walk(cdp, sid, P) {
       "nums:Array.prototype.map.call(q('.board-place.num'),function(e){return e.textContent;})," +
       "me:Array.prototype.map.call(q('.board-row.me .board-who'),function(e){return e.textContent;})," +
       "gap:q('.board-gap').length,tops:__board.tops.slice(),on:on&&on.getAttribute('data-span')};})()");
-    ok(bd.rows === 6 && bd.cups === 3, 'the button opens the game\'s own board, a cup for each of the first three (' + JSON.stringify(bd) + ')');
-    ok(bd.nums.join(',') === '4,5,31', 'then the places, and the player\'s own far down at the foot');
-    ok(bd.gap === 1 && bd.me.join() === 'Me', 'after a gap, marked as theirs');
+    ok(bd.rows === 101 && bd.cups === 3, 'the button opens the game\'s own board: places 1 to 100, a cup for each of the first three (' + bd.rows + ' rows, ' + bd.cups + ' cups)');
+    ok(bd.nums.slice(0, 2).join(',') === '4,5' && bd.nums[96] === '100' && bd.nums[97] === '345',
+       'then the places to 100, and the player\'s own after them with their real place (' + bd.nums.slice(-2).join(',') + ')');
+    ok(bd.gap === 0 && bd.me.join() === 'Me' && await ev("document.querySelector('#board-list .board-row:last-child').classList.contains('me')"),
+       'the 101st row, marked as theirs');
+    var scr = await ev("(function(){var l=document.getElementById('board-list'),p=document.querySelector('#screen-board .panel').getBoundingClientRect();" +
+      "return {sh:l.scrollHeight,ch:l.clientHeight,ov:getComputedStyle(l).overflowY,top:l.scrollTop,back:document.querySelector('#screen-board [data-action=\"back-title\"]').getBoundingClientRect().bottom<=innerHeight};})()");
+    ok(scr.sh > scr.ch && scr.ov === 'auto' && scr.back,
+       'the list scrolls inside the panel, Back still in view (' + JSON.stringify(scr) + ')');
+    ok(scr.top > 0, 'and opens scrolled to the player\'s own row');
+    ok(!(await ev("!!document.querySelector('[data-action=\"board-google\"]')")), 'no button to Google\'s own board');
     ok(bd.tops[0] === 'all' && bd.on === 'all', 'all time comes first');
     ok((await ev("__board.submits")).indexOf(4200) >= 0,
        'the best already in the save is sent to the board (' + JSON.stringify(await ev("__board.submits")) + ')');
@@ -353,12 +361,13 @@ async function walk(cdp, sid, P) {
     ok((await ev("__board.tops")).slice(-1)[0] === 'day' && await ev("document.querySelectorAll('#board-list .board-row').length") === 0,
        'Today asks for the day');
     ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and an empty day says so');
-    await click('[data-action="board-google"]');
-    await sleep(200);
-    ok(await ev("__board.shown") === 1, 'Google\'s own board is a button away');
     await clickFor('#screen-board [data-action="back-title"]', '#screen-title');
 
     await clickFor('[data-action="settings"]', '#screen-settings');
+    var qa = await ev("Array.prototype.filter.call(document.querySelectorAll('#screen-settings .q-opt[data-q]'),function(b){return b.classList.contains('on');}).map(function(b){return b.getAttribute('data-q')+':'+b.getAttribute('data-v');}).join(' ')");
+    var qn = await ev("(function(){var q=Game.qualityNow();return q.res+','+q.fx;})()");
+    ok(qa === 'fx:2 res:2' && qn === '2,2',
+       'the app starts a save with no graphics chosen at Low effects and Low sharpness (' + qa + ', in use ' + qn + ')');
     var links = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .set-link'),function(a){" +
       "var r=a.getBoundingClientRect();return a.textContent+' '+Math.round(r.height);})");
     ok(links.length === 2 && /Ad privacy/.test(links[1]), 'Settings has the privacy policy and the ad privacy choices (' + links.join(' | ') + ')');

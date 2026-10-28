@@ -20,8 +20,8 @@
        the UK), and Settings gets a way back to it.
      - the Freeride board on Google Play Games, through the app's own
        PlayGames plugin (android/.../PlayGamesPlugin.java): the best is
-       sent there, and the rows come back for ui.js to lay out in the
-       game's own panel. Google's board screen is a button away.
+       sent there, and the rows (places 1 to 100) come back for ui.js to
+       lay out in the game's own panel.
      - Google Play's own review card, at a high point only (a new best,
        three stars) and not before ten runs, at most once a month.
    ui.js is handed the ads and the board through window.ICEDASH_PLATFORM;
@@ -36,6 +36,9 @@
   /* ui.js reads this once, as it loads; this file comes first, so the
      object is put there now and filled in as the plugins answer. */
   var PLAT = window.ICEDASH_PLATFORM = window.ICEDASH_PLATFORM || {};
+  /* A fresh install starts at the lowest graphics on every phone: effects
+     and sharpness both Low (2). Settings can raise them. */
+  PLAT.gfxDefault = { fx: 2, res: 2 };
   /* An ad or Google's board has the screen: the app is behind it, and
      must neither pause a run nor go on playing its tune underneath. */
   var away = false;

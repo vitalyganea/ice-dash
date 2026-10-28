@@ -56,8 +56,9 @@
              /* a short buzz on a phone for the big moments */
              vibrate: true,
              /* Graphics, as chosen in Settings: effects and sharpness, each
-                'auto' (left to the device) or 0 high, 1 medium, 2 low */
-             gfx: { fx: 'auto', res: 'auto' },
+                'auto' (left to the device) or 0 high, 1 medium, 2 low;
+                until then the platform's default (gfxDefault) */
+             gfx: gfxDefault(),
              /* What the badges have already shown: the creatures seen on the
                 shelf while affordable, and the day More modes was last opened.
                 A badge says something new, and looking at it puts it out. */
@@ -84,7 +85,7 @@
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
       save.vibrate = o.vibrate !== false;
-      save.gfx = { fx: gfxLvl(o.gfx && o.gfx.fx), res: gfxLvl(o.gfx && o.gfx.res) };
+      save.gfx = o.gfx && typeof o.gfx === 'object' ? { fx: gfxLvl(o.gfx.fx), res: gfxLvl(o.gfx.res) } : gfxDefault();
       save.fish  = Math.max(0, parseInt(o.fish, 10) || 0);
       save.gold  = Math.max(0, parseInt(o.gold, 10) || 0);
       /* Only ids this build actually knows about survive the load, so a save
@@ -564,10 +565,11 @@
   boardButtons();
 
   /* The board's own panel. Google keeps the scores and native.js fetches
-     them; laid out here like the rest of the game: a cup for each of the
-     first three, the place on a disc after that, the Play Games name and
-     the score. The player's own row is edged in green, and added at the
-     foot, after a gap, when it is further down than the rows shown. */
+     them; laid out here like the rest of the game: places 1 to 100 in a
+     list that scrolls inside the panel, a cup for each of the first three,
+     the place on a disc after that, the Play Games name and the score. The
+     player's own row is edged in green; further down than 100, it comes
+     after the hundredth, with the player's real place on it. */
   var boardSpan = 'all', boardAsk = 0;
   var CUP = [['#ffd84a', '#b97f00'], ['#e8eef4', '#7f8f9e'], ['#eba56b', '#9a531e']];
   function cupSvg(place) {
@@ -626,15 +628,16 @@
       if (ask !== boardAsk || currentScreen !== 'board') return;
       var rows = (r && r.rows) || [], me = r && r.me;
       say(rows.length ? '' : 'board.empty');
-      rows.forEach(function (x) { list.appendChild(boardRow(x)); });
-      if (me && me.rank > rows.length && !rows.some(function (x) { return x.me; })) {
-        var gap = document.createElement('div');
-        gap.className = 'board-gap';
-        gap.textContent = '…';
-        list.appendChild(gap);
+      var mine = null;
+      rows.forEach(function (x) { var el = boardRow(x); if (x.me) mine = el; list.appendChild(el); });
+      if (me && me.rank > 0 && !mine) {
         me.me = true;
-        list.appendChild(boardRow(me));
+        list.appendChild(mine = boardRow(me));
       }
+      /* the list opens at the top, or with the player's own row in view */
+      list.scrollTop = 0;
+      if (mine && mine.offsetTop + mine.offsetHeight > list.clientHeight)
+        list.scrollTop = mine.offsetTop - list.clientHeight / 2 + mine.offsetHeight / 2;
     }, function () {
       if (ask === boardAsk && currentScreen === 'board') say('board.off');
     });
@@ -1006,7 +1009,6 @@
         if (PLAT.boardTop) { shopBack = currentScreen; show('board'); }
         else if (PLAT.boardShow) PLAT.boardShow();
         break;
-      case 'board-google': Sfx.click(); if (PLAT.boardShow) PLAT.boardShow(); break;
       case 'open-find':  openFind(); break;
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
@@ -1080,6 +1082,15 @@
      picture came down to on this device, and when. */
   var Q_KEY = 'icedash-quality', WEEK = 7 * 864e5;
   function gfxLvl(v) { return v === 0 || v === 1 || v === 2 ? v : 'auto'; }
+  /* Where nothing has been chosen yet: the Android app starts every phone at
+     the lowest level (the owner's choice, 28 Oct 2026; native.js says so
+     through PLAT.gfxDefault), the web and Playables at Auto. A level chosen
+     in Settings is kept, and so is a save that already has one. Read
+     straight from window: the save is built before PLAT is. */
+  function gfxDefault() {
+    var d = (window.ICEDASH_PLATFORM || {}).gfxDefault;
+    return { fx: d ? gfxLvl(d.fx) : 'auto', res: d ? gfxLvl(d.res) : 'auto' };
+  }
   function qKeep(tier) {
     if (IN_YT) return;
     try { localStorage.setItem(Q_KEY, JSON.stringify({ tier: tier, t: Date.now() })); } catch (e) {}

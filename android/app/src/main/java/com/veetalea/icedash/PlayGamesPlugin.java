@@ -16,9 +16,16 @@ import com.google.android.gms.games.GamesSignInClient;
 import com.google.android.gms.games.LeaderboardsClient;
 import com.google.android.gms.games.PlayGames;
 import com.google.android.gms.games.PlayGamesSdk;
+import com.google.android.gms.games.PageDirection;
 import com.google.android.gms.games.leaderboard.LeaderboardScore;
+import com.google.android.gms.games.leaderboard.LeaderboardScoreBuffer;
 import com.google.android.gms.games.leaderboard.LeaderboardVariant;
 import com.google.android.gms.tasks.Task;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /* The Freeride board on Google Play Games, for js/native.js.
 
@@ -34,6 +41,8 @@ import com.google.android.gms.tasks.Task;
 @CapacitorPlugin(name = "PlayGames")
 public class PlayGamesPlugin extends Plugin {
     private static final String TAG = "IceDashBoard";
+    /* the board panel shows places 1 to 100; Google gives 25 rows a time */
+    private static final int BOARD_ROWS = 100, PAGE = 25;
     private String board = "";
 
     @Override
@@ -107,7 +116,7 @@ public class PlayGamesPlugin extends Plugin {
         });
     }
 
-    /* The board for the game's own panel: { rows: the best 25 for the span
+    /* The board for the game's own panel: { rows: the best 100 for the span
        ("day", "week" or "all"), each { rank, name, score, me }, me: the
        player's own row, which may be far below them, or absent }. */
     @PluginMethod
@@ -138,29 +147,56 @@ public class PlayGamesPlugin extends Plugin {
                         if (mine.getScoreHolder() != null) myId = mine.getScoreHolder().getPlayerId();
                     }
                     final String me = myId;
-                    lb.loadTopScores(board, span, everyone, 25, true)
-                        .addOnSuccessListener(d -> {
-                            JSArray rows = new JSArray();
-                            LeaderboardsClient.LeaderboardScores got = d.get();
-                            if (got != null) {
-                                try {
-                                    for (LeaderboardScore x : got.getScores()) {
-                                        String id = x.getScoreHolder() != null ? x.getScoreHolder().getPlayerId() : null;
-                                        rows.put(row(x, me != null && me.equals(id)));
-                                    }
-                                } finally {
-                                    got.release();
-                                }
-                            }
-                            r.put("rows", rows);
-                            call.resolve(r);
-                        })
+                    lb.loadTopScores(board, span, everyone, PAGE, true)
+                        .addOnSuccessListener(d -> more(lb, d.get(), new LinkedHashMap<>(), new ArrayList<>(), me, r, call))
                         .addOnFailureListener(e -> {
                             Log.w(TAG, "board not loaded: " + e);
                             call.reject(String.valueOf(e.getMessage()));
                         });
                 });
             });
+    }
+
+    /* One page read, the next asked for with the buffer so far, until there
+       are 100 rows or a page brings no one new. Rows are kept by player, so
+       a page that repeats the ones before it adds nothing twice. */
+    private void more(LeaderboardsClient lb, LeaderboardsClient.LeaderboardScores got, Map<String, JSObject> seen,
+                      List<LeaderboardsClient.LeaderboardScores> held, String me, JSObject r, PluginCall call) {
+        LeaderboardScoreBuffer buf = got != null ? got.getScores() : null;
+        int added = 0;
+        if (got != null) {
+            held.add(got);
+            for (LeaderboardScore x : buf) {
+                String id = x.getScoreHolder() != null ? x.getScoreHolder().getPlayerId() : x.getScoreHolderDisplayName() + "#" + x.getRank();
+                if (!seen.containsKey(id)) {
+                    seen.put(id, row(x, me != null && me.equals(id)));
+                    added++;
+                }
+            }
+        }
+        if (buf == null || added == 0 || seen.size() >= BOARD_ROWS) {
+            finish(seen, held, r, call);
+            return;
+        }
+        lb.loadMoreScores(buf, PAGE, PageDirection.NEXT).addOnCompleteListener(t -> {
+            if (t.isSuccessful() && t.getResult() != null) {
+                more(lb, t.getResult().get(), seen, held, me, r, call);
+            } else {
+                Log.w(TAG, "more rows not loaded: " + t.getException());
+                finish(seen, held, r, call);
+            }
+        });
+    }
+
+    private static void finish(Map<String, JSObject> seen, List<LeaderboardsClient.LeaderboardScores> held,
+                               JSObject r, PluginCall call) {
+        List<JSObject> list = new ArrayList<>(seen.values());
+        list.sort((a, b) -> Long.compare(a.optLong("rank"), b.optLong("rank")));
+        JSArray rows = new JSArray();
+        for (int i = 0; i < Math.min(BOARD_ROWS, list.size()); i++) rows.put(list.get(i));
+        for (LeaderboardsClient.LeaderboardScores h : held) h.release();
+        r.put("rows", rows);
+        call.resolve(r);
     }
 
     private static JSObject row(LeaderboardScore s, boolean me) {
