@@ -19,7 +19,9 @@
        Google's consent form comes first where the law wants one (the EU,
        the UK), and Settings gets a way back to it.
      - the Freeride board on Google Play Games, through the app's own
-       PlayGames plugin (android/.../PlayGamesPlugin.java).
+       PlayGames plugin (android/.../PlayGamesPlugin.java): the best is
+       sent there, and the rows come back for ui.js to lay out in the
+       game's own panel. Google's board screen is a button away.
      - Google Play's own review card, at a high point only (a new best,
        three stars) and not before ten runs, at most once a month.
    ui.js is handed the ads and the board through window.ICEDASH_PLATFORM;
@@ -187,11 +189,12 @@
      Games signs the player in by itself as the app starts. A best is sent
      once the board has taken it; one that could not go (not signed in, no
      network) goes with the next save or after the board is opened. */
-  var PG = P.PlayGames, board = false, best = 0, sent = 0;
+  var PG = P.PlayGames, board = false, best = 0, sent = 0, sending = null;
   function send() {
-    if (!board || best <= sent) return;
+    if (!board || best <= sent) return sending;
     var n = best;
-    PG.submit({ score: n }).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
+    sending = PG.submit({ score: n }).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
+    return sending;
   }
   if (PG && PG.status) {
     PG.status().then(function (st) {
@@ -208,6 +211,15 @@
     function back() { quiet(false); send(); }
     PG.show().then(back, back);
   };
+  /* The rows for the game's own board panel (ui.js), span "day", "week" or
+     "all". A best still on its way goes first, so the player's own row is
+     never behind their title screen. */
+  if (PG && PG.top) {
+    PLAT.boardTop = function (span) {
+      if (!board) return Promise.reject(new Error('no board'));
+      return Promise.resolve(send()).then(function () { return PG.top({ span: span }); });
+    };
+  }
 
   /* ---- asking for a review (Google Play's own card) ---- */
   /* ui.js says when a run ended on a high point. After ten runs the player

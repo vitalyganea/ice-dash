@@ -348,6 +348,26 @@
   </div>
 </section>
 
+<!-- The Freeride board, laid out by the game: only in the Android app.
+     Google Play Games keeps the scores; ui.js draws the rows it is handed,
+     cups for the first three and places after them. -->
+<section id="screen-board" class="screen hidden">
+  <div class="panel panel-wide">
+    <h2 class="panel-title-text" data-i18n="btn.board">Leaderboard</h2>
+    <div class="q-opts board-spans" role="radiogroup">
+      <button class="q-opt" role="radio" data-span="day" data-i18n="board.day">Today</button>
+      <button class="q-opt" role="radio" data-span="week" data-i18n="board.week">This week</button>
+      <button class="q-opt" role="radio" data-span="all" data-i18n="board.all">All time</button>
+    </div>
+    <p id="board-note" class="shop-note"></p>
+    <div id="board-list" class="board-list"></div>
+    <div class="btn-row">
+      <button class="btn btn-blue" data-action="board-google" data-i18n="board.google">Google Play Games</button>
+      <button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button>
+    </div>
+  </div>
+</section>
+
 <section id="screen-ach" class="screen hidden">
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="ach.title">Trophies</h2>

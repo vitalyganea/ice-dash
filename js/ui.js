@@ -188,13 +188,13 @@
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
                   ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'), comic: $('screen-comic'),
-                  revive: $('screen-revive'), tutdone: $('screen-tutdone') };
+                  revive: $('screen-revive'), tutdone: $('screen-tutdone'), board: $('screen-board') };
   var hud = $('hud');
   var currentScreen = 'title';
 
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
-  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1 };
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1 };
   var justOpened = false;
   function show(name) {
     closeSheet();
@@ -219,6 +219,7 @@
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
     if (name === 'runs') buildRuns();
+    if (name === 'board') buildBoard();
     if (name === 'modes') {
       if (save.modesSeen !== dailyKey()) { save.modesSeen = dailyKey(); store(); }
       refreshModes();
@@ -561,6 +562,90 @@
   }
   window.addEventListener('icedash-board', boardButtons);
   boardButtons();
+
+  /* The board's own panel. Google keeps the scores and native.js fetches
+     them; laid out here like the rest of the game: a cup for each of the
+     first three, the place on a disc after that, the Play Games name and
+     the score. The player's own row is edged in green, and added at the
+     foot, after a gap, when it is further down than the rows shown. */
+  var boardSpan = 'all', boardAsk = 0;
+  var CUP = [['#ffd84a', '#b97f00'], ['#e8eef4', '#7f8f9e'], ['#eba56b', '#9a531e']];
+  function cupSvg(place) {
+    var c = CUP[place - 1];
+    return '<svg viewBox="0 0 40 40" role="img" aria-label="' + place + '">' +
+      '<path d="M10.5 10H5.5c0 5.5 2.5 8.5 7 9.2M29.5 10h5c0 5.5-2.5 8.5-7 9.2" fill="none" stroke="' + c[1] +
+        '" stroke-width="2.6" stroke-linecap="round"/>' +
+      '<path d="M10 5.5h20v8c0 6.8-4.4 11.3-10 11.3S10 20.3 10 13.5z" fill="' + c[0] + '" stroke="' + c[1] +
+        '" stroke-width="2.4" stroke-linejoin="round"/>' +
+      '<path d="M13.6 8.5v5c0 2.6 1 4.8 2.6 6.3" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-linecap="round"/>' +
+      '<rect x="17.6" y="24.6" width="4.8" height="5" fill="' + c[1] + '"/>' +
+      '<rect x="11.5" y="29.4" width="17" height="5.6" rx="2" fill="' + c[0] + '" stroke="' + c[1] + '" stroke-width="2.2"/>' +
+      '<text x="20" y="18.2" text-anchor="middle" font-size="10.5" font-weight="900" fill="' + c[1] + '">' + place + '</text>' +
+      '</svg>';
+  }
+  function boardRow(x) {
+    var row = document.createElement('div');
+    row.className = 'board-row' + (x.me ? ' me' : '');
+    var place = document.createElement('span');
+    place.className = 'board-place';
+    if (x.rank >= 1 && x.rank <= 3) place.innerHTML = cupSvg(x.rank);
+    else { place.classList.add('num'); place.textContent = x.rank > 0 ? x.rank : '–'; }
+    var name = document.createElement('span');
+    name.className = 'board-name';
+    var who = document.createElement('span');
+    who.className = 'board-who';
+    who.textContent = x.name || '—';
+    name.appendChild(who);
+    if (x.me) {
+      var you = document.createElement('small');
+      you.textContent = t('board.you');
+      name.appendChild(you);
+    }
+    var score = document.createElement('span');
+    score.className = 'board-score';
+    score.textContent = num(x.score || 0);
+    row.appendChild(place); row.appendChild(name); row.appendChild(score);
+    return row;
+  }
+  function syncBoardSpan() {
+    Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-span]'), function (b) {
+      var on = b.getAttribute('data-span') === boardSpan;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+  function buildBoard() {
+    syncBoardSpan();
+    var list = $('board-list'), note = $('board-note'), ask = ++boardAsk;
+    function say(key) { note.textContent = key ? t(key) : ''; note.classList.toggle('hidden', !key); }
+    list.innerHTML = '';
+    say('board.loading');
+    if (!PLAT.boardTop) { say('board.off'); return; }
+    PLAT.boardTop(boardSpan).then(function (r) {
+      /* a slow answer for a span since left, or a panel since closed */
+      if (ask !== boardAsk || currentScreen !== 'board') return;
+      var rows = (r && r.rows) || [], me = r && r.me;
+      say(rows.length ? '' : 'board.empty');
+      rows.forEach(function (x) { list.appendChild(boardRow(x)); });
+      if (me && me.rank > rows.length && !rows.some(function (x) { return x.me; })) {
+        var gap = document.createElement('div');
+        gap.className = 'board-gap';
+        gap.textContent = '…';
+        list.appendChild(gap);
+        me.me = true;
+        list.appendChild(boardRow(me));
+      }
+    }, function () {
+      if (ask === boardAsk && currentScreen === 'board') say('board.off');
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-span]'), function (b) {
+    b.addEventListener('click', function () {
+      Sfx.click();
+      boardSpan = b.getAttribute('data-span');
+      buildBoard();
+    });
+  });
 
   function commitRun(res) {
     var wasOpen = freeUnlocked();
@@ -916,7 +1001,12 @@
       case 'use-life':   useLife(); break;
       case 'ad-life':    Sfx.click(); adLife(); break;
       case 'ad-double':  Sfx.click(); adDouble(); break;
-      case 'board':      Sfx.click(); if (PLAT.boardShow) PLAT.boardShow(); break;
+      case 'board':
+        Sfx.click();
+        if (PLAT.boardTop) { shopBack = currentScreen; show('board'); }
+        else if (PLAT.boardShow) PLAT.boardShow();
+        break;
+      case 'board-google': Sfx.click(); if (PLAT.boardShow) PLAT.boardShow(); break;
       case 'open-find':  openFind(); break;
       case 'no-life':    Sfx.click(); noLife(); break;
       case 'help':       Sfx.click(); show('help'); break;
@@ -949,7 +1039,7 @@
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
-             currentScreen === 'ach' || currentScreen === 'runs') &&
+             currentScreen === 'ach' || currentScreen === 'runs' || currentScreen === 'board') &&
             (shopBack === 'over' || shopBack === 'pause' ||
              (shopBack === 'shop' && currentScreen === 'ach'))) {   // Trophies opened from Aurora's window
           var back = shopBack; shopBack = null; show(back); break;
@@ -1009,7 +1099,7 @@
   }
   function syncQuality() {
     var now = Game.qualityNow();
-    Array.prototype.forEach.call(document.querySelectorAll('.q-opt'), function (b) {
+    Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-q]'), function (b) {
       var q = b.getAttribute('data-q'), v = b.getAttribute('data-v'), want = save.gfx[q];
       var on = String(want) === v;
       b.classList.toggle('on', on);
@@ -1020,7 +1110,7 @@
   }
   function applyGfx(tier) { Game.quality(save.gfx, tier); syncQuality(); }
   Game.onQualityStep(function (tier) { qKeep(tier); syncQuality(); });
-  Array.prototype.forEach.call(document.querySelectorAll('.q-opt'), function (b) {
+  Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-q]'), function (b) {
     b.addEventListener('click', function () {
       var v = b.getAttribute('data-v');
       save.gfx[b.getAttribute('data-q')] = v === 'auto' ? 'auto' : +v;

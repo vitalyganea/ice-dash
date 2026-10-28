@@ -41,7 +41,7 @@ are in `listing.md`.
 | 1.1.2 | 6 | Production (first) | **published 22 Oct 2026 about 11:12**, an hour after it was sent for review (10:16, submission 6), full rollout, 178 countries and regions; built on Linux, checked on an Android 15 emulator: panels change shape before they shrink, comic buttons, Romanian letters, plurals (everything up to 5b42dab) |
 | 1.1.3 | 7 | Production | built and uploaded 22 Oct 2026: one picture per step, so a 90 or 120 Hz phone no longer paints every picture twice (reported stutter after about five minutes of play) |
 | 1.1.4 | 8 | Production | built 22 Oct 2026: the hill changes stretch without a stall (reported slowdown each time the map changed in Freeride) |
-| 1.2.0 | 9 | Production | in progress 23 Oct 2026: rewarded ads (a revive with no spare life, double the fish) and the Freeride board on Play Games; Play's review card; silent behind the lock screen (the music used to play on); the hill half again as fast on a slow phone (no clip to the ice, plants from pictures, SYSTEMS rows 134-135); Graphics in Settings (effects and sharpness, Auto by default). **Internal testing 27 Oct 2026 16:16** (list "Internal testers": the owner and one more address; opt-in https://play.google.com/apps/internaltest/4701354801625932493). Play Games project 378437852809 on Cloud project `ice-dash-512913`, OAuth consent in production, Android credential with the app signing SHA-1 `E4:C6:8C:…:7E:A3`, board Freeride `CgkIib2d5YELEAIQAQ`, all published 27 Oct. Sent for review 27 Oct 2026 (9 changes): Ads and Advertising ID = Yes, Data safety, store listing in six languages (name "Ice Dash" in each), tags Arcade, Casual, Hyper-casual, Runner |
+| 1.2.0 | 9 | Production | **published 27 Oct 2026 18:08**, full rollout, notes in all six languages (begun 23 Oct 2026): rewarded ads (a revive with no spare life, double the fish) and the Freeride board on Play Games; Play's review card; silent behind the lock screen (the music used to play on); the hill half again as fast on a slow phone (no clip to the ice, plants from pictures, SYSTEMS rows 134-135); Graphics in Settings (effects and sharpness, Auto by default). **Internal testing 27 Oct 2026 16:16** (list "Internal testers": the owner and one more address; opt-in https://play.google.com/apps/internaltest/4701354801625932493). Play Games project 378437852809 on Cloud project `ice-dash-512913`, OAuth consent in production, Android credential with the app signing SHA-1 `E4:C6:8C:…:7E:A3`, board Freeride `CgkIib2d5YELEAIQAQ`, all published 27 Oct. Sent for review 27 Oct 2026 (9 changes): Ads and Advertising ID = Yes, Data safety, store listing in six languages (name "Ice Dash" in each), tags Arcade, Casual, Hyper-casual, Runner |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
@@ -55,7 +55,7 @@ language translation found"). Managed publishing is off, so the release went
 live by itself once approved: https://play.google.com/store/apps/details?id=com.veetalea.icedash
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **9** (1.2.0, being prepared).
+number (`android/app/build.gradle`). The next one is **10**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
@@ -119,7 +119,10 @@ it, once, with the same Google account as Play Console:
    key's SHA-1 (above) lets a build signed here sign in too.
 3. Leaderboards → Add leaderboard: **Freeride**, numeric, no decimals,
    larger is better → its **leaderboard id** (`CgkI…`) →
-   `leaderboard_freeride` in `play-ids.xml`.
+   `leaderboard_freeride` in `play-ids.xml`. Tamper protection was on at
+   first and turned off (and published) on 28 Oct 2026: the board stayed
+   empty although 1.2.0 had sent a best of 17477 from a phone signed in to
+   Play Games (Play Console showed no scores at all).
 4. Testers: add the testers' accounts; then Review and publish the Play
    Games configuration (it can go out before the app does).
 

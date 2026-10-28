@@ -135,7 +135,7 @@ var PLATFORMS = {
    unless __adSkip is set, when it is closed early. Everything asked of
    them is counted. */
 var FAKE_NATIVE = "(function(){var L={};" +
-  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0};window.__reviews=0;" +
+  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[]};window.__reviews=0;" +
   "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
   "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
   "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
@@ -155,7 +155,13 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " addListener:on}," +
   "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
   " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
-  " show:function(){__board.shown++;return Promise.resolve();}}," +
+  " show:function(){__board.shown++;return Promise.resolve();}," +
+  /* the board's rows: five on top for all time, the player far below
+     them; nobody yet today */
+  " top:function(o){__board.tops.push(o.span);if(o.span!=='all')return Promise.resolve({rows:[]});" +
+  "  return Promise.resolve({rows:[{rank:1,name:'Pingu',score:52310,me:false},{rank:2,name:'Snowcap',score:40120,me:false}," +
+  "  {rank:3,name:'Ana',score:31000,me:false},{rank:4,name:'A very long Play Games name that will not fit',score:22000,me:false}," +
+  "  {rank:5,name:'Lemming',score:9100,me:false}],me:{rank:31,name:'Me',score:4200,me:true}});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
@@ -323,11 +329,34 @@ async function walk(cdp, sid, P) {
       "return {rowBottom:Math.round(b.bottom),vh:innerHeight};})()");
     ok(fit.rowBottom <= fit.vh, 'and the title still fits the window with it (' + JSON.stringify(fit) + ')');
     await shot('a1-title');
-    await clickFor('#title-board', null);
-    await sleep(200);
-    ok(await ev("__board.shown") === 1, 'the button opens the Play Games board');
+    await clickFor('#title-board', '#screen-board');
+    await sleep(300);
+    var bd = await ev("(function(){var q=function(s){return document.querySelectorAll('#board-list '+s);};" +
+      "var on=document.querySelector('.q-opt[data-span].on');" +
+      "return {rows:q('.board-row').length,cups:q('.board-place svg').length," +
+      "nums:Array.prototype.map.call(q('.board-place.num'),function(e){return e.textContent;})," +
+      "me:Array.prototype.map.call(q('.board-row.me .board-who'),function(e){return e.textContent;})," +
+      "gap:q('.board-gap').length,tops:__board.tops.slice(),on:on&&on.getAttribute('data-span')};})()");
+    ok(bd.rows === 6 && bd.cups === 3, 'the button opens the game\'s own board, a cup for each of the first three (' + JSON.stringify(bd) + ')');
+    ok(bd.nums.join(',') === '4,5,31', 'then the places, and the player\'s own far down at the foot');
+    ok(bd.gap === 1 && bd.me.join() === 'Me', 'after a gap, marked as theirs');
+    ok(bd.tops[0] === 'all' && bd.on === 'all', 'all time comes first');
     ok((await ev("__board.submits")).indexOf(4200) >= 0,
        'the best already in the save is sent to the board (' + JSON.stringify(await ev("__board.submits")) + ')');
+    var rowFit = await ev("Array.prototype.every.call(document.querySelectorAll('#board-list .board-row'),function(r){" +
+      "var s=r.querySelector('.board-score').getBoundingClientRect(),b=r.getBoundingClientRect();" +
+      "return s.width>0&&s.right<=b.right+0.5&&b.height>=44;})");
+    ok(rowFit, 'a long name leaves the score on its row, and every row is a finger tall');
+    await shot('a1b-board');
+    await click('.q-opt[data-span="day"]');
+    await sleep(200);
+    ok((await ev("__board.tops")).slice(-1)[0] === 'day' && await ev("document.querySelectorAll('#board-list .board-row').length") === 0,
+       'Today asks for the day');
+    ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and an empty day says so');
+    await click('[data-action="board-google"]');
+    await sleep(200);
+    ok(await ev("__board.shown") === 1, 'Google\'s own board is a button away');
+    await clickFor('#screen-board [data-action="back-title"]', '#screen-title');
 
     await clickFor('[data-action="settings"]', '#screen-settings');
     var links = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .set-link'),function(a){" +
@@ -367,6 +396,9 @@ async function walk(cdp, sid, P) {
     await crashOut();
     ok(!(await visible('#screen-revive')) && await waitFor('#screen-over', 6000), 'the second crash ends the run: one ad revive a run');
     ok(await visible('#over-board'), 'a Freeride result offers the board');
+    await clickFor('#over-board', '#screen-board');
+    await clickFor('#screen-board [data-action="back-title"]', '#screen-over');
+    ok(await visible('#screen-over'), 'and Back from the board comes back to the results');
     ok(await visible('#over-double'), 'and doubling the fish for an ad');
     await shot('a3-over');
     /* Fish picked up after the 12 count too, so the results say how many. */

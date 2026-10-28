@@ -701,6 +701,41 @@ body{
 .q-opt:focus-visible{ outline:3px solid #ffd84a; outline-offset:3px; }
 .q-opt.on{ background:linear-gradient(180deg,#3ad6a0 0%,#21c48a 100%); border-color:#178a62; color:#fff; }
 .q-opt.in-use{ border-style:dashed; border-color:#21c48a; }
+
+/* ---- the Freeride board (the Android app) ----
+   Google's scores in the game's own clothes: the spans as the same
+   buttons as Graphics, a cup for each of the first three, a numbered disc
+   after them, and the player's own row edged in green like an earned
+   trophy. Long names end in an ellipsis rather than pushing the score
+   off the row. */
+.board-spans{ grid-template-columns:repeat(3, auto); margin:0 0 10px; }
+@media (max-width:380px){ .board-spans{ grid-template-columns:repeat(3, minmax(0, 1fr)); max-width:none; }
+                          .board-spans .q-opt{ padding:6px 4px; min-width:0; } }   /* "Săptămâna" on a 360 px phone */
+.board-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 6px; }
+.board-row{
+  display:flex; align-items:center; gap:10px;
+  min-height:50px; padding:5px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.8);
+  border:2px solid transparent;
+  text-align:left;
+}
+.board-row.me{ background:rgba(236,250,241,.94); border-color:var(--green); }
+.board-place{ flex:0 0 auto; width:40px; height:40px; display:grid; place-items:center; }
+.board-place svg{ width:40px; height:40px; display:block; }
+.board-place.num{
+  width:32px; height:32px; margin:0 4px; border-radius:50%;
+  font-weight:800; font-size:15px; color:var(--ink-soft);
+  background:rgba(70,110,150,.13);
+}
+.board-name{
+  flex:1 1 auto; min-width:0; display:flex; align-items:baseline; gap:6px;
+  font-weight:800; font-size:clamp(14px,2.2vw,17px); color:var(--ink);
+}
+.board-who{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.board-name small{ flex:0 0 auto; font-size:12px; color:#0b7560; }
+.board-score{ flex:0 0 auto; font-weight:800; font-size:clamp(14px,2.2vw,17px); color:var(--gold-dark); }
+.board-gap{ text-align:center; font-weight:800; color:var(--ink-soft); line-height:1; }
 .q-note{ margin:8px 0 0; font-size:13px; text-align:center; color:var(--ink-soft); }
 
 /* Android only (js/native.js). Padded out to a 44px target: the links
