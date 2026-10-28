@@ -73,9 +73,14 @@ public class PlayGamesPlugin extends Plugin {
        did not, and native.js sends it again later. */
     @PluginMethod
     public void submit(PluginCall call) {
-        Long score = call.getLong("score");
+        /* Not call.getLong: Capacitor gives a value back only when the number
+           arrived as a Long, and a score from the page arrives as an Integer
+           (17477 fits in one), so getLong said null, the score was taken for
+           missing, and up to 1.2.1 no score ever reached the board. */
+        long score = call.getData().optLong("score", 0);
         JSObject r = new JSObject();
-        if (board.isEmpty() || score == null || score <= 0) {
+        if (board.isEmpty() || score <= 0) {
+            Log.i(TAG, "score not sent: " + (board.isEmpty() ? "no board" : "no score (" + call.getData().opt("score") + ")"));
             r.put("sent", false);
             call.resolve(r);
             return;

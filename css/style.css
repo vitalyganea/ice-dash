@@ -710,7 +710,7 @@ body{
    off the row. */
 .board-spans{ grid-template-columns:repeat(3, auto); margin:0 0 10px; }
 @media (max-width:380px){ .board-spans{ grid-template-columns:repeat(3, minmax(0, 1fr)); max-width:none; }
-                          .board-spans .q-opt{ padding:6px 4px; min-width:0; } }   /* "Săptămâna" on a 360 px phone */
+                          .board-spans .q-opt{ padding:6px 4px; min-width:0; font-size:13px; white-space:nowrap; } }   /* "Săptămâna", "Всё время" on a 360 px phone */
 .board-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 6px; }
 .board-row{
   display:flex; align-items:center; gap:10px;

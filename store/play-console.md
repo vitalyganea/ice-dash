@@ -122,7 +122,9 @@ it, once, with the same Google account as Play Console:
    `leaderboard_freeride` in `play-ids.xml`. Tamper protection was on at
    first and turned off (and published) on 28 Oct 2026: the board stayed
    empty although 1.2.0 had sent a best of 17477 from a phone signed in to
-   Play Games (Play Console showed no scores at all).
+   Play Games (Play Console showed no scores at all). It was not the cause: the app never sent a score, because Capacitor's
+   `getLong` gives null for a number that arrives as an Integer (fixed in
+   1.2.2, SYSTEMS.md row 136). It may be turned on again.
 4. Testers: add the testers' accounts; then Review and publish the Play
    Games configuration (it can go out before the app does).
 
