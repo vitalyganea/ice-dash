@@ -685,8 +685,20 @@ body{
 /* Graphics: a label over four choices in a row, two by two on a narrow
    phone rather than three and one left over. The one chosen is filled;
    with Auto chosen, the level Auto is using has a dashed edge. */
-.q-row{ margin-top:8px; }
-.q-label{ display:block; margin:4px 0 6px; font-size:14px; font-weight:800; color:var(--ink); text-align:center; }
+.q-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:330px; margin:8px auto 0; }
+.q-label{ font-size:15px; font-weight:800; color:var(--ink); }
+.q-sel{
+  flex:0 0 auto; min-height:44px; min-width:160px; padding:6px 40px 6px 14px;
+  font:inherit; font-size:15px; font-weight:800; color:var(--ink);
+  background:linear-gradient(180deg,#ffffff 0%,#e6f4fb 100%);
+  border:2px solid rgba(43,93,134,.45); border-radius:14px;
+  box-shadow:0 3px 0 rgba(43,93,134,.35);
+  -webkit-appearance:none; appearance:none; cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230f3a55' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+                   linear-gradient(180deg,#ffffff 0%,#e6f4fb 100%);
+  background-repeat:no-repeat, no-repeat; background-position:right 14px center, 0 0; background-size:12px 8px, 100% 100%;
+}
+.q-sel:focus-visible{ outline:3px solid #ffd84a; outline-offset:3px; }
 .q-opts{ display:grid; grid-template-columns:repeat(4, auto); gap:6px; justify-content:center; }
 @media (max-width:380px){ .q-opts{ grid-template-columns:repeat(2, minmax(0, 1fr)); max-width:250px; margin:0 auto; } }
 .q-opt{

@@ -22,6 +22,8 @@
        PlayGames plugin (android/.../PlayGamesPlugin.java): the best is
        sent there, and the rows (places 1 to 100) come back for ui.js to
        lay out in the game's own panel.
+     - the save kept in the player's Play Games account (saved games), so
+       installing the game again, or a new phone, brings everything back.
      - Google Play's own review card, at a high point only (a new best,
        three stars) and not before ten runs, at most once a month.
    ui.js is handed the ads and the board through window.ICEDASH_PLATFORM;
@@ -222,6 +224,33 @@
       if (!board) return Promise.reject(new Error('no board'));
       return Promise.resolve(send()).then(function () { return PG.top({ span: span }); });
     };
+  }
+
+  /* ---- the save in the cloud (Play Games saved games) ----
+     ui.js reads it once at the start (PLAT.cloudLoad) and, once the cloud
+     has answered, hands over every save (PLAT.cloudSave). Saves are put
+     together for a few seconds and sent one at a time, the last one wins;
+     going out of sight sends what is waiting at once. */
+  if (PG && PG.cloudLoad && PG.cloudSave) {
+    var cloudNext = null, cloudBusy = false, cloudTimer = 0;
+    var flushCloud = function () {
+      clearTimeout(cloudTimer);
+      if (cloudBusy || !cloudNext) return;
+      var c = cloudNext;
+      cloudNext = null;
+      cloudBusy = true;
+      PG.cloudSave(c).then(done, done);
+      function done() { cloudBusy = false; if (cloudNext) cloudTimer = setTimeout(flushCloud, 1000); }
+    };
+    PLAT.cloudLoad = function () {
+      return PG.cloudLoad().then(function (r) { return r || {}; }, function () { return {}; });
+    };
+    PLAT.cloudSave = function (data, progress) {
+      cloudNext = { data: data, progress: progress };
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(flushCloud, 4000);
+    };
+    if (P.App && P.App.addListener) P.App.addListener('pause', flushCloud);
   }
 
   /* ---- asking for a review (Google Play's own card) ---- */

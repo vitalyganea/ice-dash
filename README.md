@@ -125,8 +125,8 @@ one side. A tap sends him the other way. That is the whole game.
 - 🏅 **24 trophies**, each paying out in fish — distance, catches, crevasses
   cleared, creatures owned. Progress is shown whether or not you have earned
   one, so a locked row still tells you how close you are
-- A **settings** screen: sound, music, vibration, graphics (effects and sharpness,
-  each Auto or High, Medium, Low) and the language
+- A **settings** screen: sound, music, vibration, graphics (two lists: effects
+  Auto, High, Medium, Low or Off; sharpness Auto, High, Medium or Low) and the language
 - **English and Russian.** English is the fallback for every string. Baloo 2
   has no Cyrillic at all, so a subset of Nunito is embedded alongside it and
   `unicode-range` picks between them per glyph — an English player downloads

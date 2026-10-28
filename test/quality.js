@@ -60,6 +60,11 @@ ok(q.fx === 0 && q.res === 1, 'effects chosen High, sharpness left to auto: only
 ok(stepped.length === 1, 'each step is handed out to be remembered on the device (' + stepped.join(',') + ')');
 G.quality({ fx: 2, res: 0 });
 ok(G.qualityNow().fx === 2 && G.qualityNow().res === 0 && canvas.width === 824, 'low effects at full sharpness, as chosen (' + canvas.width + ')');
+G.quality({ fx: 3, res: 0 });
+ok(G.qualityNow().fx === 3, 'effects Off, as chosen');
+G.quality({ fx: 0, res: 3 });
+q = G.qualityNow();
+ok(q.res !== 3, 'Off is for effects only: sharpness has no such level (' + JSON.stringify(q) + ')');
 G.quality({ fx: 'auto', res: 'auto' }, 1);
 q = G.qualityNow();
 ok(q.tier === 1 && q.res === 1 && q.fx === 0, 'auto again, from the tier the device remembers (' + JSON.stringify(q) + ')');

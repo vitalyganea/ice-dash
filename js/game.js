@@ -1739,6 +1739,7 @@ var Game = (function () {
     ctx.setTransform(drawK, 0, 0, drawK, 0, 0);
     ctx.globalAlpha = 1;
     var shx = (frand() - 0.5) * W.shake, shy = (frand() - 0.5) * W.shake;
+    if (OFF) shx = shy = 0;              // effects Off: the picture holds still
     /* Behind the title on a wide screen the menu stands on the left, so
        the demo's camera looks at the hill from the right half instead. */
     var camX = (W.demo && VIEW_W > VIEW_H * 1.15) ? VIEW_W * 0.24 : 0;
@@ -1762,7 +1763,7 @@ var Game = (function () {
     drawEmberGlow();
     drawNeon();
     drawSightLine();
-    drawTrail();
+    if (!OFF) drawTrail();
     drawObjects();
     drawSpeedStreaks();
     drawAurora();
@@ -1780,7 +1781,7 @@ var Game = (function () {
     ctx.restore();
     ctx.save();
     ctx.translate(shx, shy);
-    drawFlakes();         /* falling snow is in front of the lens, not on the hill */
+    if (!OFF) drawFlakes();  /* falling snow is in front of the lens, not on the hill */
     ctx.restore();
     drawLight();
     PLAYER_Y = keepPY0;
@@ -7141,7 +7142,8 @@ var Game = (function () {
      pixel) and how much is painted on it that tells you nothing about the
      hill (FX: at 1 LITE, the patches in the ice and the drifts and glints
      on the banks; at 2 SPARE as well, the weather thinned and the glows put
-     out). Nothing that tells you about the hill is ever touched: the fog
+     out; at 3, Off, chosen only, the weather, the track behind the rider and
+     the shake go too). Nothing that tells you about the hill is ever touched: the fog
      that hides the way ahead, the lava, the hazards all stay.
      Each part is the player's choice in Settings, or left to the device
      (auto, the default). Left to it, the picture steps down the LADDER
@@ -7160,14 +7162,14 @@ var Game = (function () {
      stretches out of seven and made the picture soft; it is there to be
      chosen, for a big screen on a weak chip. */
   var LADDER = [[0, 0], [1, 0], [1, 1], [1, 2]];
-  var RES = 0, FX = 0, LOWRES = false, LITE = false, SPARE = false;
+  var RES = 0, FX = 0, LOWRES = false, LITE = false, SPARE = false, OFF = false;
   var qWant = { res: 'auto', fx: 'auto' }, qTier = 0, qNext = 1, onQStep = null;
   var slowEma = 16, slowN = 0;
   function applyQuality() {
     var t = LADDER[qTier];
     RES = qWant.res === 'auto' ? t[0] : qWant.res;
     FX = qWant.fx === 'auto' ? t[1] : qWant.fx;
-    LOWRES = RES >= 1; LITE = FX >= 1; SPARE = FX >= 2;
+    LOWRES = RES >= 1; LITE = FX >= 1; SPARE = FX >= 2; OFF = FX >= 3;
     /* the light laid over the canvas (index.html #light) is one more pass
        over the whole screen, for looks only */
     if (typeof document !== 'undefined') {
@@ -7322,8 +7324,9 @@ var Game = (function () {
        for each part ('auto', or 0 high to 2 low) and the tier the device
        had come down to. Either may be left out. Returns what is in use. */
     quality: function (want, tier) {
-      function lvl(v) { return v === 0 || v === 1 || v === 2 ? v : 'auto'; }
-      if (want) qWant = { res: lvl(want.res), fx: lvl(want.fx) };
+      /* effects go one step further than sharpness: 3 is Off */
+      function lvl(v, top) { return v === 0 || v === 1 || v === 2 || (top && v === 3) ? v : 'auto'; }
+      if (want) qWant = { res: lvl(want.res), fx: lvl(want.fx, true) };
       if (tier !== undefined) qTier = Math.max(0, Math.min(LADDER.length - 1, tier | 0));
       applyQuality();
       if (canvas) resize();

@@ -398,23 +398,25 @@
     <!-- Graphics: each part Auto (left to the device, the default) or a
          level of the player's own. ui.js marks the level Auto is using. -->
     <h3 class="set-head" data-i18n="set.graphics">Graphics</h3>
+    <!-- Two lists, not eight buttons: effects (Off as well) and sharpness. -->
     <div class="q-row">
-      <span class="q-label" id="q-fx-l" data-i18n="set.effects">Effects</span>
-      <div class="q-opts" role="radiogroup" aria-labelledby="q-fx-l">
-        <button class="q-opt" role="radio" data-q="fx" data-v="auto" data-i18n="q.auto">Auto</button>
-        <button class="q-opt" role="radio" data-q="fx" data-v="0" data-i18n="q.high">High</button>
-        <button class="q-opt" role="radio" data-q="fx" data-v="1" data-i18n="q.mid">Medium</button>
-        <button class="q-opt" role="radio" data-q="fx" data-v="2" data-i18n="q.low">Low</button>
-      </div>
+      <label class="q-label" for="q-fx" data-i18n="set.effects">Effects</label>
+      <select class="q-sel" id="q-fx" data-q="fx">
+        <option value="auto" data-i18n="q.auto">Auto</option>
+        <option value="0" data-i18n="q.high">High</option>
+        <option value="1" data-i18n="q.mid">Medium</option>
+        <option value="2" data-i18n="q.low">Low</option>
+        <option value="3" data-i18n="q.off">Off</option>
+      </select>
     </div>
     <div class="q-row">
-      <span class="q-label" id="q-res-l" data-i18n="set.sharp">Sharpness</span>
-      <div class="q-opts" role="radiogroup" aria-labelledby="q-res-l">
-        <button class="q-opt" role="radio" data-q="res" data-v="auto" data-i18n="q.auto">Auto</button>
-        <button class="q-opt" role="radio" data-q="res" data-v="0" data-i18n="q.high">High</button>
-        <button class="q-opt" role="radio" data-q="res" data-v="1" data-i18n="q.mid">Medium</button>
-        <button class="q-opt" role="radio" data-q="res" data-v="2" data-i18n="q.low">Low</button>
-      </div>
+      <label class="q-label" for="q-res" data-i18n="set.sharp">Sharpness</label>
+      <select class="q-sel" id="q-res" data-q="res">
+        <option value="auto" data-i18n="q.auto">Auto</option>
+        <option value="0" data-i18n="q.high">High</option>
+        <option value="1" data-i18n="q.mid">Medium</option>
+        <option value="2" data-i18n="q.low">Low</option>
+      </select>
     </div>
     <p class="q-note" data-i18n="set.qauto">Auto adjusts to this device.</p>
 

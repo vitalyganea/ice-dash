@@ -85,7 +85,7 @@
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
       save.vibrate = o.vibrate !== false;
-      save.gfx = o.gfx && typeof o.gfx === 'object' ? { fx: gfxLvl(o.gfx.fx), res: gfxLvl(o.gfx.res) } : gfxDefault();
+      save.gfx = o.gfx && typeof o.gfx === 'object' ? { fx: gfxLvl(o.gfx.fx, true), res: gfxLvl(o.gfx.res) } : gfxDefault();
       save.fish  = Math.max(0, parseInt(o.fish, 10) || 0);
       save.gold  = Math.max(0, parseInt(o.gold, 10) || 0);
       /* Only ids this build actually knows about survive the load, so a save
@@ -158,13 +158,70 @@
       for (var i = 0; !raw && i < OLD_KEYS.length; i++) raw = localStorage.getItem(OLD_KEYS[i]);
       adopt(raw);
     } catch (e) {}
-    return Promise.resolve();
+    if (!PLAT.cloudLoad) return Promise.resolve();
+    /* A save with runs in it starts at once and hears from the cloud later.
+       A new one waits a moment for it, so a player who has installed the
+       game again is not shown the tutorial over a save that is coming. */
+    var asked = PLAT.cloudLoad(), answered = false;
+    if (save.runs) { asked.then(cloudLate); return Promise.resolve(); }
+    return Promise.race([
+      asked.then(function (r) { answered = true; cloudTake(r); }),
+      new Promise(function (r) { setTimeout(r, CLOUD_WAIT); })
+    ]).then(function () { if (!answered) asked.then(cloudLate); });
+  }
+
+  /* ---- the save in the cloud (the Android app: Play Games saved games) ----
+     The whole save also lives in the player's Play Games account, so
+     installing the game again, or a new phone, brings everything back.
+     Of two saves the one with more in it wins: more runs, then more fish
+     caught. Nothing is written to the cloud before it has answered, so a
+     phone that could not reach it, or a new one still waiting, never puts
+     an empty save over a full one. The graphics stay this phone's own. */
+  var CLOUD_WAIT = 5000;
+  var cloudKnown = false;
+  function cloudProgress(o) {
+    if (!o) return -1;
+    return Math.max(0, parseInt(o.runs, 10) || 0) * 100000 + Math.max(0, parseInt(o.totFish, 10) || 0);
+  }
+  /* the cloud's answer; true when its save had more in it and was taken */
+  function cloudTake(r) {
+    if (!r || !r.ok) return false;
+    cloudKnown = true;
+    var o = null;
+    try { o = r.data ? JSON.parse(r.data) : null; } catch (e) {}
+    if (!o || typeof o !== 'object' || cloudProgress(o) <= cloudProgress(save)) return false;
+    var gfx = save.gfx;
+    adopt(r.data);
+    save.gfx = gfx;
+    return true;
+  }
+  function pushCloud(data) {
+    if (cloudKnown && PLAT.cloudSave) PLAT.cloudSave(data || JSON.stringify(save), cloudProgress(save));
+  }
+  /* an answer that came after the game had started */
+  function cloudLate(r) {
+    if (cloudTake(r)) { settle(); store(); }
+    else pushCloud();
+  }
+  /* What a loaded save sets going: its language, its trophies, its
+     switches, its graphics, its sound and its best on the board. At the
+     start (first) the caller then picks the screen; when the cloud's save
+     comes in later the screen in view is drawn again, unless a run is on. */
+  function settle(first) {
+    setLang(save.lang);           // the cloud save may disagree with the device
+    applyI18n();
+    achCheck(save);               // anything the loaded save already earned
+    syncToggles();
+    applyGfx();                   // the save's own choice; the device's tier stays
+    Sfx.sound(save.sfx);
+    if (!first && currentScreen !== 'game') show(currentScreen);
+    pushScore();
   }
   function store() {
     if (!canSave) return;
     if (saving) { saveAgain = true; return; }
     var data = JSON.stringify(save);
-    if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} pushScore(); return; }
+    if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} pushScore(); pushCloud(data); return; }
     saving = true;
     window.ytgame.game.saveData(data).then(done, function () {
       window.ytgame.game.saveData(data).then(done, done);
@@ -1081,7 +1138,8 @@
      is the only store; there auto starts over each time): the tier the
      picture came down to on this device, and when. */
   var Q_KEY = 'icedash-quality', WEEK = 7 * 864e5;
-  function gfxLvl(v) { return v === 0 || v === 1 || v === 2 ? v : 'auto'; }
+  /* 0 high, 1 medium, 2 low, and for effects 3, Off */
+  function gfxLvl(v, fx) { return v === 0 || v === 1 || v === 2 || (fx && v === 3) ? v : 'auto'; }
   /* Where nothing has been chosen yet: the Android app starts every phone at
      the lowest level (the owner's choice, 28 Oct 2026; native.js says so
      through PLAT.gfxDefault), the web and Playables at Auto. A level chosen
@@ -1089,7 +1147,7 @@
      straight from window: the save is built before PLAT is. */
   function gfxDefault() {
     var d = (window.ICEDASH_PLATFORM || {}).gfxDefault;
-    return { fx: d ? gfxLvl(d.fx) : 'auto', res: d ? gfxLvl(d.res) : 'auto' };
+    return { fx: d ? gfxLvl(d.fx, true) : 'auto', res: d ? gfxLvl(d.res) : 'auto' };
   }
   function qKeep(tier) {
     if (IN_YT) return;
@@ -1108,23 +1166,24 @@
       return tier;
     } catch (e) { return 0; }
   }
+  /* The two lists show what is chosen; with Auto chosen, its line says the
+     level Auto is using now, "Auto · Medium". */
+  var Q_NAMES = ['q.high', 'q.mid', 'q.low', 'q.off'];
   function syncQuality() {
     var now = Game.qualityNow();
-    Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-q]'), function (b) {
-      var q = b.getAttribute('data-q'), v = b.getAttribute('data-v'), want = save.gfx[q];
-      var on = String(want) === v;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-checked', on ? 'true' : 'false');
-      /* with Auto chosen, the level it is using now is marked as well */
-      b.classList.toggle('in-use', want === 'auto' && v === String(now[q]));
+    Array.prototype.forEach.call(document.querySelectorAll('.q-sel'), function (sel) {
+      var q = sel.getAttribute('data-q'), want = save.gfx[q];
+      sel.value = String(want);
+      var auto = sel.querySelector('option[value="auto"]');
+      auto.textContent = want === 'auto' ? t('q.auto') + ' · ' + t(Q_NAMES[now[q]]) : t('q.auto');
     });
   }
   function applyGfx(tier) { Game.quality(save.gfx, tier); syncQuality(); }
   Game.onQualityStep(function (tier) { qKeep(tier); syncQuality(); });
-  Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-q]'), function (b) {
-    b.addEventListener('click', function () {
-      var v = b.getAttribute('data-v');
-      save.gfx[b.getAttribute('data-q')] = v === 'auto' ? 'auto' : +v;
+  Array.prototype.forEach.call(document.querySelectorAll('.q-sel'), function (sel) {
+    sel.addEventListener('change', function () {
+      var v = sel.value;
+      save.gfx[sel.getAttribute('data-q')] = v === 'auto' ? 'auto' : +v;
       store(); Sfx.click(); applyGfx();
     });
   });
@@ -2032,6 +2091,7 @@
     open.appendChild(nm);
     open.setAttribute('aria-label', t('set.language') + ': ' + langLabel(getLang()));
     syncToggles();
+    syncQuality();
   }
   function buildLangs() {
     var row = $('lang-row');
@@ -2168,12 +2228,8 @@
     announce('firstFrameReady');
     loadSave().then(function () {
       canSave = true;
-      setLang(save.lang);           // the cloud save may disagree with the device
-      applyI18n();
-      achCheck(save);               // anything the loaded save already earned
-      syncToggles();
-      applyGfx();                   // the save's own choice; the device's tier stays
-      Sfx.sound(save.sfx);
+      settle(true);
+      if (cloudKnown) store();      // the cloud's save kept here, or this one given to it
       /* Someone who has never ridden at all goes straight into the
          tutorial instead of a menu of things they have no words for yet.
          An existing save with runs in it never sees it unasked. */
@@ -2184,7 +2240,6 @@
         else ride('tutorial');
       }
       else show(currentScreen === 'title' ? 'title' : currentScreen);
-      pushScore();
       announce('gameReady');
     });
   });

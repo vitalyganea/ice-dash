@@ -17,11 +17,15 @@ import com.google.android.gms.games.LeaderboardsClient;
 import com.google.android.gms.games.PlayGames;
 import com.google.android.gms.games.PlayGamesSdk;
 import com.google.android.gms.games.PageDirection;
+import com.google.android.gms.games.SnapshotsClient;
 import com.google.android.gms.games.leaderboard.LeaderboardScore;
 import com.google.android.gms.games.leaderboard.LeaderboardScoreBuffer;
 import com.google.android.gms.games.leaderboard.LeaderboardVariant;
+import com.google.android.gms.games.snapshot.Snapshot;
+import com.google.android.gms.games.snapshot.SnapshotMetadataChange;
 import com.google.android.gms.tasks.Task;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +47,8 @@ public class PlayGamesPlugin extends Plugin {
     private static final String TAG = "IceDashBoard";
     /* the board panel shows places 1 to 100; Google gives 25 rows a time */
     private static final int BOARD_ROWS = 100, PAGE = 25;
+    /* the whole save, as one saved game in the player's Play Games account */
+    private static final String CLOUD = "icedash-save";
     private String board = "";
 
     @Override
@@ -197,6 +203,90 @@ public class PlayGamesPlugin extends Plugin {
         for (LeaderboardsClient.LeaderboardScores h : held) h.release();
         r.put("rows", rows);
         call.resolve(r);
+    }
+
+    /* The save kept in the player's Play Games account (saved games, turned
+       on in Play Console), so a phone that has the game installed again, or
+       a new phone, gets its fish, creatures and records back.
+       cloudLoad: { ok: the cloud answered, signedIn, data: the save's JSON
+       or null when there is none yet }. It never asks the player to sign
+       in: at the start the game only listens. */
+    @PluginMethod
+    public void cloudLoad(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("ok", false);
+        if (board.isEmpty()) {
+            call.resolve(r);
+            return;
+        }
+        signIn().isAuthenticated().addOnCompleteListener(t -> {
+            r.put("signedIn", in(t));
+            if (!in(t)) {
+                call.resolve(r);
+                return;
+            }
+            SnapshotsClient sc = PlayGames.getSnapshotsClient(getActivity());
+            sc.open(CLOUD, true, SnapshotsClient.RESOLUTION_POLICY_HIGHEST_PROGRESS).addOnCompleteListener(o -> {
+                if (!o.isSuccessful() || o.getResult() == null) {
+                    Log.w(TAG, "cloud save not read: " + o.getException());
+                    call.resolve(r);
+                    return;
+                }
+                SnapshotsClient.DataOrConflict<Snapshot> dc = o.getResult();
+                Snapshot snap = dc.isConflict() ? dc.getConflict().getSnapshot() : dc.getData();
+                try {
+                    byte[] b = snap.getSnapshotContents().readFully();
+                    r.put("data", b != null && b.length > 0 ? new String(b, StandardCharsets.UTF_8) : null);
+                    r.put("ok", true);
+                    Log.i(TAG, "cloud save read: " + (b == null ? 0 : b.length) + " bytes");
+                } catch (Exception e) {
+                    Log.w(TAG, "cloud save not read: " + e);
+                }
+                sc.discardAndClose(snap);
+                call.resolve(r);
+            });
+        });
+    }
+
+    /* cloudSave({ data, progress }): { saved }. progress orders two saves
+       that disagree (two phones): Google keeps the one with more. */
+    @PluginMethod
+    public void cloudSave(PluginCall call) {
+        String data = call.getString("data");
+        long progress = call.getData().optLong("progress", 0);
+        JSObject r = new JSObject();
+        r.put("saved", false);
+        if (board.isEmpty() || data == null) {
+            call.resolve(r);
+            return;
+        }
+        signIn().isAuthenticated().addOnCompleteListener(t -> {
+            if (!in(t)) {
+                call.resolve(r);
+                return;
+            }
+            SnapshotsClient sc = PlayGames.getSnapshotsClient(getActivity());
+            sc.open(CLOUD, true, SnapshotsClient.RESOLUTION_POLICY_HIGHEST_PROGRESS).addOnCompleteListener(o -> {
+                if (!o.isSuccessful() || o.getResult() == null) {
+                    Log.w(TAG, "cloud save not written: " + o.getException());
+                    call.resolve(r);
+                    return;
+                }
+                SnapshotsClient.DataOrConflict<Snapshot> dc = o.getResult();
+                Snapshot snap = dc.isConflict() ? dc.getConflict().getSnapshot() : dc.getData();
+                snap.getSnapshotContents().writeBytes(data.getBytes(StandardCharsets.UTF_8));
+                SnapshotMetadataChange change = new SnapshotMetadataChange.Builder()
+                    .setDescription("Ice Dash")
+                    .setProgressValue(progress)
+                    .build();
+                sc.commitAndClose(snap, change).addOnCompleteListener(c -> {
+                    if (c.isSuccessful()) Log.i(TAG, "cloud save written: " + data.length() + " chars, progress " + progress);
+                    else Log.w(TAG, "cloud save not written: " + c.getException());
+                    r.put("saved", c.isSuccessful());
+                    call.resolve(r);
+                });
+            });
+        });
     }
 
     private static JSObject row(LeaderboardScore s, boolean me) {

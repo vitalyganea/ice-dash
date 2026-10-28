@@ -19,8 +19,9 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
 - `PLAYABLES.md` lists every certification requirement and where it is met. Keep it true.
 - Graphics levels (`js/game.js` LITE, SPARE; Settings > Graphics): a new effect that is
   only for looks stops at low effects (`if (SPARE) return`); nothing that tells the player
-  about the hill (fog, lava, hazards) ever does. Static scenery is drawn from a picture
-  (`drawPictured`), never painted fresh each frame.
+  about the hill (fog, lava, hazards) ever does. Effects Off (`OFF`, only when chosen)
+  also drops the falling snow, the groove behind him and the shake. Static scenery is
+  drawn from a picture (`drawPictured`), never painted fresh each frame.
 
 ## Adding content (standing rules — apply without being asked)
 
@@ -61,8 +62,10 @@ is the only Android-only game code, beside the app's own Play Games plugin
 (`android/app/src/main/java/.../PlayGamesPlugin.java`). It hands ui.js the
 rewarded ads and the Freeride board through `window.ICEDASH_PLATFORM`; the
 ids Google gives are in `android/app/src/main/res/values/play-ids.xml` and
-`AD_UNIT` in `native.js` (empty = Google's test ads, no board). It also asks
-for a Play review (`PLAT.goodMoment`, from ui.js on a new best or a first
+`AD_UNIT` in `native.js` (empty = Google's test ads, no board). It keeps the
+save in the player's Play Games account too (saved games: `PLAT.cloudLoad` and
+`cloudSave`; ui.js reads it once at the start and keeps whichever save has more
+in it). It also asks for a Play review (`PLAT.goodMoment`, from ui.js on a new best or a first
 three stars) through `@capacitor-community/in-app-review`. Out of sight
 (Capacitor's App `pause`: the phone locked, Home) it pauses a run and stops
 the sound with `Sfx.hold`; the web view would play on behind the lock screen.

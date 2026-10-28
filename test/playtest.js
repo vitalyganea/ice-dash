@@ -135,7 +135,7 @@ var PLATFORMS = {
    unless __adSkip is set, when it is closed early. Everything asked of
    them is counted. */
 var FAKE_NATIVE = "(function(){var L={};" +
-  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[]};window.__reviews=0;" +
+  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[]};window.__reviews=0;window.__cloud={loads:0,saves:[]};" +
   "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
   "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
   "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
@@ -161,7 +161,11 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " top:function(o){__board.tops.push(o.span);if(o.span!=='all')return Promise.resolve({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
   "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false});" +
-  "  return Promise.resolve({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}}," +
+  "  return Promise.resolve({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}," +
+  /* the save in the cloud: none, unless the tab was given one */
+  " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
+  "  return Promise.resolve({ok:true,signedIn:true,data:d});}," +
+  " cloudSave:function(o){__cloud.saves.push(o);return Promise.resolve({saved:true});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
@@ -364,7 +368,7 @@ async function walk(cdp, sid, P) {
     await clickFor('#screen-board [data-action="back-title"]', '#screen-title');
 
     await clickFor('[data-action="settings"]', '#screen-settings');
-    var qa = await ev("Array.prototype.filter.call(document.querySelectorAll('#screen-settings .q-opt[data-q]'),function(b){return b.classList.contains('on');}).map(function(b){return b.getAttribute('data-q')+':'+b.getAttribute('data-v');}).join(' ')");
+    var qa = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .q-sel'),function(s){return s.getAttribute('data-q')+':'+s.value;}).join(' ')");
     var qn = await ev("(function(){var q=Game.qualityNow();return q.res+','+q.fx;})()");
     ok(qa === 'fx:2 res:2' && qn === '2,2',
        'the app starts a save with no graphics chosen at Low effects and Low sharpness (' + qa + ', in use ' + qn + ')');
@@ -478,6 +482,34 @@ async function walk(cdp, sid, P) {
     await ev("__fire('resume'); 1");
     await sleep(300);
 
+    /* The save in the cloud (Play Games saved games). The cloud had none,
+       so it was given this one, put together a few seconds at a time and
+       sent at once when the app went out of sight. */
+    var cs = await ev("__cloud.saves.map(function(c){var o=JSON.parse(c.data);return o.runs+':'+c.progress;})");
+    var runsNow = (await readSave()).runs;
+    ok(await ev("__cloud.loads") === 1 && cs.length >= 1 && cs.length < 12,
+       'the cloud is asked once at the start, then given the save, a few at a time (' + cs.length + ' sends)');
+    ok(cs[cs.length - 1].split(':')[0] == runsNow && +cs[cs.length - 1].split(':')[1] >= runsNow * 100000,
+       'the last one as it is now, its progress counted from the runs (' + cs[cs.length - 1] + ')');
+
+    /* Installed again on a phone with nothing on it: the save comes back
+       from the cloud before anything is shown, and the graphics stay this
+       phone's own. */
+    var fromCloud = JSON.stringify({ best: 31000, runs: 120, fish: 7777, gold: 9, owned: ['snowcap', 'mitten'],
+      equipped: 'mitten', lang: 'en', tutDone: true, totFish: 5000, gfx: { fx: 0, res: 0 }, comicSeen: { snowcap: true } });
+    await ev("sessionStorage.setItem('fresh','1');sessionStorage.setItem('cloud'," + JSON.stringify(fromCloud) +
+      ");localStorage.removeItem('icedash-save-v1');Game.stop&&Game.stop();1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    await sleep(2000);
+    var back = await readSave();
+    ok(back.runs === 120 && back.fish === 7777 && back.best === 31000 && back.equipped === 'mitten' && back.owned.indexOf('mitten') >= 0,
+       'installed again: the fish, the creatures and the best come back from the cloud (' + back.runs + ' runs, ' + back.fish + ' fish)');
+    ok(await visible('#screen-title') && !(await visible('#screen-comic')) && !(await visible('#hud')),
+       'and the title is shown, not the comic and the tutorial of a new player');
+    ok(back.gfx.fx === 2 && back.gfx.res === 2 && await ev("(function(){var q=Game.qualityNow();return q.res+','+q.fx;})()") === '2,2',
+       'the graphics stay this phone\'s own, Low and Low');
+    await ev("sessionStorage.removeItem('cloud');sessionStorage.removeItem('fresh');1");
+
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
 
@@ -578,19 +610,26 @@ async function walk(cdp, sid, P) {
   ok(sfx1 === !sfx0 && shows === sfx1, 'the Sounds switch turns sound ' + (sfx1 ? 'on' : 'off') +
      ' and shows it (' + sfx0 + ' -> ' + sfx1 + ')');
   await click('#t-sfx');
-  /* Graphics: Auto by default; a level chosen is used at once, saved, and
-     shown; Auto again gives the picture back to the device. */
-  var qo = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .q-opt'),function(b){" +
-    "var r=b.getBoundingClientRect();return {q:b.getAttribute('data-q'),v:b.getAttribute('data-v'),on:b.classList.contains('on'),h:Math.round(r.height),w:Math.round(r.width)};})");
-  ok(qo.length === 8 && qo.every(function (o) { return o.h >= 44 && o.w >= 44; }),
-     'Settings offers Effects and Sharpness, four choices each, every one at least 44 px (' + qo.map(function (o) { return o.w + 'x' + o.h; }).join(' ') + ')');
-  ok(qo.filter(function (o) { return o.on; }).map(function (o) { return o.q + ':' + o.v; }).join(' ') === 'fx:auto res:auto', 'both start on Auto');
+  /* Graphics: two lists, Effects (Off as well) and Sharpness, Auto by
+     default; a level chosen is used at once, saved, and shown; Auto again
+     gives the picture back to the device. */
+  var qo = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .q-sel'),function(s){" +
+    "var r=s.getBoundingClientRect();return {q:s.getAttribute('data-q'),v:s.value,n:s.options.length,h:Math.round(r.height),w:Math.round(r.width),auto:s.options[0].textContent};})");
+  ok(qo.length === 2 && qo[0].q === 'fx' && qo[0].n === 5 && qo[1].q === 'res' && qo[1].n === 4 &&
+     qo.every(function (o) { return o.h >= 44 && o.w >= 44; }),
+     'Settings has two lists, Effects with five levels (Off as well) and Sharpness with four, each at least 44 px (' + JSON.stringify(qo) + ')');
+  ok(qo[0].v === 'auto' && qo[1].v === 'auto' && /^Auto · /.test(qo[0].auto), 'both start on Auto, which says the level it is using (' + qo[0].auto + ')');
   var fx0 = await ev("Game.qualityNow().fx");
-  await click('#screen-settings .q-opt[data-q="fx"][data-v="2"]');
-  var qs = await ev("JSON.stringify({save:JSON.parse(localStorage.getItem('icedash-save-v1')).gfx,now:Game.qualityNow(),on:document.querySelector('.q-opt[data-q=\"fx\"][data-v=\"2\"]').classList.contains('on'),light:document.getElementById('light').classList.contains('spare')})");
-  qs = JSON.parse(qs);
-  ok(qs.save.fx === 2 && qs.now.fx === 2 && qs.on && qs.light, 'Low effects is used at once, saved and shown (' + JSON.stringify(qs) + ')');
-  await click('#screen-settings .q-opt[data-q="fx"][data-v="auto"]');
+  async function pick(q, v) {
+    await ev("(function(){var s=document.querySelector('#screen-settings .q-sel[data-q=\"" + q + "\"]');s.value='" + v + "';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+    await sleep(150);
+  }
+  await pick('fx', '2');
+  var qs = JSON.parse(await ev("JSON.stringify({save:JSON.parse(localStorage.getItem('icedash-save-v1')).gfx,now:Game.qualityNow(),v:document.querySelector('.q-sel[data-q=\"fx\"]').value,light:document.getElementById('light').classList.contains('spare')})"));
+  ok(qs.save.fx === 2 && qs.now.fx === 2 && qs.v === '2' && qs.light, 'Low effects is used at once, saved and shown (' + JSON.stringify(qs) + ')');
+  await pick('fx', '3');
+  ok(await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).gfx.fx === 3 && Game.qualityNow().fx === 3"), 'and Off turns the effects off altogether');
+  await pick('fx', 'auto');
   ok(await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).gfx.fx === 'auto' && Game.qualityNow().fx === " + fx0), 'and Auto gives it back to the device');
   await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
   ok(await waitFor('#screen-title'), 'Back returns to the title');
