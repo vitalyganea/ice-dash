@@ -222,7 +222,7 @@ async function start(root, port, dport) {
     ws.close(); try { process.kill(-ch.pid); } catch (e) { ch.kill(); } server.close();
     try { fs.rmSync(prof, { recursive: true, force: true }); } catch (e) {}
   }
-  return { open: open, shoot: shoot, close: close, cover: cover, video: video, stop: stop };
+  return { open: open, shoot: shoot, close: close, cover: cover, video: video, stop: stop, cdp: send };
 }
 
 module.exports = { start: start, sleep: sleep, mkdir: mkdir, flatten: flatten, icon: icon, SAVE: SAVE, RIDE: RIDE, RIDE_HUMAN: RIDE_HUMAN };

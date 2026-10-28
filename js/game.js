@@ -1941,19 +1941,27 @@ var Game = (function () {
        used to look exactly as quick as at 76m. The streaks carry it: they
        stretch, thin and brighten as he picks up, so the floor is visibly
        tearing past by the end. */
-    var sp = pace();
+    var sp = pace(), s, sy, sx;
     ctx.strokeStyle = B.streak || 'rgba(255,255,255,.5)';   // streaks of polished ice
-    for (i = 0; i < W.streaks.length; i++) {
-      var s = W.streaks[i];
-      var sy = scrY(s.d);
-      if (sy > VIEW_H + 320) { s.d += LOOK + 200; s.x = frnd(-CHUTE, CHUTE); continue; }
-      if (sy < -320) continue;
-      ctx.globalAlpha = s.a * (1.9 + 3.4 * sp);
-      ctx.lineWidth = 4 - 2.2 * sp;
-      var sx = scrX(chuteAt(s.d) + s.x);
+    ctx.lineWidth = 4 - 2.2 * sp;
+    for (i = 0; i < W.streaks.length; i++) {          // the ones gone below come round again
+      s = W.streaks[i];
+      if (scrY(s.d) > VIEW_H + 320) { s.d += LOOK + 200; s.x = frnd(-CHUTE, CHUTE); }
+    }
+    /* A hundred streaks, each its own shade of 0.05 to 0.22: drawn in six
+       bands of shade, one stroke a band, rather than a stroke a streak. */
+    for (var sb = 0; sb < 6; sb++) {
+      ctx.globalAlpha = (0.05 + (sb + 0.5) * 0.17 / 6) * (1.9 + 3.4 * sp);
       ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx + 6, sy + s.len * (1 + 4.2 * sp));
+      for (i = 0; i < W.streaks.length; i++) {
+        s = W.streaks[i];
+        if (Math.min(5, ((s.a - 0.05) / 0.17 * 6) | 0) !== sb) continue;
+        sy = scrY(s.d);
+        if (sy < -320 || sy > VIEW_H + 320) continue;
+        sx = scrX(chuteAt(s.d) + s.x);
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + 6, sy + s.len * (1 + 4.2 * sp));
+      }
       ctx.stroke();
     }
     drawIceDetail(B);
@@ -2068,13 +2076,25 @@ var Game = (function () {
       ctx.fillStyle = p.tint || B.snowA;     // pure white glares on the night run
       ctx.beginPath(); ctx.arc(scrX(p.x), scrY(p.d), p.s, 0, 6.2832); ctx.fill();
     }
-    ctx.strokeStyle = B.snowA; ctx.lineCap = 'round';
-    for (i = 0; i < W.spray.length; i++) {              // the fan of snow off his edge
-      var q = W.spray[i], qx = scrX(q.x), qy = scrY(q.d);
-      ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.95;
-      ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(qx - q.vx * 2.2, qy + q.vd * 2.2);
-      ctx.strokeStyle = B.bankShade; ctx.lineWidth = q.s * 2.2; ctx.stroke();      // a rim, so it shows on pale ice
-      ctx.strokeStyle = B.snowA; ctx.lineWidth = q.s * 1.5; ctx.stroke();
+    /* The fan of snow off his edge, seventy-odd flecks: in five steps of
+       fading and two sizes, each a rim (so it shows on pale ice) and then
+       the white, one stroke apiece, rather than two strokes a fleck. */
+    ctx.lineCap = 'round';
+    for (var qa = 0; qa < 5; qa++) for (var qz = 0; qz < 2; qz++) {
+      var some = false;
+      ctx.beginPath();
+      for (i = 0; i < W.spray.length; i++) {
+        var q = W.spray[i];
+        if (Math.min(4, (Math.max(0, q.life / q.max) * 5) | 0) !== qa || (q.s >= 2.4 ? 1 : 0) !== qz) continue;
+        var qx = scrX(q.x), qy = scrY(q.d);
+        ctx.moveTo(qx, qy); ctx.lineTo(qx - q.vx * 2.2, qy + q.vd * 2.2);
+        some = true;
+      }
+      if (!some) continue;
+      var qs = qz ? 2.9 : 1.9;                        // the middle of each size, 1.4 to 3.4
+      ctx.globalAlpha = (qa + 0.5) / 5 * 0.95;
+      ctx.strokeStyle = B.bankShade; ctx.lineWidth = qs * 2.2; ctx.stroke();
+      ctx.strokeStyle = B.snowA; ctx.lineWidth = qs * 1.5; ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
@@ -4127,18 +4147,61 @@ var Game = (function () {
      up: longer fins, a brighter flank, and sparks coming off it. */
   function drawFish(x, y, o, gold) {
     var ph = W.t * 0.24 + o.ph;
-    var tail = Math.sin(ph) * 0.42;
     var bend = Math.sin(ph - 0.8) * 0.3;             // the body trails the tail
-    var L = gold ? 25 : 18, Hh = gold ? 13 : 10;
-
-    ctx.save();
-    ctx.translate(x, y + Math.sin(W.t * 0.07 + o.ph) * 3);
-    ctx.rotate(Math.PI / 2 + bend * 0.3);
+    var L = gold ? 25 : 18;
+    var by = y + Math.sin(W.t * 0.07 + o.ph) * 3;
 
     var halo = gold ? 0.3 + 0.16 * Math.sin(W.t * 0.13 + o.ph) : 0.22;
     ctx.fillStyle = gold ? 'rgba(255,205,60,' + halo.toFixed(2) + ')'
                          : 'rgba(150,215,255,.22)';
-    ctx.beginPath(); ctx.arc(0, 0, L * 1.35, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, by, L * 1.35, 0, 6.2832); ctx.fill();
+
+    /* The fish itself is the same at the same point of its stroke, so on
+       the hill it comes from one of FISH_FRAMES pictures of the stroke:
+       one picture, not a dozen shapes and two fresh gradients, a fish a
+       frame. Anywhere else (the icons) it is painted as it always was. */
+    var pic = ctx.canvas === canvas ? fishPic(gold, ph) : null;
+    if (pic) { blit(pic, x, by); if (!gold) return; }
+    ctx.save();
+    ctx.translate(x, by);
+    ctx.rotate(Math.PI / 2 + bend * 0.3);
+    if (!pic) fishBody(gold, ph);
+
+    if (gold) {                                      // sparks coming off it
+      ctx.fillStyle = 'rgba(255,248,200,.9)';
+      for (var sp = 0; sp < 3; sp++) {
+        var sa = W.t * 0.06 + o.ph + sp * 2.1;
+        var sr = L * (1.1 + 0.16 * Math.sin(W.t * 0.11 + sp));
+        var ss = 1.4 + 1.1 * Math.abs(Math.sin(W.t * 0.09 + sp * 1.7));
+        ctx.beginPath();
+        ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr * 0.62, ss, 0, 6.2832);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  var FISH_FRAMES = 24, fishPics = { k: 0, n: [], g: [] };
+  function fishPic(gold, ph) {
+    if (fishPics.k !== drawK) fishPics = { k: drawK, n: [], g: [] };
+    var set = gold ? fishPics.g : fishPics.n;
+    var f = Math.round((ph % 6.2832 + 6.2832) % 6.2832 / 6.2832 * FISH_FRAMES) % FISH_FRAMES;
+    if (set[f] === undefined) {
+      var fph = f / FISH_FRAMES * 6.2832;
+      set[f] = spriteOf(-38, -38, 38, 38, function (ox, oy) {
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(Math.PI / 2 + Math.sin(fph - 0.8) * 0.3 * 0.3);
+        fishBody(gold, fph);
+        ctx.restore();
+      });
+    }
+    return set[f];
+  }
+  /* the fish at one point of its stroke, around its middle, nose up */
+  function fishBody(gold, ph) {
+    var tail = Math.sin(ph) * 0.42;
+    var bend = Math.sin(ph - 0.8) * 0.3;
+    var L = gold ? 25 : 18, Hh = gold ? 13 : 10;
 
     ctx.save(); ctx.rotate(tail);                    // tail fin
     var tg = ctx.createLinearGradient(L * 0.4, 0, L * 1.2, 0);
@@ -4202,19 +4265,6 @@ var Game = (function () {
     ctx.beginPath(); ctx.arc(-L * 0.6, -Hh * 0.22, Hh * 0.3, 0, 6.2832); ctx.fill();
     ctx.fillStyle = '#23304a';
     ctx.beginPath(); ctx.arc(-L * 0.62, -Hh * 0.22, Hh * 0.15, 0, 6.2832); ctx.fill();
-
-    if (gold) {                                      // sparks coming off it
-      ctx.fillStyle = 'rgba(255,248,200,.9)';
-      for (var sp = 0; sp < 3; sp++) {
-        var sa = W.t * 0.06 + o.ph + sp * 2.1;
-        var sr = L * (1.1 + 0.16 * Math.sin(W.t * 0.11 + sp));
-        var ss = 1.4 + 1.1 * Math.abs(Math.sin(W.t * 0.09 + sp * 1.7));
-        ctx.beginPath();
-        ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr * 0.62, ss, 0, 6.2832);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
   }
 
   /* A bubble of trapped air, not a glass marble: it wobbles as it drifts,
@@ -4565,13 +4615,19 @@ var Game = (function () {
     c.save();
     c.beginPath(); c.ellipse(0, 2, 21, 23, 0, 0, 6.2832); c.clip();
     c.lineWidth = 0.8;
-    for (var fr = 0, fy = -17; fy <= 24; fy += 3.6, fr++) {
-      for (var fx = -21 + (fr % 2) * 2.6; fx <= 21; fx += 5.2) {
-        c.strokeStyle = 'rgba(255,255,255,.05)';
-        c.beginPath(); c.arc(fx, fy, 2.8, 0.5, 2.64); c.stroke();
-        c.strokeStyle = 'rgba(0,0,0,.07)';
-        c.beginPath(); c.arc(fx, fy + 0.8, 2.8, 0.6, 2.54); c.stroke();
+    /* every light edge in one path and every shadow in another: two
+       strokes, not two for each of a hundred feathers, every frame */
+    for (var fp = 0; fp < 2; fp++) {
+      var fa0 = fp ? 0.6 : 0.5, fa1 = fp ? 2.54 : 2.64, fdy = fp ? 0.8 : 0;
+      c.strokeStyle = fp ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.05)';
+      c.beginPath();
+      for (var fr = 0, fy = -17; fy <= 24; fy += 3.6, fr++) {
+        for (var fx = -21 + (fr % 2) * 2.6; fx <= 21; fx += 5.2) {
+          c.moveTo(fx + 2.8 * Math.cos(fa0), fy + fdy + 2.8 * Math.sin(fa0));
+          c.arc(fx, fy + fdy, 2.8, fa0, fa1);
+        }
       }
+      c.stroke();
     }
     c.restore();
 
@@ -6204,6 +6260,20 @@ var Game = (function () {
   function drawFlakes() {
     var A = (pal().air) || AIR0, hot = A.hot || 0, f, i, a;
     var lim = Math.round(W.flakes.length * (0.34 + 0.66 * (A.n === undefined ? 0 : A.n)) * (SPARE ? 0.4 : 1));
+    if (!hot) {
+      /* plain snow is one colour at one strength: one path, one fill */
+      ctx.globalAlpha = A.a;
+      ctx.fillStyle = 'rgb(' + A.rgb + ')';
+      ctx.beginPath();
+      for (i = 0; i < lim; i++) {
+        f = W.flakes[i];
+        ctx.moveTo(f.x + f.r, f.y);
+        ctx.arc(f.x, f.y, f.r, 0, 6.2832);
+      }
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (hot > 0.02) ctx.globalCompositeOperation = 'lighter';
     for (i = 0; i < lim; i++) {
       f = W.flakes[i];

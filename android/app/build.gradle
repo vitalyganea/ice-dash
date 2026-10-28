@@ -39,10 +39,14 @@ android {
         debug {
             applicationIdSuffix '.debug'
         }
+        /* R8 shrinks and optimises the code (Play asked for it). What is
+           reached only by name from the page — the plugins and their
+           methods — is kept by Capacitor's own rules and proguard-rules.pro.
+           Resources are left as they are: the splash is looked up by name. */
         release {
             if (ksFile.exists()) signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
