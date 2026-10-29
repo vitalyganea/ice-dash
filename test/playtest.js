@@ -387,11 +387,33 @@ async function walk(cdp, sid, P) {
     var links = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .set-link'),function(a){" +
       "var r=a.getBoundingClientRect();return a.textContent+' '+Math.round(r.height);})");
     ok(links.length === 2 && /Ad privacy/.test(links[1]), 'Settings has the privacy policy and the ad privacy choices (' + links.join(' | ') + ')');
+    ok(await ev("(function(){var l=document.querySelector('#screen-settings .set-link'),b=document.getElementById('lang-open');" +
+       "return !!l && !!b && !!(b.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING);})()"),
+       'under the language, not between it and its heading');
     ok(links.every(function (l) { return +l.split(' ').pop() >= 44; }), 'both at least 44 px tall');
     await click('#screen-settings .set-link:last-of-type');
     await sleep(200);
     ok(await ev("__ads.privacy") === 1, 'which opens Google\'s ad privacy form');
     await clickFor('#btn-back', '#screen-title');
+
+    /* A phone with its display size turned up is 320 px across (the
+       user's OPPO A9): on Trophies nothing lies over the words beside it,
+       and the prize keeps room for its own. */
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 711, deviceScaleFactor: 2.25, mobile: true }, sid);
+    await sleep(300);
+    await clickFor('[data-action="trophies"]', '#screen-ach');
+    await sleep(500);
+    var narrow = await ev("(function(){var bad=0,owed=0,rows=document.querySelectorAll('.ach-row');rows.forEach(function(r){" +
+      "var m=r.querySelector('.ach-mid').getBoundingClientRect(),g=r.querySelector('.ach-right').getBoundingClientRect();" +
+      "if(r.classList.contains('owed'))owed++;if(g.left<m.right-1&&g.top<m.bottom-1&&g.bottom>m.top+1)bad++;});" +
+      "var pm=document.querySelector('.prize-mid');return {rows:rows.length,owed:owed,bad:bad,mid:pm?Math.round(pm.getBoundingClientRect().width):null," +
+      "wide:document.documentElement.scrollWidth<=innerWidth};})()");
+    ok(narrow.rows > 20 && narrow.bad === 0 && narrow.wide && (narrow.mid === null || narrow.mid >= 120),
+       '320 px across: no trophy\'s count or claim button lies over its words, and the prize\'s words have room (' + JSON.stringify(narrow) + ')');
+    await clickFor('#btn-back', '#screen-title');
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: P.w, height: P.h, deviceScaleFactor: 3, mobile: P.mobile }, sid);
+    await sleep(300);
+
 
     /* A crash with no life in hand: the ad stands in for one. */
     async function crashOut() {

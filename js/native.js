@@ -101,18 +101,19 @@
   /* ---- privacy policy ---- */
   /* A plain link: the app's web view hands any address that is not its own
      to the phone's browser. */
+  /* At the end of the panel, under the language. They went in before its
+     last row of buttons, which was Back; with Back gone that was the
+     language, and the links came between it and its heading. */
   var setPanel = document.querySelector('#screen-settings .panel');
-  var setRows = setPanel ? setPanel.querySelectorAll('.btn-row') : [];
-  var setBack = setRows[setRows.length - 1];   // Back; the language row is one too
   function setLink(key, en) {
     var a = document.createElement('a');
     a.className = 'set-link';
     a.setAttribute('data-i18n', key);
     a.textContent = typeof t === 'function' ? t(key) : en;
-    setPanel.insertBefore(a, setBack);
+    setPanel.appendChild(a);
     return a;
   }
-  if (setBack) setLink('set.privacy', 'Privacy policy').href = 'https://vitalyganea.github.io/ice-dash/privacy.html';
+  if (setPanel) setLink('set.privacy', 'Privacy policy').href = 'https://vitalyganea.github.io/ice-dash/privacy.html';
 
   /* ---- rewarded ads (AdMob) ---- */
   /* AD_UNIT is the rewarded unit from the AdMob console ("Revive and
@@ -152,7 +153,7 @@
       if (info && info.status === 'REQUIRED' && info.isConsentFormAvailable) return Ad.showConsentForm();
       return info;
     }).then(function (info) {
-      if (info && info.privacyOptionsRequirementStatus === 'REQUIRED' && setBack) {
+      if (info && info.privacyOptionsRequirementStatus === 'REQUIRED' && setPanel) {
         setLink('set.adprivacy', 'Ad privacy choices').addEventListener('click', function (e) {
           e.preventDefault();
           Ad.showPrivacyOptionsForm().then(null, function () {});
