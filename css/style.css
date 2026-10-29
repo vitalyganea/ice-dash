@@ -1796,3 +1796,26 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
   display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); column-gap:24px; align-items:center;
 }
 #screen-over.fit-wide .over-side > .btn-row:first-child{ margin-top:6px; }
+
+/* ===================== AIR BETWEEN BUTTONS =====================
+   Measured on the phone: from one button's 3D edge (8 px under it, 6 under
+   the best's plaque) to the snow on the next (11 px over it; the quiet
+   ghost buttons have none) there was 1 to 3 px of clear space, and on a
+   short title -7: the snow lay on the button above. --air is that clear
+   space now, the same between any two buttons one over the other. */
+:root{ --air:10px; }
+.btn-row{ row-gap:calc(var(--air) + 19px); }
+.btn-row + .btn-row{ margin-top:calc(var(--air) + 19px); }
+.btn-row.modes, .btn-row.modes-list{ row-gap:calc(var(--air) + 19px); }
+.btn-row.row-three{ row-gap:calc(var(--air) + 8px); }               /* ghost over ghost */
+#screen-title.fit-tight, #screen-over.fit-tight{ --air:6px; }
+#screen-over.fit-tight .btn-row + .btn-row{ margin-top:calc(var(--air) + 19px); }
+/* the title, a step at a time (not when its two halves stand side by side) */
+#screen-title .best-plaque{ margin-bottom:0; }
+#screen-title:not(.fit-wide) .panel-title .title-menu > .btn-row{ margin-top:calc(var(--air) + 19px); }
+#screen-title:not(.fit-wide) .panel-title .title-menu > .btn-row.modes{ margin-top:calc(var(--air) + 17px); }
+#screen-title:not(.fit-wide) .panel-title .title-menu > #resume-row:not(.hidden) + .btn-row.modes{ margin-top:calc(var(--air) + 19px); }
+#screen-title .panel-title .tasks-chip{ margin-top:calc(var(--air) + 8px); }
+#screen-title .panel-title .title-menu > .btn-row.row-three{ margin-top:var(--air); }
+#screen-title .panel-title .title-menu > .tasks-chip.hidden + .btn-row.row-three{ margin-top:calc(var(--air) + 8px); }
+.q-row + .q-row{ margin-top:calc(var(--air) + 3px); }                 /* the graphics lists: 3 px of edge */
