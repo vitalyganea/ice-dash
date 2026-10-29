@@ -1655,6 +1655,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .bp-rank.hidden{ display:none; }
 .bp-go{ width:10px; height:10px; border-right:3px solid #3d2400; border-top:3px solid #3d2400;
         transform:rotate(45deg); margin-left:-2px; opacity:.75; }
+.best-plaque.tight .bp-unit{ display:none; }        /* set by ui.js when the place would go under */
 .best-plaque.to-board{ cursor:pointer; min-height:44px; -webkit-tap-highlight-color:transparent;
                        flex-wrap:wrap; row-gap:6px; }
 /* Two numbers on it now: on a phone it draws a little smaller so both fit

@@ -645,6 +645,12 @@
     el.setAttribute('aria-label', t('title.best', { n: save.best }) +
       (go && myRank ? '. ' + t('title.rank.lab') + ' ' + num(myRank) : '') + (go ? '. ' + t('btn.board') : ''));
     el.classList.toggle('hidden', save.best <= 0);
+    /* Two numbers on a narrow phone: when the place would go down under
+       the best (#10 000 on a phone 320 px across), the word "points" goes
+       instead, and only then. */
+    el.classList.remove('tight');
+    var words = el.querySelector('.bp-text'), place = $('bp-rank');
+    if (go && words.offsetHeight && place.offsetTop - words.offsetTop > 10) el.classList.add('tight');
   }
   /* Asked of Google when the title comes up: once every five minutes, or
      at once when the best has changed since. The answer comes in behind

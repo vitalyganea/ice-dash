@@ -166,7 +166,7 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
   "  return Promise.resolve({ok:true,signedIn:true,data:d});}," +
   " cloudSave:function(o){__cloud.saves.push(o);return Promise.resolve({saved:true});}," +
-  " mine:function(){return Promise.resolve({rank:345,score:4200});}}," +
+  " mine:function(){var r=0;try{r=+sessionStorage.getItem('rank');}catch(e){}return Promise.resolve({rank:r||345,score:4200});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
@@ -543,6 +543,23 @@ async function walk(cdp, sid, P) {
     ok(back.gfx.fx === 2 && back.gfx.res === 2 && await ev("(function(){var q=Game.qualityNow();return q.res+','+q.fx;})()") === '2,2',
        'the graphics stay this phone\'s own, Low and Low');
     await ev("sessionStorage.removeItem('cloud');sessionStorage.removeItem('fresh');1");
+
+    /* Place 123 456 on a phone 320 px across: the plaque stays one line,
+       the word "points" giving way; at place 345 it keeps the word. */
+    async function plaqueAt(rank) {
+      await ev("sessionStorage.setItem('rank','" + rank + "');localStorage.removeItem('icedash-rank');1");
+      await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+      await sleep(2500);
+      return ev("(function(){var p=document.getElementById('title-best'),a=p.querySelector('.bp-text'),b=document.getElementById('bp-rank');" +
+        "return {num:document.getElementById('bp-rank-num').textContent,line:b.offsetTop-a.offsetTop<=10,unit:getComputedStyle(document.getElementById('bp-unit')).display!=='none'," +
+        "inside:p.getBoundingClientRect().right<=innerWidth};})()");
+    }
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 711, deviceScaleFactor: 2.25, mobile: true }, sid);
+    var big = await plaqueAt(123456), small = await plaqueAt(345);
+    ok(big.num.replace(/\s/g, '') === '#123456' && big.line && !big.unit && big.inside, '320 px across, place 123 456: one line, without the word points (' + JSON.stringify(big) + ')');
+    ok(small.num === '#345' && small.line && small.unit, 'and place 345 keeps the word (' + JSON.stringify(small) + ')');
+    await ev("sessionStorage.removeItem('rank');1");
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: P.w, height: P.h, deviceScaleFactor: 3, mobile: P.mobile }, sid);
 
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
