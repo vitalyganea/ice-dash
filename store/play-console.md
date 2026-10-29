@@ -45,7 +45,8 @@ are in `listing.md`.
 | 1.2.1 | 10 | Internal testing | 28 Oct 2026 16:30: the Freeride board in the game's own panel (cups for the first three), the score's answer from Google logged under `IceDashBoard`; splash pictures as WebP, the bundle 8.7 MB instead of 11.8 (uploaded from the browser, which takes at most 10 MB). Its log showed nothing at all for a best of 5183, which led to the cause below |
 | 1.2.2 | 11 | Internal testing | 28 Oct 2026 16:47: the score reaches the board at last (Capacitor's `getLong` gave null for an Integer, so no score had ever been sent). On the OPPO: `score 1767 taken … StatusCode=0 … NewBest=true` for day, week and all time, and the panel showed it first with the gold cup |
 | 1.2.3 | 12 | Internal testing | 28 Oct 2026 17:08: the board to 100 in a list that scrolls, the player's own place after it; no button to Google's own board; a fresh install at Low graphics |
-| 1.2.4 | 13 | Production | 28-29 Oct 2026: Graphics as two lists, effects with Off; the save kept in the player's Play Games account (saved games); Play's recommendations (edge to edge on every Android, R8: the bundle 7.7 MB; the deprecated cutout mode is inside Google's own ads and Play libraries, newest versions included, SYSTEMS row 139); a third to a half of the draws a frame (row 139). Play Games project: Saved games turned on (Google Drive API already enabled) and the internal track added as its test track, so testers reach the unpublished project; **publishing the Play Games project makes Saved games permanent** (it cannot be turned off after). Privacy policy updated 28 Oct (the copy in Play Games); Data safety to match. To go to Production with these |
+| 1.2.4 | 13 | Production | **live 29 Oct 2026 2:14** (approved in under an hour; Play Games project with Saved games published the same night). 28-29 Oct 2026: Graphics as two lists, effects with Off; the save kept in the player's Play Games account (saved games); Play's recommendations (edge to edge on every Android, R8: the bundle 7.7 MB; the deprecated cutout mode is inside Google's own ads and Play libraries, newest versions included, SYSTEMS row 139); a third to a half of the draws a frame (row 139). Play Games project: Saved games turned on (Google Drive API already enabled) and the internal track added as its test track, so testers reach the unpublished project; **publishing the Play Games project makes Saved games permanent** (it cannot be turned off after). Privacy policy updated 28 Oct (the copy in Play Games); Data safety to match. To go to Production with these |
+| 1.2.5 | 14 | Production | 29 Oct 2026: internal testing 2:29; production saved and in Google's quick checks, then review (managed publishing off: it goes out by itself once approved). The best on the title opens the board and shows the player's place (no Leaderboard button); the Back buttons under the arrow gone; the arrow off the edge and the bottom corners kept from Android's back swipe; the row of three sends a word that does not fit down a row (SYSTEMS row 140) |
 
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
@@ -59,7 +60,7 @@ language translation found"). Managed publishing is off, so the release went
 live by itself once approved: https://play.google.com/store/apps/details?id=com.veetalea.icedash
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **14**.
+number (`android/app/build.gradle`). The next one is **15**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
