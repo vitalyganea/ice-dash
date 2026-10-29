@@ -30,10 +30,11 @@
   </div>
 </div>
 
-<!-- Always on screen over the long panels (Market, Trophies, Known Lines,
-     How to play, Settings). Their Back button sits at the very bottom, and
-     a player looking at one animal in the Market had to scroll the whole
-     shelf to find the way out. -->
+<!-- Always on screen over the panels one tap from the title (Market,
+     Trophies, Known Lines, More modes, How to play, Settings, the board),
+     and their only way back: each had a Back button at the bottom as well,
+     which a player looking at one animal in the Market had to scroll the
+     whole shelf to find, and which said the same as the arrow. -->
 <button id="btn-back" class="back-btn hidden" data-action="back-title" data-i18n-aria="btn.back" aria-label="Back">
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M14.5 5L7.5 12L14.5 19" fill="none" stroke="#062a78" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -109,10 +110,16 @@
     <!-- The best score as a plaque of gold ice under the tagline, where it is
          seen first: a star, the word, the number. It was a line of yellow
          text at the very bottom, off the screen on a laptop. -->
+    <!-- In the Android app it is also the way to the board: a tap opens it,
+         and once Google has said, the player's own place is on it too. -->
     <div id="title-best" class="best-plaque hidden" role="status">
       <span class="bp-star" aria-hidden="true"></span>
       <span class="bp-text"><span class="bp-lab" id="bp-lab">Best</span><b class="bp-num" id="bp-num">0</b></span>
       <span class="bp-unit" id="bp-unit">points</span>
+      <span class="bp-rank hidden" id="bp-rank" aria-hidden="true">
+        <span class="bp-text"><span class="bp-lab" id="bp-rank-lab">Place</span><b class="bp-num" id="bp-rank-num"></b></span>
+        <span class="bp-go"></span>
+      </span>
     </div>
     </div>
     <div class="title-menu">
@@ -142,9 +149,6 @@
     </div>
     <div class="btn-row">
       <button class="btn btn-gold market-btn" data-action="shop"><span data-i18n="btn.market">Market</span><span id="market-badge" class="badge hidden" aria-hidden="true">!</span></button>
-      <!-- The Freeride board on Google Play Games: only in the Android app,
-           and only once js/native.js says there is one. -->
-      <button class="btn btn-blue hidden" id="title-board" data-action="board" data-i18n="btn.board">Leaderboard</button>
     </div>
     <button id="title-tasks" class="tasks-chip hidden" data-action="trophies"></button>
     <div class="btn-row row-three">
@@ -297,7 +301,6 @@
     <div id="shop-supply" class="shop-supply"></div>
     <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
     <div id="shop-grid" class="shop-grid"></div>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -321,7 +324,6 @@
         <span class="todo-dot" aria-hidden="true"></span>
       </button>
     </div>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -344,7 +346,6 @@
     <p id="runs-count" class="wallet"></p>
     <div id="runs-list" class="runs-list"></div>
     <p class="shop-note" data-i18n="runs.note">Nothing here is shuffled.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -361,9 +362,6 @@
     </div>
     <p id="board-note" class="shop-note"></p>
     <div id="board-list" class="board-list"></div>
-    <div class="btn-row">
-      <button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button>
-    </div>
   </div>
 </section>
 
@@ -380,7 +378,6 @@
     <div class="btn-row"><button id="ach-claim-all" class="btn btn-gold hidden"></button></div>
     <div id="ach-list" class="ach-list"></div>
     <p class="shop-note" data-i18n="ach.note">Every one of them pays out in fish.</p>
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 
@@ -424,7 +421,6 @@
     <!-- The language in use, flag and name; a tap opens the list. -->
     <div class="btn-row lang-pick"><button id="lang-open" class="lang-btn" data-action="lang"></button></div>
 
-    <div class="btn-row"><button class="btn btn-green" data-action="back-title" data-i18n="btn.back">Back</button></div>
   </div>
 </section>
 

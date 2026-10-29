@@ -922,7 +922,10 @@ body{
      controls over a Playable, and the game keeps its icons clear of it —
      the pause button sits bottom-right for the same reason. */
   bottom:calc(16px + env(safe-area-inset-bottom,0px));
-  left:calc(16px + env(safe-area-inset-left,0px));
+  /* a little in from the edge: on a phone with gesture navigation the
+     first stretch from the side is where Android listens for its own back
+     swipe, and a tap that landed there now and then never reached it */
+  left:calc(22px + env(safe-area-inset-left,0px));
   width:54px; height:54px;
   display:grid; place-items:center; padding:0;
   border:3px solid #062a78; border-radius:16px;
@@ -1409,8 +1412,11 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .btn-row.modes .mode-btn small{ font-size:max(11px, .56em); }
 /* Three quiet buttons on one row: on a phone the third fell onto a line
    of its own. They share the row evenly instead. */
-.btn-row.row-three{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
-.btn-row.row-three .btn{ padding:10px 6px; min-width:0; }
+/* Three side by side, as wide as each other, unless a word does not fit
+   (a long one, or the bigger letters a phone's own font size gives): then
+   the last goes down to a row of its own instead of out of its button. */
+.btn-row.row-three{ display:flex; flex-wrap:wrap; gap:14px 10px; }
+.btn-row.row-three .btn{ flex:1 1 0; min-width:max-content; padding:10px 6px; white-space:nowrap; }
 @media (max-width:420px){ .btn-row.row-three .btn{ font-size:13px; } }
 
 /* ---- two modes on the title, the rest one tap in ----
@@ -1611,10 +1617,31 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 }
 @keyframes bpGlint{ 0%,100%{ transform:scale(1) rotate(0deg); } 50%{ transform:scale(1.14) rotate(10deg); } }
 .bp-text{ display:flex; flex-direction:column; align-items:flex-start; line-height:1; }
-.bp-lab{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; opacity:.8; }
+.bp-lab{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; opacity:.8; white-space:nowrap; }
 .bp-num{ font-size:clamp(22px,4.2vw,30px); font-weight:800; font-variant-numeric:tabular-nums;
          color:#3d2400; text-shadow:0 1px 0 rgba(255,255,255,.6); }
-.bp-unit{ font-size:13px; font-weight:800; align-self:flex-end; margin-bottom:3px; opacity:.85; }
+.bp-unit{ font-size:13px; font-weight:800; align-self:flex-end; margin-bottom:3px; opacity:.85; white-space:nowrap; }
+/* Where there is a board the plaque opens it: the player's place on its
+   right, behind a rule, and a chevron that says it goes somewhere. */
+.bp-rank{ display:flex; align-items:center; gap:8px; margin-left:4px; padding-left:12px;
+          border-left:2px solid rgba(92,54,0,.3); }
+.bp-rank.hidden{ display:none; }
+.bp-go{ width:10px; height:10px; border-right:3px solid #3d2400; border-top:3px solid #3d2400;
+        transform:rotate(45deg); margin-left:-2px; opacity:.75; }
+.best-plaque.to-board{ cursor:pointer; min-height:44px; -webkit-tap-highlight-color:transparent;
+                       flex-wrap:wrap; row-gap:6px; }
+/* Two numbers on it now: on a phone it draws a little smaller so both fit
+   on one line; where they still do not, the place goes under the best. */
+@media (max-width:440px){
+  .best-plaque.to-board{ gap:8px; padding:6px 12px 6px 8px; }
+  .best-plaque.to-board .bp-star{ width:24px; height:24px; }
+  .best-plaque.to-board .bp-num{ font-size:22px; }
+  .best-plaque.to-board .bp-lab{ font-size:10px; letter-spacing:.04em; }
+  .best-plaque.to-board .bp-unit{ font-size:12px; }
+  .best-plaque.to-board .bp-rank{ padding-left:10px; gap:6px; margin-left:0; }
+}
+.best-plaque.to-board:active{ transform:translateY(2px); }
+.best-plaque.to-board:focus-visible{ outline:3px solid #ffd84a; outline-offset:4px; }
 @media (prefers-reduced-motion: reduce){ .best-plaque::after, .bp-star{ animation:none; } }
 
 /* ---- a creature's three stories, in its window ---- */

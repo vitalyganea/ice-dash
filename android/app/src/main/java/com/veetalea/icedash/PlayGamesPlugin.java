@@ -163,6 +163,34 @@ public class PlayGamesPlugin extends Plugin {
             });
     }
 
+    /* The player's own place on the all-time board, for the best on the
+       title: { rank, score }, or nothing when there is none yet (not signed
+       in, no score, no network). It never asks the player to sign in. */
+    @PluginMethod
+    public void mine(PluginCall call) {
+        JSObject r = new JSObject();
+        if (board.isEmpty()) {
+            call.resolve(r);
+            return;
+        }
+        signIn().isAuthenticated().addOnCompleteListener(t -> {
+            if (!in(t)) {
+                call.resolve(r);
+                return;
+            }
+            PlayGames.getLeaderboardsClient(getActivity())
+                .loadCurrentPlayerLeaderboardScore(board, LeaderboardVariant.TIME_SPAN_ALL_TIME, LeaderboardVariant.COLLECTION_PUBLIC)
+                .addOnCompleteListener(m -> {
+                    LeaderboardScore s = m.isSuccessful() && m.getResult() != null ? m.getResult().get() : null;
+                    if (s != null && s.getRank() > 0) {
+                        r.put("rank", s.getRank());
+                        r.put("score", s.getRawScore());
+                    }
+                    call.resolve(r);
+                });
+        });
+    }
+
     /* One page read, the next asked for with the buffer so far, until there
        are 100 rows or a page brings no one new. Rows are kept by player, so
        a page that repeats the ones before it adds nothing twice. */

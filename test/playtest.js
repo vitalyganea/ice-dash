@@ -165,7 +165,8 @@ var FAKE_NATIVE = "(function(){var L={};" +
   /* the save in the cloud: none, unless the tab was given one */
   " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
   "  return Promise.resolve({ok:true,signedIn:true,data:d});}," +
-  " cloudSave:function(o){__cloud.saves.push(o);return Promise.resolve({saved:true});}}," +
+  " cloudSave:function(o){__cloud.saves.push(o);return Promise.resolve({saved:true});}," +
+  " mine:function(){return Promise.resolve({rank:345,score:4200});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
 async function walk(cdp, sid, P) {
@@ -328,12 +329,22 @@ async function walk(cdp, sid, P) {
   /* ---- the Android app: rewarded ads and the Freeride board ---- */
   async function androidWalk() {
     await sleep(600);
-    ok(await visible('#title-board'), 'the title offers the leaderboard once Play Games says there is one');
+    /* No button of its own for the board on the title: the best's plaque
+       is the way to it, with the player's place on it once Google says. */
+    var bp = await ev("(function(){var e=document.getElementById('title-best'),r=e.getBoundingClientRect();" +
+      "return {to:e.classList.contains('to-board'),act:e.getAttribute('data-action'),role:e.getAttribute('role')," +
+      "rank:document.getElementById('bp-rank').classList.contains('hidden')?null:document.getElementById('bp-rank-num').textContent," +
+      "lab:document.getElementById('bp-rank-lab').textContent,h:Math.round(r.height),w:Math.round(r.width),right:Math.round(r.right),vw:innerWidth," +
+      "btn:!!document.getElementById('title-board'),aria:e.getAttribute('aria-label')};})()");
+    ok(bp.to && bp.act === 'board' && bp.role === 'button' && !bp.btn,
+       'the best on the title is the way to the leaderboard, with no button of its own (' + JSON.stringify(bp) + ')');
+    ok(bp.rank === '345' && bp.lab === 'Your place' && /345/.test(bp.aria), 'and it shows the player\'s own place, 345');
+    ok(bp.h >= 44 && bp.right <= bp.vw, 'a finger tall and inside the window');
     var fit = await ev("(function(){var b=document.querySelector('.row-three').getBoundingClientRect();" +
       "return {rowBottom:Math.round(b.bottom),vh:innerHeight};})()");
     ok(fit.rowBottom <= fit.vh, 'and the title still fits the window with it (' + JSON.stringify(fit) + ')');
     await shot('a1-title');
-    await clickFor('#title-board', '#screen-board');
+    await clickFor('#title-best', '#screen-board');
     await sleep(300);
     var bd = await ev("(function(){var q=function(s){return document.querySelectorAll('#board-list '+s);};" +
       "var on=document.querySelector('.q-opt[data-span].on');" +
@@ -347,7 +358,7 @@ async function walk(cdp, sid, P) {
     ok(bd.gap === 0 && bd.me.join() === 'Me' && await ev("document.querySelector('#board-list .board-row:last-child').classList.contains('me')"),
        'the 101st row, marked as theirs');
     var scr = await ev("(function(){var l=document.getElementById('board-list'),p=document.querySelector('#screen-board .panel').getBoundingClientRect();" +
-      "return {sh:l.scrollHeight,ch:l.clientHeight,ov:getComputedStyle(l).overflowY,top:l.scrollTop,back:document.querySelector('#screen-board [data-action=\"back-title\"]').getBoundingClientRect().bottom<=innerHeight};})()");
+      "return {sh:l.scrollHeight,ch:l.clientHeight,ov:getComputedStyle(l).overflowY,top:l.scrollTop,back:document.getElementById('btn-back').getBoundingClientRect().bottom<=innerHeight&&!document.getElementById('btn-back').classList.contains('hidden')};})()");
     ok(scr.sh > scr.ch && scr.ov === 'auto' && scr.back,
        'the list scrolls inside the panel, Back still in view (' + JSON.stringify(scr) + ')');
     ok(scr.top > 0, 'and opens scrolled to the player\'s own row');
@@ -365,7 +376,7 @@ async function walk(cdp, sid, P) {
     ok((await ev("__board.tops")).slice(-1)[0] === 'day' && await ev("document.querySelectorAll('#board-list .board-row').length") === 0,
        'Today asks for the day');
     ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and an empty day says so');
-    await clickFor('#screen-board [data-action="back-title"]', '#screen-title');
+    await clickFor('#btn-back', '#screen-title');
 
     await clickFor('[data-action="settings"]', '#screen-settings');
     var qa = await ev("Array.prototype.map.call(document.querySelectorAll('#screen-settings .q-sel'),function(s){return s.getAttribute('data-q')+':'+s.value;}).join(' ')");
@@ -379,7 +390,7 @@ async function walk(cdp, sid, P) {
     await click('#screen-settings .set-link:last-of-type');
     await sleep(200);
     ok(await ev("__ads.privacy") === 1, 'which opens Google\'s ad privacy form');
-    await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+    await clickFor('#btn-back', '#screen-title');
 
     /* A crash with no life in hand: the ad stands in for one. */
     async function crashOut() {
@@ -410,7 +421,7 @@ async function walk(cdp, sid, P) {
     ok(!(await visible('#screen-revive')) && await waitFor('#screen-over', 6000), 'the second crash ends the run: one ad revive a run');
     ok(await visible('#over-board'), 'a Freeride result offers the board');
     await clickFor('#over-board', '#screen-board');
-    await clickFor('#screen-board [data-action="back-title"]', '#screen-over');
+    await clickFor('#btn-back', '#screen-over');
     ok(await visible('#screen-over'), 'and Back from the board comes back to the results');
     ok(await visible('#over-double'), 'and doubling the fish for an ad');
     await shot('a3-over');
@@ -518,7 +529,9 @@ async function walk(cdp, sid, P) {
   for (var i = 0; i < 60 && !(await visible('#screen-title')); i++) await sleep(200);
   ok(await visible('#screen-title'), 'the title screen comes up');
   if (P.android) { await androidWalk(); return errs; }
-  ok(!(await visible('#title-board')), 'no leaderboard button off Android');
+  ok(await ev("(function(){var e=document.getElementById('title-best');return !e.getAttribute('data-action')&&e.getAttribute('role')==='status'&&" +
+     "document.getElementById('bp-rank').classList.contains('hidden')&&!document.getElementById('title-board');})()"),
+     'no way to a leaderboard off Android: the best is only the best');
   ok(await ev("!!(window.Game && Game.isRunning)"), 'the engine is on the page');
   await shot('01-title');
   /* the whole title in the window without scrolling: the plaque at the top,
@@ -589,7 +602,7 @@ async function walk(cdp, sid, P) {
   for (var lg of ['de', 'es', 'pt']) {
     await clickFor('#lang-open', '#sheet-lang');
     await click('#lang-row [data-lang="' + lg + '"]');
-    await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+    await clickFor('#btn-back', '#screen-title');
     await sleep(300);
     /* the red badges sit over a button's corner on purpose; only words count */
     var over = await ev("(function(){var bd=document.querySelectorAll('#screen-title .badge');bd.forEach(function(e){e.style.display='none';});" +
@@ -631,7 +644,7 @@ async function walk(cdp, sid, P) {
   ok(await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).gfx.fx === 3 && Game.qualityNow().fx === 3"), 'and Off turns the effects off altogether');
   await pick('fx', 'auto');
   ok(await ev("JSON.parse(localStorage.getItem('icedash-save-v1')).gfx.fx === 'auto' && Game.qualityNow().fx === " + fx0), 'and Auto gives it back to the device');
-  await clickFor('#screen-settings [data-action="back-title"]', '#screen-title');
+  await clickFor('#btn-back', '#screen-title');
   ok(await waitFor('#screen-title'), 'Back returns to the title');
 
   await clickFor('[data-action="shop"]', '#screen-shop');
@@ -730,7 +743,7 @@ async function walk(cdp, sid, P) {
   var raw = await ev("Array.from(document.querySelectorAll('#ach-list .ach-name')).filter(e=>e.textContent.indexOf('ach.')===0).length");
   ok(raw === 0, 'and every one has a name, not a key (' + raw + ' untranslated)');
   await shot('06-trophies');
-  await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+  await clickFor('#btn-back', '#screen-title');
   ok(!(await visible('#ach-badge')), 'and the badge on the title goes out');
 
   await clickFor('[data-action="runs"]', '#screen-runs');
@@ -744,7 +757,7 @@ async function walk(cdp, sid, P) {
   ok(/Finish The Narrows/.test(hint), 'the next locked line says which one to finish (' +
      (hint.split('|').filter(function (x) { return /Finish/.test(x); })[0] || 'none') + ')');
   await shot('07-lines');
-  await clickFor('#screen-runs [data-action="back-title"]', '#screen-title');
+  await clickFor('#btn-back', '#screen-title');
 
   /* ---- actually riding ---- */
   await click('#btn-free');
@@ -791,7 +804,7 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-title'), 'Menu from the pause screen reaches the title');
   ok(await visible('#resume-row'), 'and NOW Continue is offered');
   await clickFor('[data-action="shop"]', '#screen-shop');
-  await clickFor('#screen-shop [data-action="back-title"]', '#screen-title');
+  await clickFor('#btn-back', '#screen-title');
   await clickFor('[data-action="continue"]', null);
   await sleep(300);
   var back = await ev("Game.debug() ? Math.round(Game.debug().dist) : -1");
@@ -1011,7 +1024,7 @@ async function walk(cdp, sid, P) {
   /* her button leads to the trophies still to win, and back returns to the Market */
   ok(await clickFor('#sheet-skin-btn', '#screen-ach') >= 0 && !(await visible('#sheet-skin')),
      'her trophy count opens Trophies');
-  ok(await clickFor('#screen-ach [data-action="back-title"]', '#screen-shop') >= 0, 'and Back from there returns to the Market');
+  ok(await clickFor('#btn-back', '#screen-shop') >= 0, 'and Back from there returns to the Market');
   /* buying a creature with a comic opens its story straight away */
   await clickFor('#shop-grid [data-pick="puffin"]', '#sheet-skin');
   await click('#sheet-skin-btn');
@@ -1041,7 +1054,7 @@ async function walk(cdp, sid, P) {
   ok(svA.owned.indexOf('aurora') >= 0 && svA.equipped === 'aurora', 'taking her puts her on (' + svA.equipped + ')');
   ok(!(await visible('#prize-take')) && /yours/i.test(await ev("document.getElementById('ach-prize').textContent")),
      'and the prize now says she is yours');
-  await clickFor('#screen-ach [data-action="back-title"]', '#screen-title');
+  await clickFor('#btn-back', '#screen-title');
   await waitFor('#btn-free', 4000);                 // the title is still settling in
   ok(await clickFor('#btn-free', '#hud') >= 0 && (await ev("Game.debug().shield")) === 1,
      'she rides, and starts the run in a bubble as her perk says');

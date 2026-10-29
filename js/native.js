@@ -225,6 +225,15 @@
       return Promise.resolve(send()).then(function () { return PG.top({ span: span }); });
     };
   }
+  /* The player's own place of all time, for the best on the title, once a
+     best still on its way has gone: { rank, score } or null. */
+  if (PG && PG.mine) {
+    PLAT.boardMine = function () {
+      if (!board) return Promise.resolve(null);
+      return Promise.resolve(send()).then(function () { return PG.mine(); })
+        .then(function (r) { return r && r.rank > 0 ? r : null; }, function () { return null; });
+    };
+  }
 
   /* ---- the save in the cloud (Play Games saved games) ----
      ui.js reads it once at the start (PLAT.cloudLoad) and, once the cloud
