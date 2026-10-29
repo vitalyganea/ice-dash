@@ -721,8 +721,11 @@ body{
    trophy. The list of up to 101 rows scrolls inside the panel. Long names end in an ellipsis rather than pushing the score
    off the row. */
 .board-spans{ grid-template-columns:repeat(3, auto); margin:0 0 10px; }
-@media (max-width:380px){ .board-spans{ grid-template-columns:repeat(3, minmax(0, 1fr)); max-width:none; }
-                          .board-spans .q-opt{ padding:6px 4px; min-width:0; font-size:13px; white-space:nowrap; } }   /* "Săptămâna", "Всё время" on a 360 px phone */
+/* On a phone the three spans share the width; a name that does not fit
+   ("Săptămâna", "Всё время" in a phone's bigger letters) sends the last
+   span down a row instead of out of its tab. */
+@media (max-width:380px){ .board-spans{ display:flex; flex-wrap:wrap; justify-content:center; max-width:none; }
+                          .board-spans .q-opt{ flex:1 1 0; min-width:max-content; padding:6px 4px; font-size:13px; white-space:nowrap; } }
 .board-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 6px; position:relative;
               max-height:min(56vh, 560px); overflow-y:auto; overscroll-behavior:contain; padding:2px 4px 2px 2px; }
 .board-row{
@@ -1228,7 +1231,7 @@ body{
 /* ------------------- MODES AND MARKED RUNS ------------------- */
 .modes{ flex-direction:column; align-items:stretch; gap:22px; }
 .mode-btn{ display:block; text-align:center; line-height:1.15; padding:12px 22px; }
-.mode-btn b{ display:block; font-size:1em; }
+.mode-btn b{ display:block; font-size:1em; white-space:normal; }   /* two lines rather than out of the button */
 .mode-btn small{
   display:block; font-weight:700; font-size:.6em; opacity:.95; margin-top:2px;
   text-shadow:0 1px 0 var(--line), 0 0 3px var(--line);   /* a full outline clogs letters this small */

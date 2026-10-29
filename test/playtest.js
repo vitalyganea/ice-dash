@@ -338,7 +338,8 @@ async function walk(cdp, sid, P) {
       "btn:!!document.getElementById('title-board'),aria:e.getAttribute('aria-label')};})()");
     ok(bp.to && bp.act === 'board' && bp.role === 'button' && !bp.btn,
        'the best on the title is the way to the leaderboard, with no button of its own (' + JSON.stringify(bp) + ')');
-    ok(bp.rank === '345' && bp.lab === 'Your place' && /345/.test(bp.aria), 'and it shows the player\'s own place, 345');
+    ok(bp.rank === '#345' && /345/.test(bp.aria), 'and it shows the player\'s own place, #345 (' + bp.rank + ')');
+    ok(await ev("JSON.parse(localStorage.getItem('icedash-rank')).rank") === 345, 'kept on the device, so the next title shows it at once');
     ok(bp.h >= 44 && bp.right <= bp.vw, 'a finger tall and inside the window');
     var fit = await ev("(function(){var b=document.querySelector('.row-three').getBoundingClientRect();" +
       "return {rowBottom:Math.round(b.bottom),vh:innerHeight};})()");

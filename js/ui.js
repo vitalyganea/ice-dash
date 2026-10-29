@@ -610,15 +610,27 @@
   function boardReady() { return !!(PLAT.boardReady && PLAT.boardReady()); }
   /* The best on the title, a plaque of gold. Where there is a board it is
      the way to it as well (there is no other button for it on the title),
-     and once Google has said, it carries the player's own place. */
+     and once Google has said, it carries the player's own place, "#101".
+     The place is kept on the device (outside the save, like the graphics
+     tier), so the title shows it at once and asks Google again only now
+     and then. */
+  var RANK_KEY = 'icedash-rank', RANK_EVERY = 5 * 60000;
   var myRank = 0, rankAt = 0, rankFor = -1, rankBusy = false;
+  if (PLAT.boardMine) {
+    try {
+      var rc = JSON.parse(localStorage.getItem(RANK_KEY) || 'null');
+      if (rc && rc.rank > 0) { myRank = rc.rank | 0; rankAt = +rc.at || 0; rankFor = +rc.best || -1; }
+    } catch (e) {}
+  }
   function bestPlaque() {
     var el = $('title-best'), go = boardReady();
     $('bp-lab').textContent = t('title.best.lab');
     $('bp-num').textContent = num(save.best);
     $('bp-unit').textContent = t('title.best.unit', { n: save.best });
-    $('bp-rank-lab').textContent = myRank ? t('title.rank.lab') : t('btn.board');
-    $('bp-rank-num').textContent = myRank ? num(myRank) : '';
+    $('bp-rank-num').textContent = myRank ? t('title.rank.num', { n: num(myRank) }) : '';
+    $('bp-rank-num').classList.toggle('hidden', !myRank);
+    $('bp-rank-lab').textContent = t('btn.board');      // until Google has said
+    $('bp-rank-lab').classList.toggle('hidden', !!myRank);
     $('bp-rank').classList.toggle('hidden', !go);
     el.classList.toggle('to-board', go);
     if (go) {
@@ -634,16 +646,19 @@
       (go && myRank ? '. ' + t('title.rank.lab') + ' ' + num(myRank) : '') + (go ? '. ' + t('btn.board') : ''));
     el.classList.toggle('hidden', save.best <= 0);
   }
-  /* Asked of Google when the title comes up, at most twice a minute unless
-     the best has changed since. */
+  /* Asked of Google when the title comes up: once every five minutes, or
+     at once when the best has changed since. The answer comes in behind
+     the place already shown. */
   function boardRank() {
     if (!PLAT.boardMine || !boardReady() || rankBusy || save.best <= 0) return;
-    if (rankFor === save.best && Date.now() - rankAt < 30000) return;
+    if (rankFor === save.best && Date.now() - rankAt < RANK_EVERY) return;
     rankBusy = true;
     var want = save.best;
     PLAT.boardMine().then(function (r) {
-      rankBusy = false; rankAt = Date.now(); rankFor = want;
-      if (r && r.rank > 0) myRank = r.rank;
+      rankBusy = false;
+      if (!r || !(r.rank > 0)) return;
+      myRank = r.rank; rankAt = Date.now(); rankFor = want;
+      try { localStorage.setItem(RANK_KEY, JSON.stringify({ rank: myRank, best: want, at: rankAt })); } catch (e) {}
       if (currentScreen === 'title') bestPlaque();
     }, function () { rankBusy = false; });
   }
