@@ -390,6 +390,18 @@ async function walk(cdp, sid, P) {
     ok((await ev("__board.tops")).slice(-1)[0] === 'day' && await ev("document.querySelectorAll('#board-list .board-row').length") === 0,
        'Today asks for the day');
     ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and an empty day says so');
+    /* No network, and Play Games never answers: the wheel stops after a
+       while and says so; a list that still comes is shown. */
+    await ev("window.__boardDelay=15000;1");
+    await click('.q-opt[data-span="week"]');
+    await sleep(500);
+    ok(await ev("!!document.querySelector('#board-list .board-loading')"), 'no answer yet: the wheel turns');
+    await sleep(12200);
+    var off = await ev("({wheel:!!document.querySelector('#board-list .board-loading'),note:document.getElementById('board-note').textContent})");
+    ok(!off.wheel && /Can't reach/.test(off.note), 'twelve seconds without an answer: the wheel stops, and the panel says Google cannot be reached (' + JSON.stringify(off) + ')');
+    await sleep(3000);
+    ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and the answer that comes after all is shown');
+    await ev("window.__boardDelay=0;1");
     await clickFor('#btn-back', '#screen-title');
 
     await clickFor('[data-action="settings"]', '#screen-settings');

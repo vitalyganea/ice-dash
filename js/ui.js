@@ -735,6 +735,7 @@
       b.setAttribute('aria-checked', on ? 'true' : 'false');
     });
   }
+  var BOARD_WAIT = 12000;
   function buildBoard() {
     syncBoardSpan();
     var list = $('board-list'), note = $('board-note'), ask = ++boardAsk;
@@ -753,6 +754,11 @@
     wait.appendChild(wheel);
     wait.appendChild(document.createTextNode(t('board.loading')));
     list.appendChild(wait);
+    /* With no network Play Games may not answer at all: the wheel does not
+       turn for ever. A list that still comes later is shown all the same. */
+    setTimeout(function () {
+      if (ask === boardAsk && currentScreen === 'board' && wait.parentNode === list) { list.innerHTML = ''; say('board.off'); }
+    }, BOARD_WAIT);
     PLAT.boardTop(boardSpan).then(function (r) {
       /* a slow answer for a span since left, or a panel since closed */
       if (ask !== boardAsk || currentScreen !== 'board') return;
