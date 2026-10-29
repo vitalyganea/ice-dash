@@ -740,6 +740,14 @@ body{
    span down a row instead of out of its tab. */
 @media (max-width:380px){ .board-spans{ display:flex; flex-wrap:wrap; justify-content:center; max-width:none; }
                           .board-spans .q-opt{ flex:1 1 0; min-width:max-content; padding:6px 4px; font-size:13px; white-space:nowrap; } }
+/* While Google answers: a wheel of ice where the rows will be */
+.board-loading{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+                min-height:min(40vh, 320px); font-weight:800; font-size:15px; color:var(--ink-soft); }
+.board-wheel{ width:44px; height:44px; border-radius:50%;
+              border:5px solid rgba(43,93,134,.18); border-top-color:#2789d8; border-right-color:#55bdf0;
+              animation:boardWheel .8s linear infinite; }
+@keyframes boardWheel{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){ .board-wheel{ animation-duration:2.4s; } }
 .board-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 6px; position:relative;
               max-height:min(56vh, 560px); overflow-y:auto; overscroll-behavior:contain; padding:2px 4px 2px 2px; }
 .board-row{

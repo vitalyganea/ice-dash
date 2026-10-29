@@ -740,11 +740,23 @@
     var list = $('board-list'), note = $('board-note'), ask = ++boardAsk;
     function say(key) { note.textContent = key ? t(key) : ''; note.classList.toggle('hidden', !key); }
     list.innerHTML = '';
-    say('board.loading');
+    say('');
     if (!PLAT.boardTop) { say('board.off'); return; }
+    /* Google takes a moment: a wheel turns where the rows will be, the list
+       as tall as it will be, so the panel does not jump when they come. */
+    var wait = document.createElement('div');
+    wait.className = 'board-loading';
+    wait.setAttribute('role', 'status');
+    var wheel = document.createElement('span');
+    wheel.className = 'board-wheel';
+    wheel.setAttribute('aria-hidden', 'true');
+    wait.appendChild(wheel);
+    wait.appendChild(document.createTextNode(t('board.loading')));
+    list.appendChild(wait);
     PLAT.boardTop(boardSpan).then(function (r) {
       /* a slow answer for a span since left, or a panel since closed */
       if (ask !== boardAsk || currentScreen !== 'board') return;
+      list.innerHTML = '';
       var rows = (r && r.rows) || [], me = r && r.me;
       say(rows.length ? '' : 'board.empty');
       var mine = null;
@@ -758,7 +770,7 @@
       if (mine && mine.offsetTop + mine.offsetHeight > list.clientHeight)
         list.scrollTop = mine.offsetTop - list.clientHeight / 2 + mine.offsetHeight / 2;
     }, function () {
-      if (ask === boardAsk && currentScreen === 'board') say('board.off');
+      if (ask === boardAsk && currentScreen === 'board') { list.innerHTML = ''; say('board.off'); }
     });
   }
   Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-span]'), function (b) {

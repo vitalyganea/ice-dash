@@ -158,10 +158,11 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " show:function(){__board.shown++;return Promise.resolve();}," +
   /* the board's rows: a hundred players for all time, the player 345th
      and so below them all; nobody yet today */
-  " top:function(o){__board.tops.push(o.span);if(o.span!=='all')return Promise.resolve({rows:[]});" +
+  " top:function(o){__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
+  "  if(o.span!=='all')return later({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
   "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false});" +
-  "  return Promise.resolve({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}," +
+  "  return later({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}," +
   /* the save in the cloud: none, unless the tab was given one */
   " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
   "  return Promise.resolve({ok:true,signedIn:true,data:d});}," +
@@ -345,7 +346,19 @@ async function walk(cdp, sid, P) {
       "return {rowBottom:Math.round(b.bottom),vh:innerHeight};})()");
     ok(fit.rowBottom <= fit.vh, 'and the title still fits the window with it (' + JSON.stringify(fit) + ')');
     await shot('a1-title');
+    /* Google answers a moment later: a wheel turns where the rows will be,
+       and goes when they come. */
+    await ev("window.__boardDelay=800;1");
     await clickFor('#title-best', '#screen-board');
+    var wl = await ev("(function(){var w=document.querySelector('#board-list .board-loading'),r=w&&w.getBoundingClientRect();" +
+      "return {wheel:!!(w&&w.querySelector('.board-wheel')),role:w&&w.getAttribute('role'),text:w&&w.textContent,h:r?Math.round(r.height):0," +
+      "note:!document.getElementById('board-note').classList.contains('hidden'),rows:document.querySelectorAll('#board-list .board-row').length};})()");
+    ok(wl.wheel && wl.role === 'status' && /Loading/.test(wl.text) && wl.h >= 150 && !wl.note && wl.rows === 0,
+       'while Google answers, a wheel turns where the rows will be (' + JSON.stringify(wl) + ')');
+    await sleep(1100);
+    ok(await ev("!document.querySelector('#board-list .board-loading') && document.querySelectorAll('#board-list .board-row').length > 0"),
+       'and goes when the rows come');
+    await ev("window.__boardDelay=0;1");
     await sleep(300);
     var bd = await ev("(function(){var q=function(s){return document.querySelectorAll('#board-list '+s);};" +
       "var on=document.querySelector('.q-opt[data-span].on');" +
