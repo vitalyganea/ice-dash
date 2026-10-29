@@ -50,6 +50,8 @@ are in `listing.md`.
 | 1.2.6 | 15 | Production | 29 Oct 2026: internal testing 2:40; production **live 29 Oct 2026 3:14** (it replaced 1.2.5 in review). The place on the plaque as "#101", kept on the device; at 130% letters the board's spans and the mode titles move down (SYSTEMS row 141). Left for the next: at 130% one long word in the Known Lines subtitle (RU, PT) is 8-10 px out |
 | 1.2.7 | 16 | Production | 29 Oct 2026: internal testing 11:27; production submitted for review by the owner. Every screen at 320 px across, measured on the OPPO (SYSTEMS row 142); the word "points" gives way to a big place; the same clear space between stacked buttons; a wheel while the board loads, stopping after 12 s with no answer (row 143). The AD_ID error at every release is an old active artifact on the closed track "1.0" (1.1.x, before ads); the 1.2.x bundles have the permission |
 
+Store art, 29 Oct 2026: the listing's icon and feature graphic replaced in all six languages (each translation had its own copy) with the user's Gemini pictures of the penguin sliding on his belly (SYSTEMS row 144); AI asset declaration "Don't label assets", as for the screenshots. The same icon and feature graphic set in the Play Games project's properties. Both saved; sending them (12 listing changes, and Publish for Play Games) is the owner's click.
+
 Applied for production access on 19 Oct 2026; granted by 22 Oct 2026
 (Dashboard: "Congratulations! Your game has been granted Google Play
 production access"). Open testing is open too. Production stays "Inactive"
