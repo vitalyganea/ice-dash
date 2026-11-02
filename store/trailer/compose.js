@@ -30,19 +30,26 @@ var SCENES = [
   { id: 'clip', t0: 18.0, t1: 21.4, clip: 'avalanche', from: 18, side: 'left', text: ['OUTRUN THE', 'AVALANCHE!'] },
   { id: 'clip', t0: 21.4, t1: 24.8, side: 'right', each: 0.85, zoom: 1.8, text: ['18', 'CREATURES'], note: 'each with a power of its own',
     cuts: [['ember', 55, 'Seal'], ['neon', 55, 'Orca'], ['cosmic', 55, 'Snow Leopard'], ['jungle', 55, 'Sea Otter']] },
-  { id: 'outro', t0: 24.8, t1: 30 }
+  /* the penguin sliding at the camera (slideFrames): from its picture
+     `from`, at `speed` times the GIF's own pace, into the lens at the end */
+  { id: 'slide', t0: 24.8, t1: 26.8, from: 26, speed: 1.25 },
+  { id: 'outro', t0: 26.8, t1: 31 }
 ];
-var SECS = 30;
+var SECS = 31;
 
 /* The sound along the same timeline: the world's tune as it comes up,
    the doubled gait for the rush and the avalanche, a game sound on cuts
    and a turn's sound on each tap the pictures show. */
 function cues() {
+  var sl = SCENES[SCENES.length - 2], end = SCENES[SCENES.length - 1];
   var c = [[0.0, "Sfx.mood('night');Sfx.music(true)"], [1.2, 'Sfx.fanfare()'], [3.15, 'Sfx.zone()'],
     [3.2, "Sfx.mood('base')"], [6.8, "Sfx.mood('ember')"], [6.75, 'Sfx.zone()'],
     [9.6, "Sfx.mood('neon')"], [14.65, 'Sfx.charge()'], [14.7, "Sfx.mood('base');Sfx.excite(true)"],
     [18.0, "Sfx.mood('midwinter');Sfx.rumble(1)"], [21.4, "Sfx.excite(false);Sfx.mood('cosmic')"],
-    [24.8, "Sfx.mood('base');Sfx.fanfare()"], [29.2, 'Sfx.music(false)']];
+    [sl.t0, "Sfx.mood('base');Sfx.jump()"], [sl.t1 - 0.35, 'Sfx.perfect(4)'],
+    [end.t0, 'Sfx.fanfare()'], [SECS - 0.8, 'Sfx.music(false)']];
+  /* the scrape of snow under his belly as he comes */
+  for (var b = sl.t0 + 0.3; b < sl.t1 - 0.4; b += 0.3) c.push([b, 'Sfx.bank()']);
   SCENES.forEach(function (sc) {
     if (sc.cuts) sc.cuts.forEach(function (x, i) { c.push([sc.t0 + i * sc.each, sc.zoom ? 'Sfx.unlock()' : 'Sfx.gate()']); });
     if (!sc.clip) return;
@@ -55,6 +62,32 @@ function cues() {
     }
   });
   return c.sort(function (a, b) { return a[0] - b[0]; });
+}
+
+/* The penguin's slide is an animated GIF from Gemini on a green screen
+   (penguin-slide.gif: 640x360, 10 pictures a second). Here it is made 30
+   a second with motion-estimated in-betweens, its dither smoothed, brought
+   up to 1920x1080 and keyed: the alpha from how much greener than red and
+   blue a pixel is, the colour unmixed from the green behind it (so the
+   spray of snow and the edge of his fur stay white, not mint), the edge
+   drawn in 2 px. Into <FRAMES>/slide/, made again when the GIF changes. */
+function slideFrames() {
+  var src = path.join(__dirname, 'penguin-slide.gif'), dir = path.join(FRAMES, 'slide'), first = path.join(dir, '00001.png');
+  if (!fs.existsSync(first) || fs.statSync(first).mtimeMs < fs.statSync(src).mtimeMs) {
+    fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    var K = [31, 218, 48], green = '(g(X,Y)-max(r(X,Y),b(X,Y))-12)/120';
+    var a = 'st(0,1-clip(' + green + ',0,1))', u = 'max(ld(0),0.03)';
+    var r = 'clip((r(X,Y)-(1-ld(0))*' + K[0] + ')/' + u + ',0,255)', b = 'clip((b(X,Y)-(1-ld(0))*' + K[2] + ')/' + u + ',0,255)';
+    var g = a + ';st(1,' + r + ');st(2,' + b + ');min(clip((g(X,Y)-(1-ld(0))*' + K[1] + ')/' + u + ',0,255),' +
+      'if(lt(ld(0),0.97),(ld(1)+ld(2))/2,max(ld(1),ld(2))+8))';
+    var thin = 'erosion=threshold0=0:threshold1=0:threshold2=0';
+    var vf = ['format=rgb24', 'minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1', 'hqdn3d=4:3:4:3',
+      'scale=1920:1080:flags=lanczos', 'format=gbrap',
+      "geq=r='" + a + ';' + r + "':g='" + g + "':b='" + a + ';' + b + "':a='255*(1-clip(" + green + ",0,1))'",
+      thin, thin, 'format=rgba'].join(',');
+    cp.execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', src, '-vf', vf, path.join(dir, '%05d.png')]);
+  }
+  return fs.readdirSync(dir).filter(function (f) { return /^\d+\.png$/.test(f); }).length;
 }
 
 async function render(kind, audioFile) {
@@ -114,6 +147,8 @@ async function render(kind, audioFile) {
 
 (async function () {
   var which = process.argv[2] || 'both', kinds = which === 'both' ? ['wide', 'tall'] : [which];
+  var slides = slideFrames();
+  SCENES.forEach(function (sc) { if (sc.id === 'slide') sc.last = slides; });
   var stage = fs.mkdtempSync(path.join(os.tmpdir(), 'icedash-trailer-audio-'));
   var cueFile = path.join(stage, 'cues.json'), audio = path.join(stage, 'score.wav');
   fs.writeFileSync(cueFile, JSON.stringify({ secs: SECS + 0.5, cues: cues() }));

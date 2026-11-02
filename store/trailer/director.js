@@ -7,7 +7,7 @@
    frames from capture.js (on a card of ice beside the words when the
    picture is wide, the whole picture when it is tall), the words in the
    game's lettering, the 3D penguin of the store screenshots and the logo,
-   and the cuts between scenes (a flash, a sweep of snow). Everything is
+   the penguin sliding at the camera before the end, and the cuts between scenes (a flash, a sweep of snow). Everything is
    a function of the picture's number, so a picture comes out the same
    every time it is asked for.
    =========================================================== */
@@ -277,6 +277,44 @@
     var end = clamp((t - (sc.t1 - 0.5)) / 0.5, 0, 1);
     if (end > 0) { X.fillStyle = 'rgba(5,18,58,' + (end * 0.6).toFixed(3) + ')'; X.fillRect(0, 0, W, H); }
   }
+  /* a field of ice out to the horizon, its glints running at the camera
+     from the point he comes from */
+  function ice(t, hz, vx) {
+    var g = X.createLinearGradient(0, hz, 0, H);
+    g.addColorStop(0, '#d6eeff'); g.addColorStop(0.3, '#eef8ff'); g.addColorStop(1, '#bcdff8');
+    X.fillStyle = g; X.fillRect(0, hz, W, H - hz);
+    var hg = X.createLinearGradient(0, hz - H * 0.04, 0, hz + H * 0.04);
+    hg.addColorStop(0, 'rgba(238,249,255,0)'); hg.addColorStop(0.5, 'rgba(238,249,255,.9)'); hg.addColorStop(1, 'rgba(238,249,255,0)');
+    X.fillStyle = hg; X.fillRect(0, hz - H * 0.04, W, H * 0.08);
+    var r = rnd(17);
+    X.strokeStyle = '#fff'; X.lineCap = 'round';
+    for (var i = 0; i < 22; i++) {
+      var side = (r() - 0.5) * 2, p = (r() + t * (0.9 + r() * 0.5)) % 1, q = Math.min(1, p + 0.08);
+      var y0 = hz + (H - hz) * p * p, y1 = hz + (H - hz) * q * q;
+      X.globalAlpha = 0.25 + 0.5 * p; X.lineWidth = 2 + 6 * p;
+      X.beginPath(); X.moveTo(vx + side * W * 0.9 * p * p, y0); X.lineTo(vx + side * W * 0.9 * q * q, y1); X.stroke();
+    }
+    X.globalAlpha = 1;
+  }
+  /* the penguin sliding at the camera on his belly (compose.js keys the
+     pictures from a GIF of Gemini's), then into the lens */
+  async function scSlide(sc, t) {
+    var lt = t - sc.t0, d = sc.t1 - sc.t0;
+    /* the GIF's 1920x1080 picture: whole in the wide one; in the tall one
+       smaller and moved so he ends a little below the middle */
+    var s = TALL ? 0.85 : 1, x = TALL ? W / 2 - 1044 * s : 0, y = TALL ? H * 0.66 - 966 * s : 0;
+    sky(t, 1);
+    ice(t, TALL ? H * 0.5 : H * 0.58, x + 960 * s);
+    snow(t, 70);
+    var n = clamp(sc.from + Math.round(lt * FPS * sc.speed), 1, sc.last || 1);
+    var im = await load('/frames/slide/' + String(n).padStart(5, '0') + '.png');
+    var k = clamp((lt - (d - 0.3)) / 0.3, 0, 1), z = 1 + 1.8 * k * k, ax = x + 870 * s, ay = y + 570 * s;
+    X.save(); X.translate(ax, ay); X.scale(z, z); X.translate(-ax, -ay);
+    if (im) X.drawImage(im, x, y, 1920 * s, 1080 * s);
+    X.restore();
+    if (k > 0) { X.fillStyle = 'rgba(255,255,255,' + (k * k * 0.8).toFixed(3) + ')'; X.fillRect(0, 0, W, H); }
+    flash(t, sc.t0, 0.6);
+  }
   async function scClip(sc, t) {
     var c = clipAt(sc, t), im = await load(frameOf(c.clip, c.n)), log = assets.logs[c.clip] || [];
     var pos = log[c.n - 1] ? [log[c.n - 1][6], log[c.n - 1][7]] : null;
@@ -320,6 +358,7 @@
     X.setTransform(1, 0, 0, 1, 0, 0); X.globalAlpha = 1; X.filter = 'none';
     if (sc.id === 'intro') scIntro(sc, t);
     else if (sc.id === 'outro') scOutro(sc, t);
+    else if (sc.id === 'slide') await scSlide(sc, t);
     else await scClip(sc, t);
     sweep(t, sc.t0);
     return true;
