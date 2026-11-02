@@ -342,3 +342,7 @@ safety) are kept in `play-console.md`; this table is the listing side.
   wording are in `TEXT` in `store/promo.js`. `node store/poster.js` makes a
   2400×3000 poster (`store/promo/poster-en.png`) with the two screenshots
   pasted in at 1:1 and checked pixel by pixel.
+- Video: the 31 s wide trailer (`node store/trailer/compose.js wide`, SYSTEMS
+  row 145), on the owner's YouTube: https://www.youtube.com/watch?v=SEqLNmxwQiQ
+  Set on the default listing on 2 Nov 2026; the five translations show the
+  default's video. AI asset declaration again "Don't label assets" (owner's choice).
