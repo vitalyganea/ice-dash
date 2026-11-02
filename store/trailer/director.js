@@ -266,7 +266,7 @@
       word('GOOGLE PLAY', W * 0.5, H * 0.45, 104, 'gold', (lt - 1.05) / 0.35);
       note('Plays offline · No account needed', W * 0.5, H * 0.9, 40, (lt - 1.6) / 0.4);
     } else {
-      mascot(W * 0.25, H * 0.56 + (1 - easeBack(lt / 0.6)) * H * 0.6, H * 0.8, 1, false, t);
+      mascot(W * 0.22, H * 0.56 + (1 - easeBack(lt / 0.6)) * H * 0.6, H * 0.74, 1, false, t);
       logo(W * 0.66, H * 0.3, W * 0.36, lt > 0.2 ? easeBack((lt - 0.2) / 0.5) : 0);
       word('FREE ON GOOGLE PLAY', W * 0.66, H * 0.62, 92, 'gold', (lt - 0.8) / 0.35);
       note('Plays offline · No account needed', W * 0.66, H * 0.78, 40, (lt - 1.4) / 0.4);

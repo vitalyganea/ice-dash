@@ -336,7 +336,8 @@ safety) are kept in `play-console.md`; this table is the listing side.
   a neon edge. `bash build-android.sh`, then `node store/promo.js` (or
   `node store/promo.js en ro`) writes `store/promo/<lang>/`, not kept in git.
   The penguin is the user's own 3D art (AI-made), cut out to
-  `store/promo/mascot/penguin3d.png`; the AI asset declaration was left at
+  `store/promo/mascot/penguin3d.png` (since 2 Nov 2026 keyed from a green-screen
+  version of it, cleaner all round); the AI asset declaration was left at
   "Don't label assets" by the owner's choice. Captions and their checked
   wording are in `TEXT` in `store/promo.js`. `node store/poster.js` makes a
   2400×3000 poster (`store/promo/poster-en.png`) with the two screenshots
