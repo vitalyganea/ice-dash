@@ -764,13 +764,17 @@
       if (ask !== boardAsk || currentScreen !== 'board') return;
       list.innerHTML = '';
       var rows = (r && r.rows) || [], me = r && r.me;
-      say(rows.length ? '' : 'board.empty');
       var mine = null;
       rows.forEach(function (x) { var el = boardRow(x); if (x.me) mine = el; list.appendChild(el); });
       if (me && me.rank > 0 && !mine) {
         me.me = true;
         list.appendChild(mine = boardRow(me));
       }
+      /* A best in the save (sent to the board at every start, so on today's
+         and this week's too) and no row of the player's own: Play Games
+         lists only public profiles, and a new one is private. Without a word
+         the player takes the best for lost. */
+      say(!mine && save.best > 0 ? 'board.private' : rows.length ? '' : 'board.empty');
       /* the list opens at the top, or with the player's own row in view */
       list.scrollTop = 0;
       if (mine && mine.offsetTop + mine.offsetHeight > list.clientHeight)

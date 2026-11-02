@@ -157,12 +157,13 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
   " show:function(){__board.shown++;return Promise.resolve();}," +
   /* the board's rows: a hundred players for all time, the player 345th
-     and so below them all; nobody yet today */
+     and so below them all (or, __boardHideMe, not on it: a private Play
+     Games profile); nobody yet today */
   " top:function(o){__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
   "  if(o.span!=='all')return later({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
   "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false});" +
-  "  return later({rows:rows,me:{rank:345,name:'Me',score:4200,me:true}});}," +
+  "  return later({rows:rows,me:window.__boardHideMe?null:{rank:345,name:'Me',score:4200,me:true}});}," +
   /* the save in the cloud: none, unless the tab was given one */
   " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
   "  return Promise.resolve({ok:true,signedIn:true,data:d});}," +
@@ -389,7 +390,20 @@ async function walk(cdp, sid, P) {
     await sleep(200);
     ok((await ev("__board.tops")).slice(-1)[0] === 'day' && await ev("document.querySelectorAll('#board-list .board-row').length") === 0,
        'Today asks for the day');
-    ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and an empty day says so');
+    ok(/only public profiles/.test(await ev("document.getElementById('board-note').textContent")),
+       'and a day without the player, whose best is in the save, says Play Games lists only public profiles');
+    /* A private Play Games profile: the hundred come, the player's own row
+       does not. The panel says the best is kept and why it is not there. */
+    await ev("window.__boardHideMe=true;1");
+    await click('.q-opt[data-span="all"]');
+    await sleep(300);
+    var pv = await ev("(function(){var n=document.getElementById('board-note'),l=document.getElementById('board-list'),b=document.getElementById('btn-back');" +
+      "return {rows:l.querySelectorAll('.board-row').length,me:l.querySelectorAll('.board-row.me').length,shown:!n.classList.contains('hidden'),text:n.textContent," +
+      "above:n.getBoundingClientRect().bottom<=l.getBoundingClientRect().top+0.5,back:b.getBoundingClientRect().bottom<=innerHeight,list:Math.round(l.clientHeight)};})()");
+    ok(pv.rows === 100 && pv.me === 0 && pv.shown && /Your best is saved/.test(pv.text) && pv.above && pv.back && pv.list >= 150,
+       'a private profile: the hundred without the player, and above them a word that the best is saved but only public profiles are listed (' + JSON.stringify(pv) + ')');
+    await shot('a1c-board-private');
+    await ev("window.__boardHideMe=false;1");
     /* No network, and Play Games never answers: the wheel stops after a
        while and says so; a list that still comes is shown. */
     await ev("window.__boardDelay=15000;1");
@@ -400,7 +414,7 @@ async function walk(cdp, sid, P) {
     var off = await ev("({wheel:!!document.querySelector('#board-list .board-loading'),note:document.getElementById('board-note').textContent})");
     ok(!off.wheel && /Can't reach/.test(off.note), 'twelve seconds without an answer: the wheel stops, and the panel says Google cannot be reached (' + JSON.stringify(off) + ')');
     await sleep(3000);
-    ok(/No scores here yet/.test(await ev("document.getElementById('board-note').textContent")), 'and the answer that comes after all is shown');
+    ok(/only public profiles/.test(await ev("document.getElementById('board-note').textContent")), 'and the answer that comes after all is shown');
     await ev("window.__boardDelay=0;1");
     await clickFor('#btn-back', '#screen-title');
 
