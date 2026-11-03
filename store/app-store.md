@@ -68,6 +68,38 @@ Version 1.2.9.
    Apple's cloud-managed certificate and uploads (no certificate made per
    run or kept anywhere). The build number is the workflow's run number.
 
+## Submitted (3 Nov 2026, about 17:10 Chișinău time)
+
+Version 1.2.9 with build 5 and the Game Center leaderboard Freeride, one
+submission ("2 Items Submitted"), state WAITING_FOR_REVIEW; release
+automatically once approved. The owner clicked "Submit for Review" (the
+classifier stops that click here, as it stops Play's and AdMob's publishing).
+
+What the submission holds:
+- Listing in English (U.S.), Romanian, Russian, Spanish (Spain and Mexico),
+  Portuguese (Brazil), German (`app-store-listing.md`): name, subtitle,
+  description, keywords, promotional text, support and marketing URL,
+  privacy policy URL in every language, copyright "2026 Vitalie Ganea".
+- Screenshots: 8 for the iPhone (6.1/6.3-inch, 1206x2622, which App Store
+  Connect now asks for and scales to the other iPhones) and 8 for the
+  13-inch iPad (2064x2752) in each language, from `store/promo.js`
+  (PROMO_FORMAT=iphone|ipad, the iPhone set shrunk from 1320x2868).
+- Category Games (Casual, Action); price free; 175 countries or regions.
+- Age rating 4+ (all None or No; Advertising Yes; not Made for Kids).
+- Content rights: uses third-party content (the ads), with the rights (the
+  owner's answer).
+- App Privacy, published by the owner: Coarse Location, Device ID, Product
+  Interaction, Advertising Data (third-party advertising, analytics), Crash,
+  Performance and Other Diagnostic Data (analytics); none linked to the
+  user, none used for tracking ("Data Not Linked to You").
+- App Review contact: the owner, zzzvitalii@gmail.com; sign-in not
+  required; a note on the ads, the board and the iCloud save.
+
+Left: the EU trader declaration (Business → DSA). Its phone/email check
+stopped at "Too many verification codes have been sent" on 3 Nov; until it
+is done the app is not on the 27 EU storefronts. The address there reads
+"Dacia 34\1" and should read "Dacia 34/1" (shown publicly to EU users).
+
 ## Stage 3: the store
 
 Listing in six languages from `listing.md` (name 30 characters, subtitle
