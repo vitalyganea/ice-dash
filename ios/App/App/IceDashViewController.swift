@@ -13,10 +13,21 @@ class IceDashViewController: CAPBridgeViewController {
            walks the page through its screens. Debug builds only: the App
            Store build has no such door. */
         if let js = ProcessInfo.processInfo.environment["ICEDASH_CHECK"], !js.isEmpty {
+            /* line by line, so the workflow reads each "ICEDASH-SHOT" as it is
+               written (block by block, every picture came at the end) */
+            setvbuf(stdout, nil, _IOLBF, 0)
             webView?.configuration.userContentController.addUserScript(
                 WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
         #endif
+    }
+
+    /* The hill is the screen: no clock and battery over it, ever. Capacitor's
+       SystemBars shows the bar as it loads (its "hidden" setting would hide
+       Android's navigation bar too), and native.js hid it only once the page
+       had loaded, so the first seconds had it (seen on the simulators). */
+    override var prefersStatusBarHidden: Bool {
+        return true
     }
 
     /* The pause button and the back arrow sit in the bottom corners, where

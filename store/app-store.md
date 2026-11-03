@@ -12,7 +12,9 @@ and SYSTEMS row 148.
 | Team ID | 6Q7DMJAPL4 |
 | Paid | 3 Nov 2026, US$99 a year; renews 4 Nov 2027 |
 | Active | 3 Nov 2026 (about half an hour after paying) |
-| Bundle ID | `com.veetalea.icedash`, the same as on Android |
+| Bundle ID | `com.veetalea.icedash`, the same as on Android; registered 3 Nov 2026 (App ID 74T58DYCNT) with Game Center and iCloud (CloudKit option, no container: the save uses only the key-value store) |
+| App Store Connect | app record created 3 Nov 2026: **"Ice Dash: Penguin Slide"** ("Ice Dash" is taken on the App Store; the owner chose this name), Apple ID 6830137061, primary language English (U.S.), SKU `icedash`, user access Full; version 1.0 waiting (to become 1.2.9 with the first build) |
+| Terms | App Store Connect Terms of Service accepted by the owner, 3 Nov 2026 |
 
 ## Building without a Mac
 
@@ -31,11 +33,10 @@ Version 1.2.9.
 
 ## Stage 2: needs the account (left to do)
 
-1. Identifiers: register `com.veetalea.icedash` with Game Center and iCloud
-   (the app's entitlements ask for both).
-2. App Store Connect: the app's record (name "Ice Dash", or a variant if the
-   name is taken; primary language English; SKU `icedash`).
-3. Game Center: a classic leaderboard, Leaderboard ID `freeride` (the id
+1. ~~Identifiers~~: done 3 Nov 2026.
+2. ~~App Store Connect record~~: done 3 Nov 2026.
+3. Game Center (tried 3 Nov 2026: the page and "Add Leaderboard" answered
+   "Sorry, something went wrong" for the new record; to try again): a classic leaderboard, Leaderboard ID `freeride` (the id
    already in `ios/ids.xcconfig`), score "integer", sorted high to low, in
    all six languages.
 4. An App Store Connect API key for the signing build on GitHub: made by
