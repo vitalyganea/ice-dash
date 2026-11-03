@@ -22,8 +22,10 @@ done
 cp js/native.js www/js/native.js
 
 # No YouTube SDK in the app; native.js goes in ahead of the game's scripts.
-sed -i '/youtube\.com\/game_api/d' www/index.html
-sed -i 's#<script src="js/i18n.js"></script>#<script src="js/native.js"></script>\n<script src="js/i18n.js"></script>#' www/index.html
+# (perl, not sed -i: the iPhone app is built on a Mac, whose sed reads -i
+# differently from Linux's)
+perl -i -ne 'print unless /youtube\.com\/game_api/' www/index.html
+perl -i -pe 's#<script src="js/i18n.js"></script>#<script src="js/native.js"></script>\n<script src="js/i18n.js"></script>#' www/index.html
 
 grep -q 'game_api' www/index.html && { echo "the Playables SDK is still in www/index.html"; exit 1; }
 grep -q 'js/native.js' www/index.html || { echo "native.js was not added"; exit 1; }
