@@ -85,3 +85,4 @@ declaration (the owner confirms), then the owner's "Submit for Review".
 | 1.2.9 | 1 | 3 Nov 2026 11:57 UTC, `ios-release.yml` run 1 | the first: "Upload succeeded"; the only warning, no dSYM inside Google's own frameworks (they ship none). Ad hoc entitlements seen in the log (Game Center, key-value store) before Apple's signing |
 | 1.2.9 | 2 | 3 Nov 2026, run 2 | the app's own AdMob app id and rewarded unit (real ads) |
 | 1.2.9 | 3 | 3 Nov 2026, run 3 (second attempt: the first stopped at "Error Downloading App Information" from App Store Connect, a passing fault) | the hill no longer trembles (SYSTEMS row 149); the iPhone starts at Auto graphics |
+| 1.2.9 | 4 | 3 Nov 2026, run 4 | Low sharpness on the iPhone never under half the screen's density (SYSTEMS row 150) |
