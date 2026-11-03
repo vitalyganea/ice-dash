@@ -48,9 +48,13 @@
   var PLAT = window.ICEDASH_PLATFORM = window.ICEDASH_PLATFORM || {};
   var IOS = !!(Cap.getPlatform && Cap.getPlatform() === 'ios');
   if (IOS) PLAT.words = 'ios';
-  /* A fresh install starts at the lowest graphics on every phone: effects
-     and sharpness both Low (2). Settings can raise them. */
-  PLAT.gfxDefault = { fx: 2, res: 2 };
+  /* A fresh install on Android starts at the lowest graphics, whatever the
+     phone: effects and sharpness both Low (2). Settings can raise them. Not
+     on the iPhone, which starts at Auto as the web does: every iPhone that
+     runs it is fast, and Low sharpness there is one canvas pixel to three
+     of the screen, at which the hill's edges shimmered as they moved (the
+     owner's iPhone 13, the first TestFlight build). */
+  if (!IOS) PLAT.gfxDefault = { fx: 2, res: 2 };
   /* An ad or Google's board has the screen: the app is behind it, and
      must neither pause a run nor go on playing its tune underneath. */
   var away = false;

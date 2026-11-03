@@ -8,7 +8,7 @@
 var Game = (function () {
   'use strict';
 
-  var STEP_MS = 1000 / 60;
+  var STEP_MS = 1000 / 60, STEP_EARLY = 1.5;
   /* The world region that must always be on screen. Everything is scaled so
      this fits, and then the viewport simply IS the screen — both dimensions
      run past the safe region rather than leaving a bar anywhere. */
@@ -7288,8 +7288,14 @@ var Game = (function () {
     var n = 0;
     /* A hook called from inside step() may end the run there and then —
        the tutorial's finish goes straight to its own card and stops the
-       engine — so the world can be gone by the next line. */
-    while (W && accT >= STEP_MS && n < 5) { step(); accT -= STEP_MS; n++; }
+       engine — so the world can be gone by the next line.
+       A step is taken up to STEP_EARLY ms before it is due, and the next
+       frame owes that back. Safari hands out frame times to the whole
+       millisecond (17, 17, 16 for a 60 Hz screen), so now and then a frame
+       came in a hair short of a step: it moved nothing, the next moved two,
+       and on the iPhone the whole hill trembled. No time is lost or gained
+       this way, as it would be by rounding the frame's length. */
+    while (W && accT >= STEP_MS - STEP_EARLY && n < 5) { step(); accT -= STEP_MS; n++; }
     if (accT > 400) accT = 0;
     /* The picture is the world's alone, and the world moves only in step():
        a frame that ran no step would paint what the canvas already shows.
