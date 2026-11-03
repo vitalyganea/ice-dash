@@ -387,6 +387,13 @@ async function walk(cdp, sid, P) {
     await clickFor('#btn-back', '#screen-title');
     var words = await ev("document.body.innerText");
     ok(!/Google|Play Games/.test(words), 'nothing on the title names Google or Play Games');
+    /* Low sharpness on a screen of three: never under half its density
+       (at a third the hill shimmered on the owner's iPhone 13) */
+    var dens = await ev("(function(){var c=document.getElementById('game'),r=[];" +
+      "Game.quality({res:2,fx:0});window.dispatchEvent(new Event('resize'));" +
+      "return new Promise(function(res){setTimeout(function(){r.push(c.width/innerWidth);Game.quality({res:'auto',fx:'auto'});" +
+      "window.dispatchEvent(new Event('resize'));setTimeout(function(){r.push(c.width/innerWidth);res(r);},300);},300);});})()");
+    ok(dens[0] >= 1.49 && dens[1] >= 1.99, 'Low sharpness keeps half the screen\'s density, Auto all of it (' + dens.map(function (d) { return d.toFixed(2); }).join(', ') + ' canvas pixels to a CSS pixel)');
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
 

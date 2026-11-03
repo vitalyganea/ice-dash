@@ -7180,7 +7180,12 @@ var Game = (function () {
     stage.style.width = vw + 'px'; stage.style.height = vh + 'px';
 
     var dpr = window.devicePixelRatio || 1;
-    var eff = Math.max(1, Math.min(dpr, RES_CAP[RES], 3840 / vw, 2160 / vh));
+    /* A platform may keep the canvas from going below a share of the
+       screen's own density (minSharp; the iPhone app: half). On a screen of
+       three, Low's one pixel to a CSS pixel is a third, and the hill's edges
+       shimmered as they moved (SYSTEMS row 150). */
+    var floorK = dpr * (+(window.ICEDASH_PLATFORM || {}).minSharp || 0);
+    var eff = Math.max(1, Math.min(dpr, Math.max(RES_CAP[RES], floorK), 3840 / vw, 2160 / vh));
     /* The readouts are drawn in CSS pixels, not world units. In world units
        a 22px label came out at 12.6 real pixels on a 390px phone, because
        one world unit is only `scale` CSS pixels there — which is exactly why

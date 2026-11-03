@@ -55,6 +55,12 @@
      of the screen, at which the hill's edges shimmered as they moved (the
      owner's iPhone 13, the first TestFlight build). */
   if (!IOS) PLAT.gfxDefault = { fx: 2, res: 2 };
+  /* Nor does the iPhone's picture go below half its screen's density, even
+     at Low sharpness: at a third it still shimmered once the frames came
+     evenly (the owner, build 3). Low there is Medium's density; Low effects
+     still save what they save. Android keeps its Low, which helps the slow
+     phones it was made for and was never seen to shimmer. */
+  if (IOS) PLAT.minSharp = 0.5;
   /* An ad or Google's board has the screen: the app is behind it, and
      must neither pause a run nor go on playing its tune underneath. */
   var away = false;
