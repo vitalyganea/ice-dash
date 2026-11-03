@@ -14,9 +14,11 @@
 
    A third walk is the Android app's page (native.js in it, the way
    build-android.sh makes it) over stand-ins for the native plugins: the
-   rewarded ads and the Freeride board, which only the app has.
+   rewarded ads and the Freeride board, which only the app has. A fourth
+   is the same page as the iPhone app has it: the board on Game Center,
+   Apple's question about tracking, the iPhone's own test ads.
 
-     node test/playtest.js            all three
+     node test/playtest.js            all four
      node test/playtest.js desktop    just the one
    =========================================================== */
 var http = require('http'), fs = require('fs'), path = require('path');
@@ -127,7 +129,8 @@ function CDP(url) {
 var PLATFORMS = {
   desktop: { w: 1280, h: 800, mobile: false, touch: 0, name: 'desktop 1280x800' },
   mobile:  { w: 390,  h: 844, mobile: true,  touch: 1, name: 'phone 390x844' },
-  android: { w: 390,  h: 844, mobile: true,  touch: 1, name: 'android 390x844', android: true }
+  android: { w: 390,  h: 844, mobile: true,  touch: 1, name: 'android 390x844', android: true },
+  iphone:  { w: 402,  h: 874, mobile: true,  touch: 1, name: 'iphone 402x874', android: true, ios: true }
 };
 
 /* Capacitor as the app has it, with AdMob, the app's PlayGames plugin and
@@ -171,6 +174,26 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " mine:function(){var r=0;try{r=+sessionStorage.getItem('rank');}catch(e){}return Promise.resolve({rank:r||345,score:4200});}}," +
   "InAppReview:{requestReview:function(){__reviews++;return Promise.resolve();}}}};})();";
 
+/* The same as the iPhone app has it: Capacitor says "ios", the board and
+   the save are the app's GameCenter plugin (the same calls; a score only
+   goes once Game Center has signed the player in, which it says with
+   "signedIn"), and AdMob asks Apple's question about tracking. The order
+   of consent, question and start is kept in __ads.order. */
+function swap(s, a, b) { if (s.indexOf(a) < 0) throw new Error('FAKE_NATIVE changed: ' + a); return s.replace(a, b); }
+var FAKE_NATIVE_IOS = [
+  ["isNativePlatform:function(){return true;},", "isNativePlatform:function(){return true;},getPlatform:function(){return 'ios';},"],
+  ["window.__ads={prepared:0,shown:0,privacy:0};", "window.__ads={prepared:0,shown:0,privacy:0,order:[],units:[]};window.__gcIn=false;"],
+  ["AdMob:{requestConsentInfo:function(){return Promise.resolve(", "AdMob:{requestConsentInfo:function(){__ads.order.push('consent');return Promise.resolve("],
+  [" initialize:function(){return Promise.resolve();},",
+   " initialize:function(){__ads.order.push('start');return Promise.resolve();}," +
+   " trackingAuthorizationStatus:function(){__ads.order.push('asked?');return Promise.resolve({status:'notDetermined'});}," +
+   " requestTrackingAuthorization:function(){__ads.order.push('ask');return Promise.resolve();},"],
+  [" prepareRewardVideoAd:function(){__ads.prepared++;", " prepareRewardVideoAd:function(o){__ads.prepared++;__ads.units.push(o.adId);"],
+  ["PlayGames:{status:", "GameCenter:{addListener:function(n,f){if(n==='signedIn')on(n,function(){__gcIn=true;f();});return on('x',function(){});},status:"],
+  [" submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});},",
+   " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:__gcIn});},"]
+].reduce(function (s, r) { return swap(s, r[0], r[1]); }, FAKE_NATIVE);
+
 async function walk(cdp, sid, P) {
   var errs = [];
   cdp.on(function (m) {
@@ -205,7 +228,7 @@ async function walk(cdp, sid, P) {
       courses: { firstlight: 2 }
     })) + ")}catch(e){}" }, sid);
 
-  if (P.android) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: FAKE_NATIVE }, sid);
+  if (P.android) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: P.ios ? FAKE_NATIVE_IOS : FAKE_NATIVE }, sid);
 
   async function ev(expr) {
     var r = await cdp.send('Runtime.evaluate',
@@ -326,6 +349,45 @@ async function walk(cdp, sid, P) {
       await sleep(100);
     }
     return false;
+  }
+
+  /* ---- the iPhone app: the same page, Apple's words and order ---- */
+  async function iphoneWalk() {
+    await sleep(800);
+    var ads = await ev("({order:__ads.order.slice(),units:__ads.units.slice()})");
+    ok(ads.order.join() === 'consent,asked?,ask,start',
+       'Google\'s consent first, then Apple\'s question about tracking, then the ads start (' + ads.order.join(' > ') + ')');
+    ok(ads.units.length > 0 && ads.units.every(function (u) { return u === 'ca-app-pub-3940256099942544/1712485313'; }),
+       'with no unit of its own yet, the iPhone\'s own test unit is asked for (' + ads.units.join() + ')');
+    /* Game Center had not signed the player in at the start: the best went
+       nowhere. When it says it has, the best goes at once. */
+    var before = (await ev("__board.submits.slice()")).length;
+    ok(before > 0, 'the best is offered to the board at the start (' + before + ' time(s))');
+    await ev("__fire('signedIn');1");
+    await sleep(200);
+    var after = await ev("__board.submits.slice()");
+    ok(after.length > before && after[after.length - 1] === 4200, 'and sent again as soon as Game Center signs the player in (' + JSON.stringify(after) + ')');
+    await clickFor('#title-best', '#screen-board');
+    await sleep(400);
+    ok(await ev("document.querySelectorAll('#board-list .board-row').length") === 101 && (await ev("__board.tops"))[0] === 'all',
+       'the best opens the board, the rows from Game Center');
+    await click('.q-opt[data-span="day"]');
+    await sleep(300);
+    var note = await ev("document.getElementById('board-note').textContent");
+    ok(/Game Center/.test(note) && !/Google|Play/.test(note),
+       'a day without the player names Game Center, not Google Play ("' + note + '")');
+    await shot('i1-board-missing');
+    await ev("window.__boardDelay=15000;1");
+    await click('.q-opt[data-span="week"]');
+    await sleep(12700);
+    note = await ev("document.getElementById('board-note').textContent");
+    ok(/Can't reach Game Center/.test(note) && !/Google/.test(note), 'and no answer says Game Center cannot be reached ("' + note + '")');
+    await ev("window.__boardDelay=0;1");
+    await sleep(2600);
+    await clickFor('#btn-back', '#screen-title');
+    var words = await ev("document.body.innerText");
+    ok(!/Google|Play Games/.test(words), 'nothing on the title names Google or Play Games');
+    ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
 
   /* ---- the Android app: rewarded ads and the Freeride board ---- */
@@ -607,6 +669,7 @@ async function walk(cdp, sid, P) {
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + (P.android ? '/android.html' : '/index.html') }, sid);
   for (var i = 0; i < 60 && !(await visible('#screen-title')); i++) await sleep(200);
   ok(await visible('#screen-title'), 'the title screen comes up');
+  if (P.ios) { await iphoneWalk(); return errs; }
   if (P.android) { await androidWalk(); return errs; }
   ok(await ev("(function(){var e=document.getElementById('title-best');return !e.getAttribute('data-action')&&e.getAttribute('role')==='status'&&" +
      "document.getElementById('bp-rank').classList.contains('hidden')&&!document.getElementById('title-board');})()"),

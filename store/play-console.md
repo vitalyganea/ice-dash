@@ -197,6 +197,8 @@ build sent to Play must have all four.
    `native.js` without the back button. Needs a Mac with Xcode (or a cloud
    build such as Codemagic or GitHub Actions on macOS) and an Apple Developer
    account at $99 a year; testing through TestFlight.
+   Begun 3 Nov 2026 (account paid and active the same day; built on
+   GitHub Actions): see `app-store.md`.
 
 The web version keeps running throughout. It can also be served from an
 own server: the files from `build.sh` behind any web server with HTTPS.

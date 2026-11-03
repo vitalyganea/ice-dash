@@ -1,0 +1,142 @@
+# The iPhone app, built and walked through on a Mac that GitHub lends
+# (free for a public repository), since nobody here has a Mac.
+#
+#   1. www/ built and copied into ios/ (npm run ios:sync), then the app
+#      built twice without signing: Debug for the simulator, which is the
+#      one walked through, and Release for a phone, which is the one that
+#      will go to the App Store (it must at least build).
+#   2. The Debug build installed on simulators: an iPhone, a small iPhone
+#      and an iPad. test/ios-check.js is handed to it at launch
+#      (ICEDASH_CHECK, IceDashViewController.swift) and walks the page:
+#      title, Settings, a Freeride run, the revive, the results, the board.
+#      The page says "ICEDASH-SHOT <name>" before each picture and the
+#      picture is taken here; the whole walk is filmed too.
+#   3. Pictures, films and each simulator's output (the page's console,
+#      what Game Center and AdMob said) kept as the run's artifact "ios-walk".
+#
+# It runs on every push that touches the app, and by hand (Actions → iOS →
+# Run workflow). Signing and TestFlight are not here: they need the Apple
+# Developer account's key, and come once the account is active.
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'js/**'
+      - 'css/**'
+      - 'index.html'
+      - 'build.sh'
+      - 'build-android.sh'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'test/ios-check.js'
+      - 'tools/media-lib.js'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-walk:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: The web part, copied into the iOS project
+        run: |
+          npm ci
+          npm run ios:sync
+          xcodebuild -version
+
+      - name: Build for the simulator (Debug)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO -quiet build
+
+      - name: Build for a phone (Release, unsigned)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO -quiet build
+
+      - name: Walk through it on simulators
+        run: |
+          APP=build/sim/Build/Products/Debug-iphonesimulator/App.app
+          node test/ios-check.js > check.js
+          mkdir -p walk
+          xcrun simctl list devices available > walk/devices.txt
+          # name for the folder, then the models to look for, best first
+          for spec in 'iphone:iPhone 17 Pro,iPhone 16 Pro,iPhone 17,iPhone 16' \
+                      'iphone-small:iPhone 16e,iPhone SE (3rd generation),iPhone 13 mini' \
+                      'ipad:iPad Pro 13-inch (M5),iPad Pro 13-inch (M4),iPad Air 13-inch (M3),iPad Air 13-inch (M2)'; do
+            name=${spec%%:*}
+            dev=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          want = sys.argv[1].split(",")
+          d = json.load(sys.stdin)["devices"]
+          runtimes = sorted((k for k in d if ".iOS-" in k), reverse=True)
+          for w in want:
+              for k in runtimes:
+                  for x in d[k]:
+                      if x["name"] == w:
+                          print(x["udid"], x["name"], k.split(".")[-1]); sys.exit()
+          ' "${spec#*:}")
+            if [ -z "$dev" ]; then echo "no simulator for $name"; continue; fi
+            udid=${dev%% *}
+            echo "== $name: ${dev#* }"
+            out=walk/$name
+            mkdir -p "$out"
+            echo "${dev#* }" > "$out/device.txt"
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b > /dev/null
+            xcrun simctl install "$udid" "$APP"
+            xcrun simctl io "$udid" recordVideo --codec=h264 --force "$out/walk.mp4" > /dev/null 2>&1 &
+            rec=$!
+            SIMCTL_CHILD_ICEDASH_CHECK="$(cat check.js)" \
+              xcrun simctl launch --console-pty --terminate-running-process "$udid" com.veetalea.icedash > "$out/console.txt" 2>&1 &
+            app=$!
+            python3 - "$udid" "$out" <<'PY'
+          import re, subprocess, sys, time
+          udid, out = sys.argv[1], sys.argv[2]
+          taken, t0 = 0, time.time()
+          while time.time() - t0 < 240:
+              text = open(out + "/console.txt", errors="replace").read()
+              shots = re.findall(r"ICEDASH-SHOT (\S+)", text)
+              for s in shots[taken:]:
+                  subprocess.run(["xcrun", "simctl", "io", udid, "screenshot", out + "/" + s + ".png"], capture_output=True)
+              taken = len(shots)
+              if "ICEDASH-DONE" in text:
+                  break
+              time.sleep(0.4)
+          else:
+              subprocess.run(["xcrun", "simctl", "io", udid, "screenshot", out + "/timeout.png"], capture_output=True)
+              print("the walk did not finish in four minutes")
+          print("%d pictures" % taken)
+          PY
+            kill -INT $rec || true
+            sleep 3
+            xcrun simctl terminate "$udid" com.veetalea.icedash || true
+            kill $app 2>/dev/null || true
+            xcrun simctl shutdown "$udid" || true
+            grep -h 'ICEDASH-\|IceDashBoard\|ERROR\|rror' "$out/console.txt" | head -40 || true
+          done
+
+      - name: Keep the pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-walk
+          path: walk/
+          retention-days: 14

@@ -6,6 +6,10 @@
     "backgroundColor": "#0d3a5c",
     "allowMixedContent": false
   },
+  "ios": {
+    "backgroundColor": "#0d3a5c",
+    "contentInset": "never"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 600,

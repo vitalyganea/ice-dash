@@ -74,6 +74,21 @@ plugins. `assembleDebug` builds "Ice Dash debug" (`com.veetalea.icedash.debug`),
 which installs beside the Play app with its own save and an inspectable web
 view, for measuring on a real phone (SYSTEMS row 134). The upload key lives outside the repo.
 
+## iPhone
+
+Capacitor in `ios/` (Swift Package Manager), the same www/ as Android:
+`npm run ios:sync`. There is no Mac here: the app is built and walked through
+on GitHub's Macs by `.github/workflows/ios.yml` on every push that touches it
+(simulator pictures and films in the run's `ios-walk` artifact; the walk is
+`test/ios-check.js`). `js/native.js` serves both phones; on the iPhone the
+board and the save go through the app's own `ios/App/App/GameCenterPlugin.swift`
+(Game Center and iCloud, the same calls as PlayGames), lines that name Google
+Play have a `key.ios` twin in `js/i18n.js` (in all six languages), and Apple's
+tracking question follows Google's consent form. The ids Apple and AdMob give
+are in `ios/ids.xcconfig` and `AD_UNIT_IOS` in `native.js`.
+`node test/playtest.js iphone` walks the page over stand-ins for the plugins.
+`store/app-store.md` keeps the App Store side (account, records, builds).
+
 ## Yandex Games
 
 `bash build-yandex.sh` builds `yandex/game/` and `yandex/icedash-yandex.zip`

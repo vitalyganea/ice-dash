@@ -347,6 +347,12 @@ var STRINGS = {
   'board.you':      { en: 'you', ru: 'ты' },
   'board.private':  { en: 'Your best is saved, but Google Play Games lists only public profiles. To appear here, make your Play Games profile public.',
                       ru: 'Твой рекорд сохранён, но Google Play Игры показывают в таблице только открытые профили. Чтобы попасть сюда, сделай свой профиль открытым.' },
+  /* The iPhone app's words for the two above (native.js sets
+     ICEDASH_PLATFORM.words = 'ios'; t() takes key.ios where there is one) */
+  'board.off.ios':  { en: "Can't reach Game Center. Check the connection and that you're signed in to Game Center in Settings.",
+                      ru: 'Нет связи с Game Center. Проверь интернет и вход в Game Center в Настройках.' },
+  'board.private.ios': { en: 'Your best is saved on this phone. It appears here once it reaches Game Center: check that you\'re signed in to Game Center in Settings.',
+                      ru: 'Твой рекорд сохранён на телефоне. Он появится здесь, когда дойдёт до Game Center: проверь вход в Game Center в Настройках.' },
   'revive.adsub':   { en: 'No spare life left. Watch a short ad and carry on from where you fell?',
                       ru: 'Запасных жизней нет. Посмотреть короткую рекламу и продолжить с того же места?' },
   'revive.ad':      { en: 'Watch an ad', ru: 'Смотреть рекламу' },
@@ -1226,6 +1232,8 @@ var RO = {
   'board.off': 'Nu ajungem la Google Play Jocuri. Verifică internetul și încearcă din nou.',
   'board.you': 'tu',
   'board.private': 'Recordul tău e salvat, dar Google Play Jocuri arată în clasament doar profilurile publice. Ca să apari aici, fă-ți profilul Play Jocuri public.',
+  'board.off.ios': 'Nu ajungem la Game Center. Verifică internetul și dacă ești conectat la Game Center în Configurări.',
+  'board.private.ios': 'Recordul tău e salvat pe telefon. Apare aici după ce ajunge la Game Center: verifică dacă ești conectat la Game Center în Configurări.',
   'revive.adsub': 'Nu mai ai vieți de rezervă. Te uiți la o reclamă scurtă și continui de unde ai căzut?',
   'revive.ad': 'Vezi o reclamă',
   'over.double': 'Dublează peștii cu o reclamă',
@@ -1822,6 +1830,8 @@ var ES = {
   'board.off': 'No se puede conectar con Google Play Juegos. Revisa internet e inténtalo de nuevo.',
   'board.you': 'tú',
   'board.private': 'Tu récord está guardado, pero Google Play Juegos solo muestra perfiles públicos. Para aparecer aquí, haz público tu perfil de Play Juegos.',
+  'board.off.ios': 'No se puede conectar con Game Center. Revisa internet y que hayas iniciado sesión en Game Center en Ajustes.',
+  'board.private.ios': 'Tu récord está guardado en el teléfono. Aparecerá aquí cuando llegue a Game Center: revisa que hayas iniciado sesión en Game Center en Ajustes.',
   'revive.adsub': 'No te quedan vidas de repuesto. ¿Ver un anuncio corto y seguir desde donde caíste?',
   'revive.ad': 'Ver un anuncio',
   'over.double': 'Duplica los peces con un anuncio',
@@ -2418,6 +2428,8 @@ var PT = {
   'board.off': 'Sem conexão com o Google Play Games. Verifique a internet e tente de novo.',
   'board.you': 'você',
   'board.private': 'Seu recorde está salvo, mas o Google Play Games só mostra perfis públicos. Para aparecer aqui, deixe seu perfil do Play Games público.',
+  'board.off.ios': 'Sem conexão com o Game Center. Verifique a internet e se você entrou no Game Center em Ajustes.',
+  'board.private.ios': 'Seu recorde está salvo no celular. Ele aparece aqui quando chegar ao Game Center: verifique se você entrou no Game Center em Ajustes.',
   'revive.adsub': 'Sem vidas de reserva. Ver um anúncio curto e continuar de onde você caiu?',
   'revive.ad': 'Ver um anúncio',
   'over.double': 'Dobre os peixes com um anúncio',
@@ -3014,6 +3026,8 @@ var DE = {
   'board.off': 'Google Play Spiele ist nicht erreichbar. Prüf die Verbindung und versuch es noch einmal.',
   'board.you': 'du',
   'board.private': 'Dein Rekord ist gespeichert, aber Google Play Spiele zeigt nur öffentliche Profile. Damit du hier erscheinst, stell dein Play-Spiele-Profil auf öffentlich.',
+  'board.off.ios': 'Game Center ist nicht erreichbar. Prüf die Verbindung und ob du in den Einstellungen bei Game Center angemeldet bist.',
+  'board.private.ios': 'Dein Rekord ist auf dem Handy gespeichert. Er erscheint hier, sobald er bei Game Center ankommt: Prüf, ob du in den Einstellungen bei Game Center angemeldet bist.',
   'revive.adsub': 'Keine Ersatzleben mehr. Kurze Werbung ansehen und dort weitermachen, wo du gestürzt bist?',
   'revive.ad': 'Werbung ansehen',
   'over.double': 'Fische verdoppeln mit Werbung',
@@ -3235,7 +3249,12 @@ function pluralForm(n) {
    failing that the key itself, so a gap shows up rather than going blank.
    A string with forms picks one by vars.n, which may come formatted
    ("5 000"); without a count it is the plural. */
+/* A platform may have words of its own for a key (the iPhone app says Game
+   Center where Android says Google Play): key + '.' + ICEDASH_PLATFORM.words,
+   where there is one. native.js, which sets it, loads before this file. */
+var PLAT_WORDS = (typeof window !== 'undefined' && window.ICEDASH_PLATFORM && window.ICEDASH_PLATFORM.words) || '';
 function t(key, vars, fallback) {
+  if (PLAT_WORDS && STRINGS[key + '.' + PLAT_WORDS]) key += '.' + PLAT_WORDS;
   var e = STRINGS[key];
   var s = e ? (e[LANG] || e.en) : (fallback != null ? fallback : key);
   if (s && typeof s === 'object') {

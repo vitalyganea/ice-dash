@@ -1,8 +1,9 @@
 /* ===========================================================
-   native.js — the Android app's side of things (Capacitor only)
+   native.js — the phone apps' side of things (Capacitor only)
    -----------------------------------------------------------
-   Only build-android.sh puts this in the page; the Playables bundle and
-   the browser never load it. It keeps the game itself untouched:
+   Only build-android.sh puts this in the page (www/, which the Android
+   and the iPhone app both take); the Playables bundle and the browser
+   never load it. It keeps the game itself untouched:
      - the hardware back button is turned into the Esc key, which the game
        already understands (leave a panel, resume from pause, pause a run).
        On the title, with nothing to go back to, it leaves the app.
@@ -24,8 +25,15 @@
        lay out in the game's own panel.
      - the save kept in the player's Play Games account (saved games), so
        installing the game again, or a new phone, brings everything back.
-     - Google Play's own review card, at a high point only (a new best,
+     - the store's own review card, at a high point only (a new best,
        three stars) and not before ten runs, at most once a month.
+   On the iPhone the same, with three differences: the board and the save
+   go through the app's GameCenter plugin (ios/App/App/GameCenterPlugin.swift:
+   Game Center and iCloud), which answers the same calls as PlayGames; the
+   board's lines name Game Center (ICEDASH_PLATFORM.words = 'ios', read by
+   t() in i18n.js); and Apple's own question about tracking comes after
+   Google's consent form, before the first ad is asked for. There is no
+   back button, so its listener is never called.
    ui.js is handed the ads and the board through window.ICEDASH_PLATFORM;
    without this file those are missing and nothing of them is shown.
    Every call is guarded: off-device, or with a plugin missing, nothing
@@ -38,6 +46,8 @@
   /* ui.js reads this once, as it loads; this file comes first, so the
      object is put there now and filled in as the plugins answer. */
   var PLAT = window.ICEDASH_PLATFORM = window.ICEDASH_PLATFORM || {};
+  var IOS = !!(Cap.getPlatform && Cap.getPlatform() === 'ios');
+  if (IOS) PLAT.words = 'ios';
   /* A fresh install starts at the lowest graphics on every phone: effects
      and sharpness both Low (2). Settings can raise them. */
   PLAT.gfxDefault = { fx: 2, res: 2 };
@@ -117,7 +127,8 @@
 
   /* ---- rewarded ads (AdMob) ---- */
   /* AD_UNIT is the rewarded unit from the AdMob console ("Revive and
-     double"); the app's own AdMob id is in res/values/play-ids.xml. Empty,
+     double"); the app's own AdMob id is in res/values/play-ids.xml (the
+     iPhone app's: AD_UNIT_IOS and ios/ids.xcconfig). Empty,
      Google's own test unit plays instead, and so it does in a debug build
      (Capacitor.DEBUG: "Ice Dash debug", installed beside the Play one to
      measure the game on a phone), so that no real ad is shown there. As
@@ -128,8 +139,10 @@
      so that no real ad is ever tapped on it.
      (The test unit is named outright: on a phone AdMob counts as a test
      device, the plugin uses whatever unit it is given.) */
-  var AD_UNIT = 'ca-app-pub-6104904420104536/6883567494';
-  var TEST_UNIT = 'ca-app-pub-3940256099942544/5224354917';
+  var AD_UNIT_ANDROID = 'ca-app-pub-6104904420104536/6883567494';
+  var AD_UNIT_IOS = '';
+  var AD_UNIT = IOS ? AD_UNIT_IOS : AD_UNIT_ANDROID;
+  var TEST_UNIT = IOS ? 'ca-app-pub-3940256099942544/1712485313' : 'ca-app-pub-3940256099942544/5224354917';
   var Ad = P.AdMob;
   var adOk = false, adLoaded = false, adLoading = false, adWait = 0, adOn = false;
   function loadAd() {
@@ -160,7 +173,16 @@
         });
       }
       if (!info || !info.canRequestAds) return;
-      return Ad.initialize({}).then(function () { adOk = true; loadAd(); });
+      return tracking().then(function () { return Ad.initialize({}); }).then(function () { adOk = true; loadAd(); });
+    }).then(null, function () {});
+  }
+  /* The iPhone's own question, whether ads may know the phone again from
+     app to app: asked once, after Google's form, and whatever the answer
+     the ads come all the same (only less suited without it). */
+  function tracking() {
+    if (!IOS || !Ad.trackingAuthorizationStatus || !Ad.requestTrackingAuthorization) return Promise.resolve();
+    return Ad.trackingAuthorizationStatus().then(function (r) {
+      if (r && r.status === 'notDetermined') return Ad.requestTrackingAuthorization();
     }).then(null, function () {});
   }
   PLAT.adReady = function () { return adLoaded && !adOn; };
@@ -189,19 +211,22 @@
     Ad.showRewardVideoAd().then(function () { earned = true; }, end);
   };
 
-  /* ---- the Freeride board (Google Play Games) ---- */
-  /* The board's ids are in res/values/play-ids.xml; while they are empty
-     the plugin says there is no board and the buttons stay hidden. Play
-     Games signs the player in by itself as the app starts. A best is sent
-     once the board has taken it; one that could not go (not signed in, no
-     network) goes with the next save or after the board is opened. */
-  var PG = P.PlayGames, board = false, best = 0, sent = 0, sending = null;
+  /* ---- the Freeride board (Google Play Games; Game Center on the iPhone) ---- */
+  /* The board's ids are in res/values/play-ids.xml (ios/ids.xcconfig);
+     while they are empty the plugin says there is no board and the buttons
+     stay hidden. Play Games and Game Center sign the player in by
+     themselves as the app starts. A best is sent once the board has taken
+     it; one that could not go (not signed in, no network) goes with the
+     next save, after the board is opened, or, on the iPhone, as soon as
+     Game Center has signed the player in. */
+  var PG = P.PlayGames || P.GameCenter, board = false, best = 0, sent = 0, sending = null;
   function send() {
     if (!board || best <= sent) return sending;
     var n = best;
     sending = PG.submit({ score: n }).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
     return sending;
   }
+  if (PG && PG.addListener && IOS) PG.addListener('signedIn', function () { send(); });
   if (PG && PG.status) {
     PG.status().then(function (st) {
       board = !!(st && st.available);
@@ -236,7 +261,7 @@
     };
   }
 
-  /* ---- the save in the cloud (Play Games saved games) ----
+  /* ---- the save in the cloud (Play Games saved games; iCloud on the iPhone) ----
      ui.js reads it once at the start (PLAT.cloudLoad) and, once the cloud
      has answered, hands over every save (PLAT.cloudSave). Saves are put
      together for a few seconds and sent one at a time, the last one wins;
@@ -263,10 +288,11 @@
     if (P.App && P.App.addListener) P.App.addListener('pause', flushCloud);
   }
 
-  /* ---- asking for a review (Google Play's own card) ---- */
+  /* ---- asking for a review (the store's own card) ---- */
   /* ui.js says when a run ended on a high point. After ten runs the player
      knows the game; after a month the question may come once more. Google
-     keeps a limit of its own and may show nothing, and says neither way.
+     (and Apple, three times a year) keeps a limit of its own and may show
+     nothing, and says neither way.
      The card comes a moment after the results, so the new best is seen
      first; if the results are gone by then, the moment has passed. */
   var Rev = P.InAppReview, REV_KEY = 'icedash-review', revDue = false;

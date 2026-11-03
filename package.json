@@ -2,11 +2,12 @@
   "name": "ice-dash",
   "version": "1.0.0",
   "private": true,
-  "description": "Ice Dash — a one-tap endless slide. Android build via Capacitor; the game itself needs no build step.",
+  "description": "Ice Dash — a one-tap endless slide. Android and iPhone builds via Capacitor; the game itself needs no build step.",
   "scripts": {
     "android:web": "bash build-android.sh",
     "android:sync": "bash build-android.sh && npx cap sync android",
-    "android:open": "npx cap open android"
+    "android:open": "npx cap open android",
+    "ios:sync": "bash build-android.sh && npx cap sync ios"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.2.1",
@@ -15,6 +16,7 @@
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
     "@capacitor/splash-screen": "^8.0.2"
   },
   "devDependencies": {

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Builds www/, the web part of the Android app, from the same allowlist
-# build.sh ships to YouTube Playables — so the two can never disagree about
-# what the game is. Two differences, both because an app is not YouTube:
+# Builds www/, the web part of the Android app and of the iPhone app (both
+# copy it in: npx cap sync android / ios), from the same allowlist build.sh
+# ships to YouTube Playables — so they can never disagree about what the
+# game is. Two differences, both because an app is not YouTube:
 #   - the Playables SDK <script> is taken out. The game already runs
 #     without it (saves to localStorage, no platform pause), and in an app
 #     it would be a network request that fails offline.
 #   - js/native.js is added: the Android back button, haptics through the
-#     native plugin, and the system bars hidden.
+#     native plugin, the system bars hidden, ads and the board (Play Games
+#     on Android, Game Center on the iPhone).
 set -eu
 cd "$(dirname "$0")"
 

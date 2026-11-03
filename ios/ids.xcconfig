@@ -1,0 +1,12 @@
+// The ids Apple and Google give the iPhone app, all in one place (the
+// Android ones are in android/app/src/main/res/values/play-ids.xml).
+//
+// ICEDASH_ADMOB_APP_ID: AdMob → Apps → Ice Dash (iOS) → App settings,
+//   "App ID" (ca-app-pub-…~…). Until the iOS app is in AdMob it is Google's
+//   sample iOS app id; the Mobile Ads SDK stops the app at launch without
+//   one. The rewarded ad unit goes in js/native.js, AD_UNIT_IOS.
+// ICEDASH_BOARD_FREERIDE: App Store Connect → the app → Game Center →
+//   Leaderboards → Freeride, its Leaderboard ID. Empty, the app has no
+//   board and shows no button for one (GameCenterPlugin.swift).
+ICEDASH_ADMOB_APP_ID = ca-app-pub-3940256099942544~1458002511
+ICEDASH_BOARD_FREERIDE = freeride
