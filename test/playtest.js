@@ -357,8 +357,8 @@ async function walk(cdp, sid, P) {
     var ads = await ev("({order:__ads.order.slice(),units:__ads.units.slice()})");
     ok(ads.order.join() === 'consent,asked?,ask,start',
        'Google\'s consent first, then Apple\'s question about tracking, then the ads start (' + ads.order.join(' > ') + ')');
-    ok(ads.units.length > 0 && ads.units.every(function (u) { return u === 'ca-app-pub-3940256099942544/1712485313'; }),
-       'with no unit of its own yet, the iPhone\'s own test unit is asked for (' + ads.units.join() + ')');
+    ok(ads.units.length > 0 && ads.units.every(function (u) { return u === 'ca-app-pub-6104904420104536/8308143427'; }),
+       'the iPhone app\'s own rewarded unit is asked for, not Android\'s (' + ads.units.join() + ')');
     /* Game Center had not signed the player in at the start: the best went
        nowhere. When it says it has, the best goes at once. */
     var before = (await ev("__board.submits.slice()")).length;

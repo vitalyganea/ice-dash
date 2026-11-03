@@ -50,8 +50,18 @@ Version 1.2.9.
    at once), made an Admin key "GitHub Actions" and put it in the
    repository's secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
    Keys are never typed here.
-5. AdMob: an iOS app and a rewarded unit; the app id goes in
-   `ios/ids.xcconfig`, the unit in `AD_UNIT_IOS` (`js/native.js`).
+5. ~~AdMob~~: done 3 Nov 2026. iOS app "Ice Dash: Penguin Slide" (not yet
+   linked to a store; AdMob reviews it once the App Store listing is live
+   and linked in its App settings), app id `ca-app-pub-6104904420104536~5953442824`
+   in `ios/ids.xcconfig`; rewarded unit "Revive and double" (1 Reward, no
+   partner bidding) `ca-app-pub-6104904420104536/8308143427` in
+   `AD_UNIT_IOS`. The EU consent message (Privacy & messaging → European
+   regulations) now covers both apps, the iOS one with the same privacy
+   policy URL; the owner clicked "Publish changes" (the classifier stops
+   that click here). app-ads.txt (https://vitalyganea.github.io/app-ads.txt)
+   already lists the publisher id; AdMob finds it through the store
+   listing's website, so the App Store listing's Marketing URL must be
+   `https://vitalyganea.github.io/ice-dash/` (stage 3).
 6. `.github/workflows/ios-release.yml` (by hand: Actions → iOS release):
    archives unsigned, signs the frameworks and the app ad hoc with the
    entitlements written out in full, then `-exportArchive` signs with

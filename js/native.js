@@ -140,7 +140,7 @@
      (The test unit is named outright: on a phone AdMob counts as a test
      device, the plugin uses whatever unit it is given.) */
   var AD_UNIT_ANDROID = 'ca-app-pub-6104904420104536/6883567494';
-  var AD_UNIT_IOS = '';
+  var AD_UNIT_IOS = 'ca-app-pub-6104904420104536/8308143427';
   var AD_UNIT = IOS ? AD_UNIT_IOS : AD_UNIT_ANDROID;
   var TEST_UNIT = IOS ? 'ca-app-pub-3940256099942544/1712485313' : 'ca-app-pub-3940256099942544/5224354917';
   var Ad = P.AdMob;
