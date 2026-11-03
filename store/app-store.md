@@ -39,12 +39,17 @@ Version 1.2.9.
    "Sorry, something went wrong" for the new record; to try again): a classic leaderboard, Leaderboard ID `freeride` (the id
    already in `ios/ids.xcconfig`), score "integer", sorted high to low, in
    all six languages.
-4. An App Store Connect API key for the signing build on GitHub: made by
-   the owner (Users and Access → Integrations), put in the repository's
-   secrets by the owner. Keys are never typed here.
+4. ~~API key~~: done 3 Nov 2026. The owner asked for API access (approved
+   at once), made an Admin key "GitHub Actions" and put it in the
+   repository's secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
+   Keys are never typed here.
 5. AdMob: an iOS app and a rewarded unit; the app id goes in
    `ios/ids.xcconfig`, the unit in `AD_UNIT_IOS` (`js/native.js`).
-6. A workflow that signs, uploads to TestFlight and numbers the builds.
+6. `.github/workflows/ios-release.yml` (by hand: Actions → iOS release):
+   archives unsigned, signs the frameworks and the app ad hoc with the
+   entitlements written out in full, then `-exportArchive` signs with
+   Apple's cloud-managed certificate and uploads (no certificate made per
+   run or kept anywhere). The build number is the workflow's run number.
 
 ## Stage 3: the store
 

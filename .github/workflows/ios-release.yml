@@ -1,0 +1,113 @@
+# The iPhone app, signed and sent to App Store Connect (TestFlight), by hand:
+# Actions → iOS release → Run workflow. Nothing here runs on a push.
+#
+# Signing without a Mac and without keeping a certificate anywhere:
+#   1. www/ copied into ios/ (npm run ios:sync) and the app archived
+#      unsigned, numbered with this workflow's run number.
+#   2. Its frameworks signed ad hoc, and the app ad hoc with its entitlements
+#      written out in full (Game Center, iCloud's key-value store for this
+#      team), so they are in the archive for the next step to keep.
+#   3. xcodebuild -exportArchive signs it for the App Store with Apple's
+#      cloud-managed certificate and uploads it (destination "upload"), with
+#      the App Store Connect API key: no certificate is made per run and none
+#      is kept here.
+# The key is the repository's three secrets (ASC_KEY_ID, ASC_ISSUER_ID,
+# ASC_KEY_P8, an Admin key the owner made and put there); it is written to a
+# file only for this run and removed at the end. App Store Connect then
+# processes the build for a quarter of an hour or so before TestFlight has it.
+name: iOS release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      TEAM: 6Q7DMJAPL4
+      BUNDLE: com.veetalea.icedash
+      BUILD: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: The web part, copied into the iOS project
+        run: |
+          npm ci
+          npm run ios:sync
+          xcodebuild -version
+          echo "version $(grep -m1 'MARKETING_VERSION' ios/App/App.xcodeproj/project.pbxproj | tr -dc '0-9.'), build $BUILD"
+
+      - name: Archive, unsigned
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            CURRENT_PROJECT_VERSION="$BUILD" DEVELOPMENT_TEAM="$TEAM" CODE_SIGNING_ALLOWED=NO \
+            -quiet archive
+
+      - name: Entitlements into the archive
+        run: |
+          APP="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          cat > "$RUNNER_TEMP/entitlements.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>application-identifier</key><string>$TEAM.$BUNDLE</string>
+            <key>com.apple.developer.team-identifier</key><string>$TEAM</string>
+            <key>com.apple.developer.game-center</key><true/>
+            <key>com.apple.developer.ubiquity-kvstore-identifier</key><string>$TEAM.$BUNDLE</string>
+          </dict>
+          </plist>
+          EOF
+          plutil -lint "$RUNNER_TEMP/entitlements.plist"
+          if [ -d "$APP/Frameworks" ]; then
+            find "$APP/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 |
+              xargs -0 -n1 codesign --force --sign - --timestamp=none
+          fi
+          codesign --force --sign - --timestamp=none --entitlements "$RUNNER_TEMP/entitlements.plist" "$APP"
+          codesign -d --entitlements - "$APP" 2>/dev/null | head -20
+          ls "$APP/Frameworks" 2>/dev/null || echo "no embedded frameworks"
+
+      - name: Sign for the App Store and upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          KEY="$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "build $BUILD sent to App Store Connect"
+
+      - name: Forget the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
