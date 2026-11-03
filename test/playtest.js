@@ -355,8 +355,8 @@ async function walk(cdp, sid, P) {
   async function iphoneWalk() {
     await sleep(800);
     var ads = await ev("({order:__ads.order.slice(),units:__ads.units.slice()})");
-    ok(ads.order.join() === 'consent,asked?,ask,start',
-       'Google\'s consent first, then Apple\'s question about tracking, then the ads start (' + ads.order.join(' > ') + ')');
+    ok(ads.order.join() === 'consent,start',
+       'Google\'s consent first, then the ads start, and Apple\'s question about tracking is never asked (' + ads.order.join(' > ') + ')');
     ok(ads.units.length > 0 && ads.units.every(function (u) { return u === 'ca-app-pub-6104904420104536/8308143427'; }),
        'the iPhone app\'s own rewarded unit is asked for, not Android\'s (' + ads.units.join() + ')');
     /* Game Center had not signed the player in at the start: the best went

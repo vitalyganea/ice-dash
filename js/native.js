@@ -31,9 +31,10 @@
    go through the app's GameCenter plugin (ios/App/App/GameCenterPlugin.swift:
    Game Center and iCloud), which answers the same calls as PlayGames; the
    board's lines name Game Center (ICEDASH_PLATFORM.words = 'ios', read by
-   t() in i18n.js); and Apple's own question about tracking comes after
-   Google's consent form, before the first ad is asked for. There is no
-   back button, so its listener is never called.
+   t() in i18n.js); and the app never asks Apple's question about
+   tracking (the owner's choice, 3 Nov 2026: it would frighten players),
+   so the ads there are never personalised by the advertising id. There is
+   no back button, so its listener is never called.
    ui.js is handed the ads and the board through window.ICEDASH_PLATFORM;
    without this file those are missing and nothing of them is shown.
    Every call is guarded: off-device, or with a plugin missing, nothing
@@ -183,16 +184,7 @@
         });
       }
       if (!info || !info.canRequestAds) return;
-      return tracking().then(function () { return Ad.initialize({}); }).then(function () { adOk = true; loadAd(); });
-    }).then(null, function () {});
-  }
-  /* The iPhone's own question, whether ads may know the phone again from
-     app to app: asked once, after Google's form, and whatever the answer
-     the ads come all the same (only less suited without it). */
-  function tracking() {
-    if (!IOS || !Ad.trackingAuthorizationStatus || !Ad.requestTrackingAuthorization) return Promise.resolve();
-    return Ad.trackingAuthorizationStatus().then(function (r) {
-      if (r && r.status === 'notDetermined') return Ad.requestTrackingAuthorization();
+      return Ad.initialize({}).then(function () { adOk = true; loadAd(); });
     }).then(null, function () {});
   }
   PLAT.adReady = function () { return adLoaded && !adOn; };
