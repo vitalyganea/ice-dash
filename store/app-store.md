@@ -35,10 +35,17 @@ Version 1.2.9.
 
 1. ~~Identifiers~~: done 3 Nov 2026.
 2. ~~App Store Connect record~~: done 3 Nov 2026.
-3. Game Center (tried 3 Nov 2026: the page and "Add Leaderboard" answered
-   "Sorry, something went wrong" for the new record; to try again): a classic leaderboard, Leaderboard ID `freeride` (the id
-   already in `ios/ids.xcconfig`), score "integer", sorted high to low, in
-   all six languages.
+3. ~~Game Center~~: done 3 Nov 2026, after an hour of "Sorry, something
+   went wrong" (503s from App Store Connect for the new record, while
+   Apple's status page said all was well). Classic leaderboard "Freeride",
+   Leaderboard ID `freeride` (the id in `ios/ids.xcconfig`), Integer, best
+   score, high to low, not hidden; names as the game's own mode names, with
+   the game's word for points: English (U.S.) Freeride / point, points;
+   Russian Фрирайд / очко, очков; Romanian Liber / de puncte (one suffix
+   only there); Spanish (Mexico) Libre / puntos (one suffix); Spanish
+   (Spain) Libre / punto, puntos; Portuguese (Brazil) Livre / ponto, pontos;
+   German Freie Fahrt / Punkt, Punkte. "Prepare for Submission": it goes
+   for review with the first version.
 4. ~~API key~~: done 3 Nov 2026. The owner asked for API access (approved
    at once), made an Admin key "GitHub Actions" and put it in the
    repository's secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
@@ -60,3 +67,9 @@ Listing in six languages from `listing.md` (name 30 characters, subtitle
 answers (as Play's Data safety: AdMob's data for advertising, analytics and
 fraud prevention; the score to Game Center), age rating, the EU trader
 declaration (the owner confirms), then the owner's "Submit for Review".
+
+## Builds
+
+| Version | Build | Sent | Notes |
+|---|---|---|---|
+| 1.2.9 | 1 | 3 Nov 2026 11:57 UTC, `ios-release.yml` run 1 | the first: "Upload succeeded"; the only warning, no dSYM inside Google's own frameworks (they ship none). Ad hoc entitlements seen in the log (Game Center, key-value store) before Apple's signing |
