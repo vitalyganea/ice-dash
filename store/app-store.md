@@ -115,6 +115,10 @@ game hides the revive and double offers, as on Android.
 For the recording the owner installs a TestFlight build made with
 `ios-release.yml`'s test_ads box (AD_UNIT_IOS emptied, Google's test unit,
 which always has an ad); the version keeps build 5.
+Resubmitted 4 Nov 2026 10:09 UTC by the owner, state WAITING_FOR_REVIEW:
+the notes from `app-review-notes.md` (set through App Store Connect's own
+API from the page) and the recording attached (720x1558 H.264, 50 MB, 6.5
+minutes, made from the phone's 730 MB HEVC file).
 
 ## Stage 3: the store
 
