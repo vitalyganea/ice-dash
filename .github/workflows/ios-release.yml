@@ -15,10 +15,20 @@
 # ASC_KEY_P8, an Admin key the owner made and put there); it is written to a
 # file only for this run and removed at the end. App Store Connect then
 # processes the build for a quarter of an hour or so before TestFlight has it.
+#
+# "test_ads" makes a build for a recording only: AD_UNIT_IOS emptied in the
+# copied native.js, so Google's test unit plays (it always has an ad, while
+# AdMob limits real ones for an app not yet in the store). Such a build is
+# never put up for review or sale.
 name: iOS release
 
 on:
   workflow_dispatch:
+    inputs:
+      test_ads:
+        description: "Google's test ads instead of real ones (a build for a recording, never for the store)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ios-release
@@ -46,6 +56,15 @@ jobs:
           npm run ios:sync
           xcodebuild -version
           echo "version $(grep -m1 'MARKETING_VERSION' ios/App/App.xcodeproj/project.pbxproj | tr -dc '0-9.'), build $BUILD"
+
+      - name: Google's test ads, only when asked
+        if: inputs.test_ads
+        run: |
+          F=ios/App/App/public/js/native.js
+          perl -pi -e "s/^(\s*var AD_UNIT_IOS = )'[^']*';/\$1'';/" "$F"
+          grep -n "var AD_UNIT_IOS" "$F"
+          grep -q "var AD_UNIT_IOS = '';" "$F"
+          echo "build $BUILD: test ads, not for the store"
 
       - name: Archive, unsigned
         run: |

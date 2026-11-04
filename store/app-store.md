@@ -100,6 +100,22 @@ stopped at "Too many verification codes have been sent" on 3 Nov; until it
 is done the app is not on the 27 EU storefronts. The address there reads
 "Dacia 34\1" and should read "Dacia 34/1" (shown publicly to EU users).
 
+Answered on 4 Nov 2026, 1:00: Guideline 2.1, Information Needed (shown as
+"Rejected, 2.1.0 Performance: App Completeness"; the leaderboard stays Ready
+for Review). Apple wants, in the App Review notes, a screen recording from a
+real device beginning at the app's launch, plus the app's purpose, how to
+use it, its outside services, regional differences and third-party
+content: `app-review-notes.md`. Then the owner clicks "Resubmit to App
+Review".
+
+AdMob shows the iOS app as "Requires review, Limited ad serving: add store
+to lift limit", so the iPhone gets almost no real ads until the app is live
+and linked in AdMob (Apps → the iOS app → Add store). With no ad loaded the
+game hides the revive and double offers, as on Android.
+For the recording the owner installs a TestFlight build made with
+`ios-release.yml`'s test_ads box (AD_UNIT_IOS emptied, Google's test unit,
+which always has an ad); the version keeps build 5.
+
 ## Stage 3: the store
 
 Listing in six languages from `listing.md` (name 30 characters, subtitle
@@ -119,3 +135,4 @@ declaration (the owner confirms), then the owner's "Submit for Review".
 | 1.2.9 | 3 | 3 Nov 2026, run 3 (second attempt: the first stopped at "Error Downloading App Information" from App Store Connect, a passing fault) | the hill no longer trembles (SYSTEMS row 149); the iPhone starts at Auto graphics |
 | 1.2.9 | 4 | 3 Nov 2026, run 4 | Low sharpness on the iPhone never under half the screen's density (SYSTEMS row 150) |
 | 1.2.9 | 5 | 3 Nov 2026, run 5 | no tracking question, NSUserTrackingUsageDescription gone (SYSTEMS row 151); the build to submit |
+| 1.2.9 | 6 | 4 Nov 2026, run 6, test_ads | build 5 with Google's test ads, for App Review's screen recording only; never submitted |
