@@ -50,7 +50,8 @@ are in `listing.md`.
 | 1.2.6 | 15 | Production | 29 Oct 2026: internal testing 2:40; production **live 29 Oct 2026 3:14** (it replaced 1.2.5 in review). The place on the plaque as "#101", kept on the device; at 130% letters the board's spans and the mode titles move down (SYSTEMS row 141). Left for the next: at 130% one long word in the Known Lines subtitle (RU, PT) is 8-10 px out |
 | 1.2.7 | 16 | Production | 29 Oct 2026: internal testing 11:27; production **live 29 Oct 2026 11:55**. Every screen at 320 px across, measured on the OPPO (SYSTEMS row 142); the word "points" gives way to a big place; the same clear space between stacked buttons; a wheel while the board loads, stopping after 12 s with no answer (row 143). The AD_ID error at every release is an old active artifact on the closed track "1.0" (1.1.x, before ads); the 1.2.x bundles have the permission |
 | 1.2.8 | 17 | Production | 29 Oct 2026: internal testing 15:03; production saved after the new store art was approved, waiting for the owner's "Submit 1 change for review"; the app's own icon is the new one, the penguin sliding on his belly (SYSTEMS row 144) |
-| 1.2.9 | 18 | Production | 12 Nov 2026: straight to production, full rollout, notes in all six languages (the redrawn hill, SYSTEMS rows 152-156: real animals and penguins, new geysers, ramps, bridges and the fish gate, the find's prize kept secret, no stutter at bridges, nothing misplaced). In review from about 14:50; managed publishing off, so it goes live by itself once approved. The AD_ID error again came from the old closed-track artifact (the bundle has the permission): "Release without permission" |
+| 1.2.9 | 18 | Production | 12 Nov 2026: straight to production, full rollout, notes in all six languages (the redrawn hill, SYSTEMS rows 152-156: real animals and penguins, new geysers, ramps, bridges and the fish gate, the find's prize kept secret, no stutter at bridges, nothing misplaced). Sent to review about 14:50, **live the same afternoon**. The AD_ID error again came from the old closed-track artifact (the bundle has the permission): "Release without permission" |
+| 1.2.10 | 19 | Production | 12 Nov 2026 ~15:25: straight to production, full rollout, the same notes as 1.2.9 in all six languages. Fish and finds that 1.2.9's placement fix dropped under bridges and over crevasses are carried past them instead (a fifth of a run's fish back, SYSTEMS row 156). AD_ID error from the old closed-track artifact again: "Release without permission". In review; managed publishing off |
 
 Store art, 29 Oct 2026: the listing's icon and feature graphic replaced in all six languages (each translation had its own copy) with the user's Gemini pictures of the penguin sliding on his belly (SYSTEMS row 144); AI asset declaration "Don't label assets", as for the screenshots. The same icon and feature graphic set in the Play Games project's properties. Both saved; sending them (12 listing changes, and Publish for Play Games) is the owner's click.
 
@@ -66,7 +67,7 @@ language translation found"). Managed publishing is off, so the release went
 live by itself once approved: https://play.google.com/store/apps/details?id=com.veetalea.icedash
 
 versionCode 1 was uploaded once and withdrawn; every new upload needs a higher
-number (`android/app/build.gradle`). The next one is **19**.
+number (`android/app/build.gradle`). The next one is **20**.
 
 To build: `bash build-android.sh`, `npx cap sync android`, then in `android/`
 `./gradlew bundleRelease` with `JAVA_HOME` set to JDK 21. The bundle is
