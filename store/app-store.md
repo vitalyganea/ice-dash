@@ -95,10 +95,15 @@ What the submission holds:
 - App Review contact: the owner, zzzvitalii@gmail.com; sign-in not
   required; a note on the ads, the board and the iCloud save.
 
-Left: the EU trader declaration (Business → DSA). Its phone/email check
-stopped at "Too many verification codes have been sent" on 3 Nov; until it
-is done the app is not on the 27 EU storefronts. The address there reads
-"Dacia 34\1" and should read "Dacia 34/1" (shown publicly to EU users).
+EU trader declaration (Business → DSA): the trader route's phone check
+never got through (3 Nov: "Too many verification codes have been sent";
+9 Nov: the SMS to the Moldovan number never arrived). On 9 Nov 2026 the
+owner declared "I'm not a trader under the DSA"; Business → Compliance
+shows Digital Services Act, 27 countries, Active. A declared status keeps
+the app on the EU storefronts (only apps with no status are removed), with
+no contact details shown. The owner may switch to trader later from the
+same row, once the SMS arrives (the form already holds "Dacia 34/1", Chisinau
+2060 and the email; the phone is left).
 
 Answered on 4 Nov 2026, 1:00: Guideline 2.1, Information Needed (shown as
 "Rejected, 2.1.0 Performance: App Completeness"; the leaderboard stays Ready
@@ -119,6 +124,10 @@ Resubmitted 4 Nov 2026 10:09 UTC by the owner, state WAITING_FOR_REVIEW:
 the notes from `app-review-notes.md` (set through App Store Connect's own
 API from the page) and the recording attached (720x1558 H.264, 50 MB, 6.5
 minutes, made from the phone's 730 MB HEVC file).
+Still WAITING_FOR_REVIEW on 11 Nov 2026 (seven days, no message from Apple).
+That day the owner asked App Review about it (developer.apple.com/contact →
+App Review → App Review Status → Email), case 30000011995418; the answer comes
+by email to the account's address.
 
 ## Stage 3: the store
 
