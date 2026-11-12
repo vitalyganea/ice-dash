@@ -45,7 +45,7 @@ personal data.
   The transfer is the first one the page itself makes, so it goes in
   `js/native.js` only (the phone apps; Playables, Yandex and CrazyGames
   never load it), and CLAUDE.md gets that exception written down.
-- **Release:** a new build for both stores (Android 1.3.0 / iOS 1.3.0; Android 1.2.9 went out on 12 Nov 2026 with the redrawn hill).
+- **Release:** a new build for both stores (Android 1.3.0 / iOS 1.3.0; Android 1.2.9 and 1.2.10 went out on 12 Nov 2026 with the redrawn hill).
 - **Later:** the Godot version can use the same server and save format.
 
 ## Google Play achievements (and Game Center on the iPhone)
@@ -80,7 +80,7 @@ only.
   - Incremental achievements: 2 to 10,000 steps.
   - Achievements cannot be deleted once published, so fix the list before
     publishing.
-- **Release:** Android 1.3.0 (versionCode 19), together with the transfer
+- **Release:** Android 1.3.0 (versionCode 20), together with the transfer
   code.
 - **iPhone, same pass if wanted:**
   - Game Center achievements through `GameCenterPlugin.swift`, with the same

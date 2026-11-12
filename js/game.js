@@ -424,14 +424,33 @@ var Game = (function () {
     for (var i = 0; i < tidySpans.length; i++) {
       var q = tidySpans[i];
       if (q === o) continue;
-      if (q.t === 'tunnel' && o.d + rr > q.d - 10 && o.d - rr < q.d + q.span + 20) return true;
-      if (q.t === 'crevasse' && o.d + rr > q.d - 12 && o.d - rr < q.d + q.span + 12) return true;
+      if (q.t === 'tunnel' && o.d + rr > q.d - 10 && o.d - rr < q.d + q.span + 20) return q;
+      if (q.t === 'crevasse' && o.d + rr > q.d - 12 && o.d - rr < q.d + q.span + 12) return q;
       if (q.t === 'nunatak' && o.d > q.d - 10 && o.d < q.d + q.span + 10 &&
-          Math.abs(o.x - q.x) < q.w / 2 + rr * 0.4) return true;
+          Math.abs(o.x - q.x) < q.w / 2 + rr * 0.4) return q;
       if (q.t === 'ramp' && !PICKUPS[o.t] && Math.abs(o.x - q.x) < q.w / 2 * 1.2 + rr &&
-          o.d + rr > q.d - 30 && o.d - rr < q.d + 26) return true;    // a boulder or geyser in the ramp
+          o.d + rr > q.d - 30 && o.d - rr < q.d + 26) return q;       // a boulder or geyser in the ramp
+    }
+    return null;
+  }
+  /* A fish or a find that fell under a bridge or over a crevasse is not
+     thrown away: the shoal carries on past it, on the same line, its
+     spacing halved, where the stretch beyond is kept clear of boulders.
+     Thrown away, they took a fifth of the fish out of a run and the shop
+     came that much slower (economy.js). */
+  function pickupNear(o, d) {
+    for (var i = 0; i < W.objects.length; i++) {
+      var q = W.objects[i];
+      if (q !== o && !q._gone && PICKUPS[q.t] && Math.abs(q.d - d) < 30 && Math.abs(q.x - o.x) < 30) return true;
     }
     return false;
+  }
+  function carryPast(o, q, rr) {
+    var start = q.t === 'tunnel' ? q.d - 10 : q.d - 12, end = q.d + q.span + (q.t === 'tunnel' ? 20 : 12);
+    var rel = o.x - chuteAt(o.d), nd = end + rr + 24 + Math.max(0, o.d - start) * 0.5;
+    for (var tries = 0; tries < 4 && pickupNear(o, nd); tries++) nd += 34;
+    o.d = nd; o.x = chuteAt(nd) + rel;
+    return !inSpan(o, rr);
   }
   function tidyLaid() {
     var from = W.dist + PLAYER_Y / 0.9 + 60, out = [], i, o, any = false;
@@ -453,7 +472,9 @@ var Game = (function () {
         if (pass === 1 && t !== 'rock' && t !== 'tree' && t !== 'drift' && t !== 'gate') continue;
         if (pass === 2 && !PICKUPS[t]) continue;
         var c = chuteAt(o.d), rel = o.x - c, side = rel < 0 ? -1 : 1, edge = bankEdge(o.d, side);
-        if (inSpan(o, rr)) { o._gone = true; continue; }
+        var sp = inSpan(o, rr);
+        if (sp && !(PICKUPS[t] && (sp.t === 'tunnel' || sp.t === 'crevasse') && carryPast(o, sp, rr))) { o._gone = true; continue; }
+        if (sp) { c = chuteAt(o.d); rel = o.x - c; side = rel < 0 ? -1 : 1; edge = bankEdge(o.d, side); }
         if (t === 'geyser') {
           if (Math.abs(rel) + rr > edge - 4 || solidNear(o.x, o.d, rr * 0.75, o)) o._gone = true;
         } else if (t === 'drift') {
