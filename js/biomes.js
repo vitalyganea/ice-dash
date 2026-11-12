@@ -8,7 +8,8 @@
    hill, ash and embers over the lava field. `rise` is subtracted from the
    fall, so a lit ember climbs against the run instead of dropping with it.
    `aurora` hangs a band of light in the sky. Everything here is weather
-   and rock: there is nothing on this hill that anybody built.
+   and rock: there is nothing on this hill that anybody built (save the
+   frozen magnet and the plank ramps, by the owner's choice: GAME_SPEC.md).
    =========================================================== */
 
 var BIOME_LEN = 520;          // metres per stretch (8 world units = 1 metre)

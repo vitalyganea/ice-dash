@@ -148,6 +148,11 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   every fish towards you is a red-and-blue horseshoe magnet frozen in a block
   of ice. As a ring of little fish it read as nothing; a magnet says at once
   what it does. Nothing else man-made follows from it.
+  **Second exception, by the user's choice (12 November 2026):** two of the
+  three ramp kinds are made of planks, after pictures the user chose: a
+  kicker of pale weathered boards laid up the slope, and a dark deck of old
+  boards laid across. The third is a drift of snow. The bridges, geysers
+  and everything else stay natural.
 - No libraries, no build step, no bundler.
 - No image or audio asset files beyond the title logo.
 - No orientation lock, and no in-game master mute (Playables forbids both).
