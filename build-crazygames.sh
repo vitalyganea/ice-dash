@@ -36,7 +36,25 @@ fi
 # CrazyGames only loads relative paths.
 if grep -nE '(src|href)="/' "$OUT/index.html"; then echo "an absolute path is in index.html"; exit 1; fi
 
+# The developer portal takes no archive and no folders (13 Nov 2026: "Archive
+# files are not supported"): every file at the top level of one upload, the
+# paths in index.html and style.css made to match. crazygames/upload/ is that.
+UP=crazygames/upload
+rm -rf "$UP"; mkdir -p "$UP"
+for f in $(cd "$OUT" && find . -type f); do
+  b=$(basename "$f")
+  [ -e "$UP/$b" ] && { echo "two files named $b: the flat upload cannot hold both"; exit 1; }
+  cp "$OUT/$f" "$UP/$b"
+done
+sed -i -E 's#(src|href|srcset)="(css|js|img)/#\1="#g' "$UP/index.html"
+sed -i 's#\.\./img/##g' "$UP/style.css"
+grep -nE '(src|href|srcset)="(css|js|img)/' "$UP/index.html" && { echo "a folder path is left in $UP/index.html"; exit 1; }
+for x in $(grep -oE '(src|href|srcset)="[^"]+"' "$UP/index.html" | grep -v 'https://' | sed -E 's/^[a-z]+="//; s/"$//'); do
+  [ -f "$UP/$x" ] || { echo "$UP/index.html names $x, which is not in the upload"; exit 1; }
+done
+
 rm -f "$ZIP"
 (cd "$OUT" && zip -q -X -r "../$(basename "$ZIP")" .)
 unzip -l "$ZIP" | grep -q ' index.html$' || { echo "index.html is not at the root of the archive"; exit 1; }
 echo "$ZIP  $(unzip -l "$ZIP" | tail -1 | awk '{print $2}') files, $(du -h "$ZIP" | cut -f1)"
+echo "$UP/  $(ls "$UP" | wc -l) files at the top level, for the developer portal's upload"

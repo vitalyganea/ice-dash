@@ -4,7 +4,8 @@ Tot ce trebuie pentru [developer.crazygames.com](https://developer.crazygames.co
 
 | Fișier | Ce e |
 |---|---|
-| `icedash-crazygames.zip` | Jocul (932 KB, 19 fișiere, `index.html` în rădăcină, doar căi relative) |
+| `upload/` | **Ce se încarcă în portal**: cele 16 fișiere ale jocului, toate la un loc, fără dosare (portalul nu primește arhive și nici dosare) |
+| `icedash-crazygames.zip` | Același joc ca arhivă (932 KB, 19 fișiere), pentru alte portaluri |
 | `texts.md` | Titlu, descriere, controale, categorie, taguri, în engleză |
 | `covers/cover-1920x1080.png` | Copertă landscape 16:9 (obligatorie) |
 | `covers/cover-800x1200.png` | Copertă portrait 2:3 (obligatorie) |
@@ -20,8 +21,9 @@ cum cere CrazyGames, apoi arată o cursă reală prin 4 locuri de pe munte.
 
 1. Intră pe **developer.crazygames.com** și fă-ți cont de dezvoltator
    (gratuit). Completează datele de plată când ți le cere: de acolo vin banii.
-2. **Add game / Submit game.** Alege tipul **HTML5** și încarcă
-   `icedash-crazygames.zip`.
+2. **Add game / Submit game.** Alege tipul **HTML5** și, la „Upload files”,
+   **Select files**: toate cele 16 fișiere din `crazygames/upload/`. Arhiva e
+   refuzată („Archive files are not supported”).
 3. **Preview în portal.** Deschide jocul în previzualizarea lor și joacă o
    cursă până la capăt. Când ieși din rezultate, trebuie să vezi caseta lor
    de test pentru reclamă. Așa știi că SDK-ul merge.
@@ -90,3 +92,10 @@ node crazygames/media.js --video     # ...și cele 2 videoclipuri
 ```
 
 `crazygames/game/` e o copie făcută de build. Nu o edita de mână.
+
+## Trimiteri
+
+| Data | Ce | Stare |
+|---|---|---|
+| Octombrie 2026 | Prima trimitere | Respinsă: „calitatea generală nu atinge așteptările”; reparată (SYSTEMS rândul 121) |
+| 13 noiembrie 2026 | Versiunea cu benzile în adâncime și butoanele de gheață (ca Android 1.2.11), Game ID **171755**, build `6553c2f1` | Trimisă, **Awaiting review**. Formular: Action; Skill, Running, Top-Down, Animal, Avoid; salvare prin Data Module; mobil, orientare BOTH; mute prin SDK; fullscreen; unealta Claude. Previzualizarea lor: încărcare 1,3 s, gameplayStart/Stop și happytime văzute, salvarea păstrată după repornire |

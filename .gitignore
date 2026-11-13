@@ -30,3 +30,4 @@ store/promo/*
 
 # store/trailer/compose.js writes these; made again in minutes
 store/trailer/out/
+crazygames/upload/
