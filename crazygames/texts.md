@@ -24,10 +24,10 @@ Five ways to play:
 - Known Lines: 10 hand-made routes with a finish and three stars each.
 - Freeride: the endless mountain. How far can you go?
 - Time Rush: 20 seconds on the clock, grab time bubbles to keep going.
-- Avalanche: the snow is coming down behind you, crystal rings hold it back.
+- Avalanche: the snow is coming down behind you, arcs of leaping fish hold it back.
 - Daily Line: a new route every day, the same for everyone.
 
-Fish are your money. Spend them at the Fish Market on 18 creatures (penguins, a seal, a walrus, a narwhal, an orca, a snowy owl, a snow leopard and more). Each one has a power of its own and a comic of its own.
+Fish are your money. Spend them at the Fish Market on 18 creatures (penguins, a seal, a walrus, a narwhal, an orca, a snowy owl, a snow leopard and more). Each one has a power of its own and a comic of its own, drawn in depth.
 
 Ride through 14 stretches of mountain, each with its own weather and its own music: pine forest, glacier, crystal caves, cosmic ice, a frozen jungle and a neon sunset. Collect 33 trophies and finish three new tasks every day.
 ```

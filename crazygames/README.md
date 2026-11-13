@@ -4,7 +4,7 @@ Tot ce trebuie pentru [developer.crazygames.com](https://developer.crazygames.co
 
 | Fișier | Ce e |
 |---|---|
-| `icedash-crazygames.zip` | Jocul (840 KB, 16 fișiere, `index.html` în rădăcină, doar căi relative) |
+| `icedash-crazygames.zip` | Jocul (932 KB, 19 fișiere, `index.html` în rădăcină, doar căi relative) |
 | `texts.md` | Titlu, descriere, controale, categorie, taguri, în engleză |
 | `covers/cover-1920x1080.png` | Copertă landscape 16:9 (obligatorie) |
 | `covers/cover-800x1200.png` | Copertă portrait 2:3 (obligatorie) |
@@ -73,10 +73,13 @@ nu atinge așteptările”) și sunt doar în build-ul CrazyGames: le pornește
 | Sunetul pe iOS repornit dintr-o atingere | la fiecare atingere |
 | Fără selecție de text sau meniu contextual | blocate peste tot |
 | Fără buton propriu de fullscreen, fără link-uri externe | jocul nu are niciunul |
-| Doar căi relative, ≤ 50 MB, ≤ 1500 fișiere | 16 fișiere, 840 KB; build-ul refuză orice cale absolută |
+| Doar căi relative, ≤ 50 MB, ≤ 1500 fișiere | 19 fișiere, 932 KB; build-ul refuză orice cale absolută |
 
 Am testat totul în Chrome cu **SDK-ul real CrazyGames** în modul lui local,
-cu reclame demonstrative: 16 verificări, toate trec, fără erori.
+cu reclame demonstrative: 16 verificări, toate trec, fără erori. Refăcut pe
+13 noiembrie 2026, pentru versiunea cu benzile desenate în adâncime și
+butoanele de gheață (aceeași ca Android 1.2.11): 20 de verificări, toate trec.
+Copertele și videoclipurile au fost refăcute din jocul de acum.
 
 ## Cum refaci totul după o schimbare în joc
 
