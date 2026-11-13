@@ -1497,9 +1497,13 @@
   function openComic(id, done) {
     var pages = comicFor(id);
     if (!pages) { if (done) done(); return; }
-    comic = { id: id, pages: pages, page: 0, shown: 0, done: done, raf: null, starts: [] };
+    comic = { id: id, pages: pages, page: 0, shown: 0, done: done, raf: null, starts: [],
+              deep: !!pages.deep, cam: [], mouse: null, turning: false, f: 0 };
+    $('screen-comic').querySelector('.comic-page').classList.toggle('deep', comic.deep);
     show('comic');
     buildComicPage();
+    /* and again once the display face is in, should it come late */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (comic) fitComic(); });
     (function tick() {
       if (!comic) return;
       drawComic();
@@ -1510,7 +1514,7 @@
     var box = $('comic-panels');
     box.textContent = '';
     $('screen-comic').scrollTop = 0;      // a page begins at its top, wherever the last one was left
-    comic.shown = 0; comic.starts = [];
+    comic.shown = 0; comic.starts = []; comic.cam = [];
     comic.pages[comic.page].forEach(function (p) {
       var cell = document.createElement('div');
       cell.className = 'comic-panel';
@@ -1536,7 +1540,14 @@
     if (!comic) return;
     var scr = $('screen-comic'), page = scr.querySelector('.comic-page'), box = $('comic-panels');
     var cells = box.children, n = cells.length;
-    if (!n || !scr.clientHeight) return;
+    if (!n) return;
+    /* not up yet (the screen comes in a moment after it is asked for): try
+       again next frame. Measured with no height it was never sized, and on
+       a 320-wide phone Next ran off the first page. */
+    if (!scr.clientHeight) {
+      if (!comic.fitWait) { comic.fitWait = true; requestAnimationFrame(function () { if (comic) { comic.fitWait = false; fitComic(); } }); }
+      return;
+    }
     var px = function (el, k) { return parseFloat(getComputedStyle(el)[k]) || 0; };
     var row = getComputedStyle(box).display === 'grid';
     var gap = px(box, 'rowGap') || 10;
@@ -1579,11 +1590,26 @@
        around the taller row. */
     foot.classList.remove('tight', 'stack');
     var pw = size(), cg = px(foot, 'columnGap');
-    var skipW = $('comic-skip').offsetWidth, nextW = $('comic-next').offsetWidth, countW = $('comic-pageno').offsetWidth;
-    if (skipW + countW + nextW + cg * 2 > pw - padX) {
-      foot.classList.add(skipW + nextW + cg > pw - padX ? 'stack' : 'tight');
+    /* measured to the fraction of a pixel, with a little to spare: rounded
+       widths that summed to exactly the row's said "fits", and the
+       fractions then wrapped Next under Skip, flush left, into its snow */
+    /* (taken back out of the screen's own scale: measured while it pops in,
+       the buttons came out a fifth narrower than they are, the row seemed
+       to fit, and Next ran off a 320-wide phone) */
+    var popK = page.offsetWidth / (page.getBoundingClientRect().width || page.offsetWidth) || 1;
+    var wOf = function (id) { return $(id).getBoundingClientRect().width * popK; }, SPARE_PX = 4;
+    var skipW = wOf('comic-skip'), nextW = wOf('comic-next'), countW = wOf('comic-pageno');
+    if (skipW + countW + nextW + cg * 2 + SPARE_PX > pw - padX) {
+      foot.classList.add(skipW + nextW + cg + SPARE_PX > pw - padX ? 'stack' : 'tight');
       if (foot.classList.contains('stack')) foot.classList.add('tight');
-      size();
+      pw = size();
+      /* the taller row leaves the panels less room, the page comes out
+         narrower, and the two buttons may no longer sit side by side after
+         all */
+      if (!foot.classList.contains('stack') && wOf('comic-skip') + wOf('comic-next') + cg + SPARE_PX > pw - padX) {
+        foot.classList.add('stack');
+        size();
+      }
     }
     foot.classList.toggle('over', scr.scrollHeight > scr.clientHeight + 1);
   }
@@ -1592,6 +1618,7 @@
     var cells = $('comic-panels').children;
     if (comic.shown < cells.length) {
       cells[comic.shown].classList.add('shown');
+      if (comic.deep) (function (cell) { setTimeout(function () { cell.classList.add('settled'); }, 650); })(cells[comic.shown]);
       comic.starts[comic.shown] = 0;
       comic.shown++;
     }
@@ -1607,12 +1634,37 @@
     }
   }
   function nextComic() {
-    if (!comic) return;
+    if (!comic || comic.turning) return;
     Sfx.click();
     if (comic.shown < comic.pages[comic.page].length) { revealPanel(); return; }
-    if (comic.page < comic.pages.length - 1) { comic.page++; buildComicPage(); return; }
+    if (comic.page < comic.pages.length - 1) {
+      /* a deep comic turns its page: the panels swing away on their left
+         edges, one after another, and the next page's swing in */
+      if (comic.deep && !stillMotion()) {
+        var was = comic;
+        comic.turning = true;
+        $('comic-panels').classList.add('turn');
+        setTimeout(function () {
+          if (comic !== was) return;                 // skipped while it turned
+          $('comic-panels').classList.remove('turn');
+          comic.turning = false;
+          comic.page++; buildComicPage();
+        }, 430);
+        return;
+      }
+      comic.page++; buildComicPage(); return;
+    }
     finishComic();
   }
+  function stillMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  /* where the mouse is over a deep comic, for its panels to lean toward;
+     a finger is not followed (it only taps), the panels sway by themselves */
+  $('screen-comic').addEventListener('pointermove', function (e) {
+    if (comic && comic.deep && e.pointerType === 'mouse') comic.mouse = { x: e.clientX, y: e.clientY, at: comic.f };
+  });
+  $('screen-comic').addEventListener('pointerleave', function () { if (comic) comic.mouse = null; });
   function finishComic() {
     if (!comic) return;
     if (comic.raf != null) cancelAnimationFrame(comic.raf);
@@ -1620,11 +1672,18 @@
     store();
     var done = comic.done;
     comic = null;
+    if (Game.comicForget) Game.comicForget();           // the pictures of its animals
+    $('comic-panels').classList.remove('turn');
     if (done) done(); else show('title');
   }
   function drawComic() {
     var cells = $('comic-panels').children;
     var k = Math.min(window.devicePixelRatio || 1, 2.5);
+    comic.f++;
+    var still = comic.deep && stillMotion();
+    /* low effects keep the planes and the sway but not the blur and the
+       shadow, the two that cost */
+    var soft = comic.deep && !(Game.qualityNow && Game.qualityNow().fx >= 2);
     for (var i = 0; i < comic.shown; i++) {
       var cv = cells[i].querySelector('canvas');
       var w = cv.clientWidth || 300, h = Math.round(w * COMIC_H / COMIC_W);
@@ -1635,9 +1694,36 @@
       c.lineJoin = 'round'; c.lineCap = 'round';
       c.save();
       c.beginPath(); c.rect(0, 0, COMIC_W, COMIC_H); c.clip();
-      comic.pages[comic.page][i].draw(c, comic.starts[i]++);
+      var p = comic.pages[comic.page][i];
+      if (comic.deep) {
+        var cam = comicCam(i, cells[i], still);
+        cmPaint(c, p, comic.starts[i]++, { px: k * w / COMIC_W, k: k, cam: cam, still: still, soft: soft });
+      } else p.draw(c, comic.starts[i]++);
       c.restore();
     }
+  }
+  /* A deep panel's camera: toward the mouse while it moves over the page,
+     otherwise a slow sway of its own (each panel out of step with the
+     next), eased either way. The card leans with it, a few degrees. */
+  function comicCam(i, cell, still) {
+    var cam = comic.cam[i] || (comic.cam[i] = { x: 0, y: 0 });
+    var tx = 0, ty = 0;
+    if (!still) {
+      var m = comic.mouse;
+      if (m && comic.f - m.at < 240) {
+        var r = cell.getBoundingClientRect();
+        tx = Math.max(-1, Math.min(1, (m.x - (r.left + r.width / 2)) / (r.width * 0.75)));
+        ty = Math.max(-1, Math.min(1, (m.y - (r.top + r.height / 2)) / (r.height * 0.75)));
+      } else {
+        var s = comic.f / 60;
+        tx = Math.sin(s * 0.55 + i * 1.9) * 0.55;
+        ty = Math.cos(s * 0.41 + i * 1.3) * 0.4;
+      }
+    }
+    cam.x += (tx - cam.x) * 0.06; cam.y += (ty - cam.y) * 0.06;
+    cell.style.setProperty('--ry', (cam.x * 5).toFixed(2) + 'deg');
+    cell.style.setProperty('--rx', (-cam.y * 4).toFixed(2) + 'deg');
+    return cam;
   }
   $('comic-next').addEventListener('click', nextComic);
   $('comic-panels').addEventListener('click', nextComic);

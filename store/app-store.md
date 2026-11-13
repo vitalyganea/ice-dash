@@ -128,6 +128,9 @@ Still WAITING_FOR_REVIEW on 11 Nov 2026 (seven days, no message from Apple).
 That day the owner asked App Review about it (developer.apple.com/contact →
 App Review → App Review Status → Email), case 30000011995418; the answer comes
 by email to the account's address.
+Still WAITING_FOR_REVIEW on 13 Nov 2026 (nine days since the resubmission): no new
+message on the submission, history unchanged since 4 Nov 12:09, the Free Apps
+Agreement and the DSA row both Active, so nothing on the account holds it.
 
 ## Stage 3: the store
 

@@ -33,5 +33,24 @@ Object.keys(COMICS).forEach(function (id) {
 });
 ok(!!COMICS.snowcap, 'Snowcap, whom every new player meets, has one');
 
+/* every comic is deep (comic.js cmPaint): every panel has its ground, any
+   other plane it has is a painter, and it paints through them in every way
+   the screen asks: soft, plain (low effects) and still (reduced motion). A
+   panel with no animal in it (the aurora's empty sky) has no middle plane. */
+Object.keys(COMICS).forEach(function (id) {
+  var planes = !!COMICS[id].deep, threw = null;
+  COMICS[id].forEach(function (p) { p.forEach(function (panel) {
+    if (typeof panel.back !== 'function') planes = false;
+    ['far', 'mid', 'near'].forEach(function (k) { if (panel[k] !== undefined && typeof panel[k] !== 'function') planes = false; });
+    [{ soft: true }, { soft: false }, { soft: true, still: true }].forEach(function (v) {
+      for (var tt = 0; tt < 90; tt += 11) {
+        try { cmPaint(fake, panel, tt, { px: 2.5, k: 2, cam: { x: 0.7, y: -0.4 }, soft: v.soft, still: !!v.still }); }
+        catch (e) { threw = threw || (panel.cap + ': ' + e.message); }
+      }
+    });
+  }); });
+  ok(planes && !threw, id + ' is deep: every panel has its planes and paints in depth' + (threw ? ' (threw: ' + threw + ')' : ''));
+});
+
 console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'comic checks passed'));
 process.exit(fail ? 1 : 0);

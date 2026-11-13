@@ -57,6 +57,12 @@ var Game = (function () {
      bonus was worth half as much at the bottom of a run as at the top. Six
      seconds is six seconds wherever you take it. */
   var RUSH_SECONDS = 6, RUSH_FRAMES = RUSH_SECONDS * 60;
+  /* A rock or a tree smashed by the rush now and then throws out fish
+     (owner, 13 Nov 2026): this share of them do, one to three fish each,
+     leaping ahead to where he can still catch them; a gold one now and then.
+     Free runs only: a marked run (and the day's line) holds the same fish
+     for everyone, and its stars count the fish laid on it. */
+  var SMASH_FISH = 0.4, SMASH_GOLD = 0.07, SMASH_LEAP = 28;
   /* The breathing space after spending a life. Separate from the ordinary
      invulnerability because it has to cover a crevasse too, and ordinary
      invulnerability deliberately does not — a shield save and a landing
@@ -1247,6 +1253,10 @@ var Game = (function () {
         W.objects.splice(i, 1); continue;
       }
       var dy = o.d - W.dist, dx = o.x - W.px;
+      if (o.leap) {                                    // still in the air, out of a smashed rock
+        if (++o.leap.t >= o.leap.dur) o.leap = null;
+        else continue;
+      }
 
       /* Reach only ever widens what he can PICK UP. The rock test below is
          untouched, so no perk can move the line between a clean pass and a
@@ -1412,6 +1422,19 @@ var Game = (function () {
         for (var sm = 0; sm < 10; sm++)
           W.puffs.push({ x: o.x + frnd(-o.r, o.r), d: o.d + frnd(-o.r, o.r),
                          life: 26, max: 26, s: frnd(5, 13) });
+        /* the effects' own numbers (frand), never the hill's: the hill must
+           not depend on which rocks happened to throw fish */
+        if (!W.course && frand() < SMASH_FISH) {
+          var nf = 1 + Math.floor(frand() * 3);
+          for (var fk = 0; fk < nf; fk++) {
+            /* landing ahead of where he will be when it comes down: rushing,
+               he would pass it in the air and it would land behind him */
+            var fg = frand() < SMASH_GOLD, ld = W.dist + W.speed * (SMASH_LEAP + fk * 7) + frnd(40, 120);
+            var lx = clamp(o.x + frnd(-60, 60), chuteAt(ld) - CHUTE + 30, chuteAt(ld) + CHUTE - 30);
+            W.objects.push({ t: fg ? 'gold' : 'fish', x: lx, d: ld, r: fg ? 19 : 15, got: false, ph: frnd(0, 6.28), bonus: true,
+                             leap: { x0: o.x, d0: o.d, t: -fk * 3, dur: SMASH_LEAP + fk * 4 } });
+          }
+        }
         W.objects.splice(i, 1);
         continue;
       }
@@ -1454,7 +1477,7 @@ var Game = (function () {
         }
       }
       /* a fish that went by uncaught breaks the run of catches */
-      if (o.t === 'fish' && !o.got && !o.missed && dy < -30) {
+      if (o.t === 'fish' && !o.got && !o.missed && !o.bonus && dy < -30) {   // (a thrown one does not count against him)
         o.missed = true;
         if (W.comboKeep > 0) W.comboKeep = 0;        // the puffin shrugs one off
         else W.combo = 0;
@@ -1916,9 +1939,12 @@ var Game = (function () {
     drawGround();
     drawEmberGlow();
     drawNeon();
-    drawSightLine();
     if (!OFF) drawTrail();
     drawObjects();
+    /* the lens's path of light over the things on the hill: under them, a
+       crevasse's water covered it, and the path vanished just where it was
+       wanted (owner, 13 Nov 2026) */
+    drawSightLine();
     drawSpeedStreaks();
     drawAurora();
     drawVeils();          /* the haze far up the hill, and the fog */
@@ -2211,6 +2237,7 @@ var Game = (function () {
         ctx.globalAlpha = 1;
       }
       else if (o.t === 'gate')   drawGate(x, y, o, 'back');
+      else if ((o.t === 'fish' || o.t === 'gold') && o.leap) drawLeapingFish(o, o.t === 'gold');
       else if (o.t === 'fish')   { if (!o.got) drawFish(x, y, o, false); }
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
@@ -3283,224 +3310,354 @@ var Game = (function () {
      line, and a ring of little fish that calls the shoal. Colour alone
      would not do it — three coloured discs on blue ice read as three
      coloured discs. */
-  function drawFind3(x, y, o) {
-    var r = o.r, a = W.t * 0.03 + o.ph, k;
-    var tone = o.t === 'chill' ? ['#ffffff', '#9fd9f6', '#4a9fd0']
-             : o.t === 'sight' ? ['#f2ffe4', '#b9ea86', '#4f9a3c']
-                               : ['#eaf8ff', '#86cdf0', '#2f7fb4'];
+/* ---- the finds on the hill, as the things they are (13 Nov 2026) ----
+     The owner asked for the six to be redone like the fish and the frozen
+     find: each the real thing, still told apart at a glance at the size
+     the hill has them. Each throws its shadow down and to the right, from
+     the hill's one sun. */
+  function findShadow(r, k) {
+    ctx.fillStyle = 'rgba(46,98,146,' + (0.24 * k).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(r * 0.3, r * 0.42, r * 0.95, r * 0.82, 0, 0, 6.2832); ctx.fill();
+  }
+  /* a four-pointed glint */
+  function glint4(x, y, s, a) {
+    if (a <= 0.02) return;
+    ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.moveTo(x, y - s); ctx.quadraticCurveTo(x, y, x + s, y); ctx.quadraticCurveTo(x, y, x, y + s);
+    ctx.quadraticCurveTo(x, y, x - s, y); ctx.quadraticCurveTo(x, y, x, y - s); ctx.fill();
+  }
+  /* the sky caught on something round and glossy: a curved window of light
+     up to the left */
+  function skyWindow(r, a) {
+    ctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.74, 3.55, 4.55); ctx.arc(0, 0, r * 0.5, 4.55, 3.55, true); ctx.closePath(); ctx.fill();
+  }
+
+  /* The snow bubble, the shield: a real bubble, clear, the colours of its
+     film running round the edge, and frost growing in from the rim in
+     ferns, the bubble freezing hard, which is what makes it take a hit.
+     (A honeycomb drawn on a sphere before.) Its shadow is bright in the
+     middle, where the bubble gathers the light. */
+  function drawBubble(x, y, o) {
+    var ph = W.t * 0.08 + o.ph, r = o.r + Math.sin(ph) * 1.4, k;
+    var sx = 1 + Math.sin(ph * 1.7) * 0.05, sy = 1 - Math.sin(ph * 1.7) * 0.05;   // never quite round
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(40,100,150,.22)';
-    ctx.beginPath(); ctx.ellipse(4, 7, r * 1.0, r * 0.88, 0, 0, 6.2832); ctx.fill();
-
-    var g = ctx.createRadialGradient(-r * 0.3, -r * 0.34, 1, 0, 0, r);
-    g.addColorStop(0, tone[0]); g.addColorStop(0.6, tone[1]); g.addColorStop(1, tone[2]);
+    ctx.fillStyle = 'rgba(52,108,158,.17)';
+    ctx.beginPath(); ctx.ellipse(r * 0.34, r * 0.5, r * 0.95, r * 0.8, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.beginPath(); ctx.ellipse(r * 0.42, r * 0.6, r * 0.32, r * 0.22, 0, 0, 6.2832); ctx.fill();
+    ctx.scale(sx, sy);
+    var g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+    g.addColorStop(0, 'rgba(232,248,255,.3)'); g.addColorStop(0.7, 'rgba(176,222,250,.38)');
+    g.addColorStop(0.9, 'rgba(110,180,234,.62)'); g.addColorStop(1, 'rgba(76,144,208,.8)');
     ctx.fillStyle = g;
-
-    if (o.t === 'chill') {
-      /* A cold draught: a snowflake caught in a gust. The wind is the
-         point — curls of it wrapping round, turning slowly, because the
-         thing it does is slow the hill down. A star on its own read as
-         one more snowflake. */
-      ctx.save();
-      ctx.rotate(a * 0.25);
-      ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round';
-      for (k = 0; k < 6; k++) {                      // the flake: six arms, branched
-        ctx.save(); ctx.rotate(k * 1.0472);
-        ctx.lineWidth = r * 0.12;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.62); ctx.stroke();
-        ctx.lineWidth = r * 0.07;
-        ctx.beginPath();
-        ctx.moveTo(0, -r * 0.34); ctx.lineTo(-r * 0.16, -r * 0.48);
-        ctx.moveTo(0, -r * 0.34); ctx.lineTo(r * 0.16, -r * 0.48);
-        ctx.stroke();
-        ctx.restore();
-      }
-      ctx.fillStyle = '#d8f2ff';
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, 6.2832); ctx.fill();
-      ctx.restore();
-      /* the gust: three streaks of wind blowing through it, each ending
-         in a curl, drifting slowly across */
-      ctx.save();
-      ctx.lineCap = 'round';
-      for (k = 0; k < 3; k++) {
-        var gy = (k - 1) * r * 0.5, drift = Math.sin(a * 0.9 + k * 1.7) * r * 0.08;
-        var gx0 = -r * 1.05 + drift, gx1 = r * (0.55 - (k % 2) * 0.2) + drift;
-        ctx.strokeStyle = 'rgba(46,130,196,.9)'; ctx.lineWidth = r * 0.085;
-        ctx.beginPath();
-        ctx.moveTo(gx0, gy);
-        ctx.bezierCurveTo(gx0 + r * 0.5, gy - r * 0.12, gx1 - r * 0.5, gy + r * 0.12, gx1, gy);
-        /* the curl back over at the tip */
-        ctx.arc(gx1, gy - r * 0.14, r * 0.14, Math.PI * 0.5, Math.PI * 1.85, true);
-        ctx.stroke();
-      }
-      ctx.restore();
-    } else if (o.t === 'sight') {
-      /* A clear lens of ice, and through it, a path lighting up: dots of
-         gold light running up it one after another — the openings ahead,
-         shown before you get there. The green oval before it read as a
-         sweet. */
-      var lg = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 1, 0, 0, r);
-      lg.addColorStop(0, 'rgba(214,242,255,.95)'); lg.addColorStop(0.6, 'rgba(110,182,226,.92)');
-      lg.addColorStop(1, 'rgba(46,112,170,.95)');
-      ctx.fillStyle = lg;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.9, 0, 6.2832); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = r * 0.16; ctx.stroke();
-      ctx.strokeStyle = 'rgba(70,140,196,.6)'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.98, 0, 6.2832); ctx.stroke();
-      /* the path, an S up the lens */
-      ctx.save();
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.2832); ctx.clip();
-      /* the path itself, a faint warm trail */
-      ctx.strokeStyle = 'rgba(255,214,110,.55)'; ctx.lineWidth = r * 0.1; ctx.lineCap = 'round';
-      ctx.beginPath();
-      for (k = 0; k <= 20; k++) {
-        var uu = k / 20, qx = Math.sin(uu * 3.4 - 0.6) * r * 0.36, qy = r * 0.62 - uu * r * 1.24;
-        k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip();
+    var film = ['255,110,196', '255,214,110', '110,250,206', '128,164,255'];
+    ctx.lineWidth = r * 0.17;
+    for (k = 0; k < 4; k++) {                        // the film's colours, turning slowly
+      var a0 = ph * 0.32 + k * 1.5708;
+      ctx.strokeStyle = 'rgba(' + film[k] + ',.3)';
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.9, a0, a0 + 1.15); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(0.8, r * 0.045);
+    for (k = 0; k < 5; k++) {                        // frost ferns, growing in from the rim
+      var fa = k * 1.2566 + 0.35, bx = Math.cos(fa) * r * 0.98, by = Math.sin(fa) * r * 0.98;
+      var ix = -Math.cos(fa), iy = -Math.sin(fa), L = r * (0.3 + 0.09 * Math.sin(k * 2.3));
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + ix * L, by + iy * L);
+      for (var b = 1; b <= 3; b++) {
+        var t = b / 4, px = bx + ix * L * t, py = by + iy * L * t, sl = L * 0.36 * (1 - t * 0.5);
+        ctx.moveTo(px, py); ctx.lineTo(px + (ix * 0.6 - iy) * sl, py + (iy * 0.6 + ix) * sl);
+        ctx.moveTo(px, py); ctx.lineTo(px + (ix * 0.6 + iy) * sl, py + (iy * 0.6 - ix) * sl);
       }
       ctx.stroke();
-      for (k = 0; k < 6; k++) {
-        var u = k / 5, px = Math.sin(u * 3.4 - 0.6) * r * 0.36, py = r * 0.62 - u * r * 1.24;
-        var lit = (a * 0.8 - u + 10) % 1;            // a light that runs up it
-        var glow = Math.max(0, 1 - lit * 3);
-        ctx.fillStyle = 'rgba(255,206,64,' + (0.8 + 0.2 * glow).toFixed(3) + ')';
-        ctx.beginPath(); ctx.arc(px, py, r * (0.12 + 0.06 * glow), 0, 6.2832); ctx.fill();
-        if (glow > 0.2) {
-          ctx.fillStyle = 'rgba(255,240,180,' + (0.35 * glow).toFixed(3) + ')';
-          ctx.beginPath(); ctx.arc(px, py, r * 0.24, 0, 6.2832); ctx.fill();
-        }
-      }
-      ctx.restore();
-    } else {
-      /* A horseshoe magnet frozen in a block of ice, red and blue, with
-         its field pulsing out of the poles and two small fish being drawn
-         in. The one man-made thing on the hill, by the user's choice: a
-         ring of fish read as nothing, and a magnet says at once what it
-         does (GAME_SPEC.md, non-goals). */
-      var bob = Math.sin(a * 1.6) * r * 0.05;
-      /* the block of ice */
-      var ig = ctx.createLinearGradient(-r, -r, r, r);
-      ig.addColorStop(0, 'rgba(240,250,255,.95)'); ig.addColorStop(0.5, 'rgba(176,222,246,.9)');
-      ig.addColorStop(1, 'rgba(110,180,222,.92)');
-      ctx.fillStyle = ig;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.78, -r * 0.92); ctx.lineTo(r * 0.82, -r * 0.86);
-      ctx.lineTo(r * 0.94, r * 0.74); ctx.lineTo(-r * 0.7, r * 0.9); ctx.lineTo(-r * 0.94, -r * 0.1);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.2; ctx.stroke();
-      /* the field: arcs pulsing outwards from the poles */
-      for (k = 0; k < 3; k++) {
-        var ph2 = (a * 0.9 + k / 3) % 1;
-        ctx.globalAlpha = (1 - ph2) * 0.75;
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.arc(0, -r * 0.42 + bob, r * (0.3 + ph2 * 0.62), Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      /* the magnet: a thick U, red arm and blue arm, silver poles */
-      ctx.save();
-      ctx.translate(0, bob);
-      ctx.lineCap = 'butt';
-      var w = r * 0.3, R = r * 0.42, cy = r * 0.08;
-      ctx.lineWidth = w;
-      ctx.strokeStyle = '#d8323f';                      // red half
-      ctx.beginPath(); ctx.moveTo(-R, -r * 0.34); ctx.lineTo(-R, cy); ctx.arc(0, cy, R, Math.PI, Math.PI * 1.5, true); ctx.stroke();
-      ctx.strokeStyle = '#2f6fd6';                      // blue half
-      ctx.beginPath(); ctx.moveTo(R, -r * 0.34); ctx.lineTo(R, cy); ctx.arc(0, cy, R, 0, Math.PI * 0.5); ctx.stroke();
-      ctx.fillStyle = '#e6edf3';                        // the poles
-      ctx.fillRect(-R - w / 2, -r * 0.56, w, r * 0.22);
-      ctx.fillRect(R - w / 2, -r * 0.56, w, r * 0.22);
-      ctx.strokeStyle = 'rgba(6,42,120,.8)'; ctx.lineWidth = 1.2;
-      ctx.beginPath();                                  // a navy outline round the U
-      ctx.moveTo(-R - w / 2, -r * 0.56); ctx.lineTo(-R - w / 2, cy); ctx.arc(0, cy, R + w / 2, Math.PI, 0, true);
-      ctx.lineTo(R + w / 2, -r * 0.56); ctx.lineTo(R - w / 2, -r * 0.56); ctx.lineTo(R - w / 2, cy);
-      ctx.arc(0, cy, R - w / 2, 0, Math.PI); ctx.lineTo(-R + w / 2, -r * 0.56); ctx.closePath(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,.45)';          // shine on the red arm
-      ctx.fillRect(-R - w * 0.3, -r * 0.3, w * 0.22, r * 0.36);
-      ctx.restore();
-      /* two small fish, drawn in towards the poles */
-      ctx.fillStyle = '#2f7fb4';
-      for (k = 0; k < 2; k++) {
-        var t2 = (a * 0.7 + k * 0.5) % 1, side = k ? 1 : -1;
-        var fx = side * r * (1.25 - t2 * 0.75), fy = -r * (0.95 - t2 * 0.45);
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, (1 - t2) * 2.2);
-        ctx.translate(fx, fy); ctx.rotate(side > 0 ? 2.6 : 0.55);
-        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.18, r * 0.09, 0, 0, 6.2832); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-r * 0.16, 0); ctx.lineTo(-r * 0.28, -r * 0.08); ctx.lineTo(-r * 0.28, r * 0.08);
-        ctx.closePath(); ctx.fill();
-        ctx.restore();
-      }
     }
-    ctx.fillStyle = 'rgba(255,255,255,.7)';
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.34, -r * 0.42, r * 0.24, r * 0.13, -0.5, 0, 6.2832);
-    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(46,104,166,.6)'; ctx.lineWidth = Math.max(0.8, r * 0.04);   // a thin dark edge outside: seen on white ice
+    ctx.beginPath(); ctx.arc(0, 0, r + Math.max(1, r * 0.06), 0, 6.2832); ctx.stroke();
+    ctx.strokeStyle = 'rgba(236,250,255,.95)'; ctx.lineWidth = Math.max(1.2, r * 0.075);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
+    ctx.strokeStyle = 'rgba(56,122,186,.5)'; ctx.lineWidth = Math.max(0.8, r * 0.05);
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.93, 0.3, 2.9); ctx.stroke();      // the far side of the film, in shade
+    skyWindow(r, 0.85);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.ellipse(r * 0.46, r * 0.5, r * 0.13, r * 0.08, -0.7, 0, 6.2832); ctx.fill();
     ctx.restore();
   }
 
-  /* A ball of packed powder, still spinning where the wind rolled it. */
+  /* The snowball that sets you rolling: packed snow, lumpy, its grain
+     turning as it rolls, ice glinting in it and powder flicking off. (A
+     glowing heart and speed lines before: a jellyfish, more than a ball.) */
+  var BALL_LUMPS = [];
+  (function () {                                     // the grain: small clumps all over it, fixed
+    for (var i = 0; i < 22; i++) {
+      var a = i * 2.39996, rr = Math.sqrt((i + 0.5) / 22) * 0.86;
+      BALL_LUMPS.push([Math.cos(a) * rr, Math.sin(a) * rr, 0.09 + 0.05 * ((i * 7) % 5) / 4]);
+    }
+  })();
   function drawRushBall(x, y, o) {
     var r = o.r, a = W.t * 0.05 + o.ph, k;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(60,120,166,.22)';
-    ctx.beginPath(); ctx.ellipse(4, 7, r * 1.05, r * 0.92, 0, 0, 6.2832); ctx.fill();
-
-    /* Speed lines streaming out behind it: this is the find that makes
-       you unstoppable, and a still snowball said nothing of the kind. */
-    ctx.lineCap = 'round';
-    for (k = 0; k < 4; k++) {
-      var sxo = (k - 1.5) * r * 0.42, run = (a * 1.8 + k * 0.37) % 1;
-      var len = r * (0.7 + 0.5 * ((k * 7) % 3) / 2);
-      ctx.strokeStyle = 'rgba(255,255,255,' + (0.85 - run * 0.6).toFixed(3) + ')';
-      ctx.lineWidth = r * (0.12 - k % 2 * 0.03);
-      ctx.beginPath();
-      ctx.moveTo(sxo, r * 0.7 + run * r * 0.3);
-      ctx.lineTo(sxo * 1.15, r * 0.7 + run * r * 0.3 + len);
-      ctx.stroke();
+    findShadow(r, 1.1);
+    for (k = 0; k < 5; k++) {                        // powder flicking off as it turns
+      var u = (a * 0.9 + k / 5) % 1, fa = 2.2 + k * 0.5 + Math.sin(k * 3.1) * 0.3;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.75 * (1 - u)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(Math.cos(fa) * r * (1.02 + u * 0.55), Math.sin(fa) * r * (1.02 + u * 0.55), r * (0.08 + 0.05 * u), 0, 6.2832); ctx.fill();
     }
-
-    var g = ctx.createRadialGradient(-r * 0.3, -r * 0.34, r * 0.1, 0, 0, r);
-    g.addColorStop(0, '#ffffff');
-    g.addColorStop(0.62, '#e8f5ff');
-    g.addColorStop(1, '#b9d9ef');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-
-    /* packed layers, turning: this is a ball that has been rolling */
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip();
-    ctx.strokeStyle = 'rgba(150,196,226,.55)'; ctx.lineWidth = 2.2;
-    for (k = 0; k < 3; k++) {
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a + k * 2.1) * r * 0.3, Math.sin(a + k * 2.1) * r * 0.3,
-                  r * 0.78, r * 0.34, a * 0.6 + k, 0, 6.2832);
-      ctx.stroke();
+    ctx.beginPath();                                 // its outline, never quite round, soft between the lumps
+    var N = 14, op = [];
+    for (k = 0; k < N; k++) {
+      var an = k / N * 6.2832, rr = r * (1 + 0.055 * Math.sin(k * 3.7 + 1) + 0.035 * Math.sin(k * 5.3));
+      op.push([Math.cos(an) * rr, Math.sin(an) * rr]);
     }
+    ctx.moveTo((op[N - 1][0] + op[0][0]) / 2, (op[N - 1][1] + op[0][1]) / 2);
+    for (k = 0; k < N; k++) {
+      var nx = op[(k + 1) % N];
+      ctx.quadraticCurveTo(op[k][0], op[k][1], (op[k][0] + nx[0]) / 2, (op[k][1] + nx[1]) / 2);
+    }
+    ctx.closePath();
+    var g = ctx.createRadialGradient(-r * 0.36, -r * 0.42, r * 0.08, 0, 0, r * 1.05);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, '#eef6fc'); g.addColorStop(0.8, '#c6dcee'); g.addColorStop(1, '#9cbfdc');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    var ca = Math.cos(a * 0.8), sa = Math.sin(a * 0.8);
+    BALL_LUMPS.forEach(function (L) {               // the grain of packed snow, rolling round
+      var lx = (L[0] * ca - L[1] * sa) * r, ly = (L[0] * sa + L[1] * ca) * r, s = L[2] * r;
+      var edge = Math.min(1, Math.hypot(lx, ly) / r);
+      ctx.fillStyle = 'rgba(150,184,216,' + (0.2 * (0.6 + edge * 0.4)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.ellipse(lx + s * 0.22, ly + s * 0.26, s, s * (1 - edge * 0.4), Math.atan2(ly, lx), 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      ctx.beginPath(); ctx.ellipse(lx - s * 0.15, ly - s * 0.18, s * 0.72, s * 0.72 * (1 - edge * 0.4), Math.atan2(ly, lx), 0, 6.2832); ctx.fill();
+    });
     ctx.restore();
-
-    /* a glowing heart to it, beating */
-    var beat = 0.6 + 0.4 * Math.sin(a * 3);
-    var core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.62);
-    core.addColorStop(0, 'rgba(255,226,120,' + (0.95 * beat).toFixed(3) + ')');
-    core.addColorStop(0.5, 'rgba(255,170,70,' + (0.5 * beat).toFixed(3) + ')');
-    core.addColorStop(1, 'rgba(255,170,80,0)');
-    ctx.fillStyle = core;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 6.2832); ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.6;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
-
-    /* loose powder flicking off it */
-    ctx.fillStyle = 'rgba(255,255,255,.8)';
-    for (k = 0; k < 6; k++) {
-      var fa = a * 1.6 + k * 1.047, fr = r * (1.18 + 0.16 * Math.sin(a * 2 + k));
-      ctx.beginPath();
-      ctx.arc(Math.cos(fa) * fr, Math.sin(fa) * fr, 2.4 + (k % 3), 0, 6.2832);
-      ctx.fill();
-    }
+    ctx.strokeStyle = 'rgba(96,140,184,.5)'; ctx.lineWidth = Math.max(0.8, r * 0.05);
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.98, 0.1, 2.9); ctx.stroke();
+    for (k = 0; k < 3; k++) glint4(Math.cos(k * 2.3 + 0.6) * r * 0.5, Math.sin(k * 2.3 + 0.6) * r * 0.45 - r * 0.1,
+                                   r * 0.13, Math.sin(a * 2.2 + k * 2.1));
     ctx.restore();
   }
+
+  /* The cold draught: a little whirl of freezing air, mist going round
+     with diamond dust glittering in it, and under it the ice furred white
+     with rime. (A snowflake with three cartoon gusts before.) */
+  function paintChillFind(r, a) {
+    var k;
+    var rg = ctx.createRadialGradient(0, r * 0.15, 0, 0, r * 0.15, r * 1.15);
+    rg.addColorStop(0, 'rgba(255,255,255,.8)'); rg.addColorStop(0.6, 'rgba(232,247,255,.5)'); rg.addColorStop(1, 'rgba(232,247,255,0)');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.ellipse(0, r * 0.15, r * 1.15, r * 0.98, 0, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(0.7, r * 0.04);
+    for (k = 0; k < 9; k++) {                        // rime feathers on the ice
+      var fa = k * 0.698 + 0.2, f0 = r * 0.55, f1 = r * (0.86 + 0.12 * Math.sin(k * 1.9));
+      var cx0 = Math.cos(fa), sy0 = Math.sin(fa) * 0.85;
+      ctx.beginPath(); ctx.moveTo(cx0 * f0, r * 0.15 + sy0 * f0); ctx.lineTo(cx0 * f1, r * 0.15 + sy0 * f1);
+      var mx = cx0 * (f0 + f1) / 2, my = r * 0.15 + sy0 * (f0 + f1) / 2, sl = r * 0.1;
+      ctx.moveTo(mx, my); ctx.lineTo(mx + (cx0 - sy0) * sl, my + (sy0 + cx0) * sl);
+      ctx.moveTo(mx, my); ctx.lineTo(mx + (cx0 + sy0) * sl, my + (sy0 - cx0) * sl);
+      ctx.stroke();
+    }
+    for (k = 0; k < 3; k++) {                        // the whirl: three arms of mist
+      var pts = [];
+      for (var i = 0; i <= 16; i++) {
+        var u = i / 16, ang = -a * 1.6 + k * 2.094 + u * 3.3, rad = r * (0.16 + u * 0.8);
+        pts.push([Math.cos(ang) * rad, Math.sin(ang) * rad * 0.82 - u * r * 0.1]);
+      }
+      [[r * 0.32, 'rgba(66,138,206,.62)', 1.6], [r * 0.22, 'rgba(255,255,255,.7)', 0], [r * 0.08, 'rgba(255,255,255,.95)', -1]].forEach(function (L) {
+        ctx.strokeStyle = L[1]; ctx.lineWidth = L[0];
+        ctx.beginPath();
+        pts.forEach(function (p, j) { var q = j / 16, w = 1 - q * 0.7; if (j) ctx.lineTo(p[0], p[1] + L[2] * w); else ctx.moveTo(p[0], p[1] + L[2] * w); });
+        ctx.stroke();
+      });
+    }
+    var cg = ctx.createRadialGradient(0, -r * 0.05, 0, 0, -r * 0.05, r * 0.34);
+    cg.addColorStop(0, 'rgba(255,255,255,.95)'); cg.addColorStop(1, 'rgba(190,232,255,0)');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0, -r * 0.05, r * 0.34, 0, 6.2832); ctx.fill();
+    for (k = 0; k < 7; k++) {                        // diamond dust, going round with it
+      var da = -a * 1.2 + k * 0.9, dr = r * (0.35 + 0.08 * k);
+      glint4(Math.cos(da) * dr, Math.sin(da) * dr * 0.8, r * (0.07 + 0.03 * (k % 2)), 0.5 + 0.5 * Math.sin(a * 3 + k * 1.7));
+    }
+  }
+
+  /* The ice lens: a thick, clear lens of ice lying on the hill. Through it
+     the ice is bigger, and a path of gold lights runs up it, the openings
+     ahead lit before you get there. It gathers the sun into a bright spot
+     in its shadow, as a lens does. */
+  function paintLensFind(r, a) {
+    var k;
+    ctx.fillStyle = 'rgba(40,92,142,.24)';
+    ctx.beginPath(); ctx.ellipse(r * 0.32, r * 0.44, r * 0.95, r * 0.82, 0, 0, 6.2832); ctx.fill();
+    var fg = ctx.createRadialGradient(r * 0.44, r * 0.6, 0, r * 0.44, r * 0.6, r * 0.36);
+    fg.addColorStop(0, 'rgba(255,252,222,.95)'); fg.addColorStop(1, 'rgba(255,240,180,0)');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(r * 0.44, r * 0.6, r * 0.36, 0, 6.2832); ctx.fill();
+    var lg = ctx.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.1, 0, 0, r * 0.92);
+    lg.addColorStop(0, 'rgba(236,250,255,.5)'); lg.addColorStop(0.65, 'rgba(176,222,248,.55)'); lg.addColorStop(1, 'rgba(96,160,214,.85)');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(0, 0, r * 0.92, 0, 6.2832); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.2832); ctx.clip();
+    ctx.strokeStyle = 'rgba(80,140,196,.35)'; ctx.lineWidth = Math.max(0.8, r * 0.05);   // the ice's grain, magnified
+    ctx.beginPath(); ctx.moveTo(-r, -r * 0.3); ctx.quadraticCurveTo(-r * 0.2, -r * 0.1, r, -r * 0.55);
+    ctx.moveTo(-r * 0.7, r); ctx.quadraticCurveTo(-r * 0.1, r * 0.2, r * 0.3, -r); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,214,110,.6)'; ctx.lineWidth = r * 0.12; ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (k = 0; k <= 20; k++) {
+      var uu = k / 20, qx = Math.sin(uu * 3.4 - 0.6) * r * 0.4, qy = r * 0.7 - uu * r * 1.4;
+      if (k) ctx.lineTo(qx, qy); else ctx.moveTo(qx, qy);
+    }
+    ctx.stroke();
+    for (k = 0; k < 6; k++) {
+      var u = k / 5, px = Math.sin(u * 3.4 - 0.6) * r * 0.4, py = r * 0.7 - u * r * 1.4;
+      var lit = (a * 0.8 - u + 10) % 1, glow = Math.max(0, 1 - lit * 3);
+      if (glow > 0.15) {
+        ctx.fillStyle = 'rgba(255,240,180,' + (0.4 * glow).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(px, py, r * 0.28, 0, 6.2832); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,200,54,' + (0.82 + 0.18 * glow).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(px, py, r * (0.13 + 0.07 * glow), 0, 6.2832); ctx.fill();
+    }
+    ctx.restore();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = r * 0.13;           // the bevel, lit up to the left
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.86, 2.5, 5.6); ctx.stroke();
+    ctx.strokeStyle = 'rgba(52,110,170,.6)'; ctx.lineWidth = r * 0.09;              // and in shade below
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.86, -0.55, 2.3); ctx.stroke();
+    ctx.strokeStyle = 'rgba(232,248,255,.9)'; ctx.lineWidth = Math.max(0.8, r * 0.04);
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.93, 0, 6.2832); ctx.stroke();
+    skyWindow(r * 0.9, 0.75);
+  }
+
+  /* The magnet: a horseshoe magnet painted red, its ends ground bright
+     steel, frozen in a lump of clear ice with bubbles caught in it. Two
+     small fish are being drawn in to its poles. (The one made thing on the
+     hill, by the owner's choice: a magnet says at once what it does.) */
+  var MAG_ICE = [[-0.82, -0.86], [-0.1, -0.98], [0.78, -0.84], [0.96, -0.08], [0.84, 0.78], [0.05, 0.94], [-0.78, 0.82], [-0.96, 0.02]];
+  function paintMagnetFind(r, a) {
+    var k, bob = Math.sin(a * 1.6) * r * 0.03;
+    function ice(grow) {
+      ctx.beginPath();
+      MAG_ICE.forEach(function (p, i) {
+        var n = MAG_ICE[(i + 1) % MAG_ICE.length], q = MAG_ICE[(i + MAG_ICE.length - 1) % MAG_ICE.length];
+        var x0 = (p[0] + (q[0] - p[0]) * 0.18) * r * grow, y0 = (p[1] + (q[1] - p[1]) * 0.18) * r * grow;
+        var x1 = (p[0] + (n[0] - p[0]) * 0.18) * r * grow, y1 = (p[1] + (n[1] - p[1]) * 0.18) * r * grow;
+        if (!i) ctx.moveTo(x0, y0); else ctx.lineTo(x0, y0);
+        ctx.quadraticCurveTo(p[0] * r * grow, p[1] * r * grow, x1, y1);
+      });
+      ctx.closePath();
+    }
+    findShadow(r, 1);
+    ctx.save(); ctx.translate(0, bob);
+    var ig = ctx.createLinearGradient(-r, -r, r, r);                 // the lump of ice, behind
+    ig.addColorStop(0, 'rgba(236,249,255,.9)'); ig.addColorStop(0.55, 'rgba(178,222,246,.85)'); ig.addColorStop(1, 'rgba(112,176,222,.9)');
+    ctx.fillStyle = ig; ice(1); ctx.fill();
+    var w = r * 0.28, R = r * 0.4, cy = r * 0.1, top = -r * 0.5;   // the magnet, frozen in it
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = '#7a1219'; ctx.lineWidth = w + r * 0.07;
+    ctx.beginPath(); ctx.moveTo(-R, top + r * 0.2); ctx.lineTo(-R, cy); ctx.arc(0, cy, R, Math.PI, 0, true); ctx.lineTo(R, top + r * 0.2); ctx.stroke();
+    var mg = ctx.createLinearGradient(-R - w, 0, R + w, 0);
+    mg.addColorStop(0, '#e2434b'); mg.addColorStop(0.5, '#c4222c'); mg.addColorStop(1, '#a3161f');
+    ctx.strokeStyle = mg; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(-R, top + r * 0.2); ctx.lineTo(-R, cy); ctx.arc(0, cy, R, Math.PI, 0, true); ctx.lineTo(R, top + r * 0.2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = w * 0.22;           // the shine along its paint
+    ctx.beginPath(); ctx.moveTo(-R - w * 0.22, top + r * 0.22); ctx.lineTo(-R - w * 0.22, cy); ctx.arc(0, cy, R + w * 0.22, Math.PI, Math.PI * 1.35, true); ctx.stroke();
+    [-1, 1].forEach(function (s) {                   // the ground steel ends
+      var sg = ctx.createLinearGradient(s * R - w / 2, 0, s * R + w / 2, 0);
+      sg.addColorStop(0, '#f4f7f9'); sg.addColorStop(0.5, '#b9c3cc'); sg.addColorStop(1, '#7f8b96');
+      ctx.fillStyle = sg; ctx.fillRect(s * R - w / 2, top, w, r * 0.22);
+      ctx.strokeStyle = 'rgba(40,50,60,.6)'; ctx.lineWidth = Math.max(0.6, r * 0.03);
+      ctx.strokeRect(s * R - w / 2, top, w, r * 0.22);
+    });
+    ctx.fillStyle = 'rgba(214,240,252,.16)'; ice(1); ctx.fill();    // the ice in front of it
+    ctx.fillStyle = 'rgba(255,255,255,.7)';                          // bubbles caught in the ice
+    [[-0.55, 0.45, 0.06], [-0.62, 0.3, 0.04], [0.6, 0.5, 0.05], [0.12, 0.62, 0.035], [0.66, -0.55, 0.045]].forEach(function (b) {
+      ctx.beginPath(); ctx.arc(b[0] * r, b[1] * r, b[2] * r, 0, 6.2832); ctx.fill();
+    });
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = Math.max(1, r * 0.07);
+    ice(1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(60,120,176,.45)'; ctx.lineWidth = Math.max(0.8, r * 0.05);
+    ctx.beginPath(); ctx.moveTo(r * 0.94, r * 0.05); ctx.lineTo(r * 0.82, r * 0.74); ctx.lineTo(r * 0.06, r * 0.9); ctx.stroke();
+    ctx.restore();
+    for (k = 0; k < 4; k++) {                        // the pull: a dotted arc from each pole, going out and fading
+      var ph2 = (a * 0.9 + k / 4) % 1;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - ph2)).toFixed(3) + ')';
+      for (var d = 0; d < 7; d++) {
+        var ang = Math.PI * (1.15 + d * 0.7 / 6), rr2 = r * (0.5 + ph2 * 0.75);
+        ctx.beginPath(); ctx.arc(Math.cos(ang) * rr2, -r * 0.42 + Math.sin(ang) * rr2 * 0.8, Math.max(0.6, r * 0.035), 0, 6.2832); ctx.fill();
+      }
+    }
+    for (k = 0; k < 2; k++) {                        // two small fish being drawn in
+      var t2 = (a * 0.7 + k * 0.5) % 1, side = k ? 1 : -1;
+      var fx = side * r * (1.3 - t2 * 0.8), fy = -r * (1.0 - t2 * 0.5);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (1 - t2) * 2.4);
+      ctx.translate(fx, fy); ctx.rotate(Math.atan2(-r * 0.5 - fy, side * r * 0.4 - fx) + Math.PI);
+      realFish(ctx, r * 0.32, r * 0.11, a * 6 + k, false, 0.4);
+      ctx.restore();
+    }
+  }
+
+  function drawFind3(x, y, o) {
+    var r = o.r, a = W.t * 0.03 + o.ph;
+    ctx.save();
+    ctx.translate(x, y);
+    if (o.t === 'chill') paintChillFind(r, a);
+    else if (o.t === 'sight') paintLensFind(r, a);
+    else paintMagnetFind(r, a);
+    ctx.restore();
+  }
+
+  /* The time bubble (Time Rush): a brass stopwatch in a clear bubble, the
+     seconds it gives back on its dial and its hand going round, a green
+     light about it to tell it from the shield. (A green sweet with +3 on
+     it before.) */
+  function drawClock(x, y, o) {
+    var r = o.r, bob = Math.sin(W.t * 0.08 + o.ph) * 2.5, k;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    findShadow(r, 0.8);
+    var halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.6);
+    halo.addColorStop(0, 'rgba(190,255,150,.42)'); halo.addColorStop(1, 'rgba(190,255,150,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, 6.2832); ctx.fill();
+    var bg = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r);       // the bubble
+    bg.addColorStop(0, 'rgba(236,255,226,.15)'); bg.addColorStop(0.85, 'rgba(176,236,150,.3)'); bg.addColorStop(1, 'rgba(110,196,92,.6)');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(240,255,232,.95)'; ctx.lineWidth = Math.max(1.2, r * 0.07);
+    ctx.stroke();
+    var cr = r * 0.66;                               // the stopwatch: brass case, crown on top
+    ctx.fillStyle = '#9a6a1c';
+    ctx.fillRect(-r * 0.09, -cr - r * 0.2, r * 0.18, r * 0.16);
+    ctx.beginPath(); ctx.ellipse(0, -cr - r * 0.22, r * 0.15, r * 0.07, 0, 0, 6.2832); ctx.fill();
+    var cg = ctx.createLinearGradient(-cr, -cr, cr, cr);
+    cg.addColorStop(0, '#fbe49a'); cg.addColorStop(0.45, '#d7a63c'); cg.addColorStop(1, '#8a5a14');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0, 0, cr, 0, 6.2832); ctx.fill();
+    var fc = ctx.createRadialGradient(-cr * 0.2, -cr * 0.25, 0, 0, 0, cr * 0.84);   // its white dial
+    fc.addColorStop(0, '#ffffff'); fc.addColorStop(1, '#e3e9e4');
+    ctx.fillStyle = fc; ctx.beginPath(); ctx.arc(0, 0, cr * 0.82, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,70,60,.55)'; ctx.lineWidth = Math.max(0.6, r * 0.035);
+    for (k = 0; k < 12; k++) {
+      var ta = k * 0.5236;
+      ctx.beginPath(); ctx.moveTo(Math.cos(ta) * cr * 0.7, Math.sin(ta) * cr * 0.7); ctx.lineTo(Math.cos(ta) * cr * 0.78, Math.sin(ta) * cr * 0.78); ctx.stroke();
+    }
+    var hand = W.t * 0.09 + o.ph;                    // the second hand going round, under the number
+    ctx.strokeStyle = '#d33a2c'; ctx.lineWidth = Math.max(0.8, r * 0.05); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(hand) * cr * 0.72, Math.sin(hand) * cr * 0.72); ctx.stroke();
+    ctx.font = '800 ' + Math.round(r * 0.78) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var gainTxt = '+' + Math.round(clockGain() / 60);
+    ctx.lineWidth = Math.max(1.5, r * 0.12); ctx.strokeStyle = '#ffffff'; ctx.strokeText(gainTxt, 0, r * 0.04);
+    ctx.fillStyle = '#1f6a24'; ctx.fillText(gainTxt, 0, r * 0.04);
+    ctx.fillStyle = 'rgba(255,255,255,.4)';           // the glass over the dial
+    ctx.beginPath(); ctx.ellipse(-cr * 0.3, -cr * 0.4, cr * 0.42, cr * 0.2, -0.5, 0, 6.2832); ctx.fill();
+    skyWindow(r, 0.7);
+    ctx.restore();
+  }
+
+  /* A ball of packed powder, still spinning where the wind rolled it. */
+
 
   /* Seen from above, a snow bridge is a band of shadow with a bright lip of
      drifted snow at each mouth. Nothing here is built: it is snow that
@@ -4026,6 +4183,7 @@ var Game = (function () {
      not, the caller draws it fresh in B. key(P) names o's picture in a
      palette P, paint(P) makes it. */
   function drawPictured(o, x, y, B, key, paint) {
+    if (!HILL) return false;           // a comic or an icon: painted fresh, at its own size (a picture made at the hill's size came out blurred)
     var F = (B === PAL) ? FADING : null, N = (B === PAL) ? NEXT : null;
     if (!F) {
       var one = pictureOf(o, key(B), function () { return paint(B); }, N ? 2 : 1);
@@ -4724,7 +4882,7 @@ var Game = (function () {
          is rubbed out towards the foot; drawn straight onto the hill (an
          icon, or a frame short of pictures) the run's colour is laid over */
       var ft = ctx.createLinearGradient(0, BOT + 22, 0, BOT - 14);
-      if (bare) {
+      if (bare === true) {                          // its own picture: rub the snow out (never on a page: it would cut a hole)
         ft.addColorStop(0, 'rgba(0,0,0,1)'); ft.addColorStop(0.3, 'rgba(0,0,0,.85)'); ft.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.globalCompositeOperation = 'destination-out';
         ctx.fillStyle = ft; ctx.fillRect(-hw * 1.4, BOT - 14, hw * 2.8, 38);
@@ -4983,33 +5141,7 @@ var Game = (function () {
   /* Time, in Time Rush: a bubble of green-gold light with what it gives
      written in it. No clock face — nothing on this hill is made — just
      the seconds, and a glint running round the rim like a sweep hand. */
-  function drawClock(x, y, o) {
-    var r = o.r, bob = Math.sin(W.t * 0.08 + o.ph) * 2.5;
-    ctx.save();
-    ctx.translate(x, y + bob);
-    var halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.7);
-    halo.addColorStop(0, 'rgba(200,255,150,.45)'); halo.addColorStop(1, 'rgba(200,255,150,0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(0, 0, r * 1.7, 0, 6.2832); ctx.fill();
-    var g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 2, 0, 0, r);
-    g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, '#e2ffc0'); g.addColorStop(1, '#7fd65a');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-    ctx.lineWidth = 2.6; ctx.strokeStyle = '#2f7d32';
-    ctx.stroke();
-    /* the sweep: a bright arc going round */
-    var a0 = W.t * 0.09 + o.ph;
-    ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.95)';
-    ctx.beginPath(); ctx.arc(0, 0, r - 4, a0, a0 + 1.3); ctx.stroke();
-    ctx.font = '800 ' + Math.round(r * 0.95) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3.2; ctx.strokeStyle = '#ffffff';
-    var gainTxt = '+' + Math.round(clockGain() / 60);
-    ctx.strokeText(gainTxt, 0, 1);
-    ctx.fillStyle = '#1f6a24';
-    ctx.fillText(gainTxt, 0, 1);
-    ctx.restore();
-  }
+
 
   /* A fish, not a fish-shaped lozenge. The body flexes in an S that runs
      from the nose back to the tail, the tail follows a beat behind it, and
@@ -5022,9 +5154,20 @@ var Game = (function () {
     var by = y + Math.sin(W.t * 0.07 + o.ph) * 3;
 
     var halo = gold ? 0.3 + 0.16 * Math.sin(W.t * 0.13 + o.ph) : 0.22;
-    ctx.fillStyle = gold ? 'rgba(255,205,60,' + halo.toFixed(2) + ')'
-                         : 'rgba(150,215,255,.22)';
-    ctx.beginPath(); ctx.arc(x, by, L * 1.35, 0, 6.2832); ctx.fill();
+    if (gold) {
+      ctx.fillStyle = 'rgba(255,205,60,' + halo.toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(x, by, L * 1.35, 0, 6.2832); ctx.fill();
+    } else {
+      /* the plain fish's blue, stronger (owner, 13 Nov 2026): a deeper
+         ring round a paler heart, breathing a little, so a fish on the
+         white ice is seen from as far off as a gold one. Two flat fills,
+         no gradient: a shoal has a dozen of them on the screen. */
+      var bl = 0.3 + 0.06 * Math.sin(W.t * 0.11 + o.ph);
+      ctx.fillStyle = 'rgba(70,158,240,' + bl.toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(x, by, L * 1.45, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(160,218,255,.3)';
+      ctx.beginPath(); ctx.arc(x, by, L * 1.0, 0, 6.2832); ctx.fill();
+    }
 
     /* The fish itself is the same at the same point of its stroke, so on
        the hill it comes from one of FISH_FRAMES pictures of the stroke:
@@ -5048,6 +5191,25 @@ var Game = (function () {
         ctx.fill();
       }
     }
+    ctx.restore();
+  }
+  /* A fish thrown out of a smashed rock: up in an arc from where the rock
+     stood to where it lands, its shadow on the ice under it, turning over
+     as it goes; it can be caught once it is down. */
+  function drawLeapingFish(o, gold) {
+    var L = o.leap, t = L.t / L.dur;
+    if (t < 0) return;
+    var e = t * (2 - t);                               // fast out, settling as it comes down
+    var gx = L.x0 + (o.x - L.x0) * e, gd = L.d0 + (o.d - L.d0) * e;
+    var sx = scrX(gx), sy = scrY(gd), lift = Math.sin(Math.PI * t) * 46;
+    ctx.fillStyle = 'rgba(40,90,140,' + (0.22 * (1 - Math.sin(Math.PI * t) * 0.5)).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(sx + 3, sy + 4, 13 - lift * 0.08, 6 - lift * 0.04, 0, 0, 6.2832); ctx.fill();
+    ctx.save();
+    ctx.translate(sx, sy - lift);
+    ctx.rotate(Math.sin(Math.PI * t * 2) * 0.6);
+    var k = 1 + Math.sin(Math.PI * t) * 0.25;          // nearer the eye at the top of the leap
+    ctx.scale(k, k);
+    drawFish(0, 0, o, gold);
     ctx.restore();
   }
   var FISH_FRAMES = 24, fishPics = { k: 0, n: [], g: [] };
@@ -5237,71 +5399,7 @@ var Game = (function () {
   /* A bubble of trapped air, not a glass marble: it wobbles as it drifts,
      the highlight slides around the inside of the skin as it turns, and
      there are motes caught in it. */
-  function drawBubble(x, y, o) {
-    var ph = W.t * 0.08 + o.ph;
-    var r = o.r + Math.sin(ph) * 2;
-    var sx = 1 + Math.sin(ph * 1.7) * 0.07;          // it is never quite round
-    var sy = 1 - Math.sin(ph * 1.7) * 0.07;
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(sx, sy);
-
-    var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-    g.addColorStop(0, 'rgba(255,255,255,.85)');
-    g.addColorStop(0.55, 'rgba(160,230,255,.35)');
-    g.addColorStop(1, 'rgba(110,200,245,.2)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip();
-    /* A shield, not just a bubble: a honeycomb of ice across its skin,
-       catching the light as it turns, says it is there to take a hit. */
-    ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.lineWidth = 1.1;
-    var hs = r * 0.3, hoff = (ph * 3) % (hs * 1.732);
-    for (var hy = -r - hs; hy < r + hs; hy += hs * 1.5) {
-      var row = Math.round((hy + r + hs) / (hs * 1.5));
-      for (var hx = -r - hs * 2 + (row % 2) * hs * 0.866 + hoff; hx < r + hs; hx += hs * 1.732) {
-        ctx.beginPath();
-        for (var hk = 0; hk < 6; hk++) {
-          var hang = hk * 1.0472 + 0.5236;
-          var vx = hx + Math.cos(hang) * hs * 0.55, vy = hy + Math.sin(hang) * hs * 0.55;
-          hk ? ctx.lineTo(vx, vy) : ctx.moveTo(vx, vy);
-        }
-        ctx.closePath(); ctx.stroke();
-      }
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,.3)';        // the film turning inside
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 0.66, r * 0.3, ph * 0.6, 0, 6.2832);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.55)';         // motes caught in it
-    for (var m = 0; m < 3; m++) {
-      var ma = ph * 0.9 + m * 2.3;
-      ctx.beginPath();
-      ctx.arc(Math.cos(ma) * r * 0.42, Math.sin(ma * 1.3) * r * 0.4, 1.5, 0, 6.2832);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = 'rgba(210,245,255,.9)'; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
-
-    var ha = -2.2 + Math.sin(ph * 0.7) * 0.5;        // the catchlight slides
-    ctx.fillStyle = 'rgba(255,255,255,.95)';
-    ctx.beginPath();
-    ctx.ellipse(Math.cos(ha) * r * 0.52, Math.sin(ha) * r * 0.52,
-                r * 0.26, r * 0.13, ha + 1.6, 0, 6.2832);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.5)';
-    ctx.beginPath();
-    ctx.ellipse(-Math.cos(ha) * r * 0.6, -Math.sin(ha) * r * 0.6,
-                r * 0.12, r * 0.07, ha, 0, 6.2832);
-    ctx.fill();
-    ctx.restore();
-  }
 
   /* A tongue of blue ice: wind-scoured glacier surface, polished smooth and
      darker than the snow around it. It replaced a pair of posts with
@@ -5424,7 +5522,7 @@ var Game = (function () {
       }
       c.restore();
     } else if (S.accessory === 'puffin') {
-      /* nothing: the rockhopper's plumes and bill are its own (bodyPenguin) */
+      /* nothing: the puffin's face and bill are his own (bodyPenguin) */
     } else if (S.accessory === 'collar') {
       /* nothing: the emperor's gold is his own ear patch (bodyPenguin) */
     } else if (S.accessory === 'aurora') {
@@ -5450,21 +5548,21 @@ var Game = (function () {
       /* a soap bubble round him: clear, its film banded with the colours
          thin film throws, turning slowly, a window of light on it */
       var bt = (W ? W.t : 0) * 0.02;
-      var gg = c.createRadialGradient(0, -4, 18, 0, -4, 33);
+      var gg = c.createRadialGradient(0, -6, 26, 0, -6, 46);
       gg.addColorStop(0, 'rgba(200,240,255,0)'); gg.addColorStop(1, 'rgba(200,240,255,.28)');
       c.fillStyle = gg;
-      c.beginPath(); c.ellipse(0, -4, 30, 33, 0, 0, 6.2832); c.fill();
-      c.lineWidth = 2.2;
+      c.beginPath(); c.ellipse(0, -6, 43, 46, 0, 0, 6.2832); c.fill();
+      c.lineWidth = 2.4;
       [['255,120,220', 0], ['255,230,120', 1.6], ['120,255,190', 3.2], ['120,200,255', 4.8]].forEach(function (f) {
         c.strokeStyle = 'rgba(' + f[0] + ',.38)';
-        c.beginPath(); c.ellipse(0, -4, 29, 32, 0, f[1] + bt, f[1] + bt + 1.5); c.stroke();
+        c.beginPath(); c.ellipse(0, -6, 42, 45, 0, f[1] + bt, f[1] + bt + 1.5); c.stroke();
       });
       c.strokeStyle = 'rgba(235,250,255,.75)'; c.lineWidth = 1;
-      c.beginPath(); c.ellipse(0, -4, 30, 33, 0, 0, 6.2832); c.stroke();
+      c.beginPath(); c.ellipse(0, -6, 43, 46, 0, 0, 6.2832); c.stroke();
       c.fillStyle = 'rgba(255,255,255,.6)';           // the window, and its little twin
-      c.beginPath(); c.ellipse(-15, -24, 6, 3.4, -0.6, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(-22, -36, 8, 4.4, -0.6, 0, 6.2832); c.fill();
       c.fillStyle = 'rgba(255,255,255,.35)';
-      c.beginPath(); c.ellipse(17, 16, 3, 1.6, -0.6, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(25, 22, 4, 2.2, -0.6, 0, 6.2832); c.fill();
     }
   }
 
@@ -5488,8 +5586,8 @@ var Game = (function () {
      - Each skin is a species you could tell from above: Snowcap an Adélie
        (all black head, the white ring round the eye, a stubby black bill,
        pink feet); Mitten a chinstrap (a black cap, white face, the thin
-       black strap under the chin); Puffin a rockhopper (yellow plumes
-       springing back from over red eyes, a stout orange bill); Bubbles a
+       black strap under the chin); Puffin a puffin, as his name and his
+       story say (a pale face, the red-ringed eye, the great banded bill); Bubbles a
        little blue penguin in a real soap bubble; Compass a gentoo (the
        white band over the crown, an orange bill and feet) with a brass
        compass whose needle points at the nearest fish; the Emperor
@@ -5500,7 +5598,7 @@ var Game = (function () {
   var PENGUIN_SP = {
     snowcap: { sp: 'adelie', beak: '#2c2e34', bill: 'short', feet: '#eeaaa6', edge: 'rgba(150,70,70,.5)' },
     mitten:  { sp: 'chinstrap', beak: '#26282e', bill: 'short', feet: '#eeaaa6', edge: 'rgba(150,70,70,.5)' },
-    puffin:  { sp: 'rockhopper', beak: '#e4521c', bill: 'stout', feet: '#f0a8a2', edge: 'rgba(150,70,70,.5)', eye: '#a3161b' },
+    puffin:  { sp: 'puffin', beak: '#e4521c', bill: 'puffin', feet: '#ff7a2a', edge: 'rgba(170,60,10,.5)', ring: '#e8553a' },
     bubbles: { sp: 'little', beak: '#3a3f48', bill: 'short', feet: '#efb6b2', edge: 'rgba(150,80,80,.45)' },
     compass: { sp: 'gentoo', beak: '#f0541c', bill: 'long', feet: '#ff8a2a', edge: 'rgba(170,70,10,.5)' },
     emperor: { sp: 'emperor', beak: '#1f2126', bill: 'long', feet: '#2a2c31', edge: 'rgba(0,0,0,.45)', size: 1.07, stripe: '#ff8a3d' },
@@ -5516,21 +5614,23 @@ var Game = (function () {
     c.bezierCurveTo(-21, -12, -13, -21.5, 0, -20);
     c.closePath();
   }
+  /* a crown of ice crystals round the rim of her head, pointing out:
+     over the eyes it hid them, behind them it read as teeth */
   function penguinCrown(c) {
-    for (var ci = -2; ci <= 2; ci++) {
-      var ca = ci * 0.36, len = ci === 0 ? 11 : 7.5 - Math.abs(ci);
+    [-162, -128, -90, -52, -18].forEach(function (deg, ci) {
+      var ca = deg * Math.PI / 180, len = ci === 2 ? 8.5 : (ci === 1 || ci === 3 ? 6.5 : 5);
       c.save();
-      c.translate(Math.sin(ca) * 10, -28 - Math.cos(ca) * 3);
-      c.rotate(ca);
+      c.translate(Math.cos(ca) * 10.2, -26 + Math.sin(ca) * 9.6);
+      c.rotate(ca + Math.PI / 2);
       var cg2 = c.createLinearGradient(0, 0, 0, -len);
       cg2.addColorStop(0, '#7fd8f0'); cg2.addColorStop(1, '#ffffff');
       c.fillStyle = cg2;
       c.beginPath();
-      c.moveTo(-2.6, 0); c.lineTo(0, -len); c.lineTo(2.6, 0); c.lineTo(0, 2);
+      c.moveTo(-2.2, 0.5); c.lineTo(0, -len); c.lineTo(2.2, 0.5); c.lineTo(0, 2);
       c.closePath(); c.fill();
-      c.strokeStyle = 'rgba(20,60,110,.55)'; c.lineWidth = 0.8; c.stroke();
+      c.strokeStyle = 'rgba(20,60,110,.55)'; c.lineWidth = 0.7; c.stroke();
       c.restore();
-    }
+    });
   }
   /* Cartoon eyes (owner, 12 Nov 2026: "a bit cuter, like a cartoon"):
      big and glossy, white round a dark iris, two lights in each. They
@@ -5668,6 +5768,12 @@ var Game = (function () {
     function face() {                                  // the head, a quarter bigger than life: a cartoon's
       c.translate(0, -26 + hb); c.scale(1.26, 1.26); c.translate(0, 26 - hb);
     }
+    /* what he wears goes on before the head, which sits over it: drawn
+       after, the scarf came up over his chin once the head grew */
+    if (S.accessory !== 'glow') {
+      c.save(); if (S.accessory === 'scarf') c.translate(0, 3);
+      drawSkinExtra(c, S); c.restore();
+    }
     c.save(); face();
     c.fillStyle = bg;
     c.beginPath(); c.ellipse(0, -26 + hb, 11.5, 10.8, 0, 0, 6.2832); c.fill();
@@ -5675,18 +5781,34 @@ var Game = (function () {
     penguinFace(c, S, P, hb);
     c.fillStyle = 'rgba(255,130,150,.32)';             // rosy cheeks, behind the eyes
     [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * 9.2, -22.2 + hb, 2.6, 1.6, k * 0.5, 0, 6.2832); c.fill(); });
+    if (S.accessory === 'aurora') penguinCrown(c);    // behind the eyes, on the back of the head
     cuteEyes(c, -27.2 + hb, 5.6, 3.5, P.eye);
-    if (P.sp === 'rockhopper') penguinCrest(c, hb);
-    if (S.accessory === 'aurora') penguinCrown(c);
+    if (P.ring) {                                     // the puffin's red ring round each eye
+      c.strokeStyle = P.ring; c.lineWidth = 0.55;
+      [-1, 1].forEach(function (k) { c.beginPath(); c.arc(k * 5.6, -27.2 + hb, 3.5 * 1.04, 0, 6.2832); c.stroke(); });
+    }
     c.restore();
 
-    drawSkinExtra(c, S);
+    if (S.accessory === 'glow') drawSkinExtra(c, S);
     c.save(); face(); penguinBill(c, S, P, hb); c.restore();
     c.restore();
   }
   /* the marks of each species on the head, under the eyes */
   function penguinFace(c, S, P, hb) {
     var k;
+    if (P.sp === 'puffin') {
+      /* a puffin's face: pale grey-white from the bill back past the eyes,
+         a dark line running back from each eye */
+      var pf = c.createRadialGradient(0, -30 + hb, 1, 0, -28 + hb, 10);
+      pf.addColorStop(0, '#f6f8fa'); pf.addColorStop(1, '#cdd5de');
+      c.fillStyle = pf;
+      c.beginPath(); c.ellipse(0, -28.5 + hb, 9.6, 7.4, 0, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(70,80,96,.55)'; c.lineWidth = 0.9; c.lineCap = 'round';
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); c.moveTo(k * 7.6, -25.5 + hb); c.quadraticCurveTo(k * 9.6, -23.5 + hb, k * 10.4, -21.5 + hb); c.stroke();
+      });
+      return;
+    }
     if (P.sp === 'chinstrap') {
       /* a black cap; the face below it white, and the strap under the chin
          showing at each side */
@@ -5699,8 +5821,14 @@ var Game = (function () {
         c.quadraticCurveTo(k * 9, -28 + hb, k * 3.5, -33 + hb);
         c.closePath(); c.fill();
         c.strokeStyle = '#1a1c22'; c.lineWidth = 1.1;
-        c.beginPath(); c.moveTo(k * 5, -33.4 + hb); c.quadraticCurveTo(k * 11.6, -31 + hb, k * 11.8, -24 + hb); c.stroke();
+        /* the cap's edge round the white face; close up, where the arcs over
+           the eyes read as headphones, the strap itself, under the eyes */
+        if (!DETAIL) { c.beginPath(); c.moveTo(k * 5, -33.4 + hb); c.quadraticCurveTo(k * 11.6, -31 + hb, k * 11.8, -24 + hb); c.stroke(); }
       });
+      if (DETAIL) {
+        c.strokeStyle = '#1a1c22'; c.lineWidth = 0.9; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(-11.2, -25 + hb); c.quadraticCurveTo(0, -17.2 + hb, 11.2, -25 + hb); c.stroke();
+      }
     } else if (P.sp === 'gentoo') {
       /* the white band over the crown, from one eye to the other */
       /* (bowed towards the bill, a bonnet over the crown: bowed the other
@@ -5728,24 +5856,38 @@ var Game = (function () {
       });
     }
   }
-  /* the rockhopper's plumes: a yellow brow over each eye, running back and
-     springing out in a spray of feathers behind it */
-  function penguinCrest(c, hb) {
-    [-1, 1].forEach(function (k) {
-      c.strokeStyle = '#ffd43a'; c.lineCap = 'round'; c.lineWidth = 1.8;
-      c.beginPath(); c.moveTo(k * 3.5, -32 + hb); c.quadraticCurveTo(k * 8.5, -32 + hb, k * 10.5, -26 + hb); c.stroke();
-      c.lineWidth = 1.1;
-      for (var q = 0; q < 5; q++) {
-        var qa = -0.5 + q * 0.32;
-        c.strokeStyle = q % 2 ? '#ffe57a' : '#f2b81c';
-        c.beginPath(); c.moveTo(k * 10.2, -26.5 + hb);
-        c.quadraticCurveTo(k * (13 + q), -26 + hb + q * 1.5, k * (15.5 + q * 0.8), -28 + hb + q * 3.4 + Math.sin(qa) * 2);
-        c.stroke();
-      }
-    });
-  }
   /* the bill, in each species' own shape and colour */
   function penguinBill(c, S, P, hb) {
+    if (P.bill === 'puffin') {
+      /* The puffin's bill from above: a deep wedge, orange-red, a ridge
+         down its middle, the grey plate at its root and the yellow rosette
+         at each corner of the mouth. Stripes across it, in any shape,
+         read as a hat from up here. */
+      var y1 = -33 + hb, L2 = 8.6, W3 = 4.2;
+      var pb = function (cc) {
+        cc.beginPath();
+        cc.moveTo(-W3, y1 + 0.8);
+        cc.quadraticCurveTo(-W3 * 0.8, y1 - L2 * 0.6, -0.6, y1 - L2);
+        cc.quadraticCurveTo(0, y1 - L2 - 0.6, 0.6, y1 - L2);
+        cc.quadraticCurveTo(W3 * 0.8, y1 - L2 * 0.6, W3, y1 + 0.8);
+        cc.quadraticCurveTo(0, y1 - 0.6, -W3, y1 + 0.8);
+        cc.closePath();
+      };
+      var bg2 = c.createLinearGradient(-W3, 0, W3, 0);
+      bg2.addColorStop(0, '#ff7a3a'); bg2.addColorStop(0.5, '#e8501e'); bg2.addColorStop(1, '#b8360f');
+      c.save();
+      pb(c); c.fillStyle = bg2; c.fill();
+      c.clip();
+      c.fillStyle = '#6f8196';                        // the grey plate at its root
+      c.beginPath(); c.ellipse(0, y1 + 0.4, W3 * 1.05, 2.2, 0, 0, 6.2832); c.fill();
+      c.restore();
+      pb(c); c.strokeStyle = 'rgba(90,30,10,.6)'; c.lineWidth = 0.7; c.stroke();
+      c.strokeStyle = 'rgba(255,220,180,.75)'; c.lineWidth = 0.7;  // the ridge, lit
+      c.beginPath(); c.moveTo(-0.4, y1 - 1.6); c.lineTo(-0.2, y1 - L2 + 0.8); c.stroke();
+      c.fillStyle = '#ffd23a';                        // the rosettes at the gape
+      [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * (W3 + 0.6), y1 + 1, 1.1, 0.8, 0, 0, 6.2832); c.fill(); });
+      return;
+    }
     var L = P.bill === 'long' ? 8.5 : P.bill === 'stout' ? 6 : 5, W2 = P.bill === 'long' ? 2.3 : P.bill === 'stout' ? 3.4 : 2.8;
     var y0 = -33.5 + hb, tip = y0 - L;       // small and rounded, a cartoon's
     function shape(cc) {
@@ -6422,11 +6564,18 @@ var Game = (function () {
          the sides, the small dark paws at their ends holding a clam to its
          chest (they were two dark ovals on their own, which read as eyes) */
       var pw = o.still ? 0 : swing(o, 0.5, 0.6);
-      c.fillStyle = '#efe6d6';                        // the clam
-      c.beginPath(); c.ellipse(0, -11 + pw * 0.3, 4.6, 3.6, 0, 0, 6.2832); c.fill();
-      c.strokeStyle = 'rgba(120,100,80,.6)'; c.lineWidth = 0.6;
-      for (var cr = -2; cr <= 2; cr++) {
-        c.beginPath(); c.moveTo(cr * 1.4, -8 + pw * 0.3); c.lineTo(cr * 0.5, -13.6 + pw * 0.3); c.stroke();
+      if (o.held === 'pebble') {                      // her favourite stone (the comic): smooth, grey, a little shine
+        var pg = c.createRadialGradient(-1.6, -12.6 + pw * 0.3, 0.5, 0, -11 + pw * 0.3, 5.2);
+        pg.addColorStop(0, '#c3ccd4'); pg.addColorStop(0.6, '#8d99a5'); pg.addColorStop(1, '#5f6b77');
+        c.fillStyle = pg;
+        c.beginPath(); c.ellipse(0, -11 + pw * 0.3, 5, 3.9, 0.25, 0, 6.2832); c.fill();
+      } else {
+        c.fillStyle = '#efe6d6';                      // the clam
+        c.beginPath(); c.ellipse(0, -11 + pw * 0.3, 4.6, 3.6, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(120,100,80,.6)'; c.lineWidth = 0.6;
+        for (var cr = -2; cr <= 2; cr++) {
+          c.beginPath(); c.moveTo(cr * 1.4, -8 + pw * 0.3); c.lineTo(cr * 0.5, -13.6 + pw * 0.3); c.stroke();
+        }
       }
       [-1, 1].forEach(function (k) {
         var px2 = k * 4.6, py2 = -11.5 + pw * (k > 0 ? 0.6 : -0.6);
@@ -6662,12 +6811,32 @@ var Game = (function () {
       softPatch(c, -2, -11, 9, 7, 'rgba(255,236,210,.16)');
       c.restore();
     }
-    c.fillStyle = S.antler;                          // the antlers, lit on top
-    c.globalAlpha = 0.34;
-    [-1, 1].forEach(function (k) {
-      c.beginPath(); antler(c, k); c.fill();
-    });
-    c.globalAlpha = 1;
+    if (ox) {
+      /* The musk ox's horns are horn, not hair: pale cream across the
+         boss, darkening down the curve to a near-black tip, ridged where
+         they meet on the brow. Tinted with the coat they read as a pair of
+         floppy ears (owner, 12 Nov 2026). */
+      [-1, 1].forEach(function (k) {
+        var hg = c.createLinearGradient(k * 1, -41, k * 21, -22);
+        hg.addColorStop(0, '#ece2cb'); hg.addColorStop(0.45, '#cdb894'); hg.addColorStop(0.8, '#8a7152'); hg.addColorStop(1, '#2e241b');
+        c.fillStyle = hg;
+        c.beginPath(); antler(c, k); c.fill();
+        c.strokeStyle = 'rgba(60,44,28,.55)'; c.lineWidth = 0.8; c.stroke();
+        c.strokeStyle = 'rgba(120,96,64,.45)'; c.lineWidth = 0.6;              // the ridges on the boss
+        for (var rq = 0; rq < 4; rq++) {
+          c.beginPath(); c.moveTo(k * (2 + rq * 3), -44 + rq * 0.2); c.quadraticCurveTo(k * (3 + rq * 3), -40, k * (2.4 + rq * 3), -36.5); c.stroke();
+        }
+        c.strokeStyle = 'rgba(255,250,235,.6)'; c.lineWidth = 1;                // the light along its top
+        c.beginPath(); c.moveTo(k * 3, -43); c.quadraticCurveTo(k * 15, -44.5, k * 21.5, -33); c.stroke();
+      });
+    } else {
+      c.fillStyle = S.antler;                        // the antlers, lit on top
+      c.globalAlpha = 0.34;
+      [-1, 1].forEach(function (k) {
+        c.beginPath(); antler(c, k); c.fill();
+      });
+      c.globalAlpha = 1;
+    }
 
     c.fillStyle = S.mark;                            // muzzle
     c.beginPath(); c.ellipse(0, -45, 5, 5.6, 0, 0, 6.2832); c.fill();
@@ -6679,7 +6848,11 @@ var Game = (function () {
       c.fillStyle = 'rgba(255,255,255,.3)';
       c.beginPath(); c.ellipse(-0.6, -50, 1.2, 0.5, 0, 0, 6.2832); c.fill();
     }
-    eyes(c, -38, 6.4, 0, 2, '#20160f');
+    /* a musk ox's eyes sit low on the cheek, under the boss of the horns
+       and inside their curve; up on the brow they peered through the horn
+       like goggles in a close-up */
+    if (ox) eyes(c, -32.5, 10.6, 0, 1.8, '#20160f');
+    else eyes(c, -38, 6.4, 0, 2, '#20160f');
   }
 
   /* ---- orca ------------------------------------------------------
@@ -6902,6 +7075,7 @@ var Game = (function () {
        and shoulders (flatter the faster), parting a little at each bound */
     [-1, 1].forEach(function (k) {
       var spread = 0.16 + 0.07 * (o.still ? 0 : Math.sin(g + 0.8)) - ang * 0.3 * k;
+      if (DETAIL) spread = 0.85;                      // close up: laid back to each side, not down over his chest
       c.save();
       c.translate(k * 3.2, ys(-24));
       c.rotate(-k * spread);
@@ -7047,6 +7221,15 @@ var Game = (function () {
     LEGS.forEach(function (L) { pawTop(c, L, S, 7, 3.8, S.flipper[0], true); });
     var bg = c.createLinearGradient(-10, -36, 12, 28);
     bg.addColorStop(0, S.body[0]); bg.addColorStop(0.55, S.body[1]); bg.addColorStop(1, S.body[2]);
+    /* close up (a comic's whole page): the ears stand out from the sides of
+       the head, round, dark-rimmed and pale inside. Set into the crown as on
+       the hill, at that size they read as two rings on her cheeks. */
+    if (DETAIL) [-1, 1].forEach(function (k) {
+      c.save(); c.translate(k * 8.2, ys(-28)); c.rotate(k * 0.45);
+      c.fillStyle = S.body[2]; c.beginPath(); c.ellipse(0, 0, 3.8, 3.3, 0, 0, 6.2832); c.fill();
+      c.fillStyle = S.mark; c.beginPath(); c.ellipse(k * 0.8, 0.3, 2.3, 2, 0, 0, 6.2832); c.fill();
+      c.restore();
+    });
     oneSilhouette(c, S, build, bg);
     c.save();
     c.beginPath(); build(c); c.clip();
@@ -7069,19 +7252,27 @@ var Game = (function () {
       }
     });
     c.fillStyle = S.spot;
-    [[-3.5, -31], [3.5, -31], [0, -27], [-5, -26], [5, -26], [-2, -23], [2, -23]].forEach(function (d) {
-      c.beginPath(); c.arc(d[0], ys(d[1]), 0.9, 0, 6.2832); c.fill();
+    /* small spots on the crown, behind the eyes and between the ears:
+       set round the face they drew a second face in a close-up */
+    [[0, -26.5], [-2.6, -24.5], [2.6, -24.5], [-1.2, -22.4], [1.4, -22.2], [-4.6, -27.6], [4.6, -27.6]].forEach(function (d) {
+      c.beginPath(); c.arc(d[0], ys(d[1]), 0.7, 0, 6.2832); c.fill();
     });
     softPatch(c, 0, ys(-35), 4.6, 3.4, 'rgba(236,238,242,.8)');      // pale muzzle
     c.restore();
     furStrokes(c, build, -12, 12, -26, 26, 'rgba(255,255,255,.18)', 'rgba(30,34,40,.1)');
     /* short round ears set wide, dark at the back with a pale spot */
-    [-1, 1].forEach(function (k) {
+    if (!DETAIL) [-1, 1].forEach(function (k) {      // at the back of the head, clear of the eyes
       c.fillStyle = S.body[2];
-      c.beginPath(); c.ellipse(k * 6.8, ys(-31.5), 3.2, 2.4, k * 0.5, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(k * 7.4, ys(-25.5), 3, 2.6, k * 0.6, 0, 6.2832); c.fill();
       c.fillStyle = S.mark;
-      c.beginPath(); c.ellipse(k * 6.9, ys(-31), 1.4, 1, k * 0.5, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(k * 7.6, ys(-25.2), 1.4, 1.1, k * 0.6, 0, 6.2832); c.fill();
     });
+    if (DETAIL) {                                    // close up: the pale grey-green of a snow leopard's eyes
+      [-1, 1].forEach(function (k) {
+        c.fillStyle = '#c9d6c2';
+        c.beginPath(); c.ellipse(k * 4.2, ys(-32.6), 1.9, 1.7, 0, 0, 6.2832); c.fill();
+      });
+    }
     eyes(c, ys(-31), 4.2, 1.6, 1.5, '#1d2228');
     c.fillStyle = S.nose;
     c.beginPath(); c.ellipse(0, ys(-38.5), 1.8, 1.3, 0, 0, 6.2832); c.fill();
@@ -7220,9 +7411,48 @@ var Game = (function () {
     });
     c.globalAlpha = 1;
     c.restore();
-    /* past the crown, the hook of the beak, half hidden in feathers */
-    c.fillStyle = S.nose;
-    c.beginPath(); c.moveTo(-1.5, -26.6); c.quadraticCurveTo(0, -29.4, 1.5, -26.6); c.closePath(); c.fill();
+    if (DETAIL) {
+      /* Close up, in a comic, she has turned her head right round to look
+         up at you, as only an owl can: the round white facial disc, two
+         great yellow eyes, the beak between them half buried in feathers.
+         Her story is about how far those eyes see; seen from behind she
+         had no face at all (owl comic, 12 Nov 2026). */
+      var E = eyeState();
+      var fd = c.createRadialGradient(-2, -19.5, 1, 0, -17.5, 10);
+      fd.addColorStop(0, '#ffffff'); fd.addColorStop(0.8, '#f1f4f8'); fd.addColorStop(1, '#cfd8e2');
+      c.fillStyle = fd;
+      c.beginPath(); c.ellipse(0, -17.5, 9.4, 8.8, 0, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(120,134,150,.45)'; c.lineWidth = 0.6;          // the ruff round the disc
+      c.beginPath(); c.ellipse(0, -17.5, 9.4, 8.8, 0, 0, 6.2832); c.stroke();
+      [-1, 1].forEach(function (k) {
+        var ex = k * 3.9, ey = -19.2;
+        if (E.shut < 0.3) {                          // a blink: lids, a curve
+          c.strokeStyle = '#3a2a10'; c.lineWidth = 0.9; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(ex - 2.6, ey); c.quadraticCurveTo(ex, ey + 1.6, ex + 2.6, ey); c.stroke();
+          return;
+        }
+        var er = 2.9 * Math.min(1.2, E.wide);
+        c.fillStyle = 'rgba(80,90,104,.35)';
+        c.beginPath(); c.arc(ex, ey + 0.4, er + 0.8, 0, 6.2832); c.fill();
+        var ig = c.createRadialGradient(ex - 0.6, ey - 0.6, 0.2, ex, ey, er);
+        ig.addColorStop(0, '#fff3a0'); ig.addColorStop(1, '#f2b81c');
+        c.fillStyle = ig;
+        c.beginPath(); c.ellipse(ex, ey, er, er * E.shut, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#121418';
+        c.beginPath(); c.ellipse(ex + E.lx * 0.6, ey + E.ly * 0.6, er * 0.55, er * 0.55 * E.shut, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath(); c.arc(ex - er * 0.3, ey - er * 0.35, er * 0.22, 0, 6.2832); c.fill();
+      });
+      c.fillStyle = S.nose;                          // the beak, between and below the eyes
+      c.beginPath(); c.moveTo(-1.2, -17); c.quadraticCurveTo(0, -12.6, 1.2, -17); c.closePath(); c.fill();
+      c.fillStyle = S.mark; c.globalAlpha = 0.35;     // a few flecks on the crown
+      [[-5, -24], [0, -25.4], [5, -24]].forEach(function (p2) { c.beginPath(); c.arc(p2[0], p2[1], 0.6, 0, 6.2832); c.fill(); });
+      c.globalAlpha = 1;
+    } else {
+      /* past the crown, the hook of the beak, half hidden in feathers */
+      c.fillStyle = S.nose;
+      c.beginPath(); c.moveTo(-1.5, -26.6); c.quadraticCurveTo(0, -29.4, 1.5, -26.6); c.closePath(); c.fill();
+    }
     c.restore();
   }
 
@@ -7414,7 +7644,12 @@ var Game = (function () {
     var L = litCtx;
     L.setTransform(1, 0, 0, 1, 0, 0);
     L.globalCompositeOperation = 'source-over'; L.globalAlpha = 1;
-    L.clearRect(0, 0, half * 2, half * 2);
+    /* cleared a little past the square that is copied: copied to a place
+       between two pixels, the smoothing reads one pixel beyond it, and there
+       a bigger creature painted earlier was still lying, a thin line down
+       the square's right side and along its foot (the emperor's comic,
+       three penguins in a row, 13 Nov 2026) */
+    L.clearRect(0, 0, Math.min(litBuf.width, half * 2 + 2), Math.min(litBuf.height, half * 2 + 2));
     L.setTransform(T.a, T.b, T.c, T.d, half, half);
     L.lineJoin = 'round'; L.lineCap = 'round';
     paint(L);
@@ -7433,6 +7668,51 @@ var Game = (function () {
     c.restore();
   }
 
+  /* A comic's animal is the same picture frame after frame (most stand
+     still, the rest step through a stride), and painting one took ten
+     milliseconds and more on a slow phone: the emperors' colony, seven of
+     them, was 96 ms a frame on the OPPO, the page at 13 frames a second.
+     So each is painted once into a picture at the size it is shown, and the
+     picture laid in after: a walker's stride in 16 pictures, the eyes to a
+     tenth, the scale in quarter-octave steps so the slow push-in of a
+     deep panel does not repaint it every frame. Kept to CPIC_MAX pixels. */
+  var CPICS = {}, CPIC_PX = 0, CPIC_MAX = 8e6;
+  function comicPic(c, x, y, size, opts) {
+    if (typeof document === 'undefined' || !c.getTransform) return false;
+    var T = c.getTransform();
+    if (!T || T.a === undefined) return false;
+    var k = Math.sqrt(T.a * T.a + T.b * T.b);
+    if (!(k > 0)) return false;
+    var res = Math.pow(2, Math.ceil(Math.log(k) / Math.LN2 * 4) / 4);
+    var g = opts.gait ? Math.round((((opts.gait % 6.2832) + 6.2832) % 6.2832) / 6.2832 * 16) % 16 : -1;
+    var e = opts.eye, E = e ? [e.shut, e.wide, e.lx, e.ly].map(function (v) { return Math.round((v || 0) * 10); }).join(',') : '';
+    var key = [opts.skin || 'snowcap', size, (opts.ang || 0).toFixed(2), g, E, opts.held || '', opts.noShadow ? 1 : 0, res].join('|');
+    var P = CPICS[key];
+    if (!P) {
+      var half = size * 0.9, n = Math.ceil(half * 2 * res);
+      if (n > 2600) return false;
+      var cv = document.createElement('canvas');
+      var cc = cv && cv.getContext ? cv.getContext('2d') : null;
+      if (!cc) return false;
+      cv.width = cv.height = n;
+      cc.setTransform(res, 0, 0, res, half * res, half * res);
+      cc.lineJoin = 'round'; cc.lineCap = 'round';
+      var keepE = EYE, keepD = DETAIL;
+      EYE = e ? { shut: e.shut, wide: e.wide, lx: Math.round((e.lx || 0) * 10) / 10, ly: Math.round((e.ly || 0) * 10) / 10 } : null;
+      DETAIL = size >= 200;
+      cc.rotate(opts.ang || 0);
+      paintCreature(cc, skinById(opts.skin || 'snowcap'),
+                    { ang: 0, wag: 0, scale: size / 112, shield: -1, still: g < 0, gait: g < 0 ? 0 : g / 16 * 6.2832,
+                      noShadow: !!opts.noShadow, held: opts.held, sunTurn: -(opts.ang || 0) });
+      EYE = keepE; DETAIL = keepD;
+      if (CPIC_PX + n * n > CPIC_MAX) { CPICS = {}; CPIC_PX = 0; }
+      CPICS[key] = P = { cv: cv, half: half };
+      CPIC_PX += n * n;
+    }
+    c.drawImage(P.cv, x - P.half, y - P.half, P.half * 2, P.half * 2);
+    return true;
+  }
+  var SHADOW_K = { penguin: [1, 1], lemming: [0.55, 0.62], hare: [0.62, 0.95], leopard: [0.62, 1.0] };
   function paintCreature(c, S, o) {
     var ang = o.ang || 0, wag = o.wag || 0, lift = o.lift || 0;
     var gait = o.gait || 0, turn = o.turn || 0;
@@ -7451,15 +7731,31 @@ var Game = (function () {
     c.save();
     c.scale(o.scale, o.scale);
     c.beginPath();
-    if (S.shape === 'owl') {
+    /* (a comic's animal in the air, or afloat, has its shadow drawn by the
+       page, far below it or not at all) */
+    /* where the shadow falls, toward the bottom right as from the hill's
+       sun. An animal the comic has turned on its page (sunTurn, the turn
+       undone) still throws it that way: turned with him, it fell above a
+       penguin coming up from the sea, or off a reindeer's rump. */
+    function sunward(dx, dy) {
+      if (!o.sunTurn) return [dx, dy];
+      var cs = Math.cos(o.sunTurn), sn = Math.sin(o.sunTurn);
+      return [dx * cs - dy * sn, dx * sn + dy * cs];
+    }
+    if (o.noShadow) { /* none */ }
+    else if (S.shape === 'owl') {
       /* the owl is always flying: its shadow lies well off to the side,
          soft, a bird's shape with the wings out */
-      var oh = Math.max(lift, 0.55);
+      var oh = Math.max(lift, 0.55), ob = sunward(7 + oh * 14, 10 + oh * 34), ow = sunward(7 + oh * 14, 6 + oh * 34);
       c.fillStyle = 'rgba(70,110,150,' + (0.2 - 0.08 * oh).toFixed(3) + ')';
-      c.ellipse(7 + oh * 14, 10 + oh * 34, 13, 22, 0, 0, 6.2832);
-      c.ellipse(7 + oh * 14, 6 + oh * 34, 46 - oh * 10, 9, 0, 0, 6.2832);
-    } else
-    c.ellipse(7 + lift * 12, 10 + lift * 34, 28 - lift * 9, 32 - lift * 11, 0, 0, 6.2832);
+      c.ellipse(ob[0], ob[1], 13, 22, 0, 0, 6.2832);
+      c.ellipse(ow[0], ow[1], 46 - oh * 10, 9, 0, 0, 6.2832);
+    } else {
+      /* sized to the body: the slim and the small ones sat on a penguin's
+         shadow twice their size */
+      var SK = SHADOW_K[S.shape] || SHADOW_K.penguin, so = sunward((7 + lift * 12) * SK[0], 10 + lift * 34);
+      c.ellipse(so[0], so[1], (28 - lift * 9) * SK[0], (32 - lift * 11) * SK[1], 0, 0, 6.2832);
+    }
     c.fill();
     c.restore();
     c.scale(o.scale * (1 + 0.5 * lift), o.scale * (1 + 0.5 * lift));
@@ -8187,7 +8483,23 @@ var Game = (function () {
        in each opening. It was a straight green ribbon broken at every
        opening, with a ring drawn round each — a diagram, not a light. */
     var pts = [[scrX(W.px), PLAYER_Y - 18]];
-    for (i = 0; i < rows.length; i++) pts.push([scrX(chuteAt(rows[i].d) + rows[i].gap), scrY(rows[i].d)]);
+    /* round a fork's spine of rock by the side he is on, not through it */
+    var lastD = W.dist;
+    for (i = 0; i < rows.length; i++) {
+      for (var oi = 0; oi < W.objects.length; oi++) {
+        var nu = W.objects[oi];
+        if (nu.t !== 'nunatak' || nu.d + nu.span < W.dist || nu.d > rows[i].d) continue;
+        var side = W.px < chuteAt(Math.max(nu.d, W.dist)) + nu.rel ? -1 : 1;
+        [0.4, 0.82].forEach(function (fr) {          // along its flank, and by its far tip
+          var nd = Math.max(nu.d + nu.span * fr, W.dist + 30);
+          if (nd <= lastD || nd >= rows[i].d) return;  // once, between the two points it lies between
+          pts.push([scrX(chuteAt(nd) + nu.rel + side * (nunHalf(nu, nd) + 30)), scrY(nd)]);
+          lastD = nd;
+        });
+      }
+      pts.push([scrX(chuteAt(rows[i].d) + rows[i].gap), scrY(rows[i].d)]);
+      lastD = rows[i].d;
+    }
     /* sample a Catmull-Rom curve through them */
     var path = [];
     for (i = 0; i < pts.length - 1; i++) {
@@ -9341,12 +9653,20 @@ var Game = (function () {
         W = { t: opts.t || 0, dist: 0, px: 0, speed: 0, objects: [], rows: [], biome: 0, biomeT: 0 };
       try {
         if (kind === 'creature') {
-          EYE = opts.eye || null;
-          DETAIL = size >= 200;
-          c.save(); c.translate(x, y); c.rotate(opts.ang || 0);
-          paintCreature(c, skinById(opts.skin || 'snowcap'),
-                        { ang: 0, wag: 0, scale: size / 112, shield: -1, still: !opts.gait, gait: opts.gait || 0 });
-          c.restore();
+          if (!comicPic(c, x, y, size, opts)) {
+            EYE = opts.eye || null;
+            DETAIL = size >= 200;
+            c.save(); c.translate(x, y); c.rotate(opts.ang || 0);
+            paintCreature(c, skinById(opts.skin || 'snowcap'),
+                          { ang: 0, wag: 0, scale: size / 112, shield: -1, still: !opts.gait, gait: opts.gait || 0,
+                            noShadow: !!opts.noShadow, held: opts.held, sunTurn: -(opts.ang || 0) });
+            c.restore();
+          }
+        } else if (kind === 'ramp' || kind === 'arc') {
+          /* the hill's own ramp and gate, at a width the panel asks for */
+          ctx = c;
+          if (kind === 'ramp') drawRamp(x, y, { w: opts.w || size, kind: opts.kind, d: 0, x: 0 }, BIOMES[0], 'page');
+          else drawGate(x, y, { w: Math.max(20, (opts.w || size) - PR * 1.9), d: 0, passed: false, scored: !!opts.lit });
         } else {
           ctx = c;
           ctx.save(); ctx.translate(x - size / 2, y - size / 2);
@@ -9356,6 +9676,8 @@ var Game = (function () {
       } catch (e) { /* a missing picture is not a crash */ }
       ctx = keepCtx; W = keepW; EYE = keepEye; DETAIL = false;
     },
+    /* the comic's pictures of its animals, let go when the comic closes */
+    comicForget: function () { CPICS = {}; CPIC_PX = 0; },
     /* paint a creature into any context, for tests and portraits */
     _paint: function (c, skinId, opts) { paintCreature(c, skinById(skinId), opts); },
     _screen: function (x, d) { return { x: scrX(x), y: scrY(d) }; },
