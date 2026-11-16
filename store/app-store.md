@@ -131,6 +131,7 @@ by email to the account's address.
 Still WAITING_FOR_REVIEW on 13 Nov 2026 (nine days since the resubmission): no new
 message on the submission, history unchanged since 4 Nov 12:09, the Free Apps
 Agreement and the DSA row both Active, so nothing on the account holds it.
+On 15 Nov 2026 the owner asked for an expedited review (developer.apple.com/contact/app-store/?topic=expedite, from the home PC); that evening it was taken up.
 **Approved 15 Nov 2026**: In Review 18:43, Ready for Distribution 18:58
 (Chișinău time), eleven days after the resubmission, without a word on the
 case. Released at once (automatic release), live on the App Store:
@@ -193,4 +194,5 @@ The same morning the owner saw iOS's magnifier on a held tap (SYSTEMS row
 165); fixed in commit 3c12e32, `ios-release.yml` run 8, **build 8**. 1.2.11
 removed from review (Developer Rejected, at the owner's word), build 7
 taken off the version, build 8 chosen and saved; texts and notes unchanged.
-Left: "Add for Review", then Submit, again.
+Left: "Add for Review", then Submit, again. No second expedite request so soon
+after the one of 15 Nov; ask only if 1.2.11 still waits after 3-4 days.
