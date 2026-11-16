@@ -180,8 +180,11 @@ an InfoPlist.strings in six languages so the store lists them). Version
 What's New, the promotional text (a new version starts with it empty) and
 the description's crystal rings turned to arcs of leaping fish, in all
 seven localizations (`app-store-listing.md`), each saved and the page
-reloaded between languages. Waiting on the build: the commits must reach
-GitHub first (the push needs the owner: the SSH key here is not on the
-GitHub account, and tokens are not entered here), then Actions → iOS
-release, then the build chosen on the version page, then the owner's
-"Add for Review".
+reloaded between languages. The owner added this machine's SSH key to the
+GitHub account on 16 Nov (the remote is now git@github.com:vitalyganea/
+ice-dash.git, so pushes go from here); pushed, then `ios-release.yml` run 7
+(3 min 24 s), **build 7**, processed by Apple as Ready to Submit, chosen on
+the version page and saved. The App Review notes now open with a line on
+the update and say the recording was attached to 1.2.9 (a new version does
+not carry the attachment over). Release: automatically, to all users at
+once. Left: the owner's "Add for Review", then Submit.

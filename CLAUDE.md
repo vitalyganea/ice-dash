@@ -88,6 +88,9 @@ tracking question follows Google's consent form. The ids Apple and AdMob give
 are in `ios/ids.xcconfig` and `AD_UNIT_IOS` in `native.js`.
 `node test/playtest.js iphone` walks the page over stand-ins for the plugins.
 `store/app-store.md` keeps the App Store side (account, records, builds).
+A store build: push, then GitHub Actions → iOS release (its run number is the
+build number); the build then turns up in App Store Connect to be chosen on
+the version's page.
 
 ## Yandex Games
 
