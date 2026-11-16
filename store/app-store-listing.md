@@ -27,6 +27,71 @@ puts the search words in the name:
 | Portuguese (Brazil) | Ice Dash: Pinguim no Gelo | Deslize com um só toque |
 | German | Ice Dash: Pinguin auf Eis | Rutschen mit einem Tipp |
 
+## What's New in 1.2.11 (16 Nov 2026)
+
+The game as on Android 1.2.11, the first update after 1.2.9. One block per
+localization; Spanish is the same for Spain and Mexico.
+
+en:
+```
+The whole hill redrawn: real animals and penguins, new geysers, ramps and snow bridges, and arcs of leaping fish.
+• The comics in depth: every page moves in layers, redrawn to look real, with new words in every language
+• A fresh look for the power-ups on the hill, and buttons made of real ice
+• Rolling as a snowball, smashed rocks now and then throw out fish
+• The ice lens shows the way over crevasses and round the rocks
+• Smoother on older iPhones
+```
+
+ro:
+```
+Tot muntele redesenat: animale și pinguini adevărați, gheizere, rampe și poduri de zăpadă noi, și arcuri de pești care sar.
+• Benzile desenate prind adâncime: fiecare pagină se mișcă în straturi, redesenată realist, cu texte noi în toate limbile
+• Bonusurile de pe pârtie arată altfel, iar butoanele sunt din gheață adevărată
+• Când te rostogolești ca bulgăre, stâncile sparte aruncă uneori pești
+• Lentila de gheață arată drumul și peste crevase, și pe lângă stânci
+• Merge mai fluent pe iPhone-urile mai vechi
+```
+
+ru:
+```
+Весь склон перерисован: настоящие звери и пингвины, новые гейзеры, трамплины и снежные мосты, арки прыгающих рыб.
+• Комиксы обрели глубину: страницы движутся слоями, перерисованы реалистично, с новыми текстами на всех языках
+• Новый вид у бонусов на склоне, а кнопки теперь из настоящего льда
+• Когда катишься снежным комом, разбитые камни иногда выбрасывают рыбу
+• Ледяная линза показывает путь и через трещины, и в обход скал
+• Плавнее на старых iPhone
+```
+
+es (Spain and Mexico):
+```
+Toda la montaña redibujada: animales y pingüinos de verdad, nuevos géiseres, rampas y puentes de nieve, y arcos de peces saltarines.
+• Los cómics ganan profundidad: cada página se mueve por capas, redibujada con realismo y con textos nuevos en todos los idiomas
+• Nuevo aspecto para los potenciadores de la pista, y botones de hielo de verdad
+• Al rodar como bola de nieve, las rocas que rompes a veces sueltan peces
+• La lente de hielo muestra el camino también sobre las grietas y alrededor de las rocas
+• Más fluido en iPhone antiguos
+```
+
+pt-BR:
+```
+A montanha inteira redesenhada: animais e pinguins de verdade, novos gêiseres, rampas e pontes de neve, e arcos de peixes saltando.
+• Os quadrinhos ganham profundidade: cada página se move em camadas, redesenhada com realismo e com textos novos em todos os idiomas
+• Novo visual para os bônus da pista, e botões de gelo de verdade
+• Rolando como bola de neve, as pedras quebradas às vezes soltam peixes
+• A lente de gelo mostra o caminho também sobre as fendas e ao redor das pedras
+• Mais suave em iPhones antigos
+```
+
+de:
+```
+Der ganze Berg neu gezeichnet: echte Tiere und Pinguine, neue Geysire, Rampen und Schneebrücken und Bögen springender Fische.
+• Die Comics bekommen Tiefe: Jede Seite bewegt sich in Ebenen, realistisch neu gezeichnet, mit neuen Texten in allen Sprachen
+• Neuer Look für die Extras auf der Piste, und Knöpfe aus echtem Eis
+• Rollst du als Schneeball, werfen zerschlagene Felsen manchmal Fische aus
+• Die Eislinse zeigt den Weg auch über Gletscherspalten und um Felsen herum
+• Flüssiger auf älteren iPhones
+```
+
 ## The same in every language
 
 | Field | Value |
@@ -64,16 +129,16 @@ FIVE WAYS TO PLAY
 • Freeride — the endless mountain. How far can you slide? Your best goes on the Game Center leaderboard.
 • Time Rush — twenty seconds on the clock. Grab time bubbles to keep going.
 • Daily Line — a brand-new route every day, the same for everyone. Keep your streak alive!
-• Avalanche — the snow is right behind you. Crystal rings hold it back.
+• Avalanche — the snow is right behind you. Arcs of leaping fish hold it back.
 
 CATCH, COLLECT, UNLOCK
-Fish are your money. Spend them at the Fish Market on 18 snow creatures — penguins, a seal, a lemming, a musk ox, an otter, an arctic hare, a snow leopard, a snowy owl, a walrus, a narwhal, a reindeer, a puffin, an orca and more. Each one changes how you play, and each has a comic of its own.
+Fish are your money. Spend them at the Fish Market on 18 snow creatures — penguins, a seal, a lemming, a musk ox, an otter, an arctic hare, a snow leopard, a snowy owl, a walrus, a narwhal, a reindeer, a puffin, an orca and more. Each one changes how you play, and each has a comic of its own, drawn in depth.
 
 FOURTEEN STRETCHES OF MOUNTAIN
 Pine forest, glacier, night run, an ash field over a volcano, a frozen jungle, cosmic ice, crystal caves, neon… each with its own weather and its own music.
 
 AND MORE
-• Golden fish, snow bubbles, crystal rings, snow bridges and ramps over crevasses
+• Golden fish, snow bubbles, arcs of leaping fish, snow bridges and ramps over crevasses
 • Combos and close calls for bonus points
 • 33 trophies and three new tasks every day
 • A short tutorial for first-time players
@@ -110,7 +175,7 @@ CINCI MODURI DE JOC
 • Liber — muntele fără sfârșit. Cât de departe ajungi? Recordul tău intră în clasamentul Game Center.
 • Contra timp — douăzeci de secunde pe ceas. Prinde bule de timp ca să continui.
 • Linia zilei — un traseu nou în fiecare zi, același pentru toți. Păstrează-ți seria!
-• Avalanșa — zăpada vine chiar din spatele tău. Inelele de cristal o țin în loc.
+• Avalanșa — zăpada vine chiar din spatele tău. Arcurile de pești care sar o țin în loc.
 
 PRINDE, STRÂNGE, DEBLOCHEAZĂ
 Peștii sunt banii tăi. Cheltuiește-i în Piața de pește pe 18 creaturi ale zăpezii — pinguini, o focă, un leming, un bou moscat, o vidră, un iepure polar, un leopard al zăpezilor, o bufniță albă, o morsă, un narval, un ren, un pufin, o orcă și altele. Fiecare schimbă felul în care joci și fiecare are comicul ei.
@@ -119,7 +184,7 @@ PAISPREZECE ZONE DE MUNTE
 Pădure de brazi, ghețar, coborâre de noapte, cenușă peste un vulcan, junglă înghețată, gheață cosmică, peșteri de cristal, neon… fiecare cu vremea și muzica ei.
 
 ȘI ÎNCĂ
-• Pești aurii, bule de zăpadă, inele de cristal, poduri de zăpadă și rampe peste crevase
+• Pești aurii, bule de zăpadă, arcuri de pești care sar, poduri de zăpadă și rampe peste crevase
 • Combo-uri și treceri la mustață pentru puncte bonus
 • 33 de trofee și trei sarcini noi în fiecare zi
 • Un tutorial scurt pentru jucătorii noi
@@ -156,7 +221,7 @@ Ice Dash — игра про пингвина и бесконечный ранн
 • Фрирайд — бесконечная гора. Как далеко ты доедешь? Твой рекорд попадёт в таблицу рекордов Game Center.
 • На время — двадцать секунд на часах. Лови пузыри времени, чтобы ехать дальше.
 • Линия дня — каждый день новая трасса, одна для всех. Не прерывай серию!
-• Лавина — снег идёт прямо за тобой. Кристальные кольца его сдерживают.
+• Лавина — снег идёт прямо за тобой. Арки прыгающих рыб его сдерживают.
 
 ЛОВИ, СОБИРАЙ, ОТКРЫВАЙ
 Рыба — твои деньги. Трать её на Рыбном рынке на 18 северных существ — пингвинов, тюленя, лемминга, овцебыка, выдру, полярного зайца, снежного барса, полярную сову, моржа, нарвала, северного оленя, тупика, косатку и других. Каждое меняет игру, и у каждого свой комикс.
@@ -165,7 +230,7 @@ Ice Dash — игра про пингвина и бесконечный ранн
 Еловый лес, ледник, ночной спуск, пепел над вулканом, замёрзшие джунгли, космический лёд, кристальные пещеры, неон… у каждого своя погода и своя музыка.
 
 И ЕЩЁ
-• Золотые рыбки, снежные пузыри, кристальные кольца, снежные мосты и трамплины над трещинами
+• Золотые рыбки, снежные пузыри, арки прыгающих рыб, снежные мосты и трамплины над трещинами
 • Комбо и проезды впритирку приносят бонусные очки
 • 33 награды и три новых задания каждый день
 • Короткое обучение для новичков
@@ -202,7 +267,7 @@ CINCO MODOS DE JUEGO
 • Libre: la montaña sin fin. ¿Hasta dónde llegarás? Tu récord entra en la clasificación de Game Center.
 • Contrarreloj: veinte segundos en el reloj. Atrapa burbujas de tiempo para seguir.
 • Línea del día: una ruta nueva cada día, la misma para todos. ¡Mantén tu racha!
-• Avalancha: la nieve te pisa los talones. Los anillos de cristal la frenan.
+• Avalancha: la nieve te pisa los talones. Los arcos de peces saltarines la frenan.
 
 ATRAPA, COLECCIONA, DESBLOQUEA
 Los peces son tu dinero. Gástalos en el Mercado de peces en 18 criaturas de la nieve: pingüinos, una foca, un lemming, un buey almizclero, una nutria, una liebre ártica, un leopardo de las nieves, un búho nival, una morsa, un narval, un reno, un frailecillo, una orca y más. Cada una cambia tu forma de jugar y cada una tiene su propio cómic.
@@ -211,7 +276,7 @@ CATORCE TRAMOS DE MONTAÑA
 Bosque de pinos, glaciar, bajada nocturna, ceniza sobre un volcán, selva helada, hielo cósmico, cuevas de cristal, neón… cada uno con su clima y su música.
 
 Y MÁS
-• Peces dorados, burbujas de nieve, anillos de cristal, puentes de nieve y rampas sobre grietas
+• Peces dorados, burbujas de nieve, arcos de peces saltarines, puentes de nieve y rampas sobre grietas
 • Combos y roces al límite para ganar puntos extra
 • 33 trofeos y tres tareas nuevas cada día
 • Un tutorial corto para quienes empiezan
@@ -248,7 +313,7 @@ CINCO MODOS DE JOGO
 • Livre: a montanha sem fim. Até onde você chega? Seu recorde entra no ranking do Game Center.
 • Contra o Tempo: vinte segundos no relógio. Pegue bolhas de tempo para continuar.
 • Linha do dia: uma pista nova todo dia, a mesma para todos. Não perca sua sequência!
-• Avalanche: a neve vem logo atrás de você. Os anéis de cristal a seguram.
+• Avalanche: a neve vem logo atrás de você. Os arcos de peixes saltando a seguram.
 
 PEGUE, COLECIONE, DESBLOQUEIE
 Peixes são o seu dinheiro. Gaste-os no Mercado de peixes com 18 criaturas da neve: pinguins, uma foca, um lêmingue, um boi-almiscarado, uma lontra, uma lebre-ártica, um leopardo-das-neves, uma coruja-das-neves, uma morsa, um narval, uma rena, um papagaio-do-mar, uma orca e mais. Cada uma muda o seu jeito de jogar e cada uma tem sua própria história em quadrinhos.
@@ -257,7 +322,7 @@ CATORZE TRECHOS DE MONTANHA
 Floresta de pinheiros, geleira, descida noturna, cinzas sobre um vulcão, selva congelada, gelo cósmico, cavernas de cristal, neon… cada um com seu clima e sua música.
 
 E MAIS
-• Peixes dourados, bolhas de neve, anéis de cristal, pontes de neve e rampas sobre fendas
+• Peixes dourados, bolhas de neve, arcos de peixes saltando, pontes de neve e rampas sobre fendas
 • Combos e passadas por um triz valem pontos extras
 • 33 troféus e três tarefas novas todo dia
 • Um tutorial curto para quem está começando
@@ -294,7 +359,7 @@ FÜNF SPIELMODI
 • Freie Fahrt – der endlose Berg. Wie weit kommst du? Dein Rekord landet in der Bestenliste von Game Center.
 • Zeitrennen – zwanzig Sekunden auf der Uhr. Schnapp dir Zeitblasen, um weiterzufahren.
 • Tageslinie – jeden Tag eine neue Strecke, für alle dieselbe. Halte deine Serie am Leben!
-• Lawine – der Schnee ist dir dicht auf den Fersen. Kristallringe halten ihn auf.
+• Lawine – der Schnee ist dir dicht auf den Fersen. Bögen springender Fische halten ihn auf.
 
 FANGEN, SAMMELN, FREISCHALTEN
 Fische sind dein Geld. Gib sie auf dem Fischmarkt für 18 Schneetiere aus – Pinguine, eine Robbe, einen Lemming, einen Moschusochsen, einen Otter, einen Polarhasen, einen Schneeleoparden, eine Schneeeule, ein Walross, einen Narwal, ein Rentier, einen Papageitaucher, einen Orca und mehr. Jedes verändert, wie du spielst, und jedes hat seinen eigenen Comic.
@@ -303,7 +368,7 @@ VIERZEHN BERGABSCHNITTE
 Kiefernwald, Gletscher, Nachtabfahrt, Asche über einem Vulkan, gefrorener Dschungel, kosmisches Eis, Kristallhöhlen, Neon … jeder mit eigenem Wetter und eigener Musik.
 
 UND NOCH MEHR
-• Goldene Fische, Schneeblasen, Kristallringe, Schneebrücken und Rampen über Spalten
+• Goldene Fische, Schneeblasen, Bögen springender Fische, Schneebrücken und Rampen über Spalten
 • Kombos und knappe Manöver bringen Bonuspunkte
 • 33 Trophäen und jeden Tag drei neue Aufgaben
 • Ein kurzes Tutorial für Einsteiger
