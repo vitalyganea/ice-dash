@@ -189,3 +189,8 @@ the update and say the recording was attached to 1.2.9 (a new version does
 not carry the attachment over). Release: automatically, to all users at
 once. **Sent for review by the owner, 16 Nov 2026**: 1.2.11 Waiting for Review
 (1.2.9 stays live meanwhile).
+The same morning the owner saw iOS's magnifier on a held tap (SYSTEMS row
+165); fixed in commit 3c12e32, `ios-release.yml` run 8, **build 8**. 1.2.11
+removed from review (Developer Rejected, at the owner's word), build 7
+taken off the version, build 8 chosen and saved; texts and notes unchanged.
+Left: "Add for Review", then Submit, again.
