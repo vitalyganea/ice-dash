@@ -22,6 +22,19 @@ class IceDashViewController: CAPBridgeViewController {
         #endif
     }
 
+    /* No text to select anywhere in the game, so the web view does no text
+       interaction at all: a long press on the hill (holding a turn) brought
+       up iOS's magnifying loupe and now and then a selection, though the
+       page asks for none (user-select and touch-callout are off in
+       style.css; WKWebView shows the loupe anyway since iOS 15). Reported
+       by the owner, 16 Nov 2026. Set on the configuration, before the web
+       view is made from it. */
+    override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
+        let config = super.webViewConfiguration(for: instanceConfiguration)
+        config.preferences.isTextInteractionEnabled = false
+        return config
+    }
+
     /* The hill is the screen: no clock and battery over it, ever. Capacitor's
        SystemBars shows the bar as it loads (its "hidden" setting would hide
        Android's navigation bar too), and native.js hid it only once the page

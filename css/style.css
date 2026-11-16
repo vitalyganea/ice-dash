@@ -18,7 +18,12 @@
   --radius:     22px;
 }
 
-*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/* Nothing in the game is text to select (16 Nov 2026: a held tap on an
+   iPhone brought up the magnifier): every element says so itself, as Safari
+   does not always carry body's setting down to the canvas and the panels.
+   The iPhone app also turns the web view's text interaction off. */
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent;
+   -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 
 html,body{ height:100%; }
 

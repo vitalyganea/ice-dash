@@ -2333,6 +2333,9 @@
   document.addEventListener('contextmenu', function (e) {
     if (currentScreen === 'game') e.preventDefault();
   });
+  /* and no selection starts anywhere, a held tap included (there are no
+     fields to type in) */
+  document.addEventListener('selectstart', function (e) { e.preventDefault(); });
 
   /* ------------------------- keyboard ------------------------ */
   /* Esc is never swallowed: Design req. 2 forbids preventDefault() on it. */
