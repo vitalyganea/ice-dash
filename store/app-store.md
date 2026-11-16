@@ -137,9 +137,13 @@ case. Released at once (automatic release), live on the App Store:
 https://apps.apple.com/us/app/ice-dash-penguin-slide/id6830137061 (checked
 16 Nov: free, 4+, Casual, 12.5 MB, iOS 15+, Game Center leaderboard).
 Left after it:
-- AdMob: link the iOS app to its store listing (Apps → the iOS app → Add
-  store), or it stays at "Limited ad serving" and the revive and double
-  offers rarely show.
+- AdMob: linked to the store listing 16 Nov 2026 (the owner clicked Add and
+  Save; found by the listing's URL, not its numeric ID). Verification of
+  app-ads.txt failed at first ("your details don't match"), though the file
+  at https://vitalyganea.github.io/app-ads.txt has the right line and the
+  listing's seller URL is https://vitalyganea.github.io/ice-dash/, the same
+  domain that verified the Android app: AdMob's crawler had not caught up.
+  Status "Verify app to lift limit"; check again a day later.
 - The store page lists the languages as English only: the build declares no
   localizations (CFBundleLocalizations in Info.plist), though the game
   speaks six. Add them in the next build.
