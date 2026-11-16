@@ -131,6 +131,21 @@ by email to the account's address.
 Still WAITING_FOR_REVIEW on 13 Nov 2026 (nine days since the resubmission): no new
 message on the submission, history unchanged since 4 Nov 12:09, the Free Apps
 Agreement and the DSA row both Active, so nothing on the account holds it.
+**Approved 15 Nov 2026**: In Review 18:43, Ready for Distribution 18:58
+(Chișinău time), eleven days after the resubmission, without a word on the
+case. Released at once (automatic release), live on the App Store:
+https://apps.apple.com/us/app/ice-dash-penguin-slide/id6830137061 (checked
+16 Nov: free, 4+, Casual, 12.5 MB, iOS 15+, Game Center leaderboard).
+Left after it:
+- AdMob: link the iOS app to its store listing (Apps → the iOS app → Add
+  store), or it stays at "Limited ad serving" and the revive and double
+  offers rarely show.
+- The store page lists the languages as English only: the build declares no
+  localizations (CFBundleLocalizations in Info.plist), though the game
+  speaks six. Add them in the next build.
+- 1.2.9 on the iPhone is the game as of 3 Nov, before the hill was redrawn
+  (Android 1.2.9-1.2.11); the next iOS build should carry 1.2.11, and the
+  listing's "crystal rings" become the arcs of leaping fish.
 
 ## Stage 3: the store
 
