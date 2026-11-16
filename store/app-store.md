@@ -187,4 +187,5 @@ ice-dash.git, so pushes go from here); pushed, then `ios-release.yml` run 7
 the version page and saved. The App Review notes now open with a line on
 the update and say the recording was attached to 1.2.9 (a new version does
 not carry the attachment over). Release: automatically, to all users at
-once. Left: the owner's "Add for Review", then Submit.
+once. **Sent for review by the owner, 16 Nov 2026**: 1.2.11 Waiting for Review
+(1.2.9 stays live meanwhile).
