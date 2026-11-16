@@ -171,3 +171,17 @@ declaration (the owner confirms), then the owner's "Submit for Review".
 | 1.2.9 | 4 | 3 Nov 2026, run 4 | Low sharpness on the iPhone never under half the screen's density (SYSTEMS row 150) |
 | 1.2.9 | 5 | 3 Nov 2026, run 5 | no tracking question, NSUserTrackingUsageDescription gone (SYSTEMS row 151); the build to submit |
 | 1.2.9 | 6 | 4 Nov 2026, run 6, test_ads | build 5 with Google's test ads, for App Review's screen recording only; never submitted |
+
+## 1.2.11 (prepared 16 Nov 2026)
+
+The game as on Android 1.2.11 (commit 554f6d3: MARKETING_VERSION 1.2.11 and
+an InfoPlist.strings in six languages so the store lists them). Version
+1.2.11 created in App Store Connect 16 Nov, Prepare for Submission, with
+What's New, the promotional text (a new version starts with it empty) and
+the description's crystal rings turned to arcs of leaping fish, in all
+seven localizations (`app-store-listing.md`), each saved and the page
+reloaded between languages. Waiting on the build: the commits must reach
+GitHub first (the push needs the owner: the SSH key here is not on the
+GitHub account, and tokens are not entered here), then Actions → iOS
+release, then the build chosen on the version page, then the owner's
+"Add for Review".
