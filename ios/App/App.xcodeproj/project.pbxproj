@@ -18,6 +18,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		1CE0DA5000000000000000B1 /* GameCenterPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000A1 /* GameCenterPlugin.swift */; };
 		1CE0DA5000000000000000B2 /* IceDashViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000A2 /* IceDashViewController.swift */; };
+		1CE0DA5000000000000000D2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000D1 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,12 @@
 		1CE0DA5000000000000000A2 /* IceDashViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IceDashViewController.swift; sourceTree = "<group>"; };
 		1CE0DA5000000000000000A3 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		1CE0DA5000000000000000A4 /* ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ids.xcconfig; path = ../ids.xcconfig; sourceTree = SOURCE_ROOT; };
+		1CE0DA5000000000000000C1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1CE0DA5000000000000000C2 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1CE0DA5000000000000000C3 /* ro */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ro; path = ro.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1CE0DA5000000000000000C4 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1CE0DA5000000000000000C5 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = pt-BR.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1CE0DA5000000000000000C6 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +88,7 @@
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				1CE0DA5000000000000000D1 /* InfoPlist.strings */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
@@ -133,6 +141,11 @@
 			knownRegions = (
 				en,
 				Base,
+				ru,
+				ro,
+				es,
+				"pt-BR",
+				de,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -157,6 +170,7 @@
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
+				1CE0DA5000000000000000D2 /* InfoPlist.strings in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -192,6 +206,19 @@
 				504EC3111FED79650016851F /* Base */,
 			);
 			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		1CE0DA5000000000000000D1 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				1CE0DA5000000000000000C1 /* en */,
+				1CE0DA5000000000000000C2 /* ru */,
+				1CE0DA5000000000000000C3 /* ro */,
+				1CE0DA5000000000000000C4 /* es */,
+				1CE0DA5000000000000000C5 /* pt-BR */,
+				1CE0DA5000000000000000C6 /* de */,
+			);
+			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -320,7 +347,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.9;
+				MARKETING_VERSION = 1.2.11;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.veetalea.icedash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -344,7 +371,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.9;
+				MARKETING_VERSION = 1.2.11;
 				PRODUCT_BUNDLE_IDENTIFIER = com.veetalea.icedash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
