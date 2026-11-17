@@ -212,3 +212,13 @@ in-game logo, the name under the icon (iOS `CFBundleDisplayName` and the
 `*.lproj/InfoPlist.strings`, Android `app_name`), Google Play's listing in six
 languages, screenshots and trailer that show the logo. The live store page
 keeps "Ice Dash: Penguin Slide" until 1.2.12 is approved.
+
+## 1.2.12 (prepared 17 Nov 2026)
+
+The new name (above) and the features of SYSTEMS rows 167-171 (commit
+969d0e5). `ios-release.yml` run 10, **build 10**, chosen on the version and
+saved. What's New in all seven localizations (the 1.2.12 block of
+`app-store-listing.md`), "Ice Dash" made "Ice Dasher" in every description
+and in the review notes. **Sent for review 17 Nov 2026** with the owner's word: Add for Review
+(the submission carried the seven name changes), Submit; 1.2.12 Waiting for
+Review, 1.2.11 live meanwhile.
