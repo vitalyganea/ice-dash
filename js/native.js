@@ -141,7 +141,7 @@
      double"); the app's own AdMob id is in res/values/play-ids.xml (the
      iPhone app's: AD_UNIT_IOS and ios/ids.xcconfig). Empty,
      Google's own test unit plays instead, and so it does in a debug build
-     (Capacitor.DEBUG: "Ice Dash debug", installed beside the Play one to
+     (Capacitor.DEBUG: "Ice Dasher debug", installed beside the Play one to
      measure the game on a phone), so that no real ad is shown there. As
      it is, AdMob does not know that app's id: its consent check fails
      ("Error making request.") and it is offered no ads at all.

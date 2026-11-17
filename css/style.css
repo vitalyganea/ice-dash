@@ -216,7 +216,7 @@ body{
   position:relative;
   container-type:inline-size;        /* the melt sizes itself off this */
   margin:4px auto 30px;
-  width:min(560px, 86%);
+  width:min(640px, 100%);
   line-height:0;                       /* no stray text line under the art */
   filter:drop-shadow(0 6px 10px rgba(20,62,96,.3));
 }
@@ -597,7 +597,7 @@ body{
   .btn-row    { margin-top:16px; gap:20px 8px; }
   .hero-emoji { font-size:clamp(34px,7vw,52px); }
   .win-emoji  { font-size:clamp(32px,7vw,48px); }
-  .game-title { width:min(440px, 88%); margin-bottom:26px; }
+  .game-title { width:min(600px, 100%); margin-bottom:26px; }
   .subtitle   { margin:2px 0 8px; }
   .toggles    { margin-top:10px; }
   .help-list  { gap:6px; }
@@ -609,7 +609,7 @@ body{
   .screen      { padding-top:calc(10px + env(safe-area-inset-top,0px));
                  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
   .panel       { padding:14px 18px 12px; }
-  .game-title  { width:min(330px, 76%); margin:2px auto 22px; }
+  .game-title  { width:min(457px, 96%); margin:2px auto 22px; }
   .panel-title-text { font-size:clamp(19px,3.6vw,26px); margin-bottom:6px; }
   .subtitle    { font-size:clamp(12px,1.9vw,14px); margin:2px 0 6px; }
   .btn         { padding:9px 20px; font-size:clamp(14px,2vw,16px); }
@@ -1457,12 +1457,16 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 @keyframes badgePop{ from{ transform:scale(.3); opacity:0 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion: reduce){ #new-best{ animation:none; } }
 
-/* The logo sizes itself off the height as well as the width. On a
+/* The logo sizes itself off the height as well as the width. Since the
+   name became Ice Dasher (17 Nov 2026) the artwork is 1080x511, not
+   780x535: every width here went up by about that ratio, so the letters
+   stand as tall as before wherever the height decides, and nearly as tall
+   where the width does. On a
    1280x800 laptop the title panel ran past the bottom of the window and
    the best score — the one thing on it that is yours — was below the fold. */
-.game-title{ width:min(560px, 86%, 44vh); }
+.game-title{ width:min(640px, 100%, 64vh); }
 @media (max-height:860px){
-  .game-title{ margin-bottom:22px; width:min(560px, 86%, 36vh); }
+  .game-title{ margin-bottom:22px; width:min(640px, 100%, 52vh); }
   .panel-title{ padding-top:18px; padding-bottom:16px; }
   .panel-title .subtitle{ margin:2px 0 6px; }
   .panel-title .best-plaque{ margin:6px auto 0; padding-top:4px; padding-bottom:4px; }
@@ -1840,7 +1844,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
    Only what is still too tall is scaled, and never below 80%: past that
    the screen scrolls, the way it did before. */
 #screen-title.fit-tight .title-head .subtitle{ display:none; }
-#screen-title.fit-tight .game-title{ width:min(320px, 70%, 24vh); margin-bottom:14px; }
+#screen-title.fit-tight .game-title{ width:min(440px, 94%, 35vh); margin-bottom:14px; }
 #screen-title.fit-tight .btn-row.modes .mode-btn small{ display:none; }
 #screen-title.fit-tight .btn-row.modes .mode-btn{ padding-top:10px; padding-bottom:10px; }
 #screen-title.fit-tight .panel-title .btn-row{ margin-top:12px; }
@@ -1850,7 +1854,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
   width:min(980px, 100%); margin-left:auto; margin-right:auto;
   display:grid; grid-template-columns:minmax(0, .85fr) minmax(0, 1.15fr); column-gap:28px; align-items:center;
 }
-#screen-title.fit-wide .game-title{ width:min(360px, 100%, 40vh); }
+#screen-title.fit-wide .game-title{ width:min(500px, 100%, 58vh); }
 #screen-title.fit-wide .title-menu > .btn-row:first-child,
 #screen-title.fit-wide .title-menu > .btn-row.hidden + .btn-row{ margin-top:6px; }
 

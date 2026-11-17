@@ -304,7 +304,7 @@ public class PlayGamesPlugin extends Plugin {
                 Snapshot snap = dc.isConflict() ? dc.getConflict().getSnapshot() : dc.getData();
                 snap.getSnapshotContents().writeBytes(data.getBytes(StandardCharsets.UTF_8));
                 SnapshotMetadataChange change = new SnapshotMetadataChange.Builder()
-                    .setDescription("Ice Dash")
+                    .setDescription("Ice Dasher")
                     .setProgressValue(progress)
                     .build();
                 sc.commitAndClose(snap, change).addOnCompleteListener(c -> {

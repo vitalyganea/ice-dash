@@ -2,8 +2,7 @@
 
 ## Move progress between Android and iPhone (transfer code)
 
-**Start when:** Apple approves 1.2.9 (waiting for review since 4 Nov 2026,
-case 30000011995418; see `store/app-store.md`).
+**Unblocked:** Apple approved 1.2.9 on 15 Nov 2026 (see `store/app-store.md`).
 
 Today the save goes to Play Games saved games on Android and to Game
 Center/iCloud on the iPhone (`js/native.js`). A new phone of the same kind
@@ -45,12 +44,12 @@ personal data.
   The transfer is the first one the page itself makes, so it goes in
   `js/native.js` only (the phone apps; Playables, Yandex and CrazyGames
   never load it), and CLAUDE.md gets that exception written down.
-- **Release:** a new build for both stores (Android 1.3.0 / iOS 1.3.0; Android 1.2.9 and 1.2.10 went out on 12 Nov 2026 with the redrawn hill).
+- **Release:** a new build for both stores (Android 1.3.0 / iOS 1.3.0; Android 1.2.9 and 1.2.10 went out on 12 Nov 2026 with the redrawn hill, 1.2.11 (versionCode 20) on 13 Nov).
 - **Later:** the Godot version can use the same server and save format.
 
 ## Google Play achievements (and Game Center on the iPhone)
 
-**Start when:** with the transfer code above, after Apple approves 1.2.9.
+**Unblocked:** together with the transfer code above (Apple approved 1.2.9 on 15 Nov 2026).
 
 The game's 33 lasting trophies (`ACHIEVEMENTS` in `js/achievements.js`)
 become Play Games achievements. Each reads one number out of the save. The
@@ -80,7 +79,7 @@ only.
   - Incremental achievements: 2 to 10,000 steps.
   - Achievements cannot be deleted once published, so fix the list before
     publishing.
-- **Release:** Android 1.3.0 (versionCode 20), together with the transfer
+- **Release:** Android 1.3.0 (versionCode 21), together with the transfer
   code.
 - **iPhone, same pass if wanted:**
   - Game Center achievements through `GameCenterPlugin.swift`, with the same

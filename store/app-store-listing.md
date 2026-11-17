@@ -1,4 +1,4 @@
-# App Store listing — Ice Dash: Penguin Slide
+# App Store listing — Ice Dasher (Ice Dash: Penguin Slide until 1.2.12)
 
 Text for App Store Connect → the app → Distribution → the version's page,
 one localization each (the language menu at the top right of the page). Limits:
@@ -26,6 +26,46 @@ puts the search words in the name:
 | Spanish (Mexico) | Ice Dash: Pingüino sobre hielo | Deslízate con un solo toque |
 | Portuguese (Brazil) | Ice Dash: Pinguim no Gelo | Deslize com um só toque |
 | German | Ice Dash: Pinguin auf Eis | Rutschen mit einem Tipp |
+
+**From 1.2.12 (17 Nov 2026) the name is "Ice Dasher" in every language**, the
+same short name as on Google Play (the owner's choice; "Ice Dasher" was free
+and is held by version 1.2.12). The subtitles stay as above and carry the
+search words.
+
+## What's New in 1.2.12 (17 Nov 2026)
+
+The new name. One block per localization; Spanish is the same for Spain and
+Mexico. The same words go to Google Play as the 1.2.12 release notes.
+
+en:
+```
+Ice Dash is now Ice Dasher: a new name and a new logo, the same game. Your progress and everything you have earned stay as they are.
+```
+
+ro:
+```
+Ice Dash se numește acum Ice Dasher: nume și logo noi, același joc. Progresul tău și tot ce ai câștigat rămân neschimbate.
+```
+
+ru:
+```
+Ice Dash теперь называется Ice Dasher: новое имя и новый логотип, та же игра. Твой прогресс и всё, что удалось заработать, остаются с тобой.
+```
+
+es (Spain and Mexico):
+```
+Ice Dash ahora se llama Ice Dasher: nuevo nombre y nuevo logo, el mismo juego. Tu progreso y todo lo que has ganado siguen igual.
+```
+
+pt-BR:
+```
+Ice Dash agora se chama Ice Dasher: novo nome e novo logo, o mesmo jogo. Seu progresso e tudo o que você conquistou continuam como estão.
+```
+
+de:
+```
+Ice Dash heißt jetzt Ice Dasher: neuer Name und neues Logo, dasselbe Spiel. Dein Fortschritt und alles, was du verdient hast, bleiben, wie sie sind.
+```
 
 ## What's New in 1.2.11 (16 Nov 2026)
 

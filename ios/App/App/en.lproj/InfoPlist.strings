@@ -1,4 +1,4 @@
 /* The App Store lists the languages a build carries a localization for:
    with only Base.lproj it showed English alone, though the game speaks six
    (16 Nov 2026). The name stays the same in every language. */
-"CFBundleDisplayName" = "Ice Dash";
+"CFBundleDisplayName" = "Ice Dasher";

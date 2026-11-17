@@ -48,8 +48,8 @@ Cyrillic and a small Baloo 2 cut for Romanian ă, ș, ț — each held to its ow
 letters by `unicode-range`). The Daily Line and today's tasks are picked from
 the device's own date by a seeded generator in the bundle — there is no
 server, so nothing is fetched for them. The only file fetched at
-runtime is the title logo, `img/logo.webp` (158 KB) with `img/logo.png`
-(380 KB) as the fallback for browsers without WebP — both are in the
+runtime is the title logo, `img/logo.webp` (120 KB) with `img/logo.png`
+(428 KB) as the fallback for browsers without WebP — both are in the
 bundle, so this is a same-origin read, not a network call. No clipboard access, no personal data, no login-like
 screens, no QR-like graphics, no obfuscation, single page application, and no
 `eval`, WebAssembly or Web Workers.
@@ -59,7 +59,7 @@ screens, no QR-like graphics, no obfuscation, single page application, and no
 | Limit | This game |
 |---|---|
 | Initial bundle < 30 MiB (< 15 recommended) | 1.04 MiB across 13 files (724 KB zipped) — 538 KB of it the two logo encodings, 243 KB `js/game.js`, 59 KB the embedded fonts |
-| Individual file < 30 MiB (< 512 KiB recommended) | largest is `img/logo.png`, 380 KB; largest script is `js/game.js`, 243 KB |
+| Individual file < 30 MiB (< 512 KiB recommended) | largest is `img/logo.png`, 428 KB; largest script is `js/game.js`, 243 KB |
 | Saved game < 3 MiB (< 500 KiB recommended) | about 5 KB with everything in it — all 18 creatures owned, all 33 trophies earned, all ten marked lines starred, a long Daily streak, today's tasks done, and every creature's album totals at five digits (3.6 KB of it). A fresh save is about a third of that |
 | Load and interactive < 5 s | one image to fetch (158 KB WebP, same origin); the title screen is interactive on the first frame and does not wait for it |
 | At most 8000 files | 13 (`unlock.html` is a testing page and is not shipped) |

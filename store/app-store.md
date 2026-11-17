@@ -196,3 +196,19 @@ removed from review (Developer Rejected, at the owner's word), build 7
 taken off the version, build 8 chosen and saved; texts and notes unchanged.
 Left: "Add for Review", then Submit, again. No second expedite request so soon
 after the one of 15 Nov; ask only if 1.2.11 still waits after 3-4 days.
+**Approved** (build 8), reported by the owner 17 Nov 2026.
+
+## Rename to "Ice Dasher" (17 Nov 2026)
+
+The owner wanted one short name in both stores ("Ice Dash" alone is held on
+the App Store by someone else's unpublished record; no live app carries it).
+Candidates were checked against Google Play, the App Store search (us, gb, de,
+ru) and the web; "Ice Dasher" had no game anywhere. The owner chose it.
+Version **1.2.12** created (Prepare for Submission) so the name could be
+edited; App Information → English (U.S.) → Name "Ice Dasher" **saved without
+complaint** (the name is free and now held by this app's pending version).
+Still to do before 1.2.12 goes out: the name in the other five languages, the
+in-game logo, the name under the icon (iOS `CFBundleDisplayName` and the
+`*.lproj/InfoPlist.strings`, Android `app_name`), Google Play's listing in six
+languages, screenshots and trailer that show the logo. The live store page
+keeps "Ice Dash: Penguin Slide" until 1.2.12 is approved.

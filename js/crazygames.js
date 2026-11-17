@@ -143,7 +143,7 @@ window.ICEDASH_PLATFORM = { minViewH: 860, freeOpen: true, deskWords: true, noEs
   /* One line in the console for every ad asked for and how it went, so a
      refusal (Basic Launch, cooldown, an adblocker) can be told from a
      request that never left. */
-  function say(m) { try { console.info('[Ice Dash] midgame ad: ' + m); } catch (e) {} }
+  function say(m) { try { console.info('[Ice Dasher] midgame ad: ' + m); } catch (e) {} }
   function midgame(then) {
     var done = false;
     function end() { if (done) return; done = true; adOn = false; block(false); sync(); then(); }

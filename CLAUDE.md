@@ -1,4 +1,7 @@
-# Ice Dash
+# Ice Dasher
+
+(Ice Dash until 1.2.12, 17 Nov 2026. The package id `com.veetalea.icedash`, the save keys and the
+folder keep the old name on purpose: changing them would lose every player's progress.)
 
 One-tap endless slide for **YouTube Playables**. Plain HTML + CSS + JS: no
 libraries, no build step, no audio files. Everything is drawn on `<canvas>`
@@ -70,7 +73,7 @@ three stars) through `@capacitor-community/in-app-review`. Out of sight
 (Capacitor's App `pause`: the phone locked, Home) it pauses a run and stops
 the sound with `Sfx.hold`; the web view would play on behind the lock screen.
 `node test/playtest.js android` walks the app's page over stand-ins for the
-plugins. `assembleDebug` builds "Ice Dash debug" (`com.veetalea.icedash.debug`),
+plugins. `assembleDebug` builds "Ice Dasher debug" (`com.veetalea.icedash.debug`),
 which installs beside the Play app with its own save and an inspectable web
 view, for measuring on a real phone (SYSTEMS row 134). The upload key lives outside the repo.
 

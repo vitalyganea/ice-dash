@@ -1,4 +1,6 @@
-# 🐧 Ice Dash
+# 🐧 Ice Dasher
+
+(Called Ice Dash until 1.2.12, 17 Nov 2026; the folder, package id and saves keep the old name.)
 
 A one-tap endless slide, written in plain HTML + CSS + JavaScript and built to
 pass YouTube Playables certification. No libraries, no build step and no
@@ -184,7 +186,7 @@ does not support yet — point `JAVA_HOME` at the JDK 21.
 ```bash
 npm install
 npm run android:sync                 # www/ + copy into android/
-cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk ("Ice Dash debug", installs beside the Play app)
+cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk ("Ice Dasher debug", installs beside the Play app)
 cd android && ./gradlew bundleRelease    # app/build/outputs/bundle/release/app-release.aab
 ```
 

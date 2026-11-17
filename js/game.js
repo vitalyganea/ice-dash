@@ -1,5 +1,5 @@
 /* ===========================================================
-   game.js — Ice Dash: one-tap belly slide, seen from above
+   game.js — Ice Dasher: one-tap belly slide, seen from above
    -----------------------------------------------------------
    A top-down chute that winds down the mountain. Everything lives in
    world pixels, so what the collision code measures is exactly what the

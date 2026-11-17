@@ -1,4 +1,10 @@
-# Google Play listing — Ice Dash
+# Google Play listing — Ice Dasher
+
+**Renamed 17 Nov 2026 (1.2.12):** the app name is "Ice Dasher" in all six
+languages, the same short name as on the App Store ("Ice Dash" alone was held
+there by someone else). The texts below still say "Ice Dash" in their first
+lines; change it to "Ice Dasher" when pasting. Release notes for 1.2.12 are
+the What's New blocks in `app-store-listing.md`.
 
 Text to paste into Play Console (Main store listing). Limits: app name 30
 characters, short description 80, full description 4000.
