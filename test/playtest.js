@@ -1325,6 +1325,35 @@ async function walk(cdp, sid, P) {
     ok(await ev("document.getElementById('btn-more').classList.contains('just-opened') && !document.getElementById('btn-rush').disabled"),
        'and on the title the new modes light up, open');
     await shot('16c-title-opened');
+
+    /* A finished line offers the next one by name, and it rides it
+       (asked for by the owner, 17 Nov 2026). */
+    await clickFor('[data-action="runs"]', '#screen-runs');
+    ok(await clickFor('#runs-list [data-run="firstlight"]', '#hud') >= 0, 'First Light rides again from the list');
+    await ev("(function(){var W=Game.debug();W.state='finish';W.endT=0;})();1");
+    ok(await waitFor('#over-next', 8000) &&
+       await ev("document.getElementById('over-next').getAttribute('data-run')") === 'narrows' &&
+       (await ev("document.getElementById('over-next-name').textContent")).length > 2,
+       'a finished line offers the next one, by name (' + (await ev("document.getElementById('over-next').textContent")) + ')');
+    ok(await ev("!document.querySelector('#screen-over [data-action=\"retry\"]').classList.contains('btn-big')"),
+       'and running it again steps back to a plain button');
+    await shot('16d-next-line');
+    ok(await clickFor('#over-next', '#hud') >= 0 &&
+       await ev("Game.debug()&&Game.debug().course&&Game.debug().course.id") === 'narrows',
+       'Next line rides the next line');
+    await ev("(function(){var W=Game.debug();W.state='crash';W.endT=0;W.lives=0;})();1");
+    if (await waitFor('#screen-revive', 3000)) await clickFor('[data-action="no-life"]', '#screen-over');
+    ok(await waitFor('#screen-over', 8000) && !(await visible('#over-next')),
+       'a line not finished offers no next one');
+    await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+
+    /* A trophy not yet earned, tapped, goes where it is earned. */
+    await clickFor('[data-action="trophies"]', '#screen-ach');
+    var goes = await ev("Array.from(document.querySelectorAll('#ach-list [data-go]')).map(function(e){return e.getAttribute('data-go');}).join(',')");
+    ok(goes.split(',').length >= 20 && /rush/.test(goes) && /shop/.test(goes),
+       'every trophy not yet earned is a way to where it is earned (' + goes.split(',').length + ')');
+    ok(await clickFor('#ach-list [data-go="rush"]', '#hud') >= 0 && await ev("Game.debug().mode") === 'rush',
+       'a Time Rush trophy starts Time Rush');
   } else {
     ok(await clickFor('#tut-skip', '#screen-title') >= 0, 'Skip leaves it for the title');
     ok((await readSave()).tutDone === true, 'and the save remembers it was skipped');

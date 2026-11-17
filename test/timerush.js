@@ -100,7 +100,10 @@ G.start(0, { over: function (r) { over = r; } }, 'snowcap', null, 2, { mode: 'ru
 G.debug().timeT = 30;
 for (f = 0; f < 200 && !over; f++) { G.debug() && G.debug().objects.splice(0); H.frames(1); }
 ok(over && over.mode === 'rush', 'the results arrive, marked as Time Rush');
-ok(over && !over.finished && !over.canRevive, 'with no revive offered — there was no crash to walk back');
+/* A spare life buys ten more seconds (the owner, 17 Nov 2026, SYSTEMS
+   row 170); before that the run was simply over. */
+ok(over && !over.finished && over.canRevive && !over.crashed,
+   'with two spare lives the offer is ten more seconds, not a crash to walk back');
 
 /* ---- E. it ends, even for the best rider -------------------- */
 console.log('\nE. clocks thin out, so every run ends');

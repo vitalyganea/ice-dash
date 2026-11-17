@@ -12,53 +12,59 @@
    Earning one and being paid for it are two steps: the fish wait in the
    trophy until the player claims them, so the payout is a moment of its
    own instead of a line that scrolls past on the results.
+
+   `go` says where each one is earned, and a tap on one not yet earned
+   (Trophies, and today's tasks there) goes straight to it: 'free' a
+   Freeride run, 'rush' Time Rush, 'avalanche', 'daily' the Daily Line,
+   'lines' the first line not yet finished, 'stars' the first without
+   three stars, 'shop' the Market. Asked for by the owner, 17 Nov 2026.
    =========================================================== */
 
 var ACHIEVEMENTS = [
-  { id: 'first',    reward:  10, goal: 1,    stat: function (s) { return s.runs; } },
-  { id: 'dist500',  reward:  25, goal: 500,  stat: function (s) { return s.bestDist; } },
-  { id: 'dist2000', reward:  75, goal: 2000, stat: function (s) { return s.bestDist; } },
-  { id: 'dist5000', reward: 200, goal: 5000, stat: function (s) { return s.bestDist; } },
-  { id: 'runfish30',reward:  40, goal: 30,   stat: function (s) { return s.bestRunFish; } },
-  { id: 'fish500',  reward:  50, goal: 500,  stat: function (s) { return s.totFish; } },
-  { id: 'fish3000', reward: 175, goal: 3000, stat: function (s) { return s.totFish; } },
-  { id: 'gold1',    reward:  30, goal: 1,    stat: function (s) { return s.totGold; } },
-  { id: 'gold25',   reward: 150, goal: 25,   stat: function (s) { return s.totGold; } },
-  { id: 'gates100', reward:  60, goal: 100,  stat: function (s) { return s.totGates; } },
-  { id: 'jump1',    reward:  20, goal: 1,    stat: function (s) { return s.totJumps; } },
-  { id: 'jump50',   reward: 125, goal: 50,   stat: function (s) { return s.totJumps; } },
-  { id: 'saves10',  reward:  75, goal: 10,   stat: function (s) { return s.totSaves; } },
-  { id: 'wear3',    reward:  50, goal: 3,    stat: function (s) { return s.owned.length; } },
-  { id: 'wearAll',  reward: 250, goal: 0,    stat: function (s) { return s.owned.length; } },
+  { id: 'first',    reward:  10, goal: 1,    stat: function (s) { return s.runs; }, go: 'free' },
+  { id: 'dist500',  reward:  25, goal: 500,  stat: function (s) { return s.bestDist; }, go: 'free' },
+  { id: 'dist2000', reward:  75, goal: 2000, stat: function (s) { return s.bestDist; }, go: 'free' },
+  { id: 'dist5000', reward: 200, goal: 5000, stat: function (s) { return s.bestDist; }, go: 'free' },
+  { id: 'runfish30',reward:  40, goal: 30,   stat: function (s) { return s.bestRunFish; }, go: 'free' },
+  { id: 'fish500',  reward:  50, goal: 500,  stat: function (s) { return s.totFish; }, go: 'free' },
+  { id: 'fish3000', reward: 175, goal: 3000, stat: function (s) { return s.totFish; }, go: 'free' },
+  { id: 'gold1',    reward:  30, goal: 1,    stat: function (s) { return s.totGold; }, go: 'free' },
+  { id: 'gold25',   reward: 150, goal: 25,   stat: function (s) { return s.totGold; }, go: 'free' },
+  { id: 'gates100', reward:  60, goal: 100,  stat: function (s) { return s.totGates; }, go: 'free' },
+  { id: 'jump1',    reward:  20, goal: 1,    stat: function (s) { return s.totJumps; }, go: 'free' },
+  { id: 'jump50',   reward: 125, goal: 50,   stat: function (s) { return s.totJumps; }, go: 'free' },
+  { id: 'saves10',  reward:  75, goal: 10,   stat: function (s) { return s.totSaves; }, go: 'free' },
+  { id: 'wear3',    reward:  50, goal: 3,    stat: function (s) { return s.owned.length; }, go: 'shop' },
+  { id: 'wearAll',  reward: 250, goal: 0,    stat: function (s) { return s.owned.length; }, go: 'shop' },
 
   /* Four systems went in without a single goal attached to them, so
      nothing ever asked you to go near a frozen find or a snow rush. */
-  { id: 'find1',    reward:  75, goal: 1,    stat: function (s) { return s.totFinds; } },
-  { id: 'find10',   reward: 250, goal: 10,   stat: function (s) { return s.totFinds; } },
-  { id: 'rush5',    reward: 125, goal: 5,    stat: function (s) { return s.totRushes; } },
-  { id: 'smash50',  reward: 150, goal: 50,   stat: function (s) { return s.totSmashed; } },
-  { id: 'revive1',  reward:  50, goal: 1,    stat: function (s) { return s.totRevives; } },
-  { id: 'forks10',  reward: 140, goal: 10,   stat: function (s) { return s.totForks; } },
+  { id: 'find1',    reward:  75, goal: 1,    stat: function (s) { return s.totFinds; }, go: 'free' },
+  { id: 'find10',   reward: 250, goal: 10,   stat: function (s) { return s.totFinds; }, go: 'free' },
+  { id: 'rush5',    reward: 125, goal: 5,    stat: function (s) { return s.totRushes; }, go: 'free' },
+  { id: 'smash50',  reward: 150, goal: 50,   stat: function (s) { return s.totSmashed; }, go: 'free' },
+  { id: 'revive1',  reward:  50, goal: 1,    stat: function (s) { return s.totRevives; }, go: 'free' },
+  { id: 'forks10',  reward: 140, goal: 10,   stat: function (s) { return s.totForks; }, go: 'free' },
   /* and the marked runs had none either, which is odd for the half of the
      game that has a finish line */
-  { id: 'lines1',   reward:  60, goal: 1,    stat: function (s) { return linesDone(s); } },
-  { id: 'linesAll', reward: 350, goal: 0,    stat: function (s) { return linesDone(s); } },
-  { id: 'stars18',  reward:  600, goal: 0,   stat: function (s) { return starsTotal(s); } },
+  { id: 'lines1',   reward:  60, goal: 1,    stat: function (s) { return linesDone(s); }, go: 'lines' },
+  { id: 'linesAll', reward: 350, goal: 0,    stat: function (s) { return linesDone(s); }, go: 'lines' },
+  { id: 'stars18',  reward:  600, goal: 0,   stat: function (s) { return starsTotal(s); }, go: 'stars' },
   /* Time Rush and the Daily Line, so the two newest ways to play each
      have something to reach for: distance against the clock, time
      earned back, and coming back day after day. */
-  { id: 'rush500',  reward:  60, goal: 500,  stat: function (s) { return s.bestRush; } },
-  { id: 'rush2000', reward: 200, goal: 2000, stat: function (s) { return s.bestRush; } },
-  { id: 'clocks50', reward: 110, goal: 50,   stat: function (s) { return s.totClocks; } },
-  { id: 'daily1',   reward:  50, goal: 1,    stat: function (s) { return s.dailyDays; } },
-  { id: 'streak3',  reward: 125, goal: 3,    stat: function (s) { return s.dailyBest; } },
-  { id: 'streak7',  reward: 350, goal: 7,    stat: function (s) { return s.dailyBest; } },
+  { id: 'rush500',  reward:  60, goal: 500,  stat: function (s) { return s.bestRush; }, go: 'rush' },
+  { id: 'rush2000', reward: 200, goal: 2000, stat: function (s) { return s.bestRush; }, go: 'rush' },
+  { id: 'clocks50', reward: 110, goal: 50,   stat: function (s) { return s.totClocks; }, go: 'rush' },
+  { id: 'daily1',   reward:  50, goal: 1,    stat: function (s) { return s.dailyDays; }, go: 'daily' },
+  { id: 'streak3',  reward: 125, goal: 3,    stat: function (s) { return s.dailyBest; }, go: 'daily' },
+  { id: 'streak7',  reward: 350, goal: 7,    stat: function (s) { return s.dailyBest; }, go: 'daily' },
   /* Avalanche: holding the snow off for a distance, and the rings that
      did it. 1500 m is well past where a clean rider with no rings is
      caught (about 700), so it asks for rings taken, not just no mistakes. */
-  { id: 'av500',    reward:  75, goal: 500,  stat: function (s) { return s.bestAv; } },
-  { id: 'av1500',   reward: 225, goal: 1500, stat: function (s) { return s.bestAv; } },
-  { id: 'avrings50',reward: 150, goal: 50,   stat: function (s) { return s.totAvRings; } }
+  { id: 'av500',    reward:  75, goal: 500,  stat: function (s) { return s.bestAv; }, go: 'avalanche' },
+  { id: 'av1500',   reward: 225, goal: 1500, stat: function (s) { return s.bestAv; }, go: 'avalanche' },
+  { id: 'avrings50',reward: 150, goal: 50,   stat: function (s) { return s.totAvRings; }, go: 'avalanche' }
 ];
 
 /* ---- today's tasks ----
@@ -66,19 +72,19 @@ var ACHIEVEMENTS = [
    Line, so everyone has the same three. Each is judged on one run's
    results; each pays when it is done, and all three pay a bonus. */
 var TASK_POOL = [
-  { id: 'fish30',  n: 30,   test: function (r) { return r.fish; } },
-  { id: 'fish60',  n: 60,   test: function (r) { return r.fish; } },
-  { id: 'rings5',  n: 5,    test: function (r) { return r.gates || 0; } },
-  { id: 'dist1000',n: 1000, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; } },
-  { id: 'dist2500',n: 2500, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; } },
-  { id: 'gold2',   n: 2,    test: function (r) { return r.gold || 0; } },
-  { id: 'jump3',   n: 3,    test: function (r) { return r.jumps || 0; } },
-  { id: 'rush400', n: 400,  test: function (r) { return r.mode === 'rush' ? r.dist : 0; } },
-  { id: 'av400',   n: 400,  test: function (r) { return r.mode === 'avalanche' ? r.dist : 0; } },
-  { id: 'clocks6', n: 6,    test: function (r) { return r.clocks || 0; } },
-  { id: 'daily',   n: 1,    test: function (r) { return r.course === 'daily' && r.finished ? 1 : 0; } },
-  { id: 'line',    n: 1,    test: function (r) { return r.course && r.course !== 'daily' && r.course !== 'tutorial' && r.finished ? 1 : 0; } },
-  { id: 'smash5',  n: 5,    test: function (r) { return r.smashed || 0; } }
+  { id: 'fish30',  n: 30,   test: function (r) { return r.fish; }, go: 'free' },
+  { id: 'fish60',  n: 60,   test: function (r) { return r.fish; }, go: 'free' },
+  { id: 'rings5',  n: 5,    test: function (r) { return r.gates || 0; }, go: 'free' },
+  { id: 'dist1000',n: 1000, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; }, go: 'free' },
+  { id: 'dist2500',n: 2500, test: function (r) { return r.mode !== 'rush' ? r.dist : 0; }, go: 'free' },
+  { id: 'gold2',   n: 2,    test: function (r) { return r.gold || 0; }, go: 'free' },
+  { id: 'jump3',   n: 3,    test: function (r) { return r.jumps || 0; }, go: 'free' },
+  { id: 'rush400', n: 400,  test: function (r) { return r.mode === 'rush' ? r.dist : 0; }, go: 'rush' },
+  { id: 'av400',   n: 400,  test: function (r) { return r.mode === 'avalanche' ? r.dist : 0; }, go: 'avalanche' },
+  { id: 'clocks6', n: 6,    test: function (r) { return r.clocks || 0; }, go: 'rush' },
+  { id: 'daily',   n: 1,    test: function (r) { return r.course === 'daily' && r.finished ? 1 : 0; }, go: 'daily' },
+  { id: 'line',    n: 1,    test: function (r) { return r.course && r.course !== 'daily' && r.course !== 'tutorial' && r.finished ? 1 : 0; }, go: 'lines' },
+  { id: 'smash5',  n: 5,    test: function (r) { return r.smashed || 0; }, go: 'free' }
 ];
 var TASK_PAY = 50, TASK_BONUS = 100;
 function tasksFor(key) {

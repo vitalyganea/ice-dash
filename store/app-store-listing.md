@@ -34,37 +34,74 @@ search words.
 
 ## What's New in 1.2.12 (17 Nov 2026)
 
-The new name. One block per localization; Spanish is the same for Spain and
-Mexico. The same words go to Google Play as the 1.2.12 release notes.
+The new name and the first things after it. One block per localization;
+Spanish is the same for Spain and Mexico. Held under 500 characters each, so
+the same words go to Google Play as the 1.2.12 release notes (Play's limit).
 
 en:
 ```
-Ice Dash is now Ice Dasher: a new name and a new logo, the same game. Your progress and everything you have earned stay as they are.
+Ice Dash is now Ice Dasher: new name, new logo, same game, your progress kept.
+• Grab the snowball and become one: roll through everything, then hop out safely
+• Spare lives work in every mode: +10 s in Time Rush, the snow pushed back in Avalanche
+• "Next line" right after a finished line
+• Tap a trophy or a task to go where you can earn it
+• The leaderboard keeps its size and scrolls
+• Smoother under snow bridges
 ```
 
 ro:
 ```
-Ice Dash se numește acum Ice Dasher: nume și logo noi, același joc. Progresul tău și tot ce ai câștigat rămân neschimbate.
+Ice Dash se numește acum Ice Dasher: nume și logo noi, același joc, progresul păstrat.
+• Prinzi bulgărele și devii bulgăre: te rostogolești prin orice, apoi sari afară în siguranță
+• Viețile de rezervă merg în toate modurile: +10 s în Contra timp, zăpada împinsă înapoi în Avalanșa
+• „Linia următoare” imediat după o linie terminată
+• Apeși pe un trofeu sau o sarcină și ajungi unde îl câștigi
+• Clasamentul își păstrează mărimea și se derulează
+• Mai fluent pe sub podurile de zăpadă
 ```
 
 ru:
 ```
-Ice Dash теперь называется Ice Dasher: новое имя и новый логотип, та же игра. Твой прогресс и всё, что удалось заработать, остаются с тобой.
+Ice Dash теперь Ice Dasher: новое имя и логотип, та же игра, прогресс сохранён.
+• Хватай снежок и сам становишься комом: катишься сквозь всё, потом безопасно выпрыгиваешь
+• Запасные жизни работают везде: +10 с в режиме «На время», лавина отступает в «Лавине»
+• «Следующая линия» сразу после пройденной
+• Нажми на трофей или задание и попадёшь туда, где его получить
+• Таблица рекордов не растёт и прокручивается
+• Плавнее под снежными мостами
 ```
 
 es (Spain and Mexico):
 ```
-Ice Dash ahora se llama Ice Dasher: nuevo nombre y nuevo logo, el mismo juego. Tu progreso y todo lo que has ganado siguen igual.
+Ice Dash ahora es Ice Dasher: nuevo nombre y logo, el mismo juego y tu progreso.
+• Atrapa la bola de nieve y conviértete en una: rueda a través de todo y sal de un salto
+• Las vidas de repuesto sirven en todos los modos: +10 s en Contrarreloj, la nieve retrocede en Avalancha
+• «Siguiente línea» al terminar una línea
+• Toca un trofeo o una tarea y ve directo a ganarlo
+• La clasificación mantiene su tamaño y se desplaza
+• Más fluido bajo los puentes de nieve
 ```
 
 pt-BR:
 ```
-Ice Dash agora se chama Ice Dasher: novo nome e novo logo, o mesmo jogo. Seu progresso e tudo o que você conquistou continuam como estão.
+Ice Dash agora é Ice Dasher: novo nome e logo, o mesmo jogo e o seu progresso.
+• Pegue a bola de neve e vire uma: role por tudo e depois salte para fora em segurança
+• Vidas de reserva valem em todos os modos: +10 s no Contra o Tempo, a neve recua na Avalanche
+• "Próxima linha" logo após terminar uma linha
+• Toque num troféu ou tarefa e vá direto aonde ganhá-lo
+• O ranking mantém o tamanho e rola
+• Mais suave sob as pontes de neve
 ```
 
 de:
 ```
-Ice Dash heißt jetzt Ice Dasher: neuer Name und neues Logo, dasselbe Spiel. Dein Fortschritt und alles, was du verdient hast, bleiben, wie sie sind.
+Ice Dash heißt jetzt Ice Dasher: neuer Name, neues Logo, dasselbe Spiel, dein Fortschritt bleibt.
+• Schnapp dir den Schneeball und werde selbst einer: roll durch alles, dann spring sicher heraus
+• Ersatzleben gelten in jedem Modus: +10 s im Zeitrennen, der Schnee weicht zurück bei Lawine
+• „Nächste Linie" direkt nach einer geschafften Linie
+• Tippe auf eine Trophäe oder Aufgabe, um sie gleich zu holen
+• Die Bestenliste behält ihre Größe und scrollt
+• Flüssiger unter Schneebrücken
 ```
 
 ## What's New in 1.2.11 (16 Nov 2026)

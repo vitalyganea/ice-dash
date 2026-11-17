@@ -32,6 +32,11 @@ var Game = (function () {
      pace the snow comes, what a crystal ring knocks it back by (less as the
      hill hardens, so a run always ends), and the most lead you can bank. */
   var AV_GAP0 = 800, AV_K = 1.06, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 1000;
+  /* A spare life where the run ends other than by a crash (the owner,
+     17 Nov 2026: hearts must work in every mode): Time Rush's clock run
+     out buys ten more seconds, the avalanche that caught him is pushed
+     back to most of its starting lead. */
+  var HEART_TIME = 10 * 60, HEART_AVGAP = 600;
   var AV_EASE = 4000;          // the snow builds to its full pace over the first 500 m
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
@@ -1212,9 +1217,11 @@ var Game = (function () {
                      fishTotal: W.fishTotal,
                      finds: W.finds, revives: W.revives,
                      rushes: W.rushes, smashed: W.smashed, forks: W.forks,
-                     /* Only a crash can be walked back, and only while a
-                        life is in hand. Crossing the line is final. */
-                     canRevive: W.state === 'crash' && W.lives > 0,
+                     /* Only a crash, the clock or the snow can be walked
+                        back, and only while a life is in hand. Crossing
+                        the line is final. */
+                     canRevive: rescuable() && W.lives > 0,
+                     rescuable: rescuable(),
                      crashed: W.state === 'crash' });
       return;
     }
@@ -1304,6 +1311,7 @@ var Game = (function () {
           W.callT = CALL_FRAMES; Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
         }
         else if (o.t === 'rush') {
+          if (W.rushT <= 0) { W.rollFrom = W.t; snowBurst(16, 1); }
           W.rushT = RUSH_FRAMES; W.rushes++; fx('rush');
           Sfx.excite(true);
           Sfx.bubble(); tone = '#ffffff'; W.tapFlash = 18; W.shake = Math.max(W.shake, 10);
@@ -1550,7 +1558,19 @@ var Game = (function () {
     if (W.perfT > 0) W.perfT--;
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
-    if (W.rushT > 0 && --W.rushT === 0) Sfx.excite(false);
+    if (W.rushT > 0) {
+      /* As the ball breaks he comes out of it in a hop, over whatever the
+         ball was rolling through, and lands with the touchdown's moment of
+         safety (asked for by the owner, 17 Nov 2026: breaking out among
+         the boulders and dying at once was a poor end to a rush). The hop
+         lasts the same time at any speed and counts as no jump. */
+      if (W.rushT === ROLL_OUT && W.state === 'run' && !airborne()) {
+        W.airSpan = Math.max(160, W.speed * 36);
+        W.airTo = W.dist + W.airSpan;
+        Sfx.jump();
+      }
+      if (--W.rushT === 0) { Sfx.excite(false); snowBurst(22, 1.25); W.grace = Math.max(W.grace, 30); }
+    }
     if (W.grace > 0) W.grace--;
     if (W.chillT > 0) W.chillT--;
     if (W.sightT > 0) W.sightT--;
@@ -1849,10 +1869,20 @@ var Game = (function () {
      Invulnerability covers boulders and trees but NOT a crevasse: that test
      is separate and does not consult it. So the crevasse and its ramp are
      removed outright rather than trusted to the timer. */
+  /* The ends a spare life can walk back: a crash anywhere, Time Rush's
+     clock run out, the avalanche catching him. Crossing a finish is final. */
+  function rescuable() {
+    return !!W && (W.state === 'crash' ||
+                   (W.state === 'timeup' && W.mode === 'rush') ||
+                   (W.state === 'caught' && W.mode === 'avalanche'));
+  }
   function revive() {
-    if (!W || W.state !== 'crash' || W.lives <= 0) return false;
+    if (!rescuable() || W.lives <= 0) return false;
+    var was = W.state;
     W.lives--; W.revives++;
     W.state = 'run'; W.endT = 0; W.crashAt = null; W.shake = 0;
+    if (was === 'timeup') { W.timeT = HEART_TIME; W.penT = 0; }
+    if (was === 'caught') W.avGap = Math.max(W.avGap, HEART_AVGAP);
     /* Three seconds where nothing at all can end the run: boulders, pines
        and crevasses alike. Spending a life and dying again two beats later
        is the one outcome that would make the whole feature feel like a
@@ -1908,6 +1938,9 @@ var Game = (function () {
   }
 
   /* ========================= RENDERING ========================= */
+  /* For measuring on a phone (test/README, SYSTEMS row 169): layers named
+     here are left out of the picture. Empty in play. */
+  var SKIP = {};
   function render() {
     PAL = buildPal();
     FADING = fadeOf(); NEXT = FADING ? null : nextOf(); spriteBudget = SPRITES_PER_FRAME;
@@ -1935,37 +1968,37 @@ var Game = (function () {
     try {
     HILL = true;
     if (W.objects.length) prepBridges();
-    drawChute();
-    drawGround();
-    drawEmberGlow();
-    drawNeon();
-    if (!OFF) drawTrail();
-    drawObjects();
+    if (!SKIP.chute) drawChute();
+    if (!SKIP.ground) drawGround();
+    if (!SKIP.ember) drawEmberGlow();
+    if (!SKIP.neon) drawNeon();
+    if (!OFF && !SKIP.trail) drawTrail();
+    if (!SKIP.objects) drawObjects();
     /* the lens's path of light over the things on the hill: under them, a
        crevasse's water covered it, and the path vanished just where it was
        wanted (owner, 13 Nov 2026) */
-    drawSightLine();
-    drawSpeedStreaks();
-    drawAurora();
-    drawVeils();          /* the haze far up the hill, and the fog */
-    drawPenguin();
-    drawGateFronts();     /* after him: he goes THROUGH the hoop */
-    drawCloseCall();
-    drawPerfect();
+    if (!SKIP.sight) drawSightLine();
+    if (!SKIP.streaks) drawSpeedStreaks();
+    if (!SKIP.aurora) drawAurora();
+    if (!SKIP.veils) drawVeils();          /* the haze far up the hill, and the fog */
+    if (!SKIP.penguin) drawPenguin();
+    if (!SKIP.gates) drawGateFronts();     /* after him: he goes THROUGH the hoop */
+    if (!SKIP.close) drawCloseCall();
+    if (!SKIP.perfect) drawPerfect();
     drawTutWait();
-    drawChill();
-    drawPaceVignette();
-    drawBridges();        /* after him: he is UNDER the bridge */
-    drawAvalanche();      /* when it catches him, it covers him */
+    if (!SKIP.chill) drawChill();
+    if (!SKIP.vignette) drawPaceVignette();
+    if (!SKIP.bridges) drawBridges();        /* after him: he is UNDER the bridge */
+    if (!SKIP.avalanche) drawAvalanche();      /* when it catches him, it covers him */
     } finally { HILL = false; VIEW_W = keepW; VIEW_H = keepH; PLAYER_Y = keepP; }
     ctx.restore();
     ctx.save();
     ctx.translate(shx, shy);
-    if (!OFF) drawFlakes();  /* falling snow is in front of the lens, not on the hill */
+    if (!OFF && !SKIP.flakes) drawFlakes();  /* falling snow is in front of the lens, not on the hill */
     ctx.restore();
-    drawLight();
+    if (!SKIP.light) drawLight();
     PLAYER_Y = keepPY0;
-    drawHud();
+    if (!SKIP.hud) drawHud();
   }
 
   /* the ice run and the snow banks that wind along either side */
@@ -2311,11 +2344,16 @@ var Game = (function () {
   var shadeAt = -1e9, shadeAng = 0;
   function creatureShade(x, y, ang) {
     if (typeof document === 'undefined' || !document.createElement) return;
+    /* Both buffers are kept in plain memory (willReadFrequently). Left to
+       the browser, the first could be put on the graphics chip and the
+       second not, and copying one into the other then waited for the chip
+       to hand the picture back: on the OPPO A9 every frame under a bridge
+       took 40-60 ms (measured 17 Nov 2026, SYSTEMS row 169). */
     if (!shadeBuf) {
       shadeBuf = document.createElement('canvas');
       shadeBuf.width = SHADE; shadeBuf.height = SHADE;
     }
-    var c = shadeBuf.getContext('2d');
+    var c = shadeBuf.getContext('2d', { willReadFrequently: true });
     if (!c) return;
     if (!shadeSoft) { shadeSoft = document.createElement('canvas'); shadeSoft.width = shadeSoft.height = SHADE / 3; }
     if (Math.abs(W.t - shadeAt) >= 3 || W.t < shadeAt || Math.abs(ang - shadeAng) > 0.08) {
@@ -2336,7 +2374,7 @@ var Game = (function () {
       c.globalCompositeOperation = 'source-over';
       /* Softened by shrinking it to a third and letting it be stretched
          back: a blur filter on the main canvas cost 2.5 ms a frame. */
-      var sc = shadeSoft.getContext('2d');
+      var sc = shadeSoft.getContext('2d', { willReadFrequently: true });
       sc.clearRect(0, 0, SHADE / 3, SHADE / 3);
       sc.drawImage(shadeBuf, 0, 0, SHADE / 3, SHADE / 3);
     }
@@ -3399,6 +3437,126 @@ var Game = (function () {
       BALL_LUMPS.push([Math.cos(a) * rr, Math.sin(a) * rr, 0.09 + 0.05 * ((i * 7) % 5) / 4]);
     }
   })();
+  /* Snow thrown off as the ball forms round him and again as it breaks. */
+  function snowBurst(n, k) {
+    for (var i = 0; i < n; i++)
+      W.puffs.push({ x: W.px + frnd(-24, 24) * k, d: W.dist + frnd(-20, 20) * k,
+                     life: 30, max: 30, s: frnd(5, 12) * k, tint: '#ffffff' });
+  }
+  /* How far he is into the ball: 0 himself, 1 all snowball. The snow
+     wraps round him over a quarter of a second and breaks off over a
+     third, so it is a change you see happen, not a swap (asked for by the
+     owner, 17 Nov 2026: he turns into the snowball and rolls). */
+  var ROLL_IN = 16, ROLL_OUT = 22;
+  /* The ball is as big as the animal inside it (the owner, 17 Nov 2026:
+     at a fixed 34 it was now and then smaller than the creature). Each one
+     is measured once, painted as on the hill, and the ball made to reach
+     as far as nine tenths of it does: a lemming's ball stays small, a
+     reindeer's antlers do not make it swallow the screen. */
+  var ROLL_R_OF = {};
+  function rollRadius(S) {
+    var id = (S && S.id) || '';
+    if (ROLL_R_OF[id]) return ROLL_R_OF[id];
+    var r = 46;
+    try {
+      var cv = document.createElement('canvas'), n = 220;
+      cv.width = cv.height = n;
+      var c = cv.getContext('2d', { willReadFrequently: true });   // read back once, never shown
+      if (c && c.getImageData) {
+        c.translate(n / 2, n / 2);
+        var keepEye = EYE; EYE = null;
+        try { paintCreature(c, S, { ang: 0, wag: 0, scale: 1.45, shield: -1, still: true }); }
+        finally { EYE = keepEye; }
+        var d = c.getImageData(0, 0, n, n).data, rs = [];
+        for (var y = 0; y < n; y += 2)
+          for (var x = 0; x < n; x += 2)
+            if (d[(y * n + x) * 4 + 3] > 200) rs.push(Math.hypot(x - n / 2, y - n / 2));
+        if (rs.length > 20) { rs.sort(function (a, b) { return a - b; }); r = rs[Math.floor(rs.length * 0.9)]; }
+      }
+    } catch (e) {}
+    return (ROLL_R_OF[id] = Math.max(42, Math.min(60, r)));
+  }
+  function rollMorph() {
+    if (W.rushT <= 0 || W.state !== 'run') return 0;
+    var a = Math.min(1, (W.t - (W.rollFrom || -1e9)) / ROLL_IN), b = Math.min(1, W.rushT / ROLL_OUT);
+    var m = Math.max(0, Math.min(a, b));
+    return m * m * (3 - 2 * m);
+  }
+  /* Points on the ball for its grain, fixed, spread evenly over the sphere. */
+  var ROLL_LUMPS = [];
+  (function () {
+    var n = 34;
+    for (var i = 0; i < n; i++) {
+      var z = 1 - 2 * (i + 0.5) / n, rr = Math.sqrt(1 - z * z), a = i * 2.39996;
+      ROLL_LUMPS.push([Math.cos(a) * rr, Math.sin(a) * rr, z, 0.11 + 0.06 * ((i * 5) % 4) / 3]);
+    }
+  })();
+  /* The snowball he has become, rolling down the hill. `head` is his
+     heading (forward is up), `m` how far the ball has formed. It turns
+     with the ground under it: the grain comes over the top towards the
+     way he is going, a turn of the ball for every 2πR of hill. The light
+     stays where the sun is whatever the heading. */
+  function drawRollBall(x, y, head, m) {
+    var R = rollRadius(skin || SKINS[0]);
+    var r = R * (0.62 + 0.38 * m), roll = W.dist / R, k;
+    var ch = Math.cos(head), sh = Math.sin(head);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = Math.min(1, m * 1.4);
+    findShadow(r, 1.15);
+    /* powder thrown off behind as it turns */
+    for (k = 0; k < 7; k++) {
+      var u = (W.t * 0.045 + k / 7) % 1, sd = k % 2 ? 1 : -1;
+      var bx = sd * r * (0.35 + 0.25 * u) + Math.sin(k * 2.7) * 4, by = r * (0.75 + 1.3 * u);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - u) * m).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(bx * ch - by * sh, bx * sh + by * ch, r * (0.07 + 0.08 * (1 - u)), 0, 6.2832); ctx.fill();
+    }
+    ctx.beginPath();                                   // never quite round
+    var N = 16, op = [];
+    for (k = 0; k < N; k++) {
+      var an = k / N * 6.2832, rk = r * (1 + 0.05 * Math.sin(k * 3.7 + roll * 0.7) + 0.03 * Math.sin(k * 5.3 - roll));
+      op.push([Math.cos(an) * rk, Math.sin(an) * rk]);
+    }
+    ctx.moveTo((op[N - 1][0] + op[0][0]) / 2, (op[N - 1][1] + op[0][1]) / 2);
+    for (k = 0; k < N; k++) {
+      var nx = op[(k + 1) % N];
+      ctx.quadraticCurveTo(op[k][0], op[k][1], (op[k][0] + nx[0]) / 2, (op[k][1] + nx[1]) / 2);
+    }
+    ctx.closePath();
+    var g = ctx.createRadialGradient(-r * 0.36, -r * 0.42, r * 0.08, 0, 0, r * 1.05);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, '#eef6fc'); g.addColorStop(0.8, '#c6dcee'); g.addColorStop(1, '#9cbfdc');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    var ca = Math.cos(roll), sa = Math.sin(roll), lumps = SPARE ? 16 : ROLL_LUMPS.length;
+    for (k = 0; k < lumps; k++) {
+      var L = ROLL_LUMPS[k];
+      /* turned about the axle (his left-right), forward being -y */
+      var ly = L[1] * ca - L[2] * sa, lz = L[1] * sa + L[2] * ca;
+      if (lz <= 0.05) continue;                        // round the back, out of sight
+      var lx = L[0];
+      var sx = (lx * ch - ly * sh) * r, sy = (lx * sh + ly * ch) * r, s2 = L[3] * r;
+      var edge = Math.min(1, Math.hypot(sx, sy) / r);
+      var squash = Math.max(0.25, lz), rot = Math.atan2(sy, sx);
+      ctx.fillStyle = 'rgba(150,184,216,' + (0.24 * (0.6 + edge * 0.4)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.ellipse(sx + s2 * 0.22, sy + s2 * 0.26, s2, s2 * squash, rot, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.beginPath(); ctx.ellipse(sx - s2 * 0.15, sy - s2 * 0.18, s2 * 0.72, s2 * 0.72 * squash, rot, 0, 6.2832); ctx.fill();
+    }
+    ctx.restore();
+    /* the last two seconds the rim flashes, so it never simply stops */
+    var left = W.rushT / RUSH_FRAMES;
+    var warn = left < 0.18 ? (0.35 + 0.65 * Math.abs(Math.sin(W.t * 0.35))) : 0.55;
+    ctx.strokeStyle = 'rgba(96,140,184,' + (0.55 * warn + 0.2).toFixed(3) + ')'; ctx.lineWidth = Math.max(1, r * 0.06);
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.98, 0.1, 2.9); ctx.stroke();
+    if (left < 0.18) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.9 * warn).toFixed(3) + ')'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.06, 0, 6.2832); ctx.stroke();
+    }
+    for (k = 0; k < 3; k++) glint4(Math.cos(k * 2.3 + 0.6) * r * 0.5, Math.sin(k * 2.3 + 0.6) * r * 0.45 - r * 0.1,
+                                   r * 0.12, Math.sin(W.t * 0.11 + k * 2.1));
+    ctx.restore();
+  }
+
   function drawRushBall(x, y, o) {
     var r = o.r, a = W.t * 0.05 + o.ph, k;
     ctx.save();
@@ -7815,44 +7973,23 @@ var Game = (function () {
        of the second that matters most. */
     var safe = W.invuln > 0 && !crashed && !W.demo;
 
-    /* Rushing: he is inside a ball of packed powder, throwing a wake. Drawn
-       under the creature so you can still read your own line through it —
-       the same reason invulnerability is a ring and not a fade. */
-    if (rushing() && !crashed) {
-      var left = W.rushT / RUSH_FRAMES;                 // 1 at pickup, 0 at the end
-      var px = scrX(W.px), rr = 46 + 6 * Math.sin(W.t * 0.3);
+    /* Rushing: he has become a snowball, rolling and throwing a wake (see
+       drawRollBall). It was a see-through ball round him before. */
+    var roll = crashed ? 0 : rollMorph();
+    if (roll > 0) {
+      var left = W.rushT / RUSH_FRAMES, px = scrX(W.px);
       ctx.save();
-      /* the wake, streaming out behind */
       ctx.strokeStyle = 'rgba(255,255,255,.5)';
       ctx.lineCap = 'round';
-      for (var wq = 0; wq < 9; wq++) {
+      for (var wq = 0; wq < 9; wq++) {                  // the wake, streaming out behind
         var ws = wq % 2 ? 1 : -1;
-        ctx.globalAlpha = 0.6 * (1 - wq / 11) * Math.min(1, left * 4);
+        ctx.globalAlpha = 0.6 * (1 - wq / 11) * Math.min(1, left * 4) * roll;
         ctx.lineWidth = 6 - wq * 0.45;
         ctx.beginPath();
         ctx.moveTo(px + ws * (14 + wq * 5), PLAYER_Y + 18 + wq * 9);
         ctx.lineTo(px + ws * (20 + wq * 7), PLAYER_Y + 46 + wq * 13);
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
-      /* the ball itself */
-      /* Clear through the middle, packed at the rim. The first pass had it
-         the other way round, which hid the animal and left a pale ring —
-         you could not see your own line, which is the one thing the ring
-         around invulnerability exists to avoid. */
-      var rg = ctx.createRadialGradient(px, PLAYER_Y, rr * 0.2, px, PLAYER_Y, rr);
-      rg.addColorStop(0, 'rgba(255,255,255,0)');
-      rg.addColorStop(0.52, 'rgba(255,255,255,.22)');
-      rg.addColorStop(0.8, 'rgba(240,250,255,.78)');
-      rg.addColorStop(1, 'rgba(188,222,244,.95)');
-      ctx.fillStyle = rg;
-      ctx.beginPath(); ctx.arc(px, PLAYER_Y, rr, 0, 6.2832); ctx.fill();
-      /* the last two seconds flash, so it never simply stops */
-      var warn = left < 0.18 ? (0.4 + 0.6 * Math.abs(Math.sin(W.t * 0.35))) : 1;
-      ctx.globalAlpha = warn;
-      ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3.4;
-      ctx.beginPath(); ctx.arc(px, PLAYER_Y, rr, 0, 6.2832); ctx.stroke();
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
@@ -7885,7 +8022,7 @@ var Game = (function () {
       ctx.restore();
     }
     /* Spray off his belly, longer the faster he goes. */
-    if (!crashed && !airborne()) {
+    if (!crashed && !airborne() && roll < 0.5) {
       var spw = pace();
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineCap = 'round';
@@ -7908,11 +8045,18 @@ var Game = (function () {
        way, which is why they read as pictures — nothing alternates. */
     var gait = W.gait || 0;
     var turn = clamp(W.vx / Math.max(1, DRIFT * W.speed), -1, 1);
-    paintCreature(ctx, S, {
+    /* curling up as the snow wraps him; all snowball, he is not drawn */
+    if (roll < 0.98) paintCreature(ctx, S, {
       ang: ang, wag: Math.sin(gait) * 0.1, gait: gait, turn: turn,
-      scale: 1.45, lift: lift, air: airborne(), squash: W.squash || 0,
+      scale: 1.45 * (1 - 0.42 * roll), lift: lift, air: airborne(), squash: W.squash || 0,
       shield: (W.shield > 0 && !crashed) ? W.t : -1
     });
+    if (roll > 0) {
+      ctx.save();
+      ctx.rotate(-(crashed && W.crashAt ? W.crashAt.spin : ang));   // back to the hill's own frame
+      drawRollBall(0, -lift * 18, ang, roll);
+      ctx.restore();
+    }
 
     if (safe) {
       /* Short spokes flung outward, turning and dying away. The shield is
@@ -9222,7 +9366,7 @@ var Game = (function () {
     /* A revive paid for with something other than a spare life (a short ad,
        in the Android app): the life is handed over and spent at once. */
     reviveFree: function () {
-      if (!W || W.state !== 'crash') return false;
+      if (!rescuable()) return false;
       W.lives++;
       return revive();
     },
@@ -9260,6 +9404,7 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
+    _skip: function (o) { SKIP = o || {}; },
     /* for tests: the second tier (fewer pixels, no decoration) or none */
     _lite: function (v) { if (v !== undefined) { qWant = { res: 'auto', fx: 'auto' }; qTier = v ? 2 : 0; applyQuality(); if (canvas) resize(); } return LITE; },
     _lowres: function () { return LOWRES; },

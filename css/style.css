@@ -775,14 +775,20 @@ body{
                           .board-spans .q-opt{ flex:1 1 0; min-width:max-content; padding:6px 4px; font-size:13px; white-space:nowrap; } }
 /* While Google answers: a wheel of ice where the rows will be */
 .board-loading{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-                min-height:min(40vh, 320px); font-weight:800; font-size:15px; color:var(--ink-soft); }
+                flex:1 1 auto; font-weight:800; font-size:15px; color:var(--ink-soft); }
 .board-wheel{ width:44px; height:44px; border-radius:50%;
               border:5px solid rgba(43,93,134,.18); border-top-color:#2789d8; border-right-color:#55bdf0;
               animation:boardWheel .8s linear infinite; }
 @keyframes boardWheel{ to{ transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce){ .board-wheel{ animation-duration:2.4s; } }
+/* One height whatever the board holds (reported by the owner, 17 Nov 2026:
+   the panel grew downwards as more players came on). The wheel, three rows
+   or a hundred all sit in the same box, and the rest scrolls inside it.
+   Empty (no network, nobody yet), it folds away and the note says why. */
 .board-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 6px; position:relative;
-              max-height:min(56vh, 560px); overflow-y:auto; overscroll-behavior:contain; padding:2px 4px 2px 2px; }
+              height:min(56vh, 560px); overflow-y:auto; overscroll-behavior:contain; padding:2px 4px 2px 2px; }
+.board-list:empty{ height:auto; }
+.board-row{ flex:0 0 auto; }
 .board-row{
   display:flex; align-items:center; gap:10px;
   min-height:50px; padding:5px 12px;
@@ -897,6 +903,22 @@ body{
 .task-row.got .task-tick{ background:#21c48a; border-color:#0b7560; }
 .task-txt{ flex:1 1 auto; }
 .task-pay{ flex:0 0 auto; color:var(--gold-dark); }
+
+/* A trophy or a task not yet earned is a button to where it is earned
+   (ui.js goEarn): the same row, a chevron at its end, and it gives under
+   the finger. */
+.ach-row.go, .task-row.go{ width:100%; font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+                           transition:transform .12s ease, background-color .12s ease; }
+.ach-row.go{ color:inherit; }
+.task-row.go{ border:0; }
+.ach-row.go:active, .task-row.go:active{ transform:scale(.98); background:rgba(255,255,255,.95); }
+.ach-row.go:focus-visible, .task-row.go:focus-visible{ outline:3px solid #ffd84a; outline-offset:2px; }
+.go-mark{ flex:0 0 auto; margin-left:2px; font-size:24px; line-height:1; font-weight:900; color:#2789d8; }
+.ach-row.go .go-mark{ align-self:center; }
+
+/* The next line, after one finished: its name under the words */
+.btn.next-line{ display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; }
+.btn.next-line small{ font-size:.62em; font-weight:800; opacity:.85; margin-top:2px; }
 .tasks-chip{
   display:block; margin:20px auto 0; padding:7px 16px; min-height:44px;   /* a finger, like every other button; clear of the Market's icicles */
   font:inherit; font-size:14px; font-weight:800; color:#0b5fc0;

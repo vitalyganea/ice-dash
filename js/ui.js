@@ -476,7 +476,7 @@
     if (res.canRevive) { pendingRes = res; showRevive(false); return; }
     /* With no life in hand, the Android app can offer a short ad instead —
        once a run, and only when one is loaded and ready to play. */
-    if (res.crashed && !adLifeUsed && adReady()) { pendingRes = res; showRevive(true); return; }
+    if ((res.rescuable || res.crashed) && !adLifeUsed && adReady()) { pendingRes = res; showRevive(true); return; }
     commitRun(res);
   }
 
@@ -492,9 +492,16 @@
 
   function showRevive(ad) {
     var n = ad ? 0 : (save.lives || 0);
-    var sub = $('revive-sub'), key = ad ? 'revive.adsub' : 'revive.sub';
+    /* What the life buys: carrying on from the fall, ten more seconds when
+       Time Rush's clock has run out, or the snow pushed back in Avalanche. */
+    var r = pendingRes || {}, why = r.crashed ? '' : r.mode === 'rush' ? '.time' : r.caught ? '.snow' : '';
+    var sub = $('revive-sub'), key = (ad ? 'revive.adsub' : 'revive.sub') + why;
     sub.setAttribute('data-i18n', key);
     sub.textContent = t(key);
+    var head = document.querySelector('#screen-revive .panel-title-text');
+    var hk = why === '.time' ? 'over.timeup' : why === '.snow' ? 'over.caught' : 'revive.title';
+    head.setAttribute('data-i18n', hk);
+    head.textContent = t(hk);
     $('revive-count').classList.toggle('hidden', ad);
     document.querySelector('#revive-buttons [data-action="use-life"]').classList.toggle('hidden', ad);
     document.querySelector('#revive-buttons [data-action="ad-life"]').classList.toggle('hidden', !ad);
@@ -885,6 +892,20 @@
     var again = document.querySelector('#screen-over [data-action="play"], #screen-over [data-action="retry"]');
     again.setAttribute('data-action', (cd || mRun) ? 'retry' : 'play');
     again.textContent = t(cd ? 'btn.retry' : 'btn.again');
+    /* A line finished: the next one is a tap away, not a trip through the
+       menu (asked for by the owner, 17 Nov 2026). It leads, and running
+       this one again steps back to a plain button beside it. */
+    var ci = -1;
+    if (cd && res.finished) for (var cj = 0; cj < COURSES.length; cj++) if (COURSES[cj].id === cd.id) ci = cj;
+    var nextLine = ci >= 0 && ci + 1 < COURSES.length && runUnlocked(ci + 1) ? COURSES[ci + 1] : null;
+    $('over-next-row').classList.toggle('hidden', !nextLine);
+    if (nextLine) {
+      $('over-next').setAttribute('data-run', nextLine.id);
+      $('over-next-name').textContent = t('course.' + nextLine.id + '.name');
+    }
+    again.classList.toggle('btn-big', !nextLine);
+    again.classList.toggle('btn-green', !nextLine);
+    again.classList.toggle('btn-blue', !!nextLine);
     $('over-score').textContent = mRun ? res.dist + '\u00a0' + t('unit.m')
                                           : t('over.points', { n: res.score });
     var bits = [res.dist + '\u00a0' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
@@ -1171,6 +1192,7 @@
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
       case 'modes':      Sfx.click(); show('modes'); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
+      case 'next-line':  Sfx.click(); ride($('over-next').getAttribute('data-run')); break;
       case 'close-sheet': Sfx.click(); closeSheet(); break;
       case 'lang':       Sfx.click(); buildLangs(); $('sheet-lang').classList.remove('hidden'); break;
       case 'back-title':
@@ -2042,13 +2064,15 @@
     var list = $('tasks-list'), done = todaysDone();
     list.textContent = '';
     tasksFor(dailyKey()).forEach(function (tk) {
-      var row = document.createElement('div');
       var got = done.indexOf(tk.id) >= 0;
-      row.className = 'task-row' + (got ? ' got' : '');
+      var row = document.createElement(got ? 'div' : 'button');
+      row.className = 'task-row' + (got ? ' got' : ' go');
+      if (!got) row.setAttribute('data-go', tk.go || 'free');
       var tick = document.createElement('span'); tick.className = 'task-tick'; tick.textContent = got ? '✓' : '';
       var tx = document.createElement('span'); tx.className = 'task-txt'; tx.textContent = taskText(tk);
       var pay = document.createElement('span'); pay.className = 'task-pay'; pay.textContent = '+' + TASK_PAY;
       row.appendChild(tick); row.appendChild(tx); row.appendChild(pay);
+      if (!got) row.appendChild(goMark());
       list.appendChild(row);
     });
     $('tasks-note').textContent = t('tasks.note', { n: TASK_BONUS });
@@ -2080,8 +2104,10 @@
       var p = achProgress(a, save);
       var got = save.ach.indexOf(a.id) >= 0;
 
-      var row = document.createElement('div');
-      row.className = 'ach-row' + (got ? ' got' : '');
+      /* one not yet earned is a button to where it is earned (a.go) */
+      var row = document.createElement(got ? 'div' : 'button');
+      row.className = 'ach-row' + (got ? ' got' : ' go');
+      if (!got) row.setAttribute('data-go', a.go || 'free');
 
       var ico = document.createElement('div');
       ico.className = 'ach-ico' + (got ? ' got' : '');
@@ -2123,6 +2149,7 @@
         right.appendChild(rew);
       }
       row.appendChild(right);
+      if (!got) row.appendChild(goMark());
 
       list.appendChild(row);
     });
@@ -2191,10 +2218,48 @@
     buildAch();
   }
   $('ach-list').addEventListener('click', function (e) {
+    var g = e.target.closest ? e.target.closest('[data-go]') : null;
+    if (g) { goEarn(g.getAttribute('data-go')); return; }
     var b = e.target.closest ? e.target.closest('[data-claim]') : null;
     if (!b) return;
     claimFx(b, achClaim(save, b.getAttribute('data-claim')));
   });
+  $('tasks-list').addEventListener('click', function (e) {
+    var g = e.target.closest ? e.target.closest('[data-go]') : null;
+    if (g) goEarn(g.getAttribute('data-go'));
+  });
+
+  /* A trophy or a task not yet earned, tapped: straight to where it is
+     earned (asked for by the owner, 17 Nov 2026). Its `go` (see
+     achievements.js) names the place. Freeride and the modes open only
+     after First Light, so until then everything leads to the lines. */
+  function goMark() {
+    var m = document.createElement('span');
+    m.className = 'go-mark';
+    m.setAttribute('aria-hidden', 'true');
+    m.textContent = '\u203a';
+    return m;
+  }
+  function lineToRide(wantThree) {
+    for (var i = 0; i < COURSES.length; i++) {
+      if (!runUnlocked(i)) break;
+      var st = save.courses[COURSES[i].id] || 0;
+      if (wantThree ? st < 3 : st === 0) return COURSES[i].id;
+    }
+    return null;
+  }
+  function goEarn(where) {
+    Sfx.click();
+    if (where === 'shop') { shopBack = currentScreen; show('shop'); return; }
+    if (where === 'lines' || where === 'stars' || !freeUnlocked()) {
+      var id = lineToRide(where === 'stars');
+      if (id) ride(id); else { shopBack = currentScreen; show('runs'); }
+      return;
+    }
+    if (where === 'rush' || where === 'avalanche') { ride(null, where); return; }
+    if (where === 'daily') { ride('daily'); return; }
+    ride(null);
+  }
   $('ach-prize').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.prize-take') : null;
     var sk = trophySkin();

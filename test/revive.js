@@ -170,5 +170,37 @@ console.log('\nE. the grace covers a crevasse, which plain invulnerability does 
   G.stop();
 })();
 
+/* ---- F. a spare life in every mode (the owner, 17 Nov 2026) ----
+   Time Rush and Avalanche do not end on a crash, so a life has to be
+   good for what does end them: the clock run out, the snow catching up. */
+console.log('\nF. Time Rush and Avalanche take a spare life too');
+function endOf(mode, lives, finish) {
+  H.setSeed(77);
+  var seen = null;
+  G.start(0, { over: function (r) { if (!seen) seen = r; } }, 'snowcap', null, lives, { mode: mode });
+  for (var f = 0; f < 240; f++) { var w = G.debug(); if (w && w.state === 'run') steer(w); H.frames(1); }
+  finish(G.debug());
+  for (var g = 0; g < 200 && !seen; g++) H.frames(1);
+  return seen;
+}
+var r0 = endOf('rush', 0, function (w) { w.timeT = 1; });
+ok(r0 && r0.mode === 'rush' && !r0.crashed && r0.canRevive === false,
+   'Time Rush out of time with no life: no offer');
+var r1 = endOf('rush', 1, function (w) { w.timeT = 1; });
+ok(r1 && r1.canRevive === true && r1.rescuable === true, 'out of time with a life: the offer is made');
+ok(G.revive() === true && G.debug().state === 'run' && G.debug().lives === 0,
+   'and the life is spent, the run going again');
+ok(G.debug().timeT === 600, 'with ten more seconds on the clock (' + G.debug().timeT + ' frames)');
+G.stop();
+var a0 = endOf('avalanche', 0, function (w) { w.avGap = -1; });
+ok(a0 && a0.caught === true && a0.canRevive === false, 'Avalanche caught with no life: no offer');
+var a1 = endOf('avalanche', 1, function (w) { w.avGap = -1; });
+ok(a1 && a1.caught === true && a1.canRevive === true, 'caught with a life: the offer is made');
+ok(G.revive() === true && G.debug().state === 'run', 'and the run goes on');
+ok(G.debug().avGap >= 600, 'with the snow pushed back (' + Math.round(G.debug().avGap) + ' behind)');
+for (var af = 0; af < 120; af++) { var aw = G.debug(); if (aw && aw.state === 'run') steer(aw); H.frames(1); }
+ok(G.debug().state === 'run', 'and it does not catch him again at once');
+G.stop();
+
 console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'revive checks passed'));
 process.exit(fail ? 1 : 0);

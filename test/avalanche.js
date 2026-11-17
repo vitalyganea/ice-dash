@@ -121,7 +121,9 @@ G.start(0, { over: function (r) { over = r; } }, 'snowcap', null, 2, { mode: 'av
 G.debug().avGap = 3;
 for (f = 0; f < 200 && !over; f++) { G.debug() && G.debug().bog !== undefined && (G.debug().bog = 2); H.frames(1); }
 ok(over && over.mode === 'avalanche' && over.caught, 'the results arrive, marked as caught in Avalanche');
-ok(over && !over.finished && !over.canRevive, 'with no revive offered, spare lives or not');
+/* With spare lives in hand one pushes the snow back (SYSTEMS row 170). */
+ok(over && !over.finished && over.canRevive && !over.crashed,
+   'with two spare lives the offer is to push the snow back');
 G.stop();
 
 /* ---- G. it ends, even for the best rider ---------------------- */
