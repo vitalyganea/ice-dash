@@ -1125,8 +1125,12 @@ body{
 .revive-hearts{ display:flex; justify-content:center; gap:10px; margin:6px 0 14px; padding-left:4px; }
 .revive-count{ color:var(--ink-soft); font-weight:800; margin:0 0 14px; }
 .revive-tick{
-  font-size:clamp(46px,12vw,78px); font-weight:800; line-height:1;
-  color:#21c48a; margin:8px 0 16px;
+  /* in the game's own face and ink, as the panels' titles are, an icy edge
+     under it (it was a lone green in the system font; the owner, 18 Nov 2026) */
+  font-family:var(--display); font-weight:900; font-variant-numeric:tabular-nums;
+  font-size:clamp(52px,13vw,84px); line-height:1;
+  color:var(--ink); margin:8px 0 16px;
+  text-shadow:0 4px 0 rgba(47,159,224,.35), 0 0 22px rgba(255,255,255,.95);
   animation:tickPop .5s cubic-bezier(.2,1.7,.4,1);
 }
 @keyframes tickPop{ from{ transform:scale(.5); opacity:.2 } to{ transform:none; opacity:1 } }
