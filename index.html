@@ -131,17 +131,18 @@
       <button class="btn btn-big btn-green" data-action="continue" data-i18n="btn.continue">Continue your run</button>
     </div>
     <div class="btn-row modes">
-      <button class="btn btn-big btn-green mode-btn" data-action="runs">
-        <b data-i18n="mode.runs">Known Lines</b>
-        <small data-i18n="mode.runs.sub">Six lines down the mountain, the same every time.</small>
-      </button>
-      <button class="btn btn-big btn-blue mode-btn" id="btn-free" data-action="play">
+      <!-- Freeride first and biggest, the mode a player comes back for (the
+           owner, 18 Nov 2026); Known Lines and the other modes side by side
+           under it -->
+      <button class="btn btn-big btn-blue mode-btn mode-main" id="btn-free" data-action="play">
         <b data-i18n="mode.free">Freeride</b>
         <small id="free-sub" data-i18n="mode.free.sub">The mountain never ends.</small>
         <span class="todo-dot" aria-hidden="true"></span>
       </button>
-      <!-- The other modes live one tap further in, so the title leads with
-           the two a player comes back for. -->
+      <button class="btn btn-big btn-green mode-btn" data-action="runs">
+        <b data-i18n="mode.runs">Known Lines</b>
+        <small data-i18n="mode.runs.sub">Six lines down the mountain, the same every time.</small>
+      </button>
       <button class="btn btn-big btn-purple mode-btn mode-more" id="btn-more" data-action="modes">
         <b data-i18n="mode.more">More modes</b>
         <small id="more-sub">Daily Line · Time Rush · Avalanche</small>
