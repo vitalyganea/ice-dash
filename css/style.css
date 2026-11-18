@@ -2013,3 +2013,10 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 
 /* the card's face is a round portrait (portraits.js) */
 .pcard-av canvas{ border-radius:50%; }
+
+/* ---- My profile: the avatars, each a round portrait (1.3.0) ---- */
+.av-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(66px, 1fr)); gap:10px; justify-items:center; margin:8px 0 6px; }
+.av-tile{ appearance:none; background:none; border:3px solid transparent; border-radius:50%; padding:2px; cursor:pointer; min-width:44px; min-height:44px; }
+.av-tile canvas{ display:block; border-radius:50%; }
+.av-tile.on{ border-color:#ffd24a; box-shadow:0 0 0 2px rgba(255,210,74,.35); }
+.av-tile:focus-visible{ outline:3px solid #fff; outline-offset:2px; }

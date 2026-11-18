@@ -156,6 +156,7 @@
       <button class="btn btn-ghost" data-action="help" data-i18n="btn.help">How to play</button>
       <button class="btn btn-ghost market-btn" data-action="trophies"><span data-i18n="btn.trophies">Trophies</span><span id="ach-badge" class="badge hidden" aria-hidden="true">!</span></button>
       <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
+      <button class="btn btn-ghost" data-action="profile" data-i18n="btn.profile">My profile</button>
     </div>
     </div>
   </div>
@@ -300,24 +301,10 @@
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
     <p class="wallet purse"><span id="wallet-fish" class="purse-pill">0</span><span id="wallet-gold" class="purse-pill gold">0</span></p>
-    <!-- Two tabs (1.3.0): the creatures (each with its own skin in its window), the profile card -->
-    <div class="q-opts shop-tabs" role="tablist">
-      <button class="q-opt shop-tab on" role="tab" aria-selected="true" data-tab="creatures" data-i18n="shop.tab.creatures">Creatures</button>
-      <button class="q-opt shop-tab" role="tab" aria-selected="false" data-tab="profile" data-i18n="shop.tab.profile">Profile</button>
-    </div>
     <div id="shop-pane-creatures">
       <div id="shop-supply" class="shop-supply"></div>
       <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
       <div id="shop-grid" class="shop-grid"></div>
-    </div>
-    <div id="shop-pane-profile" class="hidden">
-      <div id="prof-preview" class="prof-preview"></div>
-      <p class="shop-note" data-i18n="prof.note">Your card goes on the leaderboard with your next best.</p>
-      <div id="prof-buy" class="look-buy hidden"><span id="prof-buy-name" class="look-buy-name"></span><button id="prof-buy-btn" class="btn"></button></div>
-      <h3 class="set-head" data-i18n="prof.frames">Frames</h3>
-      <div id="prof-frames" class="look-grid"></div>
-      <h3 class="set-head" data-i18n="prof.titles">Titles</h3>
-      <div id="prof-titles" class="title-list"></div>
     </div>
   </div>
 </section>
@@ -441,6 +428,25 @@
 
   </div>
 </section>
+
+<section id="screen-profile" class="screen hidden">
+  <!-- My profile (1.3.0): the card that goes on the board, its avatar (any creature
+       owned, or one of their skins, as a portrait), the frames and the titles -->
+  <div class="panel panel-wide">
+    <h2 class="panel-title-text" data-i18n="prof.title">My profile</h2>
+    <div id="prof-preview" class="prof-preview"></div>
+    <p class="shop-note" data-i18n="prof.note">Your card goes on the leaderboard with your next best.</p>
+    <h3 class="set-head" data-i18n="prof.avatar">Avatar</h3>
+    <p class="shop-note" data-i18n="prof.avNote">Any creature you own, or one of their skins.</p>
+    <div id="prof-avatars" class="av-grid"></div>
+    <div id="prof-buy" class="look-buy hidden"><span id="prof-buy-name" class="look-buy-name"></span><button id="prof-buy-btn" class="btn"></button></div>
+    <h3 class="set-head" data-i18n="prof.frames">Frames</h3>
+    <div id="prof-frames" class="look-grid"></div>
+    <h3 class="set-head" data-i18n="prof.titles">Titles</h3>
+    <div id="prof-titles" class="title-list"></div>
+  </div>
+</section>
+
 
 <!-- A small window over whatever screen is open: a creature's words and its
      button, opened by a tap on its picture. Outside the screens because a

@@ -1378,13 +1378,13 @@ async function walk(cdp, sid, P) {
 
     /* 1.3.0: a creature's own skin, in its window. Not bought, it is tried
        on in the big picture with its price; bought, the creature wears it
-       and the save keeps it; the Profile tab shows the card. */
+       and the save keeps it; My profile shows the card and the avatars. */
     /* the runs above spent the purse: 3000 fish put back before a reload */
     await ev("Game.stop&&Game.stop();(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));s.fish=3000;localStorage.setItem('icedash-save-v1',JSON.stringify(s));})();1");
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
     for (var lt = 0; lt < 60 && !(await visible('#screen-title')); lt++) await sleep(200);
     await clickFor('[data-action="shop"]', '#screen-shop');
-    ok(await ev("document.querySelectorAll('.shop-tab').length") === 2, 'the Market has two tabs: the creatures and the profile');
+    ok(await ev("document.querySelectorAll('.shop-tab').length") === 0, 'the Market is the creatures; the profile is off the title');
     await clickFor('#shop-grid [data-pick="snowcap"]', '#sheet-skin');
     ok(await ev("document.querySelectorAll('#sheet-alts .look-tile').length") === 2,
        'a creature\'s window shows its skins: its own coat and its skin');
@@ -1397,9 +1397,13 @@ async function walk(cdp, sid, P) {
        'Buy pays for it and the creature wears it (' + f0l + ' fish -> ' + svl.fish + ', ' + JSON.stringify(svl.alts) + ')');
     await shot('16e-skin');
     await click('#sheet-skin .sheet-x');
-    await click('.shop-tab[data-tab="profile"]');
-    ok(await ev("!!document.querySelector('#prof-preview .pcard') && document.querySelectorAll('#prof-frames .look-tile').length === FRAMES.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.length"),
-       'the Profile tab: the card, the frames and the titles');
+    await clickFor('#btn-back', '#screen-title');
+    await clickFor('[data-action="profile"]', '#screen-profile');
+    ok(await ev("!!document.querySelector('#prof-preview .pcard') && document.querySelectorAll('#prof-frames .look-tile').length === FRAMES.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.length && !!document.querySelector('#prof-avatars [data-av=\"snowcap:zombie\"]')"),
+       'My profile: the card, the avatars (the zombie among them), the frames and the titles');
+    await click('#prof-avatars [data-av="snowcap:zombie"]');
+    var avl = (await readSave()).prof.av;
+    ok(avl && avl.skin === 'snowcap' && avl.alt === 'zombie', 'the zombie picked as the avatar is kept (' + JSON.stringify(avl) + ')');
     await shot('16f-profile');
     await clickFor('#btn-back', '#screen-title');
 

@@ -155,6 +155,11 @@
           o.prof.own.forEach(function (id) { if (idxOf(FRAMES, id) >= 0 && save.prof.own.indexOf(id) < 0) save.prof.own.push(id); });
         if (save.prof.own.indexOf(o.prof.frame) >= 0) save.prof.frame = o.prof.frame;
         if (idxOf(TITLES, o.prof.title) >= 0) save.prof.title = o.prof.title;   // checked against the trophies once they are read
+        /* the avatar: a known creature, and its own skin or none; whether
+           they are still owned is asked each time it is shown (avatarOf) */
+        if (o.prof.av && typeof o.prof.av === 'object' && SKIN_BY_ID[o.prof.av.skin])
+          save.prof.av = { skin: o.prof.av.skin,
+                           alt: ALT_BY_ID[o.prof.av.alt] && ALT_BY_ID[o.prof.av.alt].of === o.prof.av.skin ? o.prof.av.alt : '' };
       }
       save.ach = [];
       if (Object.prototype.toString.call(o.ach) === '[object Array]')
@@ -267,7 +272,7 @@
 
   /* ------------------------- elements ------------------------ */
   var $ = function (id) { return document.getElementById(id); };
-  var screens = { title: $('screen-title'), help: $('screen-help'),
+  var screens = { title: $('screen-title'), profile: $('screen-profile'), help: $('screen-help'),
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
                   ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'), comic: $('screen-comic'),
@@ -277,7 +282,7 @@
 
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
-  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1 };
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1, profile: 1 };
   var justOpened = false;
   function show(name) {
     closeSheet();
@@ -298,6 +303,7 @@
     if (name === 'tutdone')
       $('tutdone-go').textContent = t('tut.done.go', { n: t('course.' + COURSES[0].id + '.name') });
     if (name === 'help') buildHints();
+    if (name === 'profile') { framePick = ''; buildProfile(); }
     if (name === 'shop') { buildShop(); seeMarket(); }
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
@@ -1252,6 +1258,7 @@
       case 'tut-first':  Sfx.click(); ride(COURSES[0].id); break;
       case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
+      case 'profile':    Sfx.click(); show('profile'); fitScreen(); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
       case 'modes':      Sfx.click(); show('modes'); break;
@@ -1472,35 +1479,30 @@
   function altOf(id) { return save.alts.on[id] || ''; }
   function applyLook() { if (Game.setLook) Game.setLook(altOf(save.equipped)); }
   function ownsAlt(id) { return save.alts.own.indexOf(id) >= 0; }
+  /* The face on the card: the avatar picked in My profile while its creature
+     (and its skin) are still owned, otherwise the creature being ridden */
+  function avatarOf() {
+    var a = save.prof.av;
+    if (a && SKIN_BY_ID[a.skin] && save.owned.indexOf(a.skin) >= 0)
+      return { skin: a.skin, alt: a.alt && ALT_BY_ID[a.alt] && ALT_BY_ID[a.alt].of === a.skin && ownsAlt(a.alt) ? a.alt : '' };
+    return { skin: save.equipped, alt: altOf(save.equipped) };
+  }
   function myCard() {
-    return { skin: save.equipped, alt: altOf(save.equipped), frame: save.prof.frame,
+    var av = avatarOf();
+    return { skin: av.skin, alt: av.alt, frame: save.prof.frame,
              title: save.prof.title, trophies: achDone() };
   }
   /* what native.js sends up with a best (a tag on Play Games, the context
      on Game Center) */
   PLAT.boardCard = function () { return profileCode(myCard()); };
 
-  var shopTab = 'creatures', framePick = '';
+  /* The Market is the creatures; the profile has a screen of its own, My
+     profile, off the title (the owner, 18 Nov 2026) */
+  var framePick = '';
   function buildShop() {
     wallet();
-    Array.prototype.forEach.call(document.querySelectorAll('.shop-tab'), function (b) {
-      var on = b.getAttribute('data-tab') === shopTab;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    ['creatures', 'profile'].forEach(function (k) { $('shop-pane-' + k).classList.toggle('hidden', k !== shopTab); });
-    if (shopTab === 'profile') buildProfile();
-    else buildCreatures();
+    buildCreatures();
   }
-  Array.prototype.forEach.call(document.querySelectorAll('.shop-tab'), function (b) {
-    b.addEventListener('click', function () {
-      if (shopTab === b.getAttribute('data-tab')) return;
-      Sfx.click();
-      shopTab = b.getAttribute('data-tab'); framePick = '';
-      buildShop();
-      fitScreen();
-    });
-  });
 
   /* a price: the currency's fish and the sum */
   function priceTag(item, cls) {
@@ -1628,6 +1630,24 @@
     var shown = myCard();
     if (framePick) shown.frame = framePick;
     box.appendChild(profileCard(shown, { best: save.best, size: 96 }));
+    /* the avatars: every creature owned, and its skin if that is owned too */
+    var ag = $('prof-avatars'), cur = avatarOf();
+    ag.textContent = '';
+    SKINS.forEach(function (S) {
+      if (save.owned.indexOf(S.id) < 0) return;
+      var alts = [''];
+      if (ALT_OF[S.id] && ownsAlt(ALT_OF[S.id].id)) alts.push(ALT_OF[S.id].id);
+      alts.forEach(function (alt) {
+        var el = document.createElement('button');
+        el.className = 'av-tile' + (cur.skin === S.id && cur.alt === alt ? ' on' : '');
+        el.setAttribute('data-av', S.id + ':' + alt);
+        el.setAttribute('aria-label', alt ? t('alt.' + alt, null, alt) : t('skin.' + S.id + '.name', null, S.name));
+        var pc = document.createElement('canvas');
+        if (typeof drawPortrait === 'function') drawPortrait(pc, 60, S.id, alt);
+        el.appendChild(pc);
+        ag.appendChild(el);
+      });
+    });
     var fr = $('prof-frames');
     fr.textContent = '';
     FRAMES.forEach(function (F) {
@@ -1662,6 +1682,15 @@
       tl.appendChild(el);
     });
   }
+  $('prof-avatars').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-av]') : null;
+    if (!b) return;
+    var v = b.getAttribute('data-av').split(':');
+    Sfx.click();
+    save.prof.av = { skin: v[0], alt: v[1] || '' };
+    store();
+    buildProfile();
+  });
   $('prof-frames').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-frame]') : null;
     if (!b) return;
