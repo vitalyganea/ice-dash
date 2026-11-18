@@ -222,7 +222,7 @@ async function walk(cdp, sid, P) {
     /* ...unless this tab has been told to come up as a brand-new player,
        which is how the tutorial is reached at the end of the walk. */
     "try{if(!sessionStorage.getItem('fresh'))localStorage.setItem('icedash-save-v1'," + JSON.stringify(JSON.stringify({
-      best: 4200, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,
+      best: 4200, boardBest: 0, runs: 9, sfx: false, music: false, fish: 3000, gold: 4,   // a best the board has never taken
       owned: ['snowcap', 'mitten', 'seal'], equipped: 'seal', lang: 'en',
       ach: ['first'], totFish: 900, totGold: 4, totGates: 20, totJumps: 3,
       totSaves: 1, bestDist: 980, bestRunFish: 60, lives: P.android ? 0 : 2, finds: 2,

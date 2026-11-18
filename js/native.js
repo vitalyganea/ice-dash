@@ -221,15 +221,28 @@
      it; one that could not go (not signed in, no network) goes with the
      next save, after the board is opened, or, on the iPhone, as soon as
      Game Center has signed the player in. */
-  var PG = P.PlayGames || P.GameCenter, board = false, best = 0, sent = 0, sending = null;
+  /* What goes up is each Freeride run's score, not the best of all time:
+     the board keeps a player's best of the day, of the week and of all time
+     by itself, and handed the best of all time with every save it put that
+     on the day's and the week's boards as well (reported 18 Nov 2026). The
+     highest score not yet taken waits here and goes at the next chance;
+     PLAT.boardSent tells ui.js what the board has taken. */
+  var PG = P.PlayGames || P.GameCenter, board = false, pend = 0, sending = null;
   function send() {
-    if (!board || best <= sent) return sending;
-    var n = best;
-    /* the player's card goes up with the best (ui.js PLAT.boardCard): as a
+    if (!board || !pend || sending) return sending;
+    var n = pend;
+    pend = 0;
+    /* the player's card goes up with the score (ui.js PLAT.boardCard): as a
        tag on Play Games, as the context on Game Center */
     var code = PLAT.boardCard ? PLAT.boardCard() : 0, sub = { score: n };
     if (code > 0) { if (IOS) sub.ctx = String(code); else sub.tag = code.toString(36); }
-    sending = PG.submit(sub).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
+    sending = PG.submit(sub).then(function (r) {
+      sending = null;
+      if (r && r.sent) {
+        if (PLAT.boardSent) PLAT.boardSent(n);
+        if (pend) send();                          // a run that ended while this one went
+      } else if (n > pend) pend = n;               // not taken (not signed in, no network): it waits for the next chance
+    }, function () { sending = null; if (n > pend) pend = n; });
     return sending;
   }
   if (PG && PG.addListener && IOS) PG.addListener('signedIn', function () { send(); });
@@ -241,7 +254,7 @@
     }, function () {});
   }
   PLAT.boardReady = function () { return board; };
-  PLAT.boardScore = function (n) { if (n > best) best = n; send(); };
+  PLAT.boardScore = function (n) { if (n > pend) pend = n; send(); };
   PLAT.boardShow = function () {
     if (!board || away) return;
     quiet(true);

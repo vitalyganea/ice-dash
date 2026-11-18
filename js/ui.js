@@ -29,7 +29,7 @@
   ];
 
   function defaults() {
-    return { best: 0, runs: 0, sfx: true, music: true,
+    return { best: 0, boardBest: 0, runs: 0, sfx: true, music: true,
              fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
              lang: detectLang(),
              /* Trophy progress is kept as running totals rather than being
@@ -86,6 +86,9 @@
       var o = JSON.parse(raw);
       if (!o || typeof o !== 'object') return;
       save.best  = Math.max(0, parseInt(o.best, 10) || 0);
+      /* the highest score the board has taken; a save from before it was
+         kept had sent its best with every save, so that is taken */
+      save.boardBest = o.boardBest === undefined ? save.best : Math.max(0, parseInt(o.boardBest, 10) || 0);
       save.runs  = Math.max(0, parseInt(o.runs, 10) || 0);
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
@@ -260,9 +263,10 @@
   }
   var lastSent = -1;
   function pushScore() {
-    /* The Android app's Freeride board keeps its own count of what it has
-       been sent; handing it the best on every save costs nothing. */
-    if (PLAT.boardScore) PLAT.boardScore(save.best);
+    /* A best the board has never taken (made with no network, or before
+       signing in) goes up with a save until it has; one it has taken is not
+       sent again, or it lands on the day's and the week's boards as well */
+    if (PLAT.boardScore && save.best > (save.boardBest || 0)) PLAT.boardScore(save.best);
     if (!IN_YT || !window.ytgame.engagement) return;
     if (save.best === lastSent) return;
     lastSent = save.best;
@@ -900,6 +904,9 @@
     var mRun = rushRun || avRun;                     // scored in metres
     var beat = !cd && !mRun && res.score > save.best;
     if (beat) save.best = res.score;
+    /* every Freeride run goes to the board: its day, its week and its best
+       are the board's to keep (it was handed the best of all time) */
+    if (!cd && !mRun && res.score > 0 && PLAT.boardScore) PLAT.boardScore(res.score);
     /* Time Rush is scored in metres, on a board of its own. */
     if (rushRun) {
       beat = res.dist > (save.bestRush || 0);
@@ -1495,6 +1502,7 @@
   /* what native.js sends up with a best (a tag on Play Games, the context
      on Game Center) */
   PLAT.boardCard = function () { return profileCode(myCard()); };
+  PLAT.boardSent = function (n) { if (n > (save.boardBest || 0)) { save.boardBest = n; store(); } };
 
   /* The Market is the creatures; the profile has a screen of its own, My
      profile, off the title (the owner, 18 Nov 2026) */
