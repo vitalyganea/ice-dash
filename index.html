@@ -285,6 +285,12 @@
 <section id="screen-revive" class="screen hidden">
   <div class="panel">
     <h2 class="panel-title-text" data-i18n="revive.title">That was close</h2>
+    <!-- what the run has so far, and how far it is from the best, so the
+         player can tell whether a life is worth it (the owner, 18 Nov 2026) -->
+    <div class="revive-score" id="revive-score">
+      <div class="revive-score-line"><b id="revive-num">0</b> <span id="revive-unit"></span></div>
+      <div class="revive-gap" id="revive-gap"></div>
+    </div>
     <p class="revive-sub" id="revive-sub" data-i18n="revive.sub">Use a spare life and carry on from where you fell?</p>
     <div class="revive-hearts" id="revive-hearts" aria-hidden="true"></div>
     <p class="revive-count" id="revive-count" data-i18n="revive.left">Spare lives: 0</p>

@@ -548,10 +548,30 @@
       h.className = 'heart';
       hs.appendChild(h);
     }
+    reviveScore(r);
     $('revive-tick').classList.add('hidden');
     $('revive-buttons').classList.remove('hidden');
     Game.pause();
     show('revive');
+  }
+
+  /* What the run has so far and how far it is from the best, measured as the
+     run will be when it ends (points in Freeride and the Daily Line, metres
+     in Time Rush and Avalanche; a Known Line has stars, so only its points),
+     so the player can tell whether a life is worth spending (the owner,
+     18 Nov 2026). */
+  function reviveScore(r) {
+    var cd = r.course ? courseById(r.course) : null;
+    var rush = r.mode === 'rush', av = r.mode === 'avalanche', metres = rush || av;
+    var val = metres ? (r.dist || 0) : (r.score || 0);
+    var best = cd ? 0 : rush ? (save.bestRush || 0) : av ? (save.bestAv || 0) : (save.best || 0);
+    $('revive-num').textContent = num(val);
+    $('revive-unit').textContent = metres ? t('unit.m') : t('title.best.unit', { n: val });
+    var gap = $('revive-gap'), beat = best > 0 && val > best;
+    gap.classList.toggle('beat', beat);
+    var d = best - val;                  // the plural picked on the number, then the number spaced
+    gap.textContent = !best ? '' : beat ? t('over.newbest')
+      : t(metres ? 'goal.bestm' : 'goal.best', { n: d }).replace(String(d), num(d));
   }
 
   /* Back into a paused run, carrying whatever was bought while it waited.
