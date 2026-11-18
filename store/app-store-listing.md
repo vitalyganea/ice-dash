@@ -32,6 +32,84 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.0 (18 Nov 2026)
+
+A skin for every creature and My profile. One block per localization;
+Spanish is the same for Spain and Mexico. Held under 500 characters each, so
+the same words go to Google Play as the 1.3.0 release notes.
+
+en:
+```
+• A skin for every creature: 18 new looks, from pirate and viking to astronaut and Santa's reindeer
+• My profile: pick a portrait from your creatures and skins, with your frame and title
+• Tap a player on the leaderboard to see their profile
+• The Today and This week boards now show that day's and that week's scores
+• Freeride first on the title
+• Trophies still to earn come first
+• No more fish in deep snow
+• Smoother on slow phones
+```
+
+ro:
+```
+• Un skin pentru fiecare creatură: 18 înfățișări noi, de la pirat și viking la astronaut și renul lui Moș Crăciun
+• Profilul meu: alegi un portret dintre creaturile și skin-urile tale, cu rama și titlul tău
+• Apeși pe un jucător din clasament și îi vezi profilul
+• Clasamentele Azi și Săptămâna arată acum scorurile din ziua și săptămâna aceea
+• Liber e primul pe ecranul principal
+• Trofeele de câștigat sunt primele
+• Niciun pește în zăpada adâncă
+• Mai fluent pe telefoanele lente
+```
+
+ru:
+```
+• Скин для каждого существа: 18 новых образов, от пирата и викинга до астронавта и оленя Деда Мороза
+• Мой профиль: выбери портрет из своих существ и скинов, с рамкой и титулом
+• Нажми на игрока в таблице рекордов, чтобы увидеть его профиль
+• Таблицы «Сегодня» и «Неделя» теперь показывают очки за этот день и неделю
+• «Фрирайд» первым на главном экране
+• Трофеи, которые ещё предстоит получить, идут первыми
+• Больше никакой рыбы в глубоком снегу
+• Плавнее на медленных телефонах
+```
+
+es (Spain and Mexico):
+```
+• Un aspecto para cada criatura: 18 nuevos, del pirata y el vikingo al astronauta y el reno de Papá Noel
+• Mi perfil: elige un retrato entre tus criaturas y aspectos, con tu marco y tu título
+• Toca a un jugador en la clasificación para ver su perfil
+• Las tablas Hoy y Semana muestran ahora las puntuaciones de ese día y esa semana
+• Libre, primero en la pantalla principal
+• Los trofeos por ganar van primero
+• Ya no hay peces en la nieve profunda
+• Más fluido en teléfonos lentos
+```
+
+pt-BR:
+```
+• Um visual para cada criatura: 18 novos, do pirata e do viking ao astronauta e à rena do Papai Noel
+• Meu perfil: escolha um retrato entre suas criaturas e visuais, com sua moldura e seu título
+• Toque num jogador no ranking para ver o perfil dele
+• Os rankings Hoje e Semana agora mostram as pontuações daquele dia e daquela semana
+• Livre em primeiro na tela inicial
+• Os troféus a conquistar vêm primeiro
+• Nada de peixes na neve funda
+• Mais suave em celulares lentos
+```
+
+de:
+```
+• Ein Skin für jedes Tier: 18 neue Looks, vom Piraten und Wikinger bis zum Astronauten und Rentier des Weihnachtsmanns
+• Mein Profil: wähle ein Porträt aus deinen Tieren und Skins, mit Rahmen und Titel
+• Tippe auf einen Spieler in der Bestenliste, um sein Profil zu sehen
+• Heute und Woche zeigen jetzt die Punkte dieses Tages und dieser Woche
+• Freie Fahrt zuerst auf dem Startbildschirm
+• Noch offene Trophäen stehen oben
+• Keine Fische mehr im Tiefschnee
+• Flüssiger auf langsamen Handys
+```
+
 ## What's New in 1.2.12 (17 Nov 2026)
 
 The new name and the first things after it. One block per localization;
