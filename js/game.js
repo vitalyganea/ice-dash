@@ -7258,9 +7258,12 @@ var Game = (function () {
      held the fur-coated creatures back (OPPO A9 2020, 18 Nov 2026, Medium /
      Medium: leopard 35 to 49 fps, hare 47 to 57, lemming 47 to 56). The
      strokes do not touch, so it looks the same. */
+  /* build null: drawn inside a clip to the body already made by the caller
+     (the bodies draw it last in their own clip: a second clip to the same
+     outline was another dear one for the chip) */
   function furStrokes(c, build, x0, x1, y0, y1, light, dark) {
     c.save();
-    c.beginPath(); build(c); c.clip();
+    if (build) { c.beginPath(); build(c); c.clip(); }
     c.lineWidth = 0.9; c.lineCap = 'round';
     for (var pass = 0; pass < 2; pass++) {
       c.strokeStyle = pass ? dark : light;
@@ -7400,8 +7403,8 @@ var Game = (function () {
     sphere(c, 0, ys(-10), 10, 11, 0, 0.6);
     sphere(c, 0, ys(-27), 7.6, 9, 0, 0.8);
     softPatch(c, 0, ys(-31), 5.5, 5, 'rgba(250,246,240,.75)');   // pale muzzle
+    furStrokes(c, null, -13, 13, -20, 26, 'rgba(255,255,255,.2)', 'rgba(40,30,20,.12)');
     c.restore();
-    furStrokes(c, build, -13, 13, -20, 26, 'rgba(255,255,255,.2)', 'rgba(40,30,20,.12)');
     /* the white scut, held up */
     var sc = c.createRadialGradient(-1, ys(27), 1, 0, ys(28), 5.5);
     sc.addColorStop(0, '#ffffff'); sc.addColorStop(1, 'rgba(255,255,255,.6)');
@@ -7471,8 +7474,8 @@ var Game = (function () {
     sphere(c, 0, 0, 13, 15, 0, 0.6);
     sphere(c, 0, -19, 8.6, 7.6, 0, 0.6);
     softPatch(c, 0, -24, 5, 3.6, 'rgba(244,220,192,.8)');           // pale snout
+    furStrokes(c, null, -13, 13, -16, 20, 'rgba(255,230,190,.22)', 'rgba(40,24,10,.14)');
     c.restore();
-    furStrokes(c, build, -13, 13, -16, 20, 'rgba(255,230,190,.22)', 'rgba(40,24,10,.14)');
     /* little round ears, nearly lost in the fur */
     [-1, 1].forEach(function (k) {
       c.fillStyle = S.body[2];
@@ -7590,8 +7593,8 @@ var Game = (function () {
     });
     c.fill();
     softPatch(c, 0, ys(-35), 4.6, 3.4, 'rgba(236,238,242,.8)');      // pale muzzle
+    furStrokes(c, null, -12, 12, -26, 26, 'rgba(255,255,255,.18)', 'rgba(30,34,40,.1)');
     c.restore();
-    furStrokes(c, build, -12, 12, -26, 26, 'rgba(255,255,255,.18)', 'rgba(30,34,40,.1)');
     leopardEars(c, S, ys);
     if (DETAIL) {                                    // close up: the pale grey-green of a snow leopard's eyes
       [-1, 1].forEach(function (k) {
@@ -8129,6 +8132,46 @@ var Game = (function () {
      shows, a tapering ribbon along a curve (tails, manes, a hat's point),
      shaded as one shape, and a five-pointed star */
   var SHD = 'rgba(25,32,48,.3)';
+  /* A soft glow painted once into a small picture and laid in wherever it
+     is wanted, sized, and faded by globalAlpha: a gradient made and filled
+     afresh for every one of many small glows was a draw of its own each for
+     a phone's graphics chip (the galaxy's arms were 52 a frame, OPPO A9 2020,
+     18 Nov 2026), and the same picture laid in many times is next to
+     nothing. stops: [[offset, 'r,g,b', alpha], ...]; f: how far up and left
+     the gradient it stands for had its inner circle, as a part of the
+     radius. Off a page (the tests) it is that gradient, as before. */
+  var GLOWS = {};
+  function glowPic(stops, f) {
+    var key = JSON.stringify(stops) + '|' + (f || 0);
+    if (GLOWS[key] !== undefined) return GLOWS[key];
+    var P = null;
+    if (typeof document !== 'undefined' && document.createElement) {
+      var cv = document.createElement('canvas');
+      var g = cv && cv.getContext ? cv.getContext('2d') : null;
+      if (g && g.createRadialGradient) {
+        cv.width = cv.height = 64;
+        var fo = (f || 0) * 32, gr = g.createRadialGradient(32 - fo, 32 - fo, f ? 32 * 0.1 : 0, 32, 32, 32);
+        stops.forEach(function (st) { gr.addColorStop(st[0], 'rgba(' + st[1] + ',' + st[2] + ')'); });
+        g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+        P = cv;
+      }
+    }
+    return (GLOWS[key] = P);
+  }
+  function glowAt(c, x, y, r, stops, alpha, f) {
+    var P = glowPic(stops, f);
+    if (P && c.drawImage) {
+      var ka = c.globalAlpha;
+      c.globalAlpha = ka * alpha;
+      c.drawImage(P, x - r, y - r, r * 2, r * 2);
+      c.globalAlpha = ka;
+      return;
+    }
+    var fo = (f || 0) * r, gr = c.createRadialGradient(x - fo, y - fo, f ? r * 0.1 : 0, x, y, r);
+    stops.forEach(function (st) { gr.addColorStop(st[0], 'rgba(' + st[1] + ',' + (st[2] * alpha).toFixed(3) + ')'); });
+    c.fillStyle = gr; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill();
+  }
+  function hexRgb(h) { var n = parseInt(h.slice(1), 16); return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255); }
   /* A cloak over a creature's shoulders, seen from above: wider than he is
      at a scalloped hem, pleats fanning from the shoulders to each fold of
      it, its lining showing past the edges where the cloth billows, a braid
@@ -8785,16 +8828,24 @@ var Game = (function () {
         c.fillStyle = SHD; c.beginPath(); c.arc(1.6, 2.2, sr + 0.6, 0, 6.2832); c.fill();
         var wg = c.createRadialGradient(-4, -4, 1, 0, 0, sr); wg.addColorStop(0, '#c8873a'); wg.addColorStop(1, '#6a3e14');
         c.fillStyle = wg; c.beginPath(); c.arc(0, 0, sr, 0, 6.2832); c.fill();
-        c.save(); c.beginPath(); c.arc(0, 0, sr, 0, 6.2832); c.clip();
+        /* the painted quarters and the planks, with no clip to the shield
+           (a clip is dear on a phone's graphics chip): the quarters are
+           slices of it already and each plank ends where it meets the rim;
+           the quarters in one path, the planks in another */
         c.fillStyle = 'rgba(184,40,46,.9)';
-        for (k = 0; k < 4; k++) { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, sr, k * Math.PI / 2 + 0.3, k * Math.PI / 2 + Math.PI / 4 + 0.3); c.closePath(); c.fill(); }
+        c.beginPath();
+        for (k = 0; k < 4; k++) { c.moveTo(0, 0); c.arc(0, 0, sr, k * Math.PI / 2 + 0.3, k * Math.PI / 2 + Math.PI / 4 + 0.3); c.closePath(); }
+        c.fill();
         c.strokeStyle = 'rgba(60,30,8,.45)'; c.lineWidth = 0.5;
-        for (x = -sr + 3.3; x < sr; x += 3.3) { c.beginPath(); c.moveTo(x, -sr); c.lineTo(x, sr); c.stroke(); }
-        c.restore();
+        c.beginPath();
+        for (x = -sr + 3.3; x < sr; x += 3.3) { var ph = Math.sqrt(sr * sr - x * x); c.moveTo(x, -ph); c.lineTo(x, ph); }
+        c.stroke();
         c.strokeStyle = '#5a5e68'; c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, sr - 0.6, 0, 6.2832); c.stroke();
         c.strokeStyle = 'rgba(230,236,244,.7)'; c.lineWidth = 0.7; c.beginPath(); c.arc(0, 0, sr - 0.9, 3.3, 4.9); c.stroke();
         c.fillStyle = '#d8dce4';
-        for (k = 0; k < 10; k++) { var ra = k / 10 * 6.2832; c.beginPath(); c.arc(Math.cos(ra) * (sr - 0.6), Math.sin(ra) * (sr - 0.6), 0.55, 0, 6.2832); c.fill(); }
+        c.beginPath();
+        for (k = 0; k < 10; k++) { var ra = k / 10 * 6.2832, rvx = Math.cos(ra) * (sr - 0.6), rvy = Math.sin(ra) * (sr - 0.6); c.moveTo(rvx + 0.55, rvy); c.arc(rvx, rvy, 0.55, 0, 6.2832); }
+        c.fill();
         c.fillStyle = SHD; c.beginPath(); c.arc(1, 1.3, 3.8, 0, 6.2832); c.fill();
         var bg = c.createRadialGradient(-1.2, -1.2, 0.3, 0, 0, 3.8); bg.addColorStop(0, '#f2f5f9'); bg.addColorStop(1, '#5e636e');
         c.fillStyle = bg; c.beginPath(); c.arc(0, 0, 3.6, 0, 6.2832); c.fill();
@@ -8812,7 +8863,9 @@ var Game = (function () {
           c.fillStyle = wg; c.fillRect(-1, -17.4, 2, 34);
           c.fillStyle = '#3a2414'; c.fillRect(-1.15, 9.5, 2.3, 6.5);
           c.strokeStyle = 'rgba(200,150,100,.5)'; c.lineWidth = 0.35;
-          for (var gq = 0; gq < 5; gq++) { c.beginPath(); c.moveTo(-1.1, 10 + gq * 1.3); c.lineTo(1.1, 10.8 + gq * 1.3); c.stroke(); }
+          c.beginPath();
+          for (var gq = 0; gq < 5; gq++) { c.moveTo(-1.1, 10 + gq * 1.3); c.lineTo(1.1, 10.8 + gq * 1.3); }
+          c.stroke();
           c.fillStyle = '#5e636e'; c.beginPath(); c.arc(0, 17, 1.3, 0, 6.2832); c.fill();
           var sg2 = c.createLinearGradient(1, -15, 10.6, -15); sg2.addColorStop(0, '#565c66'); sg2.addColorStop(0.55, '#b4bcc6'); sg2.addColorStop(1, '#f2f5f9');
           c.fillStyle = sg2; hd(); c.fill();
@@ -8848,8 +8901,10 @@ var Game = (function () {
         c.strokeStyle = '#c0903e'; c.lineWidth = 1.7; c.beginPath(); c.moveTo(0, hy - hry - 1); c.lineTo(0, hy + hry); c.stroke();
         c.strokeStyle = 'rgba(255,232,175,.75)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-0.5, hy - hry - 0.6); c.lineTo(-0.5, hy + hry - 0.4); c.stroke();
         c.fillStyle = '#ead8aa';
-        [-5, -2.4, 2.4, 5].forEach(function (ry) { c.beginPath(); c.arc(0.45, hy + ry, 0.5, 0, 6.2832); c.fill(); });
-        [-1, 1].forEach(function (k) { [-4.6, 4.6].forEach(function (rx) { c.beginPath(); c.arc(k * 0 + rx, hy - 0.9, 0.45, 0, 6.2832); c.fill(); }); });
+        c.beginPath();
+        [-5, -2.4, 2.4, 5].forEach(function (ry) { c.moveTo(0.95, hy + ry); c.arc(0.45, hy + ry, 0.5, 0, 6.2832); });
+        [-4.6, 4.6].forEach(function (rx) { c.moveTo(rx + 0.45, hy - 0.9); c.arc(rx, hy - 0.9, 0.45, 0, 6.2832); });
+        c.fill();
         c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(-3.6, hy - 3.4, 2.6, 1.2, -0.5, 0, 6.2832); c.fill();
         c.restore(); hrx *= HK; hry *= HK;
         /* his horns through the helmet: each comes out of a hole in its side
@@ -8857,10 +8912,12 @@ var Game = (function () {
            The body's own horn outline (antler) redrawn over the helmet only */
         var keepHorn = hornKind; hornKind = 'ox';
         var hole = 5.2 * HK;
+        /* one clip for both horns, the helmet with the holes cut from it in
+           a single path (they were two clips a horn): where a hole runs past
+           the helmet's edge there is no horn to draw, so it is the same */
+        c.save();
+        c.beginPath(); c.ellipse(0, hy, hrx + 0.9, hry + 0.9, 0, 0, 6.2832); c.ellipse(0, hy, hole, hry + 3, 0, 0, 6.2832); c.clip('evenodd');
         [-1, 1].forEach(function (k) {
-          c.save();
-          c.beginPath(); c.ellipse(0, hy, hrx + 0.9, hry + 0.9, 0, 0, 6.2832); c.clip();
-          c.beginPath(); c.rect(-30, hy - 20, 60, 40); c.ellipse(0, hy, hole, hry + 3, 0, 0, 6.2832); c.clip('evenodd');
           c.save(); c.translate(1.3, 1.7); c.fillStyle = 'rgba(25,32,48,.38)'; c.beginPath(); antler(c, k); c.fill(); c.restore();
           var hg2 = c.createLinearGradient(k * 1, -41, k * 21, -22);
           hg2.addColorStop(0, '#ece2cb'); hg2.addColorStop(0.45, '#cdb894'); hg2.addColorStop(0.8, '#8a7152'); hg2.addColorStop(1, '#2e241b');
@@ -8868,14 +8925,16 @@ var Game = (function () {
           c.strokeStyle = 'rgba(60,44,28,.55)'; c.lineWidth = 0.8; c.stroke();
           c.strokeStyle = 'rgba(255,250,235,.6)'; c.lineWidth = 1;
           c.beginPath(); c.moveTo(k * 3, -43); c.quadraticCurveTo(k * 15, -44.5, k * 21.5, -33); c.stroke();
-          c.restore();
+        });
+        c.restore();
+        [-1, 1].forEach(function (k) {
           /* the sleeve round the horn where it leaves the helmet */
           var sx = k * (hole + 0.6), sy0 = -45.6, sy1 = -36.6, smy = (sy0 + sy1) / 2;
           c.fillStyle = SHD; c.beginPath(); c.ellipse(sx + 1, smy + 1.4, 1.7, (sy1 - sy0) / 2 + 0.3, k * -0.12, 0, 6.2832); c.fill();
           var bz = c.createLinearGradient(sx - 1.6, 0, sx + 1.6, 0); bz.addColorStop(0, '#f0c878'); bz.addColorStop(0.5, '#b8843a'); bz.addColorStop(1, '#6a4a18');
           c.fillStyle = bz; c.beginPath(); c.ellipse(sx, smy, 1.6, (sy1 - sy0) / 2, k * -0.12, 0, 6.2832); c.fill();
           c.strokeStyle = 'rgba(60,40,10,.6)'; c.lineWidth = 0.45; c.stroke();
-          c.fillStyle = '#f2e0b0'; [-2.8, 0, 2.8].forEach(function (ry) { c.beginPath(); c.arc(sx + k * 0.2 * ry * 0, smy + ry, 0.42, 0, 6.2832); c.fill(); });
+          c.fillStyle = '#f2e0b0'; c.beginPath(); [-2.8, 0, 2.8].forEach(function (ry) { c.moveTo(sx + 0.42, smy + ry); c.arc(sx, smy + ry, 0.42, 0, 6.2832); }); c.fill();
         });
         hornKind = keepHorn;
       } },
@@ -9538,9 +9597,7 @@ var Game = (function () {
           var px = bx + 1 + p * 10 + Math.sin(p * 5 + k * 1.7) * 2.4 * p, py = by - 2 + p * 26, r = 1.5 + p * 5;
           var pa = 0.9 * (1 - p) * Math.min(1, 0.35 + p * 8);
           /* grey enough to show on the pale ice: white smoke was lost on it */
-          var sgr = c.createRadialGradient(px - r * 0.3, py - r * 0.3, r * 0.1, px, py, r);
-          sgr.addColorStop(0, 'rgba(232,235,241,' + pa.toFixed(3) + ')'); sgr.addColorStop(0.55, 'rgba(160,168,184,' + (pa * 0.8).toFixed(3) + ')'); sgr.addColorStop(1, 'rgba(130,138,154,0)');
-          c.fillStyle = sgr; c.beginPath(); c.arc(px, py, r, 0, 6.2832); c.fill();
+          glowAt(c, px, py, r, [[0, '232,235,241', 1], [0.55, '160,168,184', 0.8], [1, '130,138,154', 0]], pa, 0.3);
         }
         c.strokeStyle = SHD; c.lineWidth = 1.4; c.beginPath(); c.moveTo(1.8 + 1, fy - 7.6 + 1.3); c.lineTo(bx - 1 + 1, by + 0.4 + 1.3); c.stroke();
         c.strokeStyle = '#5a3418'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(1.8, fy - 7.6); c.lineTo(bx - 1, by + 0.4); c.stroke();
@@ -10005,10 +10062,7 @@ var Game = (function () {
             var px = u * u * hx + 2 * u * t * mx + t * t * ax, py = u * u * hy + 2 * u * t * my + t * t * ay;
             var col = LIGHT[(b + j * 2) % LIGHT.length];
             var on = run ? 0.55 + 0.45 * Math.max(0, Math.sin(tw - b * 0.9 - j * 1.7)) : 0.85;
-            var hl = c.createRadialGradient(px, py, 0.2, px, py, 3.6);
-            hl.addColorStop(0, mixHex(col, '#ffffff', 0.3)); hl.addColorStop(0.35, col); hl.addColorStop(1, 'rgba(255,255,255,0)');
-            c.globalAlpha = on * 0.55; c.fillStyle = hl; c.beginPath(); c.arc(px, py, 3.6, 0, 6.2832); c.fill();
-            c.globalAlpha = 1;
+            glowAt(c, px, py, 3.6, [[0, hexRgb(mixHex(col, '#ffffff', 0.3)), 1], [0.35, hexRgb(col), 1], [1, '255,255,255', 0]], on * 0.55);
             c.fillStyle = col; c.beginPath(); c.ellipse(px, py, 0.95, 1.35, Math.atan2(my - py, mx - px), 0, 6.2832); c.fill();
             c.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.5 * on).toFixed(2) + ')'; c.beginPath(); c.arc(px - 0.3, py - 0.4, 0.4, 0, 6.2832); c.fill();
           }
@@ -10305,9 +10359,7 @@ var Game = (function () {
             var ax = Math.cos(th) * rr, ay = -1 + Math.sin(th) * rr * 1.2;
             var cc2 = u < 0.35 ? '255,170,235' : u < 0.7 ? '190,150,255' : '130,190,255';
             var gr = 2.2 + 3 * (1 - u), ga = 0.34 * (1 - u * 0.55);
-            var gl = c.createRadialGradient(ax, ay, 0, ax, ay, gr);
-            gl.addColorStop(0, 'rgba(' + cc2 + ',' + ga.toFixed(3) + ')'); gl.addColorStop(1, 'rgba(' + cc2 + ',0)');
-            c.fillStyle = gl; c.beginPath(); c.arc(ax, ay, gr, 0, 6.2832); c.fill();
+            glowAt(c, ax, ay, gr, [[0, cc2, 1], [1, cc2, 0]], ga);
             if (i % 3 === 1) { c.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - u * 0.4)).toFixed(3) + ')'; c.beginPath(); c.arc(ax + (rnd(i + arm * 40) - 0.5) * 2, ay + (rnd(i + arm * 40 + 7) - 0.5) * 2, 0.35 + rnd(i) * 0.35, 0, 6.2832); c.fill(); }
           }
         }
