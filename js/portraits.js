@@ -569,10 +569,10 @@ PORTRAIT.narwhal = function (c, S, o) {
   ptEyes(c, 50, 46, 11, 5.6, { iris: '#1a2028' });
   if (!o.noTusk) ptTusk(c, o.tusk);
 };
-/* the narwhal's tooth: out of the left of her upper lip, up past her
-   head, with its left-handed spiral */
+/* the narwhal's tooth: out of the middle of her face where a nose would
+   be, up between her eyes and past her head, with its left-handed spiral */
 function ptTusk(c, rainbow) {
-  c.save(); c.translate(44, 59); c.rotate(-0.8);   // clear of her eye
+  c.save(); c.translate(50, 53); c.rotate(-0.3);   // where a nose would be, up between her eyes (out of her mouth it read wrong, the owner said)
   var tk = function (dx, dy) { c.beginPath(); c.moveTo(-2.2 + dx, dy); c.lineTo(-0.3 + dx, -54 + dy); c.lineTo(0.3 + dx, -54 + dy); c.lineTo(2.2 + dx, dy); c.closePath(); };
   c.fillStyle = 'rgba(15,22,40,.28)'; tk(1.6, 1.2); c.fill();
   var g = c.createLinearGradient(-2.2, 0, 2.2, 0); g.addColorStop(0, '#fffaf0'); g.addColorStop(0.5, '#f0e6d2'); g.addColorStop(1, '#bdae90');
