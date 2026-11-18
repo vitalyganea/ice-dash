@@ -225,7 +225,11 @@
   function send() {
     if (!board || best <= sent) return sending;
     var n = best;
-    sending = PG.submit({ score: n }).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
+    /* the player's card goes up with the best (ui.js PLAT.boardCard): as a
+       tag on Play Games, as the context on Game Center */
+    var code = PLAT.boardCard ? PLAT.boardCard() : 0, sub = { score: n };
+    if (code > 0) { if (IOS) sub.ctx = String(code); else sub.tag = code.toString(36); }
+    sending = PG.submit(sub).then(function (r) { if (r && r.sent) sent = Math.max(sent, n); }, function () {});
     return sending;
   }
   if (PG && PG.addListener && IOS) PG.addListener('signedIn', function () { send(); });

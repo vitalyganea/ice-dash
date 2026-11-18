@@ -299,3 +299,96 @@ function coinsFor(fishCount) {
   var doubled = Math.min(fishCount, FIRST_CATCH);
   return doubled * 2 + Math.max(0, fishCount - FIRST_CATCH);
 }
+
+/* ---- each creature's own skin, and the profile (1.3.0) ----
+   Asked for by the owner (17 Nov 2026): one skin for every creature, a
+   whole new character of its own (a zombie penguin, Father Christmas
+   riding the reindeer), bought in the creature's window in the Market,
+   and a profile for every player on the leaderboard with things to make
+   it your own. All of it is paint: nothing here touches a perk or the
+   hill. A skin is bought for its own creature, which has to be owned
+   first, and worn by it (save.alts.on). Frames are bought; titles are won
+   with a trophy, never bought. The painters are in game.js (ALT_PAINT),
+   the frames in style.css (.pf-<id>).
+
+   THE ORDER OF EVERY LIST BELOW IS PART OF THE SAVE AND OF THE BOARD:
+   a player's card travels with the score as indexes into these lists
+   (profileCode). Only ever add at the end. */
+var ALT_SKINS = [
+  { id: 'zombie',    of: 'snowcap',  price: 800,  currency: 'fish' },
+  { id: 'elf',       of: 'mitten',   price: 900,  currency: 'fish' },
+  { id: 'pirate',    of: 'puffin',   price: 1200, currency: 'fish' },
+  { id: 'circus',    of: 'seal',     price: 1200, currency: 'fish' },
+  { id: 'miner',     of: 'lemming',  price: 1300, currency: 'fish' },
+  { id: 'viking',    of: 'muskox',   price: 1500, currency: 'fish' },
+  { id: 'astro',     of: 'bubbles',  price: 1600, currency: 'fish' },
+  { id: 'lifeguard', of: 'otter',    price: 1700, currency: 'fish' },
+  { id: 'magic',     of: 'hare',     price: 1800, currency: 'fish' },
+  { id: 'ninja',     of: 'leopard',  price: 2000, currency: 'fish' },
+  { id: 'captain',   of: 'compass',  price: 2200, currency: 'fish' },
+  { id: 'wizard',    of: 'owl',      price: 2600, currency: 'fish' },
+  { id: 'gent',      of: 'walrus',   price: 3000, currency: 'fish' },
+  { id: 'unicorn',   of: 'narwhal',  price: 3600, currency: 'fish' },
+  { id: 'santa',     of: 'reindeer', price: 6,    currency: 'gold' },
+  { id: 'king',      of: 'emperor',  price: 8,    currency: 'gold' },
+  { id: 'robot',     of: 'orca',     price: 10,   currency: 'gold' },
+  { id: 'galaxy',    of: 'aurora',   price: 12,   currency: 'gold' }
+];
+var ALT_BY_ID = {}, ALT_OF = {};
+for (var _a = 0; _a < ALT_SKINS.length; _a++) { ALT_BY_ID[ALT_SKINS[_a].id] = ALT_SKINS[_a]; ALT_OF[ALT_SKINS[_a].of] = ALT_SKINS[_a]; }
+
+var FRAMES = [
+  { id: 'ice',    price: 0,    currency: 'fish' },
+  { id: 'snow',   price: 400,  currency: 'fish' },
+  { id: 'neon',   price: 1200, currency: 'fish' },
+  { id: 'aurora', price: 1800, currency: 'fish' },
+  { id: 'gold',   price: 5,    currency: 'gold' }
+];
+/* ach: the trophy that wins it ('*' every trophy, null from the start) */
+var TITLES = [
+  { id: 'rookie', ach: null },
+  { id: 'far',    ach: 'dist5000' },
+  { id: 'fisher', ach: 'fish3000' },
+  { id: 'liner',  ach: 'linesAll' },
+  { id: 'stars',  ach: 'stars18' },
+  { id: 'clock',  ach: 'rush2000' },
+  { id: 'storm',  ach: 'av1500' },
+  { id: 'daily',  ach: 'streak7' },
+  { id: 'keeper', ach: 'wearAll' },
+  { id: 'legend', ach: '*' }
+];
+function idxOf(list, id) { for (var i = 0; i < list.length; i++) if ((list[i].id || list[i]) === id) return i; return -1; }
+function titleWon(save, t) {
+  if (!t.ach) return true;
+  if (t.ach === '*') return typeof ACHIEVEMENTS !== 'undefined' && save.ach.length >= ACHIEVEMENTS.length;
+  return save.ach.indexOf(t.ach) >= 0;
+}
+
+/* A player's card as one number: what goes up with the score to the board
+   (a Play Games score tag, as base 36; Game Center's 64-bit context, as
+   is). Seven fields of six bits: the version, the creature, whether it is
+   in its own skin, one kept for later, the frame, the title, and how many
+   trophies. 42 bits, well inside a double's exact integers. */
+var PROFILE_V = 1;
+function profileCode(p) {
+  var alt = p.alt && ALT_BY_ID[p.alt] && ALT_BY_ID[p.alt].of === p.skin ? 1 : 0;
+  var f = [PROFILE_V, Math.max(0, idxOf(SKINS, p.skin)), alt, 0, Math.max(0, idxOf(FRAMES, p.frame)),
+           Math.max(0, idxOf(TITLES, p.title)), Math.min(63, Math.max(0, p.trophies | 0))];
+  var n = 0;
+  for (var i = 0; i < f.length; i++) n = n * 64 + (f[i] & 63);
+  return n;
+}
+function profileTag(p) { return profileCode(p).toString(36); }
+/* The card back from a tag or a context; null for none, a code from a
+   version this build does not know, or nonsense. An index past the end of
+   a list (a later build's creature) shows as the first, never an error. */
+function profileFrom(v) {
+  var n = typeof v === 'string' ? parseInt(v, 36) : +v;
+  if (!n || !isFinite(n) || n < 0) return null;
+  var f = [];
+  for (var i = 0; i < 7; i++) { f.unshift(n % 64); n = Math.floor(n / 64); }
+  if (f[0] !== PROFILE_V) return null;
+  var sk = (SKINS[f[1]] || SKINS[0]).id;
+  return { skin: sk, alt: f[2] && ALT_OF[sk] ? ALT_OF[sk].id : '',
+           frame: (FRAMES[f[4]] || FRAMES[0]).id, title: (TITLES[f[5]] || TITLES[0]).id, trophies: f[6] };
+}

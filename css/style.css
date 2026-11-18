@@ -1939,3 +1939,74 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
   }
   .btn::before, .btn-sm::before{ left:13px; right:13px; background-size:52px 15px; }
 }
+
+/* ================= the Market's tabs, Looks and Profile (1.3.0) =================
+   Three tabs in the same buttons as Graphics; the looks and frames as
+   tiles in the shelf's own clothes (a portrait, its name, a price tag or a
+   tick); the profile card a frame round the creature, the name, the title
+   and two numbers. */
+.shop-tabs{ grid-template-columns:repeat(2, auto); margin:2px 0 14px; }
+.alt-row{ display:flex; justify-content:center; gap:14px; margin:4px 0 12px; }
+.alt-row .look-tile{ width:104px; }
+.alts-wrap{ margin-top:6px; }
+@media (max-width:380px){ .shop-tabs .q-opt{ padding:6px 8px; font-size:13px; } }
+.look-stage{ display:flex; flex-direction:column; align-items:center; gap:4px; margin:0 0 6px; }
+.look-stage-pic{ width:132px; height:132px; }
+.look-who{ margin:0; font-weight:800; font-size:15px; color:var(--ink-soft); }
+.look-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:16px 10px; margin:4px 0 12px; }
+.look-tile{
+  position:relative; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:8px 4px 16px; border-radius:18px; border:3px solid transparent;
+  background:rgba(255,255,255,.8); box-shadow:0 3px 0 rgba(0,0,0,.08);
+  font:inherit; color:inherit; cursor:pointer; transition:transform .12s ease;
+}
+.look-tile:active{ transform:scale(.95); }
+.look-tile:focus-visible{ outline:3px solid #2789d8; outline-offset:2px; }
+.look-tile.on{ border-color:var(--green); background:rgba(214,245,225,.96); }
+.look-tile.picked{ border-color:#2789d8; background:rgba(217,240,255,.96); }
+.look-pic{ display:block; width:60px; height:60px; border-radius:50%;
+           background:radial-gradient(circle at 50% 38%, #dff1fb 0%, #b9dcf0 100%); }
+.look-name{ font-weight:800; font-size:12.5px; line-height:1.15; text-align:center; color:var(--ink); }
+.look-buy{ display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; margin:4px 0 12px; }
+.look-buy-name{ font-weight:900; font-size:16px; color:var(--ink); }
+
+/* the frames: a ring round the card's picture, and the same as a swatch */
+.pf-ice{ background:linear-gradient(145deg,#ffffff 0%,#bfe6fb 40%,#5fb0e6 100%); }
+.pf-snow{ background:radial-gradient(circle at 30% 25%,#ffffff 0%,#f2f7fb 55%,#c9dbe8 100%); box-shadow:inset 0 0 0 2px #dfeaf2; }
+.pf-neon{ background:linear-gradient(135deg,#ff4fd8 0%,#7b5cff 50%,#29e6ff 100%); box-shadow:0 0 10px rgba(255,79,216,.55), 0 0 14px rgba(41,230,255,.45); }
+.pf-aurora{ background:conic-gradient(from 210deg,#3fe0a6,#29b6e6,#8a5cf0,#e05ce0,#3fe0a6); }
+.pf-gold{ background:linear-gradient(145deg,#fff3b0 0%,#f0c43c 35%,#b07a10 70%,#ffe27a 100%); box-shadow:0 0 0 1px #8a5a0a; }
+.pf-swatch{ display:block; width:52px; height:52px; border-radius:50%; position:relative; margin:4px 0 2px; }
+.pf-swatch::after{ content:''; position:absolute; inset:7px; border-radius:50%;
+                   background:radial-gradient(circle at 50% 38%, #dff1fb 0%, #b9dcf0 100%); }
+
+/* the card */
+.prof-preview{ display:flex; justify-content:center; margin:0 0 6px; }
+.pcard{ display:flex; align-items:center; gap:14px; padding:10px 16px 10px 10px; border-radius:22px;
+        background:rgba(255,255,255,.85); border:2px solid rgba(43,93,134,.18); max-width:100%; text-align:left; }
+.pcard-av{ flex:0 0 auto; padding:6px; border-radius:50%; }
+.pcard-av canvas{ display:block; border-radius:50%; background:radial-gradient(circle at 50% 38%, #e6f4fc 0%, #c3e1f2 100%); }
+.pcard-mid{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pcard-name{ font-weight:900; font-size:clamp(16px,2.6vw,20px); color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pcard-title{ font-weight:800; font-size:14px; color:#7a4a00; }
+.pcard-stats{ display:flex; flex-wrap:wrap; gap:4px 12px; font-weight:800; font-size:13px; color:var(--ink-soft); }
+
+/* the titles: a list, the ones not yet won saying which trophy wins them */
+.title-list{ display:flex; flex-direction:column; gap:6px; margin:4px 0 8px; }
+.title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+            padding:9px 14px; border-radius:14px; border:2px solid transparent; background:rgba(255,255,255,.85);
+            font:inherit; color:var(--ink); cursor:pointer; text-align:left; }
+.title-row.on{ border-color:var(--green); background:rgba(214,245,225,.96); }
+.title-row.locked{ color:var(--ink-soft); background:rgba(255,255,255,.55); }
+.title-name{ font-weight:800; font-size:15px; }
+.title-need{ font-weight:700; font-size:12.5px; text-align:right; }
+.title-row.on .title-need{ color:#0b7560; font-size:16px; }
+
+/* the board: rows are buttons now (a tap opens the card), with the card's
+   picture small in its frame */
+.board-row{ width:100%; font:inherit; color:inherit; cursor:pointer; }
+.board-row:focus-visible{ outline:3px solid #2789d8; outline-offset:2px; }
+.board-av{ flex:0 0 auto; width:38px; height:38px; border-radius:50%; padding:3px; box-sizing:border-box; }
+.board-av canvas{ display:block; width:32px; height:32px; border-radius:50%;
+                  background:radial-gradient(circle at 50% 38%, #e6f4fc 0%, #c3e1f2 100%); }
+.board-av.none{ opacity:.45; }

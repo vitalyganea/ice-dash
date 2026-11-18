@@ -300,9 +300,25 @@
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
     <p class="wallet purse"><span id="wallet-fish" class="purse-pill">0</span><span id="wallet-gold" class="purse-pill gold">0</span></p>
-    <div id="shop-supply" class="shop-supply"></div>
-    <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
-    <div id="shop-grid" class="shop-grid"></div>
+    <!-- Two tabs (1.3.0): the creatures (each with its own skin in its window), the profile card -->
+    <div class="q-opts shop-tabs" role="tablist">
+      <button class="q-opt shop-tab on" role="tab" aria-selected="true" data-tab="creatures" data-i18n="shop.tab.creatures">Creatures</button>
+      <button class="q-opt shop-tab" role="tab" aria-selected="false" data-tab="profile" data-i18n="shop.tab.profile">Profile</button>
+    </div>
+    <div id="shop-pane-creatures">
+      <div id="shop-supply" class="shop-supply"></div>
+      <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
+      <div id="shop-grid" class="shop-grid"></div>
+    </div>
+    <div id="shop-pane-profile" class="hidden">
+      <div id="prof-preview" class="prof-preview"></div>
+      <p class="shop-note" data-i18n="prof.note">Your card goes on the leaderboard with your next best.</p>
+      <div id="prof-buy" class="look-buy hidden"><span id="prof-buy-name" class="look-buy-name"></span><button id="prof-buy-btn" class="btn"></button></div>
+      <h3 class="set-head" data-i18n="prof.frames">Frames</h3>
+      <div id="prof-frames" class="look-grid"></div>
+      <h3 class="set-head" data-i18n="prof.titles">Titles</h3>
+      <div id="prof-titles" class="title-list"></div>
+    </div>
   </div>
 </section>
 
@@ -440,8 +456,24 @@
          it sat under the bottom edge of a short screen with nothing to say so. -->
     <div class="btn-row"><button id="sheet-skin-btn" class="btn"></button><span id="sheet-skin-tag" class="chosen-tag hidden"></span></div>
     <p id="sheet-skin-need" class="shop-note hidden"></p>
+    <!-- its skin (1.3.0): its own coat and the skin of its own, tried on with a tap -->
+    <div id="sheet-alts-wrap" class="alts-wrap">
+      <h3 class="set-head" data-i18n="alt.head">Skins</h3>
+      <div id="sheet-alts" class="alt-row"></div>
+      <p id="sheet-alt-note" class="shop-note hidden" data-i18n="alt.locked">Get the creature first to buy its skin.</p>
+      <div id="sheet-alt-buy" class="look-buy hidden"><button id="sheet-alt-btn" class="btn"></button></div>
+    </div>
     <div class="btn-row comic-row hidden" id="sheet-skin-comic-row"><button id="sheet-skin-comic" class="btn btn-sm btn-purple" data-i18n="comic.read">Read the comic</button></div>
     <div id="sheet-skin-album" class="album"></div>
+  </div>
+</div>
+
+<!-- A player's card, from a tap on their row on the board (1.3.0) -->
+<div id="sheet-prof" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Profile">
+  <div class="panel sheet-card">
+    <button class="sheet-x" data-action="close-sheet" data-i18n-aria="btn.close" aria-label="Close"></button>
+    <div id="sheet-prof-card" class="prof-preview"></div>
+    <p id="sheet-prof-note" class="shop-note"></p>
   </div>
 </div>
 

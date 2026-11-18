@@ -165,7 +165,9 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " top:function(o){__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
   "  if(o.span!=='all')return later({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
-  "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false});" +
+  /* the first three carry a card (1.3.0): a Play Games tag, as profileTag makes them */
+  "  var tags=['13gw9201','11hv4tjo','1103uw26'];" +
+  "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false,tag:tags[i-1]});" +
   "  return later({rows:rows,me:window.__boardHideMe?null:{rank:345,name:'Me',score:4200,me:true}});}," +
   /* the save in the cloud: none, unless the tab was given one */
   " cloudLoad:function(){__cloud.loads++;var d=null;try{d=sessionStorage.getItem('cloud');}catch(e){}" +
@@ -454,6 +456,20 @@ async function walk(cdp, sid, P) {
       "var s=r.querySelector('.board-score').getBoundingClientRect(),b=r.getBoundingClientRect();" +
       "return s.width>0&&s.right<=b.right+0.5&&b.height>=44;})");
     ok(rowFit, 'a long name leaves the score on its row, and every row is a finger tall');
+    /* 1.3.0: the cards. Three players carry one (a tag with their best),
+       the player's own row shows theirs as it is now. */
+    await sleep(800);
+    var av = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row');return {first:!!r[0].querySelector('.board-av canvas'),gold:r[0].querySelector('.board-av').classList.contains('pf-gold'),fourth:r[3].querySelector('.board-av').classList.contains('none'),me:!!document.querySelector('#board-list .board-row.me .board-av canvas')};})()");
+    ok(av.first && av.gold && av.fourth && av.me,
+       'rows with a card show its creature in its frame, rows without one an empty ring, and the player\'s own row theirs (' + JSON.stringify(av) + ')');
+    await click('#board-list .board-row');
+    ok(await waitFor('#sheet-prof', 2000) &&
+       await ev("document.querySelector('#sheet-prof .pcard-name').textContent") === 'Pingu' &&
+       await ev("document.querySelector('#sheet-prof .pcard-av').classList.contains('pf-gold')") &&
+       /Legend/.test(await ev("document.querySelector('#sheet-prof .pcard-title').textContent")),
+       'a tap on a row opens that player\'s card: name, frame, title (' + (await ev("document.querySelector('#sheet-prof .pcard').innerText.replace(/\\n/g,' / ')")) + ')');
+    await shot('a1c-card');
+    await click('#sheet-prof .sheet-x');
     await shot('a1b-board');
     await click('.q-opt[data-span="day"]');
     await sleep(200);
@@ -1104,6 +1120,13 @@ async function walk(cdp, sid, P) {
   ok(tB !== null && tB < tA, 'and the clock runs down while you ride (' + (tA / 60).toFixed(1) + 's -> ' + (tB / 60).toFixed(1) + 's)');
   await shot('17-rush');
   await ev("Game.debug().timeT = 2; 1");
+  /* with spare lives in hand the clock run out is offered ten more seconds
+     first (1.3.0, SYSTEMS row 170); ending the run brings the results */
+  if (await waitFor('#screen-revive', 4000)) {
+    ok(/10/.test(await ev("document.getElementById('revive-sub').textContent")),
+       'out of time with a spare life: ten more seconds are offered (' + (await ev("document.getElementById('revive-sub').textContent")) + ')');
+    await clickFor('[data-action="no-life"]', '#screen-over');
+  }
   ok(await waitFor('#screen-over', 8000), 'when the time runs out the results come up');
   var rTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
   var rScore = await ev("document.getElementById('over-score').textContent");
@@ -1129,6 +1152,12 @@ async function walk(cdp, sid, P) {
   await sleep(400);
   await shot('18c-avalanche');
   await ev("(function(){var W=Game.debug();W.avGap=2;})();1");
+  /* with spare lives in hand one is offered to push the snow back (row 170) */
+  if (await waitFor('#screen-revive', 4000)) {
+    ok(await ev("document.getElementById('revive-sub').getAttribute('data-i18n')") === 'revive.sub.snow',
+       'caught with a spare life: pushing the snow back is offered (' + (await ev("document.getElementById('revive-sub').textContent")) + ')');
+    await clickFor('[data-action="no-life"]', '#screen-over');
+  }
   ok(await waitFor('#screen-over', 8000), 'when the snow arrives the results come up');
   var aTitle = await ev("document.querySelector('#screen-over .panel-title-text').textContent");
   var aScore = await ev("document.getElementById('over-score').textContent");
@@ -1346,6 +1375,33 @@ async function walk(cdp, sid, P) {
     ok(await waitFor('#screen-over', 8000) && !(await visible('#over-next')),
        'a line not finished offers no next one');
     await clickFor('#screen-over [data-action="back-title"]', '#screen-title');
+
+    /* 1.3.0: a creature's own skin, in its window. Not bought, it is tried
+       on in the big picture with its price; bought, the creature wears it
+       and the save keeps it; the Profile tab shows the card. */
+    /* the runs above spent the purse: 3000 fish put back before a reload */
+    await ev("Game.stop&&Game.stop();(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));s.fish=3000;localStorage.setItem('icedash-save-v1',JSON.stringify(s));})();1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/index.html' }, sid);
+    for (var lt = 0; lt < 60 && !(await visible('#screen-title')); lt++) await sleep(200);
+    await clickFor('[data-action="shop"]', '#screen-shop');
+    ok(await ev("document.querySelectorAll('.shop-tab').length") === 2, 'the Market has two tabs: the creatures and the profile');
+    await clickFor('#shop-grid [data-pick="snowcap"]', '#sheet-skin');
+    ok(await ev("document.querySelectorAll('#sheet-alts .look-tile').length") === 2,
+       'a creature\'s window shows its skins: its own coat and its skin');
+    var f0l = (await readSave()).fish;
+    await click('#sheet-alts [data-alt="zombie"]');
+    ok(await visible('#sheet-alt-buy') && (await readSave()).fish === f0l, 'its skin not bought is tried on, with its price, and nothing is paid');
+    await click('#sheet-alt-btn');
+    var svl = await readSave();
+    ok(svl.fish === f0l - 800 && svl.alts.own.indexOf('zombie') >= 0 && svl.alts.on.snowcap === 'zombie',
+       'Buy pays for it and the creature wears it (' + f0l + ' fish -> ' + svl.fish + ', ' + JSON.stringify(svl.alts) + ')');
+    await shot('16e-skin');
+    await click('#sheet-skin .sheet-x');
+    await click('.shop-tab[data-tab="profile"]');
+    ok(await ev("!!document.querySelector('#prof-preview .pcard') && document.querySelectorAll('#prof-frames .look-tile').length === FRAMES.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.length"),
+       'the Profile tab: the card, the frames and the titles');
+    await shot('16f-profile');
+    await clickFor('#btn-back', '#screen-title');
 
     /* A trophy not yet earned, tapped, goes where it is earned. */
     await clickFor('[data-action="trophies"]', '#screen-ach');

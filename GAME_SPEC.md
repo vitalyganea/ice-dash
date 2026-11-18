@@ -27,8 +27,9 @@ Both, mobile-first. The game is built for YouTube Playables, so phone is the
 primary target and the viewport fills any screen shape from 9:32 to 32:9
 with no letterbox. Desktop adds keyboard (Space / Arrow Up / W to tap, P and
 Esc to pause) on top of the same pointer control. Pause on mobile is a large
-bottom-right button plus a two-finger tap anywhere; the second finger is
-never a steering input, because steering is a single tap.
+bottom-right button. Every finger that lands steers: a second finger once
+meant pause, and fast play with both thumbs paused the run by accident
+(taken out 18 Nov 2026).
 
 **Yandex Games** — asked for by the user (October 2026): the same game,
 uploaded to Yandex Games from `yandex/`. Only an adapter and a build of its

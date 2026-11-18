@@ -94,7 +94,8 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
     }
 
     private func row(_ e: GKLeaderboard.Entry, _ me: Bool) -> [String: Any] {
-        return ["rank": e.rank, "name": e.player.displayName, "score": e.score, "me": me]
+        /* the player's card (ui.js profileCode) rides in the entry's context */
+        return ["rank": e.rank, "name": e.player.displayName, "score": e.score, "me": me, "ctx": String(e.context)]
     }
 
     /* { available: is there a board at all, signedIn: is the player in } */
@@ -109,6 +110,9 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
        not, and native.js sends it again later. */
     @objc func submit(_ call: CAPPluginCall) {
         let score = GameCenterPlugin.number(call, "score")
+        /* the player's card (ui.js profileCode), a whole number of 42 bits,
+           sent as a string so nothing on the way rounds it */
+        let context = Int(call.getString("ctx") ?? "") ?? 0
         if board.isEmpty || score <= 0 {
             call.resolve(["sent": false])
             return
@@ -119,7 +123,7 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
                 call.resolve(["sent": false])
                 return
             }
-            GKLeaderboard.submitScore(score, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [self.board]) { error in
+            GKLeaderboard.submitScore(score, context: context, player: GKLocalPlayer.local, leaderboardIDs: [self.board]) { error in
                 if let error = error {
                     self.log("score \(score) refused: \(error.localizedDescription)")
                     call.resolve(["sent": false, "error": error.localizedDescription])

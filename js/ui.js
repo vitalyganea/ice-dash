@@ -67,7 +67,12 @@
                 stories are open (album.js) */
              album: {},
              /* the creatures whose comic has been read through (or skipped) */
-             comicSeen: {} };
+             comicSeen: {},
+             /* each creature's own skin: the ones bought, and which
+                creatures are in theirs: { own: [ids], on: { creature: id } } */
+             alts: { own: [], on: {} },
+             /* the profile card: frames bought, and the frame and title on it */
+             prof: { own: ['ice'], frame: 'ice', title: 'rookie' } };
   }
   /* Switches a platform's adapter may set before the game loads (only
      crazygames.js does). Unset, everything behaves as it always has. */
@@ -133,6 +138,24 @@
         for (var cid in o.courses)
           if (courseById(cid))
             save.courses[cid] = Math.max(0, Math.min(3, parseInt(o.courses[cid], 10) || 0));
+      /* skins and the profile (1.3.0): only ids this build knows */
+      save.alts = { own: [], on: {} };
+      if (o.alts && typeof o.alts === 'object') {
+        if (Object.prototype.toString.call(o.alts.own) === '[object Array]')
+          o.alts.own.forEach(function (id) { if (ALT_BY_ID[id] && save.alts.own.indexOf(id) < 0) save.alts.own.push(id); });
+        if (o.alts.on && typeof o.alts.on === 'object')
+          for (var ak2 in o.alts.on) {
+            var aid2 = o.alts.on[ak2];
+            if (SKIN_BY_ID[ak2] && ALT_BY_ID[aid2] && ALT_BY_ID[aid2].of === ak2 && save.alts.own.indexOf(aid2) >= 0) save.alts.on[ak2] = aid2;
+          }
+      }
+      save.prof = { own: ['ice'], frame: 'ice', title: 'rookie' };
+      if (o.prof && typeof o.prof === 'object') {
+        if (Object.prototype.toString.call(o.prof.own) === '[object Array]')
+          o.prof.own.forEach(function (id) { if (idxOf(FRAMES, id) >= 0 && save.prof.own.indexOf(id) < 0) save.prof.own.push(id); });
+        if (save.prof.own.indexOf(o.prof.frame) >= 0) save.prof.frame = o.prof.frame;
+        if (idxOf(TITLES, o.prof.title) >= 0) save.prof.title = o.prof.title;   // checked against the trophies once they are read
+      }
       save.ach = [];
       if (Object.prototype.toString.call(o.ach) === '[object Array]')
         for (var j = 0; j < o.ach.length; j++)
@@ -144,6 +167,7 @@
       save.claimed = Object.prototype.toString.call(o.claimed) === '[object Array]'
                    ? o.claimed.filter(function (id) { return save.ach.indexOf(id) >= 0; })
                    : save.ach.slice();
+      if (!titleWon(save, TITLES[idxOf(TITLES, save.prof.title)])) save.prof.title = 'rookie';
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -208,6 +232,7 @@
      start (first) the caller then picks the screen; when the cloud's save
      comes in later the screen in view is drawn again, unless a run is on. */
   function settle(first) {
+    applyLook();
     setLang(save.lang);           // the cloud save may disagree with the device
     applyI18n();
     achCheck(save);               // anything the loaded save already earned
@@ -711,9 +736,13 @@
       '<text x="20" y="18.2" text-anchor="middle" font-size="10.5" font-weight="900" fill="' + c[1] + '">' + place + '</text>' +
       '</svg>';
   }
+  /* a row's card: the player's own as it is now, anyone else's as it went
+     up with their best (a Play Games tag, a Game Center context), or none */
+  function rowCard(x) { return x.me ? myCard() : profileFrom(x.tag || x.ctx || 0); }
   function boardRow(x) {
-    var row = document.createElement('div');
+    var row = document.createElement('button');
     row.className = 'board-row' + (x.me ? ' me' : '');
+    row.boardRow = x;
     var place = document.createElement('span');
     place.className = 'board-place';
     if (x.rank >= 1 && x.rank <= 3) place.innerHTML = cupSvg(x.rank);
@@ -732,9 +761,43 @@
     var score = document.createElement('span');
     score.className = 'board-score';
     score.textContent = num(x.score || 0);
-    row.appendChild(place); row.appendChild(name); row.appendChild(score);
+    /* the card's picture, small, in its frame; painted a few rows a frame
+       after the list is up (paintAvatars), a hundred at once held it up */
+    var av = document.createElement('span');
+    var card = rowCard(x);
+    av.className = 'board-av pf-' + ((card && card.frame) || 'ice') + (card ? '' : ' none');
+    row.appendChild(place); row.appendChild(av); row.appendChild(name); row.appendChild(score);
     return row;
   }
+  var avatarJob = 0;
+  function paintAvatars(list) {
+    var job = ++avatarJob, rows = Array.prototype.slice.call(list.querySelectorAll('.board-row')), i = 0;
+    (function some() {
+      if (job !== avatarJob) return;
+      for (var n = 0; n < 8 && i < rows.length; n++, i++) {
+        var card = rowCard(rows[i].boardRow), av = rows[i].querySelector('.board-av');
+        if (!card || !av) continue;
+        var cv = document.createElement('canvas');
+        Game.drawSkinPreview(cv, card.skin, 34, card.alt || '');
+        cv.style.width = cv.style.height = '';
+        av.appendChild(cv);
+      }
+      if (i < rows.length) requestAnimationFrame(some);
+    })();
+  }
+  /* A tap on a row: that player's card */
+  $('board-list').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.board-row') : null;
+    if (!b || !b.boardRow) return;
+    var x = b.boardRow, card = rowCard(x);
+    Sfx.click();
+    var box = $('sheet-prof-card');
+    box.textContent = '';
+    box.appendChild(profileCard(card || { skin: 'snowcap', frame: 'ice', title: 'rookie', trophies: 0 },
+                                { name: x.me ? t('prof.you') : (x.name || '—'), best: x.score, rank: x.rank, size: 120 }));
+    $('sheet-prof-note').textContent = card ? '' : t('prof.nocard');
+    $('sheet-prof').classList.remove('hidden');
+  });
   function syncBoardSpan() {
     Array.prototype.forEach.call(document.querySelectorAll('.q-opt[data-span]'), function (b) {
       var on = b.getAttribute('data-span') === boardSpan;
@@ -782,6 +845,7 @@
          lists only public profiles, and a new one is private. Without a word
          the player takes the best for lost. */
       say(!mine && save.best > 0 ? 'board.private' : rows.length ? '' : 'board.empty');
+      paintAvatars(list);
       /* the list opens at the top, or with the player's own row in view */
       list.scrollTop = 0;
       if (mine && mine.offsetTop + mine.offsetHeight > list.clientHeight)
@@ -1399,9 +1463,235 @@
     box.appendChild(card);
   }
 
+  /* ================= looks and the profile (1.3.0) =================
+     The Market has three tabs (asked for by the owner, 17 Nov 2026):
+     the creatures as before, Looks (colours and things to wear, bought
+     once and put on any creature, each creature keeping its own) and the
+     Profile (a frame bought, a title won with a trophy). The catalogue and
+     the card's code are in skins.js. */
+  function altOf(id) { return save.alts.on[id] || ''; }
+  function applyLook() { if (Game.setLook) Game.setLook(altOf(save.equipped)); }
+  function ownsAlt(id) { return save.alts.own.indexOf(id) >= 0; }
+  function myCard() {
+    return { skin: save.equipped, alt: altOf(save.equipped), frame: save.prof.frame,
+             title: save.prof.title, trophies: achDone() };
+  }
+  /* what native.js sends up with a best (a tag on Play Games, the context
+     on Game Center) */
+  PLAT.boardCard = function () { return profileCode(myCard()); };
+
+  var shopTab = 'creatures', framePick = '';
   function buildShop() {
-    buildSupply();
     wallet();
+    Array.prototype.forEach.call(document.querySelectorAll('.shop-tab'), function (b) {
+      var on = b.getAttribute('data-tab') === shopTab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    ['creatures', 'profile'].forEach(function (k) { $('shop-pane-' + k).classList.toggle('hidden', k !== shopTab); });
+    if (shopTab === 'profile') buildProfile();
+    else buildCreatures();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.shop-tab'), function (b) {
+    b.addEventListener('click', function () {
+      if (shopTab === b.getAttribute('data-tab')) return;
+      Sfx.click();
+      shopTab = b.getAttribute('data-tab'); framePick = '';
+      buildShop();
+      fitScreen();
+    });
+  });
+
+  /* a price: the currency's fish and the sum */
+  function priceTag(item, cls) {
+    var p = document.createElement('span');
+    p.className = cls + (item.currency === 'gold' ? ' gold' : '') + (balance(item.currency) >= item.price ? ' can' : '');
+    p.appendChild(coin(item.currency, 15));
+    p.appendChild(document.createTextNode(num(item.price)));
+    return p;
+  }
+  function buyButton(btn, item) {
+    var afford = balance(item.currency) >= item.price;
+    btn.textContent = '';
+    btn.disabled = !afford;
+    btn.className = 'btn ' + (afford ? 'btn-green' : 'btn-ghost');
+    btn.appendChild(document.createTextNode(t('shop.buy') + '  '));
+    btn.appendChild(coin(item.currency, 18));
+    btn.appendChild(document.createTextNode(num(item.price)));
+  }
+  function pay(item) {
+    if (balance(item.currency) < item.price) return false;
+    if (item.currency === 'gold') save.gold -= item.price; else save.fish -= item.price;
+    return true;
+  }
+
+  /* ---- a creature's skins, in its window: its own coat and its skin ----
+     Shown for every creature; bought only once the creature is owned. A
+     tap on the skin not bought tries it on in the big picture and offers
+     it; on one owned, the creature is put in it. */
+  var altPick = '';
+  function buildAlts(id) {
+    var A = ALT_OF[id], box = $('sheet-alts'), bar = $('sheet-alt-buy');
+    if (!box) return;
+    box.textContent = '';
+    $('sheet-alts-wrap').classList.toggle('hidden', !A);
+    if (!A) return;
+    var own = owns(id), on = altOf(id);
+    ['', A.id].forEach(function (aid) {
+      var el = document.createElement('button');
+      el.className = 'look-tile' + (on === aid ? ' on' : '') + (altPick === aid && aid ? ' picked' : '');
+      el.setAttribute('data-alt', aid);
+      var cv = document.createElement('canvas');
+      cv.className = 'look-pic';
+      Game.drawSkinPreview(cv, id, 64, aid);
+      cv.style.width = cv.style.height = '';
+      el.appendChild(cv);
+      var nm = document.createElement('span');
+      nm.className = 'look-name'; nm.textContent = t(aid ? 'alt.' + aid : 'alt.classic');
+      el.appendChild(nm);
+      if (own && on === aid) { var w = document.createElement('span'); w.className = 'skin-tag tag-worn'; w.textContent = '✓'; el.appendChild(w); }
+      else if (aid && !ownsAlt(aid)) el.appendChild(priceTag(A, 'skin-tag tag-price'));
+      box.appendChild(el);
+    });
+    $('sheet-alt-note').classList.toggle('hidden', own);
+    bar.classList.toggle('hidden', !(own && altPick && !ownsAlt(altPick)));
+    if (own && altPick && !ownsAlt(altPick)) buyButton($('sheet-alt-btn'), A);
+  }
+  function altPicture() {
+    if (!sheetSkin) return;
+    Game.drawSkinPreview($('sheet-skin-pic'), sheetSkin, 140, altPick || altOf(sheetSkin));
+  }
+  $('sheet-alts').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-alt]') : null;
+    if (!b || !sheetSkin) return;
+    var aid = b.getAttribute('data-alt');
+    Sfx.click();
+    if (owns(sheetSkin) && (!aid || ownsAlt(aid))) {
+      altPick = '';
+      if (aid) save.alts.on[sheetSkin] = aid; else delete save.alts.on[sheetSkin];
+      if (sheetSkin === save.equipped) applyLook();
+      store();
+      buildCreatures();
+    } else altPick = altPick === aid ? '' : aid;     // tried on, with its price
+    altPicture();
+    buildAlts(sheetSkin);
+  });
+  $('sheet-alt-btn').addEventListener('click', function () {
+    var A = ALT_BY_ID[altPick];
+    if (!A || !owns(A.of) || ownsAlt(A.id) || !pay(A)) return;
+    save.alts.own.push(A.id);
+    save.alts.on[A.of] = A.id;
+    altPick = '';
+    if (A.of === save.equipped) applyLook();
+    Sfx.gold(); buzz(28);
+    var r = this.getBoundingClientRect();
+    screenBurst('gold', r.left + r.width / 2, r.top + r.height / 2);
+    store();
+    wallet(); buildCreatures();
+    altPicture(); buildAlts(A.of);
+  });
+
+  /* ---- Profile: the card the board shows ---- */
+  function profileCard(p, o) {
+    o = o || {};
+    var el = document.createElement('div');
+    el.className = 'pcard';
+    var av = document.createElement('div');
+    av.className = 'pcard-av pf-' + (p.frame || 'ice');
+    var cv = document.createElement('canvas');
+    Game.drawSkinPreview(cv, p.skin, o.size || 92, p.alt || '');
+    av.appendChild(cv);
+    el.appendChild(av);
+    var mid = document.createElement('div');
+    mid.className = 'pcard-mid';
+    var nm = document.createElement('div');
+    nm.className = 'pcard-name'; nm.textContent = o.name || t('prof.you');
+    mid.appendChild(nm);
+    var ti = document.createElement('div');
+    ti.className = 'pcard-title'; ti.textContent = t('prof.t.' + (p.title || 'rookie'));
+    mid.appendChild(ti);
+    var st = document.createElement('div');
+    st.className = 'pcard-stats';
+    if (o.rank) { var rk = document.createElement('span'); rk.textContent = t('title.rank.num', { n: o.rank }); st.appendChild(rk); }
+    var be = document.createElement('span'); be.textContent = t('prof.best') + ' ' + num(o.best || 0); st.appendChild(be);
+    var tr = document.createElement('span'); tr.textContent = t('prof.trophies') + ' ' + (p.trophies || 0); st.appendChild(tr);
+    mid.appendChild(st);
+    el.appendChild(mid);
+    return el;
+  }
+  function buildProfile() {
+    var box = $('prof-preview');
+    box.textContent = '';
+    var shown = myCard();
+    if (framePick) shown.frame = framePick;
+    box.appendChild(profileCard(shown, { best: save.best, size: 96 }));
+    var fr = $('prof-frames');
+    fr.textContent = '';
+    FRAMES.forEach(function (F) {
+      var on = save.prof.frame === F.id, own = save.prof.own.indexOf(F.id) >= 0;
+      var el = document.createElement('button');
+      el.className = 'look-tile frame-tile' + (on ? ' on' : '') + (framePick === F.id ? ' picked' : '');
+      el.setAttribute('data-frame', F.id);
+      var sw = document.createElement('span'); sw.className = 'pf-swatch pf-' + F.id; el.appendChild(sw);
+      var nm = document.createElement('span'); nm.className = 'look-name'; nm.textContent = t('prof.f.' + F.id); el.appendChild(nm);
+      if (on) { var w = document.createElement('span'); w.className = 'skin-tag tag-worn'; w.textContent = '✓'; el.appendChild(w); }
+      else if (!own) el.appendChild(priceTag(F, 'skin-tag tag-price'));
+      fr.appendChild(el);
+    });
+    var bar = $('prof-buy');
+    bar.classList.toggle('hidden', !framePick);
+    if (framePick) {
+      $('prof-buy-name').textContent = t('prof.f.' + framePick);
+      buyButton($('prof-buy-btn'), FRAMES[idxOf(FRAMES, framePick)]);
+    }
+    var tl = $('prof-titles');
+    tl.textContent = '';
+    TITLES.forEach(function (T) {
+      var won = titleWon(save, T), on = save.prof.title === T.id;
+      var el = document.createElement('button');
+      el.className = 'title-row' + (on ? ' on' : '') + (won ? '' : ' locked');
+      el.setAttribute('data-title', T.id);
+      var nm = document.createElement('span'); nm.className = 'title-name'; nm.textContent = t('prof.t.' + T.id); el.appendChild(nm);
+      var ds = document.createElement('span'); ds.className = 'title-need';
+      if (on) ds.textContent = '✓';
+      else if (!won) ds.textContent = T.ach === '*' ? t('prof.t.all') : t('prof.t.need', { s: t('ach.' + T.ach + '.name') });
+      el.appendChild(ds);
+      tl.appendChild(el);
+    });
+  }
+  $('prof-frames').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-frame]') : null;
+    if (!b) return;
+    var id = b.getAttribute('data-frame');
+    Sfx.click();
+    if (save.prof.own.indexOf(id) >= 0) { framePick = ''; save.prof.frame = id; store(); }
+    else framePick = framePick === id ? '' : id;
+    buildProfile();
+  });
+  $('prof-buy-btn').addEventListener('click', function () {
+    var F = FRAMES[idxOf(FRAMES, framePick)];
+    if (!F || save.prof.own.indexOf(F.id) >= 0 || !pay(F)) return;
+    save.prof.own.push(F.id); save.prof.frame = F.id; framePick = '';
+    Sfx.gold(); buzz(28);
+    var r = this.getBoundingClientRect();
+    screenBurst('gold', r.left + r.width / 2, r.top + r.height / 2);
+    store();
+    buildShop();
+  });
+  $('prof-titles').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-title]') : null;
+    if (!b) return;
+    var T = TITLES[idxOf(TITLES, b.getAttribute('data-title'))];
+    if (!T) return;
+    if (titleWon(save, T)) { Sfx.click(); save.prof.title = T.id; store(); buildProfile(); return; }
+    /* not won yet: to where its trophy is earned */
+    var A = null;
+    for (var i = 0; i < ACHIEVEMENTS.length; i++) if (ACHIEVEMENTS[i].id === T.ach) A = ACHIEVEMENTS[i];
+    if (A) goEarn(A.go || 'free'); else { Sfx.click(); shopBack = currentScreen; show('ach'); }
+  });
+
+  function buildCreatures() {
+    buildSupply();
     var grid = $('shop-grid');
     grid.textContent = '';
     /* Cheapest first, so the next thing you can afford is the next thing
@@ -1428,7 +1718,7 @@
     var cv = document.createElement('canvas');
     cv.className = 'skin-pic';
     el.appendChild(cv);
-    Game.drawSkinPreview(cv, sk.id, 80);
+    Game.drawSkinPreview(cv, sk.id, 80, altOf(sk.id));
     /* the drawing sets an inline 80px; the shelf's CSS sizes the tile
        instead, or three to a row overflow a narrow phone */
     cv.style.width = cv.style.height = '';
@@ -1469,10 +1759,11 @@
   function openSheet(id) {
     var sk = SKIN_BY_ID[id];
     if (!sk) return;
-    sheetSkin = id;
+    sheetSkin = id; altPick = '';
     var sh = $('sheet-skin');
     sh.classList.remove('hidden');
-    Game.drawSkinPreview($('sheet-skin-pic'), sk.id, 140);
+    Game.drawSkinPreview($('sheet-skin-pic'), sk.id, 140, altOf(sk.id));
+    buildAlts(sk.id);
     $('sheet-skin-name').textContent = t('skin.' + sk.id + '.name', null, sk.name);
     $('sheet-skin-perk').textContent = t('skin.' + sk.id + '.perk', null, sk.perkText);
     $('sheet-skin-comic-row').classList.toggle('hidden', !(comicFor(sk.id) && owns(sk.id)));
@@ -1826,6 +2117,7 @@
       Sfx.click();
     }
     save.equipped = sk.id;          // buying it puts it on straight away
+    applyLook();
     achCheck(save);                 // owning things is a goal in its own right
     store();
     /* Chosen, the window has done its job: it closes, and the creature's
@@ -2266,6 +2558,7 @@
     if (!b || !sk || !trophyWaiting()) return;
     save.owned.push(sk.id);
     save.equipped = sk.id;          // taken, and put on straight away
+    applyLook();
     achCheck(save);
     Sfx.gold(); buzz([30, 40, 60]);
     var r = b.getBoundingClientRect();
@@ -2370,31 +2663,19 @@
      drawing surface — including where a thumb naturally rests — swallowed
      every tap. Two fingers landing together count as one tap, or the
      direction would flip twice and nothing would appear to happen. */
-  var lastTap = -1e9, down = 0;
+  var lastTap = -1e9;
   window.addEventListener('pointerdown', function (e) {
     if (currentScreen !== 'game' || Game.isPaused()) return;
     if (e.target && e.target.closest && e.target.closest('button, [data-action]')) return;
-    down++;
-    /* Steering is a single tap, so a second finger is never a steering
-       input — which makes it free to mean pause. The first finger has
-       already flipped the direction by the time the second lands, so undo
-       that flip: the player resumes going the way they were. */
-    if (down > 1) {
-      Game.undoTap();
-      Game.pause(); show('pause');
-      return;
-    }
+    /* Every finger that lands steers. A second finger down while the first
+       was still on the glass used to pause, and playing fast, both thumbs
+       or a quick double tap, paused the run (the owner, 18 Nov 2026). The
+       button in the corner pauses. */
     var now = e.timeStamp || Date.now();
     if (now - lastTap < 45) return;
     lastTap = now;
     Game.tap();
   });
-  function liftPointer() { if (down > 0) down--; }
-  window.addEventListener('pointerup', liftPointer);
-  window.addEventListener('pointercancel', liftPointer);
-  /* A pointer that leaves the window never reports up, and the count would
-     stick above zero and pause on the next ordinary tap. */
-  window.addEventListener('blur', function () { down = 0; });
   document.addEventListener('contextmenu', function (e) {
     if (currentScreen === 'game') e.preventDefault();
   });

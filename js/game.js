@@ -1121,14 +1121,6 @@ var Game = (function () {
                      life: 26, max: 26, s: frnd(1.6, 3.4) });
   }
 
-  /* Two fingers pause, and the first of them has already turned him. Put
-     that back so pausing never costs you the line you were on. */
-  function undoTap() {
-    if (!W || W.state !== 'run') return;
-    W.dir = -W.dir;
-    W.tapFlash = 0;
-  }
-
   /* ---------------------------- step -------------------------- */
   /* ---- the hill behind the menu ----
      On the title the hill is alive: the chosen animal sliding down it,
@@ -2342,6 +2334,12 @@ var Game = (function () {
      or when he turns, and the picture held in between. Painting the whole
      creature each frame was the costliest thing left under a bridge. */
   var shadeAt = -1e9, shadeAng = 0;
+  function ballShade(x, y, r) {
+    var g = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 1.15);
+    g.addColorStop(0, 'rgba(32,54,79,.6)'); g.addColorStop(0.7, 'rgba(32,54,79,.45)'); g.addColorStop(1, 'rgba(32,54,79,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r * 1.15, 0, 6.2832); ctx.fill();
+  }
   function creatureShade(x, y, ang) {
     if (typeof document === 'undefined' || !document.createElement) return;
     /* Both buffers are kept in plain memory (willReadFrequently). Left to
@@ -2366,7 +2364,7 @@ var Game = (function () {
       c.rotate(ang);
       paintCreature(c, skin || SKINS[0],
                     { ang: 0, wag: 0, gait: W.t * 0.2, turn: 0,
-                      scale: 1.2, lift: 0, air: false, shield: -1 });
+                      scale: 1.2, lift: 0, air: false, shield: -1, alt: PLAYER_ALT });
       c.restore();
       c.globalCompositeOperation = 'source-in';
       c.fillStyle = '#20364f';
@@ -2589,7 +2587,12 @@ var Game = (function () {
       gl.addColorStop(1, 'rgba(206,232,250,0)');
       ctx.fillStyle = gl;
       ctx.beginPath(); ctx.arc(pxx, py, 92, 0, 6.2832); ctx.fill();
-      creatureShade(pxx, py, Math.atan2(W.vx, Math.max(W.speed, 3)) * 0.85);
+      /* rolling as a snowball, what shows through the roof is the ball,
+         round, not the animal inside it (reported by the owner, 17 Nov
+         2026: the creature's shape showed under a bridge mid-rush) */
+      var rm = rollMorph();
+      if (rm > 0.5) ballShade(pxx, py, rollRadius(skin || SKINS[0]) * (0.62 + 0.38 * rm));
+      else creatureShade(pxx, py, Math.atan2(W.vx, Math.max(W.speed, 3)) * 0.85);
     }
     ctx.restore();
   }
@@ -5576,6 +5579,46 @@ var Game = (function () {
   /* What tells one penguin from another when you are looking straight down
      at his back: something round the neck, something on his head, or a light
      of his own. Anything subtler than that is invisible at this size. */
+  /* the needle of his compass: at the nearest fish on the hill, north
+     anywhere else (a shop card, a comic) */
+  function compassNeedle() {
+    var nd = -Math.PI / 2 + Math.sin((W ? W.t : 0) * 0.05) * 0.15;
+    if (HILL && W && W.objects) {
+      var best = 1e9;
+      for (var fi = 0; fi < W.objects.length; fi++) {
+        var fo = W.objects[fi];
+        if ((fo.t !== 'fish' && fo.t !== 'gold') || fo.got || fo.d < W.dist - 10) continue;
+        var fdx = fo.x - W.px, fdd = fo.d - W.dist, fq = fdx * fdx + fdd * fdd;
+        if (fq < best) { best = fq; nd = Math.atan2(-fdd, fdx) - PENG_ANG; }
+      }
+    }
+    return nd;
+  }
+  /* the brass compass, centred at (x, y), k its size: Compass wears it on a
+     cord */
+  function drawCompass(c, x, y, k, accent) {
+    var nd = compassNeedle();
+    c.save(); c.translate(x, y); c.scale(k, k); c.translate(0, 8);   // its face is drawn round (0, -8): centred on (x, y)
+    c.fillStyle = 'rgba(0,0,0,.25)';
+    c.beginPath(); c.ellipse(0.8, -7, 6.4, 5.6, 0, 0, 6.2832); c.fill();
+    var cgb = c.createLinearGradient(-6, -13, 6, -1);
+    cgb.addColorStop(0, '#ffe08a'); cgb.addColorStop(0.5, accent); cgb.addColorStop(1, '#8a5a12');
+    c.fillStyle = cgb;
+    c.beginPath(); c.ellipse(0, -8, 6.2, 5.6, 0, 0, 6.2832); c.fill();
+    c.fillStyle = '#eef3f2';                        // the face under its glass
+    c.beginPath(); c.ellipse(0, -8, 4.5, 4, 0, 0, 6.2832); c.fill();
+    c.save(); c.translate(0, -8); c.rotate(nd);    // the needle: red to the fish, white behind
+    c.fillStyle = '#d8302c';
+    c.beginPath(); c.moveTo(4, 0); c.lineTo(0, -1.1); c.lineTo(0, 1.1); c.closePath(); c.fill();
+    c.fillStyle = '#9aa3ab';
+    c.beginPath(); c.moveTo(-3.4, 0); c.lineTo(0, -1.1); c.lineTo(0, 1.1); c.closePath(); c.fill();
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,.55)';          // the glass catching the light
+    c.beginPath(); c.ellipse(-1.6, -9.6, 1.8, 1, -0.5, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(90,60,10,.6)'; c.lineWidth = 0.7;
+    c.beginPath(); c.ellipse(0, -8, 6.2, 5.6, 0, 0, 6.2832); c.stroke();
+    c.restore();
+  }
   function drawSkinExtra(c, S) {
     if (!S.accessory || !S.accent) return;
     if (S.accessory === 'scarf') {
@@ -5584,6 +5627,8 @@ var Game = (function () {
       c.fillStyle = 'rgba(0,0,0,.18)';
       c.beginPath(); c.ellipse(0, -13, 15.5, 5.5, 0, 0, 6.2832); c.fill();
       c.fillStyle = S.accent;                       // two tails streaming behind
+      /* a skin may shorten them (the elf's, so they end clear of his shoes) */
+      if (S.scarfTail) { c.save(); c.translate(0, -12); c.scale(1, S.scarfTail); c.translate(0, 12); }
       [-1, 1].forEach(function (k) {
         c.beginPath();
         c.moveTo(k * 8, -12);
@@ -5604,6 +5649,7 @@ var Game = (function () {
           c.beginPath(); c.moveTo(k * (5.6 + fr * 1.6), 18 - fr * 0.4); c.lineTo(k * (5.4 + fr * 1.8), 22.5 - fr * 0.3); c.stroke();
         }
       });
+      if (S.scarfTail) c.restore();
       c.save();                                       // ribs round the collar, faint at this size
       c.beginPath(); c.ellipse(0, -15, 15.5, 7.5, 0, 0, 6.2832); c.clip();
       c.strokeStyle = 'rgba(110,16,16,.28)'; c.lineWidth = 0.7;
@@ -5628,36 +5674,9 @@ var Game = (function () {
       /* A brass compass on a cord, lying on his back behind the head, and
          its needle pointing at the nearest fish: he knows where the shoals
          are. Off the hill (a shop card, a comic) it settles on north. */
-      var nd = -Math.PI / 2 + Math.sin((W ? W.t : 0) * 0.05) * 0.15;
-      if (HILL && W && W.objects) {
-        var best = 1e9;
-        for (var fi = 0; fi < W.objects.length; fi++) {
-          var fo = W.objects[fi];
-          if ((fo.t !== 'fish' && fo.t !== 'gold') || fo.got || fo.d < W.dist - 10) continue;
-          var fdx = fo.x - W.px, fdd = fo.d - W.dist, fq = fdx * fdx + fdd * fdd;
-          if (fq < best) { best = fq; nd = Math.atan2(-fdd, fdx) - PENG_ANG; }
-        }
-      }
       c.strokeStyle = 'rgba(60,40,20,.7)'; c.lineWidth = 0.9;            // the cord, round his neck
       c.beginPath(); c.moveTo(-8, -15); c.quadraticCurveTo(0, -11.5, 8, -15); c.stroke();
-      c.fillStyle = 'rgba(0,0,0,.25)';
-      c.beginPath(); c.ellipse(0.8, -7, 6.4, 5.6, 0, 0, 6.2832); c.fill();
-      var cgb = c.createLinearGradient(-6, -13, 6, -1);
-      cgb.addColorStop(0, '#ffe08a'); cgb.addColorStop(0.5, S.accent); cgb.addColorStop(1, '#8a5a12');
-      c.fillStyle = cgb;
-      c.beginPath(); c.ellipse(0, -8, 6.2, 5.6, 0, 0, 6.2832); c.fill();
-      c.fillStyle = '#eef3f2';                        // the face under its glass
-      c.beginPath(); c.ellipse(0, -8, 4.5, 4, 0, 0, 6.2832); c.fill();
-      c.save(); c.translate(0, -8); c.rotate(nd);    // the needle: red to the fish, white behind
-      c.fillStyle = '#d8302c';
-      c.beginPath(); c.moveTo(4, 0); c.lineTo(0, -1.1); c.lineTo(0, 1.1); c.closePath(); c.fill();
-      c.fillStyle = '#9aa3ab';
-      c.beginPath(); c.moveTo(-3.4, 0); c.lineTo(0, -1.1); c.lineTo(0, 1.1); c.closePath(); c.fill();
-      c.restore();
-      c.fillStyle = 'rgba(255,255,255,.55)';          // the glass catching the light
-      c.beginPath(); c.ellipse(-1.6, -9.6, 1.8, 1, -0.5, 0, 6.2832); c.fill();
-      c.strokeStyle = 'rgba(90,60,10,.6)'; c.lineWidth = 0.7;
-      c.beginPath(); c.ellipse(0, -8, 6.2, 5.6, 0, 0, 6.2832); c.stroke();
+      drawCompass(c, 0, -8, 1, S.accent);
     } else if (S.accessory === 'tusk') {
       /* The one thing that makes a narwhal a narwhal: a tooth, grown out
          through the LEFT side of the upper lip, straight ahead and a touch
@@ -5762,8 +5781,39 @@ var Game = (function () {
     emperor: { sp: 'emperor', beak: '#1f2126', bill: 'long', feet: '#2a2c31', edge: 'rgba(0,0,0,.45)', size: 1.07, stripe: '#ff8a3d' },
     aurora:  { sp: 'king', beak: '#1f2126', bill: 'long', feet: '#2b2d33', edge: 'rgba(0,0,0,.45)', size: 1.03, stripe: '#8ff3ff' }
   };
-  function penguinBody(c) {                       // round and plump: a cartoon penguin, not a torpedo
+  /* a penguin's foot, webbed, three round toes; k is the side. Shared with
+     the skins that dress his feet, so they keep their shape */
+  function penguinFoot(c, k, dx, dy) {
+    dx = dx || 0; dy = dy || 0;
     c.beginPath();
+    c.moveTo(-2.6 + dx, -3.5 + dy);
+    c.quadraticCurveTo(-k * 5.5 + dx, 4 + dy, -k * 4.2 + dx, 11 + dy);
+    c.quadraticCurveTo(-k * 3 + dx, 13.2 + dy, -k * 1.6 + dx, 11.4 + dy);
+    c.quadraticCurveTo(-k * 0.4 + dx, 14.6 + dy, k * 1.4 + dx, 12.6 + dy);
+    c.quadraticCurveTo(k * 3.2 + dx, 14.4 + dy, k * 4.6 + dx, 11.6 + dy);
+    c.quadraticCurveTo(k * 6 + dx, 4 + dy, 2.6 + dx, -3.5 + dy);
+    c.closePath();
+  }
+  /* where a penguin's flipper is and how it is turned, rowing now and then
+     (k the side, ang his heading), and its outline there: shared with the
+     skins that dress his flippers (the captain's sleeves) */
+  function penguinFlipperAngle(k, o, ang) {
+    var row = Math.pow(Math.max(0, Math.sin((o.gait || 0) * 0.55)), 2);
+    return k * (0.3 + 0.8 * row + swing(o, k > 0 ? 0 : 0.4, 0.05)) - (ang || 0) * 0.32 * k;
+  }
+  function penguinFlipperPose(c, k, o, ang) {
+    c.translate(k * 15, -9);
+    c.rotate(penguinFlipperAngle(k, o, ang));
+  }
+  function penguinFlipperPath(c, k) {
+    c.beginPath(); c.moveTo(0, -6.5);
+    c.quadraticCurveTo(k * 14, -8, k * 22, 2);
+    c.quadraticCurveTo(k * 25, 8, k * 19, 9);
+    c.quadraticCurveTo(k * 9, 9, 0, 7.5);
+    c.closePath();
+  }
+  function penguinBody(c, more) {                 // round and plump: a cartoon penguin, not a torpedo
+    if (!more) c.beginPath();                      // more: add to the path already begun (to clip round him)
     c.moveTo(0, -20);
     c.bezierCurveTo(13, -21.5, 21, -12, 21, -1);
     c.bezierCurveTo(21, 11, 15, 21, 7, 24);
@@ -5821,17 +5871,16 @@ var Game = (function () {
   function bodyPenguin(c, S, ang, wag, o) {
     PENG_ANG = ang || 0;
     var P = PENGUIN_SP[S.id] || { sp: 'plain', beak: S.trim, bill: 'short', feet: S.trim, edge: S.trimEdge };
+    if (S.spOver) { var P2 = {}, pk; for (pk in P) P2[pk] = P[pk]; for (pk in S.spOver) P2[pk] = S.spOver[pk]; P = P2; }
     var g = o.gait || 0, turn = clamp(o.turn || 0, -1, 1), k;
     c.save();
     if (P.size) c.scale(P.size, P.size);
 
     /* the flippers: held out a little back, and now and then both rowing
        hard against the snow, a stroke and a slow return */
-    var row = Math.pow(Math.max(0, Math.sin(g * 0.55)), 2);
     [-1, 1].forEach(function (k) {
       c.save();
-      c.translate(k * 15, -9);
-      c.rotate(k * (0.3 + 0.8 * row + swing(o, k > 0 ? 0 : 0.4, 0.05)) - ang * 0.32 * k);
+      penguinFlipperPose(c, k, o, ang);
       var fg = c.createLinearGradient(0, -5, k * 28, 12);
       fg.addColorStop(0, S.flipper[0]); fg.addColorStop(0.6, S.flipper[1]); fg.addColorStop(1, S.flipper[2]);
       c.fillStyle = fg;
@@ -5855,14 +5904,7 @@ var Game = (function () {
       c.translate(k * 8.5, 22 + kick * 4.5);
       c.rotate(k * (0.25 + 0.35 * kick));
       c.fillStyle = P.feet;
-      c.beginPath();                                   // webbed, three round toes
-      c.moveTo(-2.6, -3.5);
-      c.quadraticCurveTo(-k * 5.5, 4, -k * 4.2, 11);
-      c.quadraticCurveTo(-k * 3, 13.2, -k * 1.6, 11.4);
-      c.quadraticCurveTo(-k * 0.4, 14.6, k * 1.4, 12.6);
-      c.quadraticCurveTo(k * 3.2, 14.4, k * 4.6, 11.6);
-      c.quadraticCurveTo(k * 6, 4, 2.6, -3.5);
-      c.closePath(); c.fill();
+      penguinFoot(c, k); c.fill();
       c.strokeStyle = P.edge; c.lineWidth = 1; c.stroke();
       c.restore();
     });
@@ -5910,7 +5952,7 @@ var Game = (function () {
       c.stroke();
     }
     if (P.sp === 'emperor' || P.sp === 'king') {      // their pale gold showing at the neck, either side
-      var nc = P.sp === 'king' ? '160,230,255' : '255,214,120';
+      var nc = P.neck || (P.sp === 'king' ? '160,230,255' : '255,214,120');   // a skin may tint them (sp)
       [-1, 1].forEach(function (k) {
         var ng = c.createRadialGradient(k * 13, -15, 0, k * 13, -15, 10);
         ng.addColorStop(0, 'rgba(' + nc + ',.55)'); ng.addColorStop(1, 'rgba(' + nc + ',0)');
@@ -5937,7 +5979,7 @@ var Game = (function () {
     c.beginPath(); c.ellipse(0, -26 + hb, 11.5, 10.8, 0, 0, 6.2832); c.fill();
     sheen(c, -3.5, -29 + hb, 5.5, 4, -0.4, 0.18);     // light on the crown
     penguinFace(c, S, P, hb);
-    c.fillStyle = 'rgba(255,130,150,.32)';             // rosy cheeks, behind the eyes
+    c.fillStyle = P.cheek || 'rgba(255,130,150,.32)';  // rosy cheeks, behind the eyes (a skin may pale them)
     [-1, 1].forEach(function (k) { c.beginPath(); c.ellipse(k * 9.2, -22.2 + hb, 2.6, 1.6, k * 0.5, 0, 6.2832); c.fill(); });
     if (S.accessory === 'aurora') penguinCrown(c);    // behind the eyes, on the back of the head
     cuteEyes(c, -27.2 + hb, 5.6, 3.5, P.eye);
@@ -6001,7 +6043,7 @@ var Game = (function () {
       c.closePath(); c.fill();
     } else if (P.sp === 'emperor' || P.sp === 'king') {
       /* the ear patch: deep at the ear, fading down the side of the neck */
-      var c0 = P.sp === 'king' ? '180,140,255' : '255,150,40', c1 = P.sp === 'king' ? '140,240,255' : '255,214,110';
+      var c0 = P.ear0 || (P.sp === 'king' ? '180,140,255' : '255,150,40'), c1 = P.ear1 || (P.sp === 'king' ? '140,240,255' : '255,214,110');
       [-1, 1].forEach(function (k) {
         var eg = c.createLinearGradient(k * 8, -27 + hb, k * 14, -14);
         eg.addColorStop(0, 'rgba(' + c0 + ',.95)'); eg.addColorStop(0.6, 'rgba(' + c1 + ',.8)'); eg.addColorStop(1, 'rgba(' + c1 + ',0)');
@@ -7016,6 +7058,74 @@ var Game = (function () {
   /* ---- orca ------------------------------------------------------
      Glossy black with white patches: the strongest contrast in the set,
      and the one silhouette with no legs at all. */
+  /* A narwhal's spout (the owner, 18 Nov 2026): every so often a blow of
+     water out of the blowhole at (0, -27). Seen from straight above the jet
+     comes up at us, so it is a bright core over the hole, a cloud of spray
+     opening round it and drifting back as she swims on, and drops thrown
+     out and falling behind, with the spray's shadow on her back. The
+     unicorn's is the same blow in the colours of the rainbow. In a still
+     portrait it is shown mid-blow, so the market's window has it. Looks
+     only: not at low effects. No randomness: seeded by index. */
+  var SPOUT_RB = ['255,90,90', '255,180,58', '255,225,74', '90,208,106', '74,168,255', '154,106,255'];
+  function drawSpout(c, o, rainbow) {
+    if (SPARE) return;
+    var P = 80, p;
+    if (o.still) p = 0.42;
+    else { var ph = ((o.gait || 0) % P) / P; if (ph > 0.42) return; p = ph / 0.42; }
+    var x = 0, y = -27, life = Math.sin(p * Math.PI), drift = p * p * 22;
+    var r = 4 + p * 24, cy = y + drift * 0.55, i, sd;
+    var seed = function (n) { var v = Math.sin((n + 1) * 12.9898) * 43758.5453; return v - Math.floor(v); };
+    /* the spray's shadow on her back and the snow */
+    c.fillStyle = 'rgba(25,32,48,' + (0.18 * life).toFixed(3) + ')';
+    c.beginPath(); c.ellipse(x + 3.6, cy + 4.6, r * 0.9, r * 0.8, 0, 0, 6.2832); c.fill();
+    /* the cloud of spray, pale blue so it shows on snow */
+    var mg = c.createRadialGradient(x, cy, 0.5, x, cy, r);
+    if (rainbow) {
+      mg.addColorStop(0, 'rgba(255,255,255,' + (0.7 * life).toFixed(3) + ')');
+      for (var q = 0; q < 6; q++) mg.addColorStop(0.22 + q * 0.12, 'rgba(' + SPOUT_RB[q] + ',' + (0.5 * life).toFixed(3) + ')');
+      mg.addColorStop(1, 'rgba(' + SPOUT_RB[5] + ',0)');
+    } else {
+      mg.addColorStop(0, 'rgba(255,255,255,' + (0.85 * life).toFixed(3) + ')');
+      mg.addColorStop(0.5, 'rgba(170,215,245,' + (0.55 * life).toFixed(3) + ')');
+      mg.addColorStop(1, 'rgba(150,200,240,0)');
+    }
+    c.fillStyle = mg; c.beginPath(); c.arc(x, cy, r, 0, 6.2832); c.fill();
+    /* streaks of the jet fanning out as it bursts */
+    if (p < 0.6) {
+      var sk = 1 - p / 0.6;
+      c.lineCap = 'round'; c.lineWidth = 1.1;
+      for (i = 0; i < 16; i++) {
+        sd = seed(i + 40);
+        var sa = i / 16 * 6.2832 + sd * 0.4, r0 = r * 0.25, r1 = r * (0.7 + sd * 0.3);
+        c.strokeStyle = rainbow ? 'rgba(' + SPOUT_RB[i % 6] + ',' + (0.8 * sk).toFixed(3) + ')' : 'rgba(255,255,255,' + (0.85 * sk).toFixed(3) + ')';
+        c.beginPath(); c.moveTo(x + Math.cos(sa) * r0, y + Math.sin(sa) * r0 * 0.85); c.lineTo(x + Math.cos(sa) * r1, y + Math.sin(sa) * r1 * 0.85 + drift * 0.3); c.stroke();
+      }
+    }
+    /* the drops, thrown out all round and carried back */
+    for (i = 0; i < 34; i++) {
+      sd = seed(i);
+      var an = i / 34 * 6.2832 + sd * 0.6, dd = p * (10 + sd * 22);
+      var dx = x + Math.cos(an) * dd, dy = y + Math.sin(an) * dd * 0.85 + drift * (0.5 + sd * 0.6);
+      var al = life * (0.5 + 0.35 * sd), rr = (1.3 - p * 0.5) * (0.5 + sd * 0.7);
+      c.fillStyle = 'rgba(25,32,48,' + (al * 0.25).toFixed(3) + ')';
+      c.beginPath(); c.arc(dx + 1, dy + 1.3, rr, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(' + (rainbow ? SPOUT_RB[i % 6] : (i % 3 ? '178,220,248' : '240,250,255')) + ',' + al.toFixed(3) + ')';
+      c.beginPath(); c.arc(dx, dy, rr, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(' + (rainbow ? '90,60,140' : '60,120,180') + ',' + (al * 0.5).toFixed(3) + ')'; c.lineWidth = 0.3;
+      c.stroke();
+      if (!rainbow) {
+        c.fillStyle = 'rgba(255,255,255,' + (al * 0.7).toFixed(3) + ')';
+        c.beginPath(); c.arc(dx - rr * 0.3, dy - rr * 0.3, rr * 0.3, 0, 6.2832); c.fill();
+      }
+    }
+    /* the jet's core straight over the hole, strongest as it starts */
+    var core = Math.max(0, 1 - p * 1.6);
+    if (core > 0) {
+      c.fillStyle = 'rgba(255,255,255,' + (0.95 * core).toFixed(3) + ')';
+      c.beginPath(); c.arc(x, y + drift * 0.2, 2 + 3.6 * core, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(' + (rainbow ? '154,106,255' : '120,180,230') + ',' + (0.6 * core).toFixed(3) + ')'; c.lineWidth = 0.6; c.stroke();
+    }
+  }
   function bodyOrca(c, S, ang, wag, o) {
     var fa = 0.5 + swing(o, 0, 0.16) - ang * 0.3;
     /* She has nothing to paddle with, so the tail does the work: the beat
@@ -7107,6 +7217,8 @@ var Game = (function () {
        another body got no accessory at all — which is why the narwhal
        turned up without the one thing that makes it a narwhal. */
     drawSkinExtra(c, S);
+    /* the narwhal's blow (the unicorn paints her own, in rainbow) */
+    if (S.id === 'narwhal' && !S.altPaint) drawSpout(c, o, false);
 }
 
   /* ---- the three that run on four soft feet ---------------------
@@ -7139,18 +7251,28 @@ var Game = (function () {
     c.restore();
   }
   /* soft fur lying back along a body, clipped to it */
+  /* Short strokes of fur over a body, a light one and a dark one beside it
+     every few units. All the light strokes go into one path and all the
+     dark into another: stroked one by one they were some 150 separate
+     draws a frame, and the phone's graphics chip, not the script, was what
+     held the fur-coated creatures back (OPPO A9 2020, 18 Nov 2026, Medium /
+     Medium: leopard 35 to 49 fps, hare 47 to 57, lemming 47 to 56). The
+     strokes do not touch, so it looks the same. */
   function furStrokes(c, build, x0, x1, y0, y1, light, dark) {
     c.save();
     c.beginPath(); build(c); c.clip();
     c.lineWidth = 0.9; c.lineCap = 'round';
-    for (var fy = y0; fy <= y1; fy += 4.2) {
-      for (var fx = x0; fx <= x1; fx += 4.6) {
-        var jx = fx + ((fy * 7 + fx * 3) % 5) * 0.5, jy = fy + ((fx * 5) % 3) * 0.6, tilt = jx * 0.06;
-        c.strokeStyle = light;
-        c.beginPath(); c.moveTo(jx, jy); c.lineTo(jx + tilt * 3, jy + 3.2); c.stroke();
-        c.strokeStyle = dark;
-        c.beginPath(); c.moveTo(jx + 0.9, jy + 0.5); c.lineTo(jx + 0.9 + tilt * 3, jy + 3.7); c.stroke();
+    for (var pass = 0; pass < 2; pass++) {
+      c.strokeStyle = pass ? dark : light;
+      c.beginPath();
+      for (var fy = y0; fy <= y1; fy += 4.2) {
+        for (var fx = x0; fx <= x1; fx += 4.6) {
+          var jx = fx + ((fy * 7 + fx * 3) % 5) * 0.5, jy = fy + ((fx * 5) % 3) * 0.6, tilt = jx * 0.06;
+          if (pass) { c.moveTo(jx + 0.9, jy + 0.5); c.lineTo(jx + 0.9 + tilt * 3, jy + 3.7); }
+          else { c.moveTo(jx, jy); c.lineTo(jx + tilt * 3, jy + 3.2); }
+        }
       }
+      c.stroke();
     }
     c.restore();
   }
@@ -7184,10 +7306,67 @@ var Game = (function () {
      long hind feet swing past them outside the body and land ahead, side
      by side, and it launches — stretched out long in the air, bunched
      short as the hind feet come through. */
+  /* the gallop of the hare and the leopard: the body stretches out and
+     bunches up, carrying the head forward and back (1 stretched out, -1
+     bunched). A skin's painter draws after the body, so it moves what sits
+     on the head and back by the same stretch, measured from the still pose
+     it was drawn in, or the hat stays put while the head moves under it */
+  function gallopE(o, stillE) {
+    o = o || {};
+    return o.still ? stillE : (o.lift || 0) > 0.05 ? 1 : Math.cos(o.gait || 0);
+  }
+  function hareStretch(o) { return 1 + 0.08 * gallopE(o, -0.2); }
+  function leopardStretch(o) { return 1 + 0.1 * gallopE(o, 0); }
+  /* the snow leopard's short round ears set wide, dark at the back with a
+     pale spot, at the back of the head clear of the eyes (close up they are
+     drawn otherwise). Their own function so the ninja can lay them back
+     over the band tied round her head */
+  function leopardEars(c, S, ys) {
+    if (DETAIL) return;
+    [-1, 1].forEach(function (k) {
+      c.fillStyle = S.body[2];
+      c.beginPath(); c.ellipse(k * 7.4, ys(-25.5), 3, 2.6, k * 0.6, 0, 6.2832); c.fill();
+      c.fillStyle = S.mark;
+      c.beginPath(); c.ellipse(k * 7.6, ys(-25.2), 1.4, 1.1, k * 0.6, 0, 6.2832); c.fill();
+    });
+  }
+  /* the hare's ears, from the crown behind the eyes, laid back along his
+     neck and shoulders. Their own function so that a skin with a cloak over
+     his back (the magician) can lay them back on top of it */
+  var HARE_ANG = 0;
+  function hareEars(c, S, o, ang, ys) {
+    var g = o.gait || 0;
+    /* laid back along the neck
+       and shoulders (flatter the faster), parting a little at each bound */
+    [-1, 1].forEach(function (k) {
+      var spread = 0.16 + 0.07 * (o.still ? 0 : Math.sin(g + 0.8)) - ang * 0.3 * k;
+      if (DETAIL) spread = 0.85;                      // close up: laid back to each side, not down over his chest
+      c.save();
+      c.translate(k * 3.2, ys(-24));
+      c.rotate(-k * spread);
+      c.fillStyle = S.body[1];
+      c.beginPath();
+      c.moveTo(0, -1.5);
+      c.bezierCurveTo(k * 5.5, 2, k * 5.2, 16, k * 2, 25);
+      c.bezierCurveTo(k * 0.5, 27.5, -k * 2.2, 25, -k * 2.4, 16);
+      c.bezierCurveTo(-k * 2.6, 7, -k * 1.6, 1, 0, -1.5);
+      c.closePath(); c.fill();
+      if (S.outline) { c.strokeStyle = S.outline; c.lineWidth = 1.1; c.stroke(); }
+      c.fillStyle = 'rgba(255,255,255,.25)';           // light along the ear's back
+      c.beginPath(); c.ellipse(k * 1.2, 11, 1.4, 8, -k * 0.08, 0, 6.2832); c.fill();
+      c.fillStyle = S.earTip || S.nose;               // the tip, at the back: black, or a skin's own (earTip)
+      c.beginPath();
+      c.moveTo(k * 3.4, 20); c.bezierCurveTo(k * 2.8, 24.5, k * 0.8, 27.4, -k * 1.2, 25.5);
+      c.bezierCurveTo(-k * 2.2, 23.5, -k * 2.3, 21.5, -k * 2.3, 20.5);
+      c.closePath(); c.fill();
+      c.restore();
+    });
+  }
   function bodyHare(c, S, ang, wag, o) {
+    HARE_ANG = ang || 0;
     var P = Math.PI, g = o.gait || 0, lift = o.lift || 0;
-    var e = o.still ? -0.2 : lift > 0.05 ? 1 : Math.cos(g);      // 1 stretched out, -1 bunched
-    var str = 1 + 0.08 * e, ys = function (y) { return y * str; };
+    var e = gallopE(o, -0.2);
+    var str = hareStretch(o), ys = function (y) { return y * str; };
     var LEGS = [], HIND = [];
     [-1, 1].forEach(function (k) {
       /* forelegs: reaching ahead under the chin in the air, back under the
@@ -7229,31 +7408,7 @@ var Game = (function () {
     c.fillStyle = sc;
     c.beginPath(); c.ellipse(0, ys(28), 4.6, 4.2, 0, 0, 6.2832); c.fill();
 
-    /* the ears, from the crown behind the eyes, laid back along the neck
-       and shoulders (flatter the faster), parting a little at each bound */
-    [-1, 1].forEach(function (k) {
-      var spread = 0.16 + 0.07 * (o.still ? 0 : Math.sin(g + 0.8)) - ang * 0.3 * k;
-      if (DETAIL) spread = 0.85;                      // close up: laid back to each side, not down over his chest
-      c.save();
-      c.translate(k * 3.2, ys(-24));
-      c.rotate(-k * spread);
-      c.fillStyle = S.body[1];
-      c.beginPath();
-      c.moveTo(0, -1.5);
-      c.bezierCurveTo(k * 5.5, 2, k * 5.2, 16, k * 2, 25);
-      c.bezierCurveTo(k * 0.5, 27.5, -k * 2.2, 25, -k * 2.4, 16);
-      c.bezierCurveTo(-k * 2.6, 7, -k * 1.6, 1, 0, -1.5);
-      c.closePath(); c.fill();
-      if (S.outline) { c.strokeStyle = S.outline; c.lineWidth = 1.1; c.stroke(); }
-      c.fillStyle = 'rgba(255,255,255,.25)';           // light along the ear's back
-      c.beginPath(); c.ellipse(k * 1.2, 11, 1.4, 8, -k * 0.08, 0, 6.2832); c.fill();
-      c.fillStyle = S.nose;                           // the black tip, at the back
-      c.beginPath();
-      c.moveTo(k * 3.4, 20); c.bezierCurveTo(k * 2.8, 24.5, k * 0.8, 27.4, -k * 1.2, 25.5);
-      c.bezierCurveTo(-k * 2.2, 23.5, -k * 2.3, 21.5, -k * 2.3, 20.5);
-      c.closePath(); c.fill();
-      c.restore();
-    });
+    hareEars(c, S, o, ang, ys);
     /* eyes high on the sides of the head, a pale ring round each */
     sideEyes(c, 6.6, ys(-28), 1.9, 'rgba(250,246,240,.9)');
     c.fillStyle = S.nose;                             // the nose, a soft Y at the tip
@@ -7270,9 +7425,16 @@ var Game = (function () {
      Norway lemming's black cap and back over golden flanks, a stub of a
      tail. Its legs go so fast they are a blur of tiny paws at the edges,
      diagonal pairs together, and the whole body wobbles from side to side. */
+  /* the lemming's scurry: his whole body rocks side to side as he runs.
+     A skin's painter draws after the body, so it rocks by the same amount
+     or his hat and kit stay still while his head moves under them */
+  function lemWobble(o) {
+    o = o || {};
+    return o.still || (o.lift || 0) > 0.05 ? 0 : Math.sin((o.gait || 0) * 1.8);
+  }
   function bodyLemming(c, S, ang, wag, o) {
     var g = (o.gait || 0) * 1.8, lift = o.lift || 0;
-    var w = o.still ? 0 : lift > 0.05 ? 0 : Math.sin(g);
+    var w = lemWobble(o);
     var LEGS = [];
     [-1, 1].forEach(function (k) {
       var a = o.still ? 0.3 : lift > 0.05 ? 1 : Math.sin(g + (k > 0 ? 0 : Math.PI));
@@ -7337,8 +7499,8 @@ var Game = (function () {
      curls short between them. Grey-white, with dark rosettes. */
   function bodyLeopard(c, S, ang, wag, o) {
     var P = Math.PI, g = o.gait || 0, lift = o.lift || 0;
-    var e = o.still ? 0 : lift > 0.05 ? 1 : Math.cos(g);
-    var str = 1 + 0.1 * e, ys = function (y) { return y * str; };
+    var e = gallopE(o, 0);
+    var str = leopardStretch(o), ys = function (y) { return y * str; };
     /* the tail first, under everything: out from the rump, swinging */
     var tsw = (o.still ? 0.3 : swing(o, 0.6, 0.3)) - ang * 0.6;
     var t0 = [0, ys(24)], t1 = [10 * Math.sin(tsw) + 3, ys(24) + 22], t2 = [22 * Math.sin(tsw + 0.5), ys(24) + 46];
@@ -7398,33 +7560,39 @@ var Game = (function () {
        and denser toward the head, plain spots on the head itself */
     var ROS = [[-6, -12, 3.2], [6, -10, 3], [-7, 0, 3.4], [7, 2, 3.4], [0, -4, 2.6],
                [-5, 12, 3.2], [5, 14, 3.2], [0, 7, 2.4], [-8, 20, 2.8], [8, 21, 2.6], [0, 22, 2.4]];
+    /* every darker middle in one path, then every blot and crown spot in
+       another: filled one by one they were some 56 draws a frame for the
+       phone's graphics chip (SYSTEMS 173). Nothing in either overlaps, and
+       each shape starts on its own outline so no line joins them. */
+    c.fillStyle = 'rgba(70,76,88,.28)';
+    c.beginPath();
+    ROS.forEach(function (r) {
+      var rx = r[0], ry = ys(r[1]), rr = r[2] * 0.8;
+      c.moveTo(rx + rr, ry); c.arc(rx, ry, rr, 0, 6.2832);
+    });
+    c.fill();
+    c.fillStyle = S.spot;
+    c.beginPath();
     ROS.forEach(function (r, ri) {
       var rx = r[0], ry = ys(r[1]);
-      c.fillStyle = 'rgba(70,76,88,.28)';
-      c.beginPath(); c.arc(rx, ry, r[2] * 0.8, 0, 6.2832); c.fill();
-      c.fillStyle = S.spot;
       var nb = 3 + (ri % 2), a0 = ri * 1.9;
       for (var bi = 0; bi < nb; bi++) {
-        var ba = a0 + bi / nb * 6.2832;
-        c.beginPath(); c.ellipse(rx + Math.cos(ba) * r[2], ry + Math.sin(ba) * r[2], r[2] * 0.4, r[2] * 0.28, ba, 0, 6.2832); c.fill();
+        var ba = a0 + bi / nb * 6.2832, bx = rx + Math.cos(ba) * r[2], by = ry + Math.sin(ba) * r[2], brx = r[2] * 0.4;
+        c.moveTo(bx + Math.cos(ba) * brx, by + Math.sin(ba) * brx);
+        c.ellipse(bx, by, brx, r[2] * 0.28, ba, 0, 6.2832);
       }
     });
-    c.fillStyle = S.spot;
     /* small spots on the crown, behind the eyes and between the ears:
        set round the face they drew a second face in a close-up */
     [[0, -26.5], [-2.6, -24.5], [2.6, -24.5], [-1.2, -22.4], [1.4, -22.2], [-4.6, -27.6], [4.6, -27.6]].forEach(function (d) {
-      c.beginPath(); c.arc(d[0], ys(d[1]), 0.7, 0, 6.2832); c.fill();
+      var dx = d[0], dy = ys(d[1]);
+      c.moveTo(dx + 0.7, dy); c.arc(dx, dy, 0.7, 0, 6.2832);
     });
+    c.fill();
     softPatch(c, 0, ys(-35), 4.6, 3.4, 'rgba(236,238,242,.8)');      // pale muzzle
     c.restore();
     furStrokes(c, build, -12, 12, -26, 26, 'rgba(255,255,255,.18)', 'rgba(30,34,40,.1)');
-    /* short round ears set wide, dark at the back with a pale spot */
-    if (!DETAIL) [-1, 1].forEach(function (k) {      // at the back of the head, clear of the eyes
-      c.fillStyle = S.body[2];
-      c.beginPath(); c.ellipse(k * 7.4, ys(-25.5), 3, 2.6, k * 0.6, 0, 6.2832); c.fill();
-      c.fillStyle = S.mark;
-      c.beginPath(); c.ellipse(k * 7.6, ys(-25.2), 1.4, 1.1, k * 0.6, 0, 6.2832); c.fill();
-    });
+    leopardEars(c, S, ys);
     if (DETAIL) {                                    // close up: the pale grey-green of a snow leopard's eyes
       [-1, 1].forEach(function (k) {
         c.fillStyle = '#c9d6c2';
@@ -7788,6 +7956,13 @@ var Game = (function () {
   function litBody(c, paint) {
     var T = c.getTransform ? c.getTransform() : null;
     if (!T || typeof document === 'undefined') { paint(c); return; }
+    /* At low effects, on the hill, he is painted straight onto it with no
+       buffer and no light over him: on a slow phone's graphics chip that
+       buffer cost 4-6 fps on every creature (OPPO A9 2020, 18 Nov 2026),
+       and the light is looks only. A painting that keeps the look in plain
+       memory moved the cost onto the script instead (SYSTEMS 173). Off the
+       hill (the market, the comic) he is always lit. */
+    if (SPARE && HILL) { paint(c); return; }
     var k = Math.sqrt(T.a * T.a + T.b * T.b);
     var half = Math.ceil(88 * k);                    // the body, antlers and all, fits in 88 units
     if (half < 8 || half > 1400) { paint(c); return; }
@@ -7871,7 +8046,2342 @@ var Game = (function () {
     return true;
   }
   var SHADOW_K = { penguin: [1, 1], lemming: [0.55, 0.62], hare: [0.62, 0.95], leopard: [0.62, 1.0] };
+  /* ================== a creature's own skin (1.3.0) ==================
+     Each creature has one skin of its own, a whole new character, not a
+     hat that every animal shares (the owner, 17 Nov 2026: "zombie penguin
+     for the plain penguin, Santa riding the reindeer"). A skin is paint
+     only: new colours for the coat (pal, laid over the creature's own,
+     sp over a penguin's beak and feet) and things painted over the body
+     (paint), placed by the body's own head (WEAR_AT, measured off the
+     animals drawn on a grid). The catalogue, the prices and the order are
+     in skins.js (ALT_SKINS); never a perk. */
+  /* head centre, its radius, the eyes (y, half their spread), in the
+     body's own units, forward being up */
+  var WEAR_AT = {
+    penguin: { hy: -27, hr: 14, ey: -27.2, es: 7 },
+    seal:    { hy: -30, hr: 13, ey: -31,   es: 6.6 },
+    lemming: { hy: -21, hr: 8,  ey: -20.5, es: 6.2 },
+    reindeer:{ hy: -39, hr: 8,  ey: -38,   es: 6.4 },
+    ox:      { hy: -31, hr: 10, ey: -32.5, es: 10.6 },
+    hare:    { hy: -32, hr: 9,  ey: -28,   es: 6.6 },
+    leopard: { hy: -33, hr: 10, ey: -31,   es: 4.6 },
+    owl:     { hy: -13, hr: 9,  ey: -16,   es: 4.2 },
+    walrus:  { hy: -26, hr: 12, ey: -26,   es: 11 },
+    orca:    { hy: -33, hr: 12, ey: -35,   es: 8.2 }
+  };
+  function wearAt(S) { return (S.shape === 'reindeer' && S.horns) ? WEAR_AT.ox : (WEAR_AT[S.shape] || WEAR_AT.penguin); }
+  function shade(col, t) { return t >= 0 ? mixHex(col, '#ffffff', t) : mixHex(col, '#000000', -t); }
+  function dropShadow(c, x, y, rx, ry) {
+    c.fillStyle = 'rgba(30,40,60,.24)';
+    c.beginPath(); c.ellipse(x + 1.6, y + 2.2, rx, ry, 0, 0, 6.2832); c.fill();
+  }
+  /* a hat seen from straight above: the brim, the crown, a band */
+  function topHat(c, x, y, r, col, band) {
+    dropShadow(c, x, y, r * 1.45, r * 1.3);
+    c.fillStyle = shade(col, -0.25);
+    c.beginPath(); c.ellipse(x, y, r * 1.45, r * 1.3, 0, 0, 6.2832); c.fill();
+    var g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    g.addColorStop(0, shade(col, 0.28)); g.addColorStop(1, col);
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill();
+    if (band) { c.strokeStyle = band; c.lineWidth = r * 0.22; c.beginPath(); c.arc(x, y, r * 0.9, 0, 6.2832); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(x - r * 0.3, y - r * 0.35, r * 0.4, r * 0.22, -0.6, 0, 6.2832); c.fill();
+  }
+  function eyePatch(c, x, y, r, A) {
+    c.strokeStyle = '#151820'; c.lineWidth = Math.max(0.8, r * 0.28);
+    c.beginPath(); c.moveTo(x - r * 2.2, y - r * 1.6); c.lineTo(x + r * 2.6, y + r * 1.2); c.stroke();
+    c.fillStyle = '#151820'; c.beginPath(); c.ellipse(x, y, r * 1.15, r * 1.0, 0.4, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.ellipse(x - r * 0.3, y - r * 0.35, r * 0.45, r * 0.25, -0.4, 0, 6.2832); c.fill();
+  }
+  function stitches(c, x0, y0, x1, y1, n, col) {
+    c.strokeStyle = col; c.lineCap = 'round';
+    c.lineWidth = 1.2; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+    var dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * 2.4, ny = dx / L * 2.4;
+    c.lineWidth = 0.9; c.beginPath();
+    for (var i = 0; i <= n; i++) { var t = i / n, px = x0 + dx * t, py = y0 + dy * t; c.moveTo(px - nx, py - ny); c.lineTo(px + nx, py + ny); }
+    c.stroke();
+  }
+  /* glint4 paints into ctx; a skin's sparkle goes into the context it is
+     given (a portrait, the market's window), not the hill's */
+  function sparkle(c, x, y, s, a) { var keep = ctx; ctx = c; try { glint4(x, y, s, a); } finally { ctx = keep; } }
+  function crownTop(c, x, y, r) {
+    var n = 5, k;
+    dropShadow(c, x, y, r * 1.2, r * 1.2);
+    c.beginPath();
+    for (k = 0; k < n * 2; k++) { var a = k / (n * 2) * 6.2832 - Math.PI / 2, rr = k % 2 ? r * 0.78 : r * 1.25; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    c.closePath();
+    var g = c.createRadialGradient(x - r * 0.4, y - r * 0.4, r * 0.1, x, y, r * 1.3);
+    g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#f0c43c'); g.addColorStop(1, '#a8740c');
+    c.fillStyle = g; c.fill(); c.strokeStyle = '#7a520a'; c.lineWidth = Math.max(0.6, r * 0.08); c.stroke();
+    c.fillStyle = '#c0202e'; c.beginPath(); c.arc(x, y, r * 0.5, 0, 6.2832); c.fill();
+    var gems = ['#e2364a', '#2f8be0', '#2fbf6e', '#9a4fe0', '#e2364a'];
+    for (k = 0; k < n; k++) { var b = k / n * 6.2832 - Math.PI / 2; c.fillStyle = gems[k]; c.beginPath(); c.arc(x + Math.cos(b) * r, y + Math.sin(b) * r, Math.max(0.9, r * 0.15), 0, 6.2832); c.fill(); }
+  }
+  /* where the elf's hat point is flung: -1 over his left shoulder, 1 over
+     his right; it goes to the side away from where he steers, as a loose
+     thing would, and stays there while he runs straight (ELF_AIM is the
+     side it is going to, ELF_FLING where it is now, eased toward it) */
+  var ELF_FLING = 1, ELF_AIM = 1;
+  /* the same for the wizard's hat point (her own, so the two never pull
+     at each other) */
+  var WIZ_FLING = 1, WIZ_AIM = 1;
+  /* shared by the skins' painters (redrawn 17 Nov 2026): the shadow every
+     piece throws toward the bottom right, a hat tipped back so its side
+     shows, a tapering ribbon along a curve (tails, manes, a hat's point),
+     shaded as one shape, and a five-pointed star */
+  var SHD = 'rgba(25,32,48,.3)';
+  /* A cloak over a creature's shoulders, seen from above: wider than he is
+     at a scalloped hem, pleats fanning from the shoulders to each fold of
+     it, its lining showing past the edges where the cloth billows, a braid
+     along the hem; the hem ripples as he runs and swings out behind him in
+     a turn. Made for the pirate; the owner asked for the viking's the same
+     (18 Nov 2026). G is the cut: the neck (nx, ny), the shoulder (sx, sy)
+     and its curve (scx, scy), the side's curve (sdx, sdy), the hem's half
+     width hw, its ends' y hy and sag in the middle, and where the pleats
+     start (pt). C is the cloth: cols (three, light to dark), lining,
+     light and dark (the pleats), far and near (the shade round his back),
+     braid (three) and, if it is woven, weave (dashes along the braid). */
+  function capePaint(c, o, G, C) {
+    var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, i, x;
+    var sway = run ? -clamp(o.turn || 0, -1, 1) * 3.4 : 0;
+    var wv = function (xx) { return run ? Math.sin(g * 2 + xx * 0.32) * 1.2 : Math.sin(xx * 0.32) * 0.45; };
+    var HW = G.hw, NF = 6, len = G.hy + G.sag - G.ny;
+    var hemY = function (xx) { var u = (xx - sway) / HW; return G.hy + G.sag * (1 - u * u) + wv(xx); };
+    var hemPts = [];
+    for (i = 0; i <= NF; i++) { x = -HW + sway + i * 2 * HW / NF; hemPts.push([x, hemY(x)]); }
+    var cloak = function (dx, dy) {
+      c.beginPath(); c.moveTo(-G.nx + dx, G.ny + dy);
+      c.quadraticCurveTo(-G.scx + dx, G.scy + dy, -G.sx + dx, G.sy + dy);
+      c.quadraticCurveTo(-G.sdx + sway * 0.3 + dx, G.sdy + dy, hemPts[0][0] + dx, hemPts[0][1] + dy);
+      for (i = 1; i <= NF; i++) {
+        var p0 = hemPts[i - 1], p1 = hemPts[i];
+        c.quadraticCurveTo((p0[0] + p1[0]) / 2 + dx, Math.max(p0[1], p1[1]) + 2.6 + dy, p1[0] + dx, p1[1] + dy);
+      }
+      c.quadraticCurveTo(G.sdx + sway * 0.3 + dx, G.sdy + dy, G.sx + dx, G.sy + dy);
+      c.quadraticCurveTo(G.scx + dx, G.scy + dy, G.nx + dx, G.ny + dy);
+      c.quadraticCurveTo(dx, G.ny + 2.6 + dy, -G.nx + dx, G.ny + dy); c.closePath();
+    };
+    c.fillStyle = SHD; cloak(1.5, 1.9); c.fill();
+    /* the lining, showing past the edges where the cloth billows */
+    c.save(); c.translate(sway * 0.12, 0.9); c.scale(1.035, 1.01);
+    c.fillStyle = C.lining; cloak(0, 0); c.fill();
+    c.restore();
+    var clg = c.createLinearGradient(-G.sx + 2.6, G.ny + 0.6, G.sx - 2.6, G.hy + G.sag + 0.5);
+    clg.addColorStop(0, C.cols[0]); clg.addColorStop(0.5, C.cols[1]); clg.addColorStop(1, C.cols[2]);
+    c.fillStyle = clg; cloak(0, 0); c.fill();
+    c.save(); cloak(0, 0); c.clip();
+    /* pleats fanning from the shoulders to each fold of the hem */
+    for (i = 0; i < NF; i++) {
+      var h0 = hemPts[i], h1 = hemPts[i + 1], mx = (h0[0] + h1[0]) / 2;
+      var top = G.pt + Math.abs(mx) * 0.1;
+      c.fillStyle = C.light;
+      c.beginPath(); c.moveTo(mx * 0.42 - 1, top); c.lineTo(h0[0] + 0.6, h0[1] + 1); c.lineTo(mx - 0.4, Math.max(h0[1], h1[1]) + 3); c.closePath(); c.fill();
+      c.fillStyle = C.dark;
+      c.beginPath(); c.moveTo(mx * 0.42 + 1, top); c.lineTo(mx + 0.4, Math.max(h0[1], h1[1]) + 3); c.lineTo(h1[0] - 0.6, h1[1] + 1); c.closePath(); c.fill();
+    }
+    /* rounded over his back: the far side in shade, light on the near shoulder */
+    c.fillStyle = C.far; c.beginPath(); c.ellipse(G.sx - 1.6 + sway * 0.5, G.sdy, 7.5 * G.sx / 18.6, 26 * len / 41.1, -0.1, 0, 6.2832); c.fill();
+    c.fillStyle = C.near; c.beginPath(); c.ellipse(-G.sx * 0.484, G.sy + 1.4, 6.5 * G.sx / 18.6, 9 * len / 41.1, 0.3, 0, 6.2832); c.fill();
+    c.restore();
+    /* the braid along the hem */
+    var hem = function (dx, dy) {
+      c.beginPath(); c.moveTo(hemPts[0][0] + dx, hemPts[0][1] + dy);
+      for (i = 1; i <= NF; i++) { var p0 = hemPts[i - 1], p1 = hemPts[i]; c.quadraticCurveTo((p0[0] + p1[0]) / 2 + dx, Math.max(p0[1], p1[1]) + 2.6 + dy, p1[0] + dx, p1[1] + dy); }
+    };
+    c.strokeStyle = C.braid[0]; c.lineWidth = C.weave ? 2.6 : 1.8; hem(0.3, -0.6); c.stroke();
+    c.strokeStyle = C.braid[1]; c.lineWidth = C.weave ? 1.8 : 1; hem(0, -0.9); c.stroke();
+    if (C.weave) { c.strokeStyle = C.weave; c.lineWidth = 0.7; c.setLineDash([0.9, 1.3]); hem(0, -0.9); c.stroke(); c.setLineDash([]); }
+    c.strokeStyle = C.braid[2]; c.lineWidth = 0.35; hem(-0.2, C.weave ? -1.6 : -1.2); c.stroke();
+    return hemPts;                                  // for anything that holds the hem (the magician's doves)
+  }
+  function hat25(c, x, y, rx, ry, h, col, band) {
+    var cyl = function (dx, dy, hh) {
+      c.beginPath(); c.moveTo(x - rx + dx, y + dy); c.lineTo(x - rx + dx, y + hh + dy);
+      c.ellipse(x + dx, y + hh + dy, rx, ry, 0, Math.PI, 0, true);
+      c.lineTo(x + rx + dx, y + dy); c.ellipse(x + dx, y + dy, rx, ry, 0, 0, Math.PI, true); c.closePath();
+    };
+    c.fillStyle = SHD; c.beginPath(); c.ellipse(x + 1.4, y + 1.8, rx * 1.6, ry * 1.7, 0, 0, 6.2832); c.fill();
+    cyl(1.4, 1.8, h); c.fill();
+    var bg = c.createRadialGradient(x - rx * 0.6, y - ry * 0.8, 0.3, x, y, rx * 1.6);
+    bg.addColorStop(0, shade(col, 0.3)); bg.addColorStop(1, shade(col, -0.2));
+    c.fillStyle = bg; c.beginPath(); c.ellipse(x, y, rx * 1.6, ry * 1.7, 0, 0, 6.2832); c.fill();
+    var sg = c.createLinearGradient(x - rx, 0, x + rx, 0);
+    sg.addColorStop(0, shade(col, 0.22)); sg.addColorStop(0.35, col); sg.addColorStop(1, shade(col, -0.45));
+    c.fillStyle = sg; cyl(0, 0, h); c.fill();
+    if (band) { c.fillStyle = band; cyl(0, 0, h * 0.32); c.fill(); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + rx * 0.3, y, rx * 0.7, h * 0.32); }
+    var tg = c.createRadialGradient(x - rx * 0.4, y + h - ry * 0.4, 0.2, x, y + h, rx);
+    tg.addColorStop(0, shade(col, 0.35)); tg.addColorStop(1, shade(col, 0.05));
+    c.fillStyle = tg; c.beginPath(); c.ellipse(x, y + h, rx, ry, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = Math.max(0.4, rx * 0.12);
+    c.beginPath(); c.moveTo(x - rx * 0.6, y + h * 0.4); c.lineTo(x - rx * 0.6, y + h * 0.95); c.stroke();
+  }
+  function ribbon(spine, n, wid) {
+    var L = [], R = [], M = [];
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, a = spine(Math.max(0, t - 0.03)), b = spine(Math.min(1, t + 0.03)), p = spine(t);
+      var tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, w = wid(t);
+      L.push([p[0] + ty / tl * w, p[1] - tx / tl * w]); R.push([p[0] - ty / tl * w, p[1] + tx / tl * w]); M.push([p[0], p[1], tx / tl, ty / tl, w]);
+    }
+    return { mid: M, path: function (c, dx, dy) {
+      c.beginPath(); c.moveTo(L[0][0] + dx, L[0][1] + dy);
+      for (var j = 1; j <= n; j++) c.lineTo(L[j][0] + dx, L[j][1] + dy);
+      for (j = n; j >= 0; j--) c.lineTo(R[j][0] + dx, R[j][1] + dy);
+      c.closePath();
+    } };
+  }
+  function ribbonPaint(c, rb, col, dark, s) {
+    s = s || 1;
+    c.fillStyle = SHD; rb.path(c, 1.3, 1.7); c.fill();
+    c.fillStyle = dark; rb.path(c, 0, 0); c.fill();
+    c.save(); rb.path(c, 0, 0); c.clip(); c.fillStyle = col; rb.path(c, -1.2 * s, -0.9 * s); c.fill(); c.restore();
+  }
+  function star5(c, x, y, r, col) {
+    c.fillStyle = col; c.beginPath();
+    for (var q = 0; q < 10; q++) { var a = q / 10 * 6.2832 - Math.PI / 2, rr = q % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    c.closePath(); c.fill();
+  }
+  var ALT_PAINT = {
+    /* Snowcap — the zombie penguin: grey-green and blotched, a scar stitched
+       across the back, one eye patched with a rag, a bandage on a flipper */
+    zombie: { pal: { body: ['#8ea67e', '#5b7550', '#2c3d27'], flipper: ['#86a076', '#52704a', '#2a3a25'] },
+              sp: { beak: '#55513e', feet: '#9a9874', edge: 'rgba(60,60,40,.5)', eye: '#d8e04a', cheek: 'rgba(70,40,90,.3)' },
+      /* Snowcap the zombie, drawn with the care of Father Christmas (the
+         owner, 17 Nov 2026: more detail, more shadows, clearer): skin gone
+         green and blotched with rot, a few holes, a scar stitched across
+         his back, a dirty bandage round his neck, knotted, its loose ends
+         flapping as he runs, one eye dead and milky under a stitched
+         scratch, the other yellow and bloodshot, and flies circling his
+         head. Every piece throws its shadow
+         toward the bottom right like everything on the hill. */
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* rot: dark blotches with a paler rim, and two holes */
+        [[-9, -3, 4.4], [8.5, 7, 3.6], [-3.5, 13, 3], [12, -9, 2.6], [-12.5, 9, 2.4]].forEach(function (b) {
+          var rg = c.createRadialGradient(b[0], b[1], 0.3, b[0], b[1], b[2]);
+          rg.addColorStop(0, 'rgba(38,52,26,.65)'); rg.addColorStop(0.7, 'rgba(60,80,40,.45)'); rg.addColorStop(1, 'rgba(160,190,120,0)');
+          c.fillStyle = rg; c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.2832); c.fill();
+        });
+        [[-8, -1.5, 1.3], [9.5, 8.4, 1]].forEach(function (h) {
+          c.fillStyle = '#1a2214'; c.beginPath(); c.ellipse(h[0], h[1], h[2], h[2] * 0.8, 0.4, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(200,220,170,.5)'; c.beginPath(); c.ellipse(h[0] - h[2] * 0.4, h[1] - h[2] * 0.5, h[2] * 0.6, h[2] * 0.25, 0.4, 0, 6.2832); c.fill();
+        });
+        /* the scar: a pink wound across his back, stitched shut */
+        var x0 = -12.5, y0 = -12, x1 = 12.5, y1 = 10;
+        c.lineCap = 'round';
+        c.strokeStyle = 'rgba(20,28,16,.35)'; c.lineWidth = 3.2; c.beginPath(); c.moveTo(x0 + 1.2, y0 + 1.6); c.lineTo(x1 + 1.2, y1 + 1.6); c.stroke();
+        c.strokeStyle = '#b8666a'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+        c.strokeStyle = '#6a2a30'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+        var dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * 3.2, ny = dx / L * 3.2;
+        for (k = 1; k < 9; k++) {
+          var t = k / 9, px = x0 + dx * t, py = y0 + dy * t;
+          c.strokeStyle = 'rgba(20,28,16,.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(px - nx + 0.8, py - ny + 1); c.lineTo(px + nx + 0.8, py + ny + 1); c.stroke();
+          c.strokeStyle = '#1e1a12'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(px - nx, py - ny); c.lineTo(px + nx, py + ny); c.stroke();
+        }
+        /* a dirty bandage wound round his neck (the owner preferred it there
+           to one over his eye), two turns of it, stained, tied in a knot on
+           the bandage itself at his right, its two loose ends flapping
+           behind him as he runs */
+        var ny0 = A.hy + 5, nrx = A.hr * 0.95, nry = A.hr * 0.55, t0 = Math.PI * 0.05, t1 = Math.PI * 0.95;
+        var flap = run ? Math.sin(g * 2.6) : 0;
+        c.lineCap = 'round';
+        c.strokeStyle = 'rgba(20,28,16,.32)'; c.lineWidth = 5.6;
+        c.beginPath(); c.ellipse(1.2, ny0 + 1.7, nrx, nry, 0, t0, t1); c.stroke();
+        [[0, '#d6cdac', 4.6], [-1.3, '#ece6cc', 3.2]].forEach(function (w) {
+          c.strokeStyle = w[1]; c.lineWidth = w[2];
+          c.beginPath(); c.ellipse(0, ny0 + w[0], nrx + w[0] * 0.3, nry, 0, t0 + 0.04, t1 - 0.04); c.stroke();
+        });
+        c.strokeStyle = 'rgba(120,100,60,.5)'; c.lineWidth = 0.55;
+        for (k = 1; k < 9; k++) {
+          var tt = t0 + (t1 - t0) * k / 9, mx = Math.cos(tt) * nrx, my = ny0 + Math.sin(tt) * nry;
+          c.beginPath(); c.moveTo(mx - Math.cos(tt) * 2.2 - 0.8, my - Math.sin(tt) * 2.2); c.lineTo(mx + Math.cos(tt) * 2.2 + 0.8, my + Math.sin(tt) * 2.2); c.stroke();
+        }
+        c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 0.6;
+        c.beginPath(); c.ellipse(0, ny0 - 1.8, nrx - 0.4, nry - 1, 0, t0 + 0.2, t1 - 0.2); c.stroke();
+        var bx = Math.cos(Math.PI * 0.62) * nrx, by = ny0 + Math.sin(Math.PI * 0.62) * nry;
+        var bl = c.createRadialGradient(bx, by, 0.2, bx, by, 3); bl.addColorStop(0, 'rgba(130,30,26,.7)'); bl.addColorStop(1, 'rgba(130,30,26,0)');
+        c.fillStyle = bl; c.beginPath(); c.arc(bx, by, 3, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(110,100,50,.35)'; c.beginPath(); c.ellipse(-nrx * 0.7, ny0 + nry * 0.6, 1.8, 1.1, 0.4, 0, 6.2832); c.fill();
+        /* the knot sits on the band; the ends come out of it */
+        var tk = Math.PI * 0.3, kx = Math.cos(tk) * nrx, ky = ny0 + Math.sin(tk) * nry;
+        [[0, 2.5, '#e6dfc4'], [1, 2.1, '#d4ccae']].forEach(function (e) {
+          var j = e[0], sw = flap * (j ? -2 : 2.4), ex = kx + 4 + j * 3, ey = ky + 9 + j * 1.5;
+          c.strokeStyle = 'rgba(20,28,16,.3)'; c.lineWidth = e[1] + 0.3;
+          c.beginPath(); c.moveTo(kx + 1.2, ky + 1.6); c.quadraticCurveTo(kx + 2 + sw + 1.2, ky + 5 + 1.6, ex + sw * 1.4 + 1.2, ey + 1.6); c.stroke();
+          c.strokeStyle = e[2]; c.lineWidth = e[1];
+          c.beginPath(); c.moveTo(kx, ky); c.quadraticCurveTo(kx + 2 + sw, ky + 5, ex + sw * 1.4, ey); c.stroke();
+          c.strokeStyle = 'rgba(120,100,60,.45)'; c.lineWidth = 0.45;
+          c.beginPath(); c.moveTo(ex + sw * 1.4 - 1, ey - 0.4); c.lineTo(ex + sw * 1.4 + 1, ey + 0.4); c.stroke();
+        });
+        c.fillStyle = 'rgba(20,28,16,.3)'; c.beginPath(); c.ellipse(kx + 1.1, ky + 1.5, 2.6, 2.1, 0.5, 0, 6.2832); c.fill();
+        var kg = c.createRadialGradient(kx - 0.8, ky - 0.8, 0.3, kx, ky, 2.6); kg.addColorStop(0, '#f2ecd4'); kg.addColorStop(1, '#bdb290');
+        c.fillStyle = kg; c.beginPath(); c.ellipse(kx, ky, 2.5, 2, 0.5, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(120,100,60,.6)'; c.lineWidth = 0.5; c.beginPath(); c.arc(kx, ky, 1.2, 0.6, 4.2); c.stroke();
+        /* one eye dead: milky, no pupil, a scratch across the brow above it */
+        var dx2 = -A.es, dy2 = A.ey;
+        var de = c.createRadialGradient(dx2 - 1, dy2 - 1, 0.4, dx2, dy2, 5.4); de.addColorStop(0, '#f2f4ea'); de.addColorStop(1, '#b8c2b0');
+        c.fillStyle = de; c.beginPath(); c.arc(dx2, dy2, 5.5, 0, 6.2832); c.fill();
+        var di = c.createRadialGradient(dx2 + 0.4, dy2 + 0.4, 0.2, dx2 + 0.4, dy2 + 0.4, 3.2); di.addColorStop(0, 'rgba(190,200,205,.9)'); di.addColorStop(1, 'rgba(150,165,170,.6)');
+        c.fillStyle = di; c.beginPath(); c.arc(dx2 + 0.4, dy2 + 0.4, 3.1, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(40,50,40,.55)'; c.lineWidth = 0.8; c.beginPath(); c.arc(dx2, dy2, 5.5, 0, 6.2832); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(dx2 - 2, dy2 - 2.2, 1.4, 0.8, -0.6, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(20,28,16,.3)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(dx2 - 5 + 0.8, dy2 - 8 + 1.1); c.lineTo(dx2 + 4 + 0.8, dy2 - 4 + 1.1); c.stroke();
+        c.strokeStyle = '#a85a5e'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(dx2 - 5, dy2 - 8); c.lineTo(dx2 + 4, dy2 - 4); c.stroke();
+        c.strokeStyle = '#1e1a12'; c.lineWidth = 0.6;
+        [0.3, 0.65].forEach(function (f) { var sx = dx2 - 5 + 9 * f, sy = dy2 - 8 + 4 * f; c.beginPath(); c.moveTo(sx - 0.9, sy + 1.6); c.lineTo(sx + 0.9, sy - 1.6); c.stroke(); });
+        /* the other eye, bulging, bloodshot round its yellow */
+        c.strokeStyle = 'rgba(200,40,40,.55)'; c.lineWidth = 0.45;
+        for (k = 0; k < 4; k++) { var a3 = k * 1.6 + 0.4; c.beginPath(); c.moveTo(A.es + Math.cos(a3) * 4.6, A.ey + Math.sin(a3) * 4.4); c.lineTo(A.es + Math.cos(a3) * 3, A.ey + Math.sin(a3) * 2.8); c.stroke(); }
+        /* the flies, circling his head */
+        for (k = 0; k < 3; k++) {
+          var fa = (run ? g * 0.9 : 0) + k * 2.1, fr = A.hr + 5 + (k % 2) * 3;
+          var fx = Math.cos(fa) * fr, fy = A.hy - 2 + Math.sin(fa) * fr * 0.7;
+          c.fillStyle = 'rgba(20,28,16,.25)'; c.beginPath(); c.arc(fx + 2, fy + 3, 1.3, 0, 6.2832); c.fill();
+          var wing = run ? 0.5 + 0.5 * Math.abs(Math.sin(g * 9 + k)) : 0.8;
+          c.fillStyle = 'rgba(230,240,255,' + (0.5 * wing + 0.2).toFixed(2) + ')';
+          c.beginPath(); c.ellipse(fx - 1.5, fy - 0.8, 1.7, 0.85, -0.6, 0, 6.2832); c.ellipse(fx + 1.5, fy - 0.8, 1.7, 0.85, 0.6, 0, 6.2832); c.fill();
+          c.fillStyle = '#16181e'; c.beginPath(); c.ellipse(fx, fy, 1.1, 1.5, fa, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(120,200,120,.6)'; c.beginPath(); c.arc(fx, fy - 0.9, 0.5, 0, 6.2832); c.fill();
+        }
+      } },
+    /* Mitten — the elf, drawn with the care of Father Christmas (the owner,
+       17 Nov 2026): a green elf's hat pushed back on his head, a white fur
+       brim behind his eyes, its long point flopping over his back with a
+       gold bell swinging at the tip; pointed elf ears out at the sides; the
+       scarf red; green shoes curling up at the toes, a little bell on each.
+       Everything throws its shadow toward the bottom right. */
+    elf: { pal: { accent: '#d6303a', scarfTail: 0.72 }, sp: { feet: '#2a8a40', edge: 'rgba(8,48,20,.7)' },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = (o && o.gait) || 0, gr = run ? g : 0;
+        var sh = 'rgba(25,32,48,.3)';
+        /* the shoes' curled toes, in step with the feet (same kick as the
+           penguin's own feet, so they stay on them) */
+        [-1, 1].forEach(function (k) {
+          var kick = Math.max(0, Math.sin(g + (k > 0 ? 0 : Math.PI)));
+          c.save(); c.translate(k * 8.5, 22 + kick * 4.5); c.rotate(k * (0.25 + 0.35 * kick));
+          c.lineCap = 'round';
+          c.strokeStyle = sh; c.lineWidth = 2.6;
+          c.beginPath(); c.moveTo(k * 0.4 + 1, 12.4 + 1.3); c.quadraticCurveTo(k * 0.6 + 1, 18 + 1.3, k * 3.6 + 1, 18.2 + 1.3); c.quadraticCurveTo(k * 5 + 1, 16 + 1.3, k * 3.4 + 1, 15.2 + 1.3); c.stroke();
+          c.strokeStyle = '#2a8a40'; c.lineWidth = 2.4;
+          c.beginPath(); c.moveTo(k * 0.4, 12.4); c.quadraticCurveTo(k * 0.6, 18, k * 3.6, 18.2); c.quadraticCurveTo(k * 5, 16, k * 3.4, 15.2); c.stroke();
+          c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 0.6;
+          c.beginPath(); c.moveTo(k * -0.3, 13); c.quadraticCurveTo(k * -0.1, 17.4, k * 3, 17.4); c.stroke();
+          c.fillStyle = '#f0c43c'; c.beginPath(); c.arc(k * 3.4, 15.2, 1.3, 0, 6.2832); c.fill();
+          c.fillStyle = '#9a6a10'; c.beginPath(); c.arc(k * 3.4, 15.7, 0.4, 0, 6.2832); c.fill();
+          c.restore();
+        });
+        /* the pointed ears, coming out from under the hat's brim at its
+           sides, twitching as he runs */
+        [-1, 1].forEach(function (k) {
+          var tw = run ? Math.sin(g * 2 + (k > 0 ? 0 : 1.4)) * 0.09 : 0;
+          c.save(); c.translate(k * 9.5 + 1.2, -19.6 + k * 1.6); c.rotate(k * (tw - 0.12));
+          c.fillStyle = sh;
+          c.beginPath(); c.moveTo(1.2, -3.4 + 1.6); c.quadraticCurveTo(k * 7.5 + 1.2, -4.4 + 1.6, k * 14 + 1.2, 3.4 + 1.6); c.quadraticCurveTo(k * 6 + 1.2, 4.4 + 1.6, 1.2, 3.6 + 1.6); c.closePath(); c.fill();
+          var eg = c.createLinearGradient(0, -3, k * 10, 4); eg.addColorStop(0, S.body[0]); eg.addColorStop(1, S.body[1]);
+          c.fillStyle = eg;
+          c.beginPath(); c.moveTo(0, -3.4); c.quadraticCurveTo(k * 7.5, -4.4, k * 14, 3.4); c.quadraticCurveTo(k * 6, 4.4, 0, 3.6); c.closePath(); c.fill();
+          c.fillStyle = '#f2a6a8';
+          c.beginPath(); c.moveTo(k * 1.4, -1.6); c.quadraticCurveTo(k * 7, -2.4, k * 11.6, 2.6); c.quadraticCurveTo(k * 6, 2.4, k * 1.4, 2); c.closePath(); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(k * 6, -2.2, 3.2, 0.7, k * 0.2, 0, 6.2832); c.fill();
+          c.restore();
+        });
+        /* the hat, seen from above: its white fur brim a ring round the back
+           of his head, the crown a dome inside it, and the long point a soft
+           felt tube that narrows and streams out over his shoulder like a
+           tail in the wind, waving more toward its end as he runs; the bell hangs
+           off the very tip on a gold ring and follows it (a rigid cone, and
+           a bell set beside its tip, looked stuck on: the owner, 17 Nov) */
+        var side = 1;
+        if (run) {
+          var tn = (o && o.turn) || 0;
+          if (tn > 0.1) ELF_AIM = -1; else if (tn < -0.1) ELF_AIM = 1;
+          ELF_FLING += (ELF_AIM - ELF_FLING) * 0.14;
+          side = ELF_FLING;
+        }
+        var hx = 1.2, hy = -19, rx = 10.6, ry = 5.6, tilt = -0.16 * side;
+        /* it streams back over a shoulder, the one away from his turn
+           (straight down his middle it read as a trunk hanging from his
+           face; it only passes through there on its way across) */
+        var ph = run ? g * 1.7 : 1.1, sway = run ? Math.sin(g) * 0.06 : 0, LEN = 24, NS = 16;
+        var be = 0.98 * side + sway, dx0 = Math.sin(be), dy0 = Math.cos(be);
+        var spine = function (t) {
+          var wv = 4.2 * Math.pow(t, 1.3) * Math.sin(ph - t * 3.4), dr = 7 * t * t;
+          return [hx + 1.4 * side + dx0 * LEN * t + dy0 * wv, hy + 0.9 + dy0 * LEN * t - dx0 * wv + dr];
+        };
+        var lft = [], rgt = [], mid = [];
+        for (var i = 0; i <= NS; i++) {
+          var t = i / NS, p0 = spine(Math.max(0, t - 0.03)), p1 = spine(Math.min(1, t + 0.03)), pc = spine(t);
+          var tx = p1[0] - p0[0], ty = p1[1] - p0[1], tl = Math.hypot(tx, ty) || 1;
+          var nx = -ty / tl, ny = tx / tl, w = 6.2 * Math.pow(1 - t, 1.05) + 0.5;
+          lft.push([pc[0] - nx * w, pc[1] - ny * w]); rgt.push([pc[0] + nx * w, pc[1] + ny * w]); mid.push([pc[0], pc[1], tx / tl, ty / tl, w]);
+        }
+        var tube = function (dx, dy) {
+          c.beginPath(); c.moveTo(lft[0][0] + dx, lft[0][1] + dy);
+          for (var j = 1; j <= NS; j++) c.lineTo(lft[j][0] + dx, lft[j][1] + dy);
+          for (j = NS; j >= 0; j--) c.lineTo(rgt[j][0] + dx, rgt[j][1] + dy);
+          c.closePath();
+        };
+        var end = mid[NS], bx = end[0] + end[2] * 2.6, by = end[1] + end[3] * 2.6;
+        /* shadows: the brim, the tube and the bell */
+        c.fillStyle = sh;
+        c.beginPath(); c.ellipse(hx + 1.3, hy + 1.7, rx + 1.7, ry + 1.7, tilt, 0, 6.2832); c.fill();
+        tube(1.5, 1.9); c.fill();
+        c.beginPath(); c.arc(bx + 1.3, by + 1.6, 2.4, 0, 6.2832); c.fill();
+        /* the fur brim */
+        c.fillStyle = '#f2f2ec'; c.beginPath(); c.ellipse(hx, hy, rx + 1.6, ry + 1.6, tilt, 0, 6.2832); c.fill();
+        var ct = Math.cos(tilt), st = Math.sin(tilt);
+        for (var q = 0; q < 14; q++) {
+          var a = q / 14 * 6.2832, ex = Math.cos(a) * (rx + 0.9), ey = Math.sin(a) * (ry + 0.9);
+          var px = hx + ex * ct - ey * st, py = hy + ex * st + ey * ct, lo = Math.sin(a + 0.6) > 0;
+          c.fillStyle = lo ? 'rgba(150,168,192,.6)' : 'rgba(255,255,255,1)';
+          c.beginPath(); c.arc(px + (lo ? 0.4 : -0.3), py + (lo ? 0.5 : -0.4), 0.95, 0, 6.2832); c.fill();
+        }
+        /* the crown and the point are one piece of felt, so they are shaded
+           as one shape: all of it dark green first, then the light green of
+           the whole shape moved up and left over it, which leaves one dark
+           rim running unbroken round the crown and down the point (shaded
+           apart, two greens and a seam showed where they met: the owner) */
+        var crown = function (dx, dy) { c.beginPath(); c.ellipse(hx + dx, hy + dy, rx - 0.6, ry - 0.5, tilt, 0, 6.2832); };
+        c.fillStyle = '#17682e';
+        crown(0, 0); c.fill(); tube(0, 0); c.fill();
+        c.fillStyle = '#25913f';
+        [crown, tube].forEach(function (shape) {
+          c.save(); shape(0, 0); c.clip();
+          crown(-1.7, -1.2); c.fill(); tube(-1.7, -1.2); c.fill();
+          c.restore();
+        });
+        /* a soft light on top of the crown, fading out before its edge */
+        var cgl = c.createRadialGradient(hx - 3.4, hy - 1.8, 0.3, hx - 3.4, hy - 1.8, 5);
+        cgl.addColorStop(0, 'rgba(150,240,170,.5)'); cgl.addColorStop(1, 'rgba(150,240,170,0)');
+        c.fillStyle = cgl; c.beginPath(); c.arc(hx - 3.4, hy - 1.8, 5, 0, 6.2832); c.fill();
+        c.lineCap = 'round';
+        c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 0.9;
+        c.beginPath();
+        for (i = 4; i < NS - 3; i++) {
+          var m = mid[i], hn = (m[3] - m[2] > 0) ? -1 : 1;
+          var lx = m[0] + hn * m[3] * m[4] * 0.5, ly = m[1] - hn * m[2] * m[4] * 0.5;
+          if (i === 4) c.moveTo(lx, ly); else c.lineTo(lx, ly);
+        }
+        c.stroke();
+        c.strokeStyle = 'rgba(0,40,14,.3)'; c.lineWidth = 0.6;
+        [5, 10].forEach(function (k2) {
+          var m2 = mid[k2];
+          c.beginPath(); c.moveTo(m2[0] + m2[3] * m2[4] * 0.8, m2[1] - m2[2] * m2[4] * 0.8);
+          c.quadraticCurveTo(m2[0] + m2[2] * 1.4, m2[1] + m2[3] * 1.4, m2[0] - m2[3] * m2[4] * 0.8, m2[1] + m2[2] * m2[4] * 0.8); c.stroke();
+        });
+        /* the bell on its ring at the very tip */
+        var rgx = end[0] + end[2] * 0.6, rgy = end[1] + end[3] * 0.6;
+        var bg2 = c.createRadialGradient(bx - 0.8, by - 0.9, 0.3, bx, by, 2.5);
+        bg2.addColorStop(0, '#fff2b0'); bg2.addColorStop(0.5, '#f0c43c'); bg2.addColorStop(1, '#a8780e');
+        c.fillStyle = bg2; c.beginPath(); c.arc(bx, by, 2.4, 0, 6.2832); c.fill();
+        c.strokeStyle = '#5a3c06'; c.lineWidth = 0.45;
+        c.beginPath(); c.moveTo(bx - end[3] * 1.4 + end[2] * 0.6, by + end[2] * 1.4 + end[3] * 0.6); c.lineTo(bx + end[3] * 1.4 + end[2] * 0.6, by - end[2] * 1.4 + end[3] * 0.6); c.stroke();
+        c.fillStyle = '#5a3c06'; c.beginPath(); c.arc(bx + end[2] * 0.9, by + end[3] * 0.9, 0.6, 0, 6.2832); c.fill();
+        c.strokeStyle = '#c99a1c'; c.lineWidth = 0.7; c.beginPath(); c.arc(rgx, rgy, 0.9, 0, 6.2832); c.stroke();
+        c.fillStyle = '#1d6a32'; c.beginPath(); c.arc(end[0], end[1], 0.9, 0, 6.2832); c.fill();
+      } },
+    /* Puffin — the pirate (redrawn 17 Nov 2026 with the care of Father
+       Christmas: detail, shadows toward the bottom right, life as he runs).
+       His hat is the pirate's hat as everyone knows it, seen from the
+       front: wings swept up either side, the crown domed between his eyes,
+       gold on its edge, skull and bones on the front, its base on the back
+       of his head. The owner asked for it up on his head; a top-down
+       tricorn moved there read as a black muzzle over his face. A red
+       feather waves out from behind its right wing, a patch over his right
+       eye on a strap across his brow, a gold hoop swings from his left ear.
+       Over his shoulders a captain's cloak, navy, pleated, wider than he is
+       at a scalloped hem braided in gold, the crimson lining showing at its
+       edges and in the collar turned up round his head; the hem ripples as
+       he runs and swings out behind him in a turn */
+    pirate: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k, i, x;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        /* the cloak */
+        capePaint(c, o, { nx: 7, ny: -14.6, scx: 16, scy: -15.4, sx: 18.6, sy: -8.4, sdx: 21.8, sdy: 6, hw: 20.6, hy: 20.5, sag: 6, pt: -13 },
+          { cols: ['#36547f', '#1d3154', '#0d172c'], lining: '#7e1222', light: 'rgba(150,185,240,.13)', dark: 'rgba(2,6,18,.34)',
+            far: 'rgba(2,6,18,.3)', near: 'rgba(170,200,250,.14)', braid: ['rgba(60,38,4,.55)', '#d9a83a', 'rgba(255,236,170,.5)'] });
+        /* the collar, turned up round the back of his head: crimson inside,
+           gold on its edge, a gold clasp at each end */
+        var hy = A.hy;
+        var collar = function (dx, dy, r) { c.beginPath(); c.arc(dx, hy + dy, r, 0.62, Math.PI - 0.62); };
+        c.strokeStyle = SHD; c.lineWidth = 3.8; collar(1.2, 1.7, 16.4); c.stroke();
+        c.strokeStyle = '#18294a'; c.lineWidth = 3.6; collar(0, 0, 16.4); c.stroke();
+        c.strokeStyle = '#a81c2e'; c.lineWidth = 1.3; collar(0, 0, 15); c.stroke();
+        c.strokeStyle = '#d9a83a'; c.lineWidth = 0.6; collar(0, 0, 18.1); c.stroke();
+        [-1, 1].forEach(function (k) {
+          var bx = k * Math.cos(0.62) * 16.4, by = hy + Math.sin(0.62) * 16.4;
+          c.fillStyle = SHD; c.beginPath(); c.arc(bx + 0.9, by + 1.2, 1.8, 0, 6.2832); c.fill();
+          var bgr = c.createRadialGradient(bx - 0.6, by - 0.6, 0.2, bx, by, 1.8); bgr.addColorStop(0, '#fff2b0'); bgr.addColorStop(1, '#a87818');
+          c.fillStyle = bgr; c.beginPath(); c.arc(bx, by, 1.7, 0, 6.2832); c.fill();
+        });
+        /* the earring, a gold hoop swinging from his left ear */
+        var sw = run ? Math.sin(g * 2) * 0.45 : 0.2;
+        c.save(); c.translate(-13.4, -32.4); c.rotate(sw);
+        c.strokeStyle = SHD; c.lineWidth = 1.3; c.beginPath(); c.arc(1.1, 3.6, 1.9, 0, 6.2832); c.stroke();
+        c.strokeStyle = '#f0c43c'; c.lineWidth = 1.1; c.beginPath(); c.arc(0, 2, 1.9, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,255,230,.85)'; c.lineWidth = 0.5; c.beginPath(); c.arc(0, 2, 1.9, 3.5, 4.6); c.stroke();
+        c.restore();
+        /* the patch, its strap across his brow and down under the hat */
+        var ex = A.es, ey = A.ey;
+        var strap = function (dx, dy) { c.beginPath(); c.moveTo(-9.6 + dx, -37 + dy); c.quadraticCurveTo(0 + dx, -33.6 + dy, ex + dx, ey + dy); c.quadraticCurveTo(12 + dx, -24 + dy, 13.4 + dx, -20 + dy); };
+        c.strokeStyle = SHD; c.lineWidth = 1.6; strap(1.2, 1.6); c.stroke();
+        c.strokeStyle = '#15171d'; c.lineWidth = 1.2; strap(0, 0); c.stroke();
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(ex + 1.2, ey + 1.6, 4.6, 4.1, 0.35, 0, 6.2832); c.fill();
+        var pg = c.createRadialGradient(ex - 1.4, ey - 1.5, 0.3, ex, ey, 4.6); pg.addColorStop(0, '#3a3d48'); pg.addColorStop(1, '#0e0f14');
+        c.fillStyle = pg; c.beginPath(); c.ellipse(ex, ey, 4.5, 4, 0.35, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.45; c.setLineDash([0.8, 0.8]);
+        c.beginPath(); c.ellipse(ex, ey, 3.5, 3, 0.35, 0, 6.2832); c.stroke(); c.setLineDash([]);
+        c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.ellipse(ex - 1.5, ey - 1.6, 1.4, 0.7, -0.5, 0, 6.2832); c.fill();
+        /* the feather, its quill behind the hat's right wing, waving out */
+        var fw = run ? Math.sin(g * 1.6) * 0.24 : 0;
+        c.save(); c.translate(10.6, -20.6); c.rotate(-1.72 + fw);
+        var feather = function (dx, dy) { c.beginPath(); c.moveTo(dx, dy); c.quadraticCurveTo(3.8 + dx, 6 + dy, 0.8 + dx, 14.5 + dy); c.quadraticCurveTo(-2.8 + dx, 6.5 + dy, dx, dy); c.closePath(); };
+        c.fillStyle = SHD; c.save(); c.rotate(1.72 - fw); c.translate(1.2, 1.6); c.rotate(-1.72 + fw); feather(0, 0); c.restore(); c.fill();
+        var fg = c.createLinearGradient(-2, 0, 3, 13); fg.addColorStop(0, '#a8141e'); fg.addColorStop(1, '#ff6a5a');
+        c.fillStyle = fg; feather(0, 0); c.fill();
+        c.strokeStyle = 'rgba(255,225,215,.75)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(0, 0.4); c.quadraticCurveTo(0.9, 7, 0.8, 14); c.stroke();
+        c.strokeStyle = 'rgba(90,0,10,.45)'; c.lineWidth = 0.4;
+        for (k = 1; k < 6; k++) { var fy = k * 2.3; c.beginPath(); c.moveTo(0.7, fy); c.lineTo(2.8 - k * 0.2, fy + 1.5); c.moveTo(0.5, fy); c.lineTo(-1.9 + k * 0.15, fy + 1.5); c.stroke(); }
+        c.restore();
+        /* the hat, sitting on his head seen from the front as a pirate's hat
+           is known: wings swept up to a point either side, the crown domed
+           in the middle between his eyes, gold along its edge, the skull and
+           bones on the front; its base on the back of his head */
+        var hat = function (dx, dy) {
+          c.beginPath(); c.moveTo(-13.6 + dx, -14.6 + dy);
+          c.quadraticCurveTo(-18.8 + dx, -18 + dy, -17.8 + dx, -25.4 + dy);
+          c.quadraticCurveTo(-11 + dx, -20.4 + dy, -6.4 + dx, -21.2 + dy);
+          c.bezierCurveTo(-5.2 + dx, -25.6 + dy, -2.6 + dx, -26.4 + dy, dx, -26.4 + dy);
+          c.bezierCurveTo(2.6 + dx, -26.4 + dy, 5.2 + dx, -25.6 + dy, 6.4 + dx, -21.2 + dy);
+          c.quadraticCurveTo(11 + dx, -20.4 + dy, 17.8 + dx, -25.4 + dy);
+          c.quadraticCurveTo(18.8 + dx, -18 + dy, 13.6 + dx, -14.6 + dy);
+          c.quadraticCurveTo(dx, -11.4 + dy, -13.6 + dx, -14.6 + dy); c.closePath();
+        };
+        var rim = function (dx, dy) {
+          c.beginPath(); c.moveTo(-17.8 + dx, -25.4 + dy);
+          c.quadraticCurveTo(-11 + dx, -20.4 + dy, -6.4 + dx, -21.2 + dy);
+          c.bezierCurveTo(-5.2 + dx, -25.6 + dy, -2.6 + dx, -26.4 + dy, dx, -26.4 + dy);
+          c.bezierCurveTo(2.6 + dx, -26.4 + dy, 5.2 + dx, -25.6 + dy, 6.4 + dx, -21.2 + dy);
+          c.quadraticCurveTo(11 + dx, -20.4 + dy, 17.8 + dx, -25.4 + dy);
+        };
+        c.fillStyle = SHD; hat(1.5, 1.9); c.fill();
+        var hg = c.createLinearGradient(-12, -26, 10, -12); hg.addColorStop(0, '#3c3f4a'); hg.addColorStop(0.5, '#1d1e25'); hg.addColorStop(1, '#09090c');
+        c.fillStyle = hg; hat(0, 0); c.fill();
+        c.save(); hat(0, 0); c.clip();
+        /* the crown behind the brim, rounder and lit on the left */
+        var cg = c.createRadialGradient(-2.4, -24.4, 0.5, 0, -21, 7.6); cg.addColorStop(0, 'rgba(150,156,175,.55)'); cg.addColorStop(1, 'rgba(150,156,175,0)');
+        c.fillStyle = cg; c.beginPath(); c.ellipse(0, -21.6, 7, 5.6, 0, 0, 6.2832); c.fill();
+        /* the brim's lower edge turning under, and the wings rounding away */
+        c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(0, -11.6, 15, 3.6, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(160,166,185,.16)'; c.beginPath(); c.ellipse(-13.4, -21.4, 3, 5.4, -0.5, 0, 6.2832); c.fill();
+        c.restore();
+        c.strokeStyle = 'rgba(70,46,6,.6)'; c.lineWidth = 1.9; rim(0.3, 0.5); c.stroke();
+        c.strokeStyle = '#e0b440'; c.lineWidth = 1.15; rim(0, 0); c.stroke();
+        c.strokeStyle = 'rgba(255,242,190,.6)'; c.lineWidth = 0.4; rim(-0.2, -0.35); c.stroke();
+        /* the skull and bones */
+        var sy = -19.4;
+        c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1.1;
+        c.beginPath(); c.moveTo(-3.2 + 0.5, sy - 1.6 + 0.6); c.lineTo(3.2 + 0.5, sy + 2.8 + 0.6); c.moveTo(3.2 + 0.5, sy - 1.6 + 0.6); c.lineTo(-3.2 + 0.5, sy + 2.8 + 0.6); c.stroke();
+        c.strokeStyle = '#f2f0e6'; c.lineWidth = 0.95;
+        c.beginPath(); c.moveTo(-3.2, sy - 1.6); c.lineTo(3.2, sy + 2.8); c.moveTo(3.2, sy - 1.6); c.lineTo(-3.2, sy + 2.8); c.stroke();
+        c.fillStyle = '#f2f0e6';
+        [[-3.2, sy - 1.6], [3.2, sy - 1.6], [-3.2, sy + 2.8], [3.2, sy + 2.8]].forEach(function (q) { c.beginPath(); c.arc(q[0], q[1], 0.65, 0, 6.2832); c.fill(); });
+        c.beginPath(); c.arc(0, sy - 0.2, 2, 0, 6.2832); c.fill(); c.fillRect(-1.1, sy + 1.1, 2.2, 1.1);
+        c.fillStyle = '#15171d'; c.beginPath(); c.arc(-0.75, sy - 0.3, 0.55, 0, 6.2832); c.arc(0.75, sy - 0.3, 0.55, 0, 6.2832); c.fill();
+      } },
+    /* Seal — the circus seal: a pleated white ruff round her neck, ringing
+       her head from under it (the owner found the first one, a flat ring
+       on her shoulders with her body showing through its middle, not on
+       her neck), red-tipped; a red clown's nose; and on it the striped ball,
+       shaded round, bouncing and spinning as she runs, its shadow falling
+       further off the higher it goes */
+    circus: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* the ruff: round her neck, so it rings her head from under it —
+           its inner edge hidden beneath her head (no gap of body between),
+           widest behind, tucking under her cheeks in front; two tiers of
+           pleats, red pompoms on the outer one, her head's shadow on it */
+        var cyR = A.hy + 4, ri = A.hr - 5, ro = A.hr + 6.4, a0 = -0.32, a1 = Math.PI + 0.32, N = 16, st = (a1 - a0) / N;
+        var Rout = function (a, tier) {
+          var u = Math.min(1, Math.max(0, (a - a0) / (a1 - a0))), e = Math.pow(Math.sin(Math.PI * u), 0.55);
+          var r = ri + (ro - ri) * e * (tier ? 0.66 : 1);
+          if (run) r += Math.sin(g * 3 + a * 5 + tier) * 0.45 * e;
+          return r;
+        };
+        var P = function (a, r, dx, dy) { return [Math.cos(a) * r + (dx || 0), cyR + Math.sin(a) * r + (dy || 0)]; };
+        var ruff = function (dx, dy, tier) {
+          var off = tier ? st / 2 : 0, p0 = P(a0, Rout(a0, tier), dx, dy);
+          c.beginPath(); c.moveTo(p0[0], p0[1]);
+          for (k = 0; k < N; k++) {
+            var aa = a0 + off + k * st, ab = Math.min(a1, aa + st), am = (aa + ab) / 2;
+            var q = P(am, Rout(am, tier) + 1.7, dx, dy), e2 = P(ab, Rout(ab, tier), dx, dy);
+            c.quadraticCurveTo(q[0], q[1], e2[0], e2[1]);
+          }
+          c.arc(dx, cyR + dy, ri, a1, a0, true); c.closePath();
+        };
+        var pleats = function (tier) {
+          var off = tier ? st / 2 : 0;
+          for (k = 0; k < N - (tier ? 1 : 0); k++) {
+            var aa = a0 + off + k * st, ab = aa + st, am = (aa + ab) / 2;
+            var i0 = P(aa, ri), o0 = P(aa, Rout(aa, tier)), q = P(am, Rout(am, tier) + 1.7), o1 = P(ab, Rout(ab, tier)), i1 = P(ab, ri);
+            c.fillStyle = tier ? (k % 2 ? '#ffffff' : '#f3eef9') : (k % 2 ? '#f7f5fb' : '#e6e1f0');
+            c.beginPath(); c.moveTo(i0[0], i0[1]); c.lineTo(o0[0], o0[1]); c.quadraticCurveTo(q[0], q[1], o1[0], o1[1]); c.lineTo(i1[0], i1[1]); c.closePath(); c.fill();
+            c.strokeStyle = 'rgba(90,86,130,.4)'; c.lineWidth = 0.5;
+            c.beginPath(); c.moveTo(i1[0], i1[1]); c.lineTo(o1[0], o1[1]); c.stroke();
+          }
+        };
+        c.save(); c.beginPath(); c.rect(-40, -70, 80, 130); c.ellipse(0, A.hy, A.hr - 1.2, A.hr - 0.6, 0, 0, 6.2832); c.clip('evenodd');
+        c.fillStyle = SHD; ruff(1.4, 1.9, 0); c.fill();
+        pleats(0);
+        c.fillStyle = 'rgba(40,44,80,.22)'; ruff(0.8, 1.1, 1); c.fill();
+        pleats(1);
+        var rg = c.createLinearGradient(-12, cyR - 10, 12, cyR + 14); rg.addColorStop(0, 'rgba(255,255,255,0)'); rg.addColorStop(1, 'rgba(60,66,110,.24)');
+        c.fillStyle = rg; ruff(0, 0, 0); c.fill();
+        c.fillStyle = '#e23a3a';
+        for (k = 1; k < N; k += 2) {
+          var ap = a0 + (k + 0.5) * st, pp = P(ap, Rout(ap, 0) + 1.1);
+          c.beginPath(); c.arc(pp[0], pp[1], 1.05, 0, 6.2832); c.fill();
+        }
+        c.fillStyle = 'rgba(255,220,220,.8)';
+        for (k = 1; k < N; k += 2) { var ap2 = a0 + (k + 0.5) * st, pq = P(ap2, Rout(ap2, 0) + 1.1); c.beginPath(); c.arc(pq[0] - 0.35, pq[1] - 0.35, 0.35, 0, 6.2832); c.fill(); }
+        /* her head above it, its shadow falling on the pleats */
+        ruff(0, 0, 0); c.clip();
+        c.fillStyle = 'rgba(25,32,48,.32)'; c.beginPath(); c.ellipse(1.4, A.hy + 1.9, A.hr - 0.6, A.hr, 0, 0, 6.2832); c.fill();
+        c.restore();
+        /* the clown's nose */
+        var ny = A.hy - A.hr + 1.8;
+        c.fillStyle = SHD; c.beginPath(); c.arc(1.1, ny + 1.4, 2.5, 0, 6.2832); c.fill();
+        var ng = c.createRadialGradient(-0.8, ny - 0.9, 0.3, 0, ny, 2.5); ng.addColorStop(0, '#ff8a80'); ng.addColorStop(0.6, '#e2262a'); ng.addColorStop(1, '#8a0e14');
+        c.fillStyle = ng; c.beginPath(); c.arc(0, ny, 2.4, 0, 6.2832); c.fill();
+        /* the ball */
+        var hop = run ? Math.abs(Math.sin(g * 2)) * 3.4 : 0, spin = run ? g * 1.4 : 0.3, br = 7.6;
+        var by = ny - 2.2 - br - hop;
+        c.fillStyle = 'rgba(25,32,48,' + (0.3 - hop * 0.035).toFixed(3) + ')';
+        c.beginPath(); c.ellipse(1.6 + hop * 0.7, by + 2.1 + hop * 1.1, br, br * 0.96, 0, 0, 6.2832); c.fill();
+        var cols = ['#e23a3a', '#f4c62c', '#2f7fe0', '#ffffff', '#2fbf6e', '#f4c62c'];
+        for (k = 0; k < 6; k++) { c.fillStyle = cols[k]; c.beginPath(); c.moveTo(0, by); c.arc(0, by, br, k / 6 * 6.2832 + spin, (k + 1) / 6 * 6.2832 + spin); c.closePath(); c.fill(); }
+        var bs = c.createRadialGradient(-2.6, by - 2.8, 0.4, 0, by, br);
+        bs.addColorStop(0, 'rgba(255,255,255,.55)'); bs.addColorStop(0.45, 'rgba(255,255,255,0)'); bs.addColorStop(1, 'rgba(20,30,60,.38)');
+        c.fillStyle = bs; c.beginPath(); c.arc(0, by, br, 0, 6.2832); c.fill();
+        c.fillStyle = '#f6f6f2'; c.beginPath(); c.arc(0, by, 1.4, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 0.7; c.beginPath(); c.arc(0, by, br, 0, 6.2832); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-3, by - 3.4, 2, 1, -0.6, 0, 6.2832); c.fill();
+      } },
+    /* Lemming — the miner: a yellow hard hat pushed back on his head, a
+       lamp on its front whose beam lights the snow ahead (it flickers and
+       sways as he runs), a pickaxe slung across his back on a leather
+       strap, a bundle of dynamite tucked under the strap on his left with
+       its fuse spitting sparks (asked for by the owner, 18 Nov 2026), and
+       smudges of coal dust in his fur */
+    miner: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0;
+        c.save(); c.rotate(lemWobble(o) * 0.06);      // rocking with his body, as bodyLemming does
+        [[-5, 3, 3.6], [4.4, 10, 2.8], [-2, -7, 2.4], [6, -2, 2]].forEach(function (b) {
+          var sg = c.createRadialGradient(b[0], b[1], 0.2, b[0], b[1], b[2]);
+          sg.addColorStop(0, 'rgba(30,24,20,.42)'); sg.addColorStop(1, 'rgba(30,24,20,0)');
+          c.fillStyle = sg; c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.2832); c.fill();
+        });
+        /* the pickaxe and its strap */
+        var bob = run ? Math.sin(g * 2) * 0.6 : 0;
+        c.save(); c.translate(0, bob); c.lineCap = 'round';
+        c.strokeStyle = SHD; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-6.5 + 1.2, 13 + 1.6); c.lineTo(5.5 + 1.2, -3 + 1.6); c.stroke();
+        c.strokeStyle = '#8a5a2c'; c.lineWidth = 1.9; c.beginPath(); c.moveTo(-6.5, 13); c.lineTo(5.5, -3); c.stroke();
+        c.strokeStyle = '#c8955c'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-6.9, 12.4); c.lineTo(5, -3.4); c.stroke();
+        var pick = function (dx, dy) { c.beginPath(); c.moveTo(1 + dx, -6.5 + dy); c.quadraticCurveTo(6.6 + dx, -4.4 + dy, 10.2 + dx, 0.6 + dy); };
+        c.lineWidth = 2.2; c.strokeStyle = SHD; pick(1.2, 1.6); c.stroke();
+        c.strokeStyle = '#555a64'; pick(0, 0); c.stroke();
+        c.strokeStyle = '#b8bec8'; c.lineWidth = 0.6; pick(-0.4, -0.5); c.stroke();
+        /* the dynamite: three red sticks bound with twine, tucked under the
+           strap on his left, swinging a little as he runs; the fuse curls
+           up from the middle one, its spark spitting */
+        c.save(); c.translate(-6.4, -1.2); c.rotate(0.24 + (run ? Math.sin(g * 2 + 0.6) * 0.1 : 0)); c.scale(1.15, 1.15);
+        var stick = function (x0, dx, dy) { c.beginPath(); c.moveTo(x0 - 1.2 + dx, 0.6 + dy); c.quadraticCurveTo(x0 + dx, -0.5 + dy, x0 + 1.2 + dx, 0.6 + dy); c.lineTo(x0 + 1.2 + dx, 9.2 + dy); c.quadraticCurveTo(x0 + dx, 10.3 + dy, x0 - 1.2 + dx, 9.2 + dy); c.closePath(); };
+        var SX = [-2.5, 0, 2.5];
+        c.fillStyle = SHD; SX.forEach(function (x0) { stick(x0, 1.2, 1.6); c.fill(); });
+        SX.forEach(function (x0, i) {
+          var dg = c.createLinearGradient(x0 - 1.2, 0, x0 + 1.2, 0);
+          dg.addColorStop(0, '#ff7a64'); dg.addColorStop(0.45, '#d8302c'); dg.addColorStop(1, '#7c1212');
+          c.fillStyle = dg; stick(x0, 0, i === 1 ? -0.7 : 0); c.fill();
+          c.fillStyle = 'rgba(60,0,0,.35)'; c.fillRect(x0 - 1.2, (i === 1 ? -0.7 : 0) + 6.4, 2.4, 0.5);
+          c.fillStyle = '#f0dcb4'; c.beginPath(); c.ellipse(x0, (i === 1 ? -0.7 : 0) + 0.25, 1.1, 0.5, 0, 0, 6.2832); c.fill();
+        });
+        c.strokeStyle = SHD; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-3.7 + 0.6, 2.6 + 0.8); c.lineTo(3.7 + 0.6, 2.6 + 0.8); c.moveTo(-3.7 + 0.6, 7.4 + 0.8); c.lineTo(3.7 + 0.6, 7.4 + 0.8); c.stroke();
+        c.strokeStyle = '#8a6434'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-3.8, 2.6); c.lineTo(3.8, 2.6); c.moveTo(-3.8, 7.4); c.lineTo(3.8, 7.4); c.stroke();
+        c.strokeStyle = 'rgba(255,230,180,.5)'; c.lineWidth = 0.3; c.beginPath(); c.moveTo(-3.6, 2.4); c.lineTo(3.6, 2.4); c.stroke();
+        /* the fuse and its spark */
+        var fe = [-2.6, -4.6];
+        c.strokeStyle = SHD; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0.6, -0.1); c.quadraticCurveTo(1.6, -3.2, fe[0] + 1, fe[1] + 1.4); c.stroke();
+        c.strokeStyle = '#3a3230'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0, -0.7); c.quadraticCurveTo(1, -3.8, fe[0], fe[1]); c.stroke();
+        var sp = run ? 0.75 + 0.25 * Math.sin(g * 11) : 0.85;
+        var sgl = c.createRadialGradient(fe[0], fe[1], 0.2, fe[0], fe[1], 4 * sp);
+        sgl.addColorStop(0, 'rgba(255,230,140,.85)'); sgl.addColorStop(1, 'rgba(255,150,40,0)');
+        c.fillStyle = sgl; c.beginPath(); c.arc(fe[0], fe[1], 4 * sp, 0, 6.2832); c.fill();
+        c.strokeStyle = '#ffb22a'; c.lineWidth = 0.45;
+        c.beginPath();
+        for (var sk = 0; sk < 7; sk++) {
+          var sa = sk / 7 * 6.2832 + (run ? g * 3 : 0.4), sl = run ? 1.3 + 1.1 * Math.abs(Math.sin(g * 9 + sk * 1.7)) : 1.5 + (sk % 2) * 0.6;
+          c.moveTo(fe[0] + Math.cos(sa) * 0.6, fe[1] + Math.sin(sa) * 0.6); c.lineTo(fe[0] + Math.cos(sa) * sl, fe[1] + Math.sin(sa) * sl);
+        }
+        c.stroke();
+        c.fillStyle = '#fff8d0'; c.beginPath(); c.arc(fe[0], fe[1], 0.7, 0, 6.2832); c.fill();
+        c.restore();
+        c.strokeStyle = SHD; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-9.5 + 1, 3 + 1.4); c.quadraticCurveTo(0 + 1, 6.4 + 1.4, 9.5 + 1, 3.6 + 1.4); c.stroke();
+        c.strokeStyle = '#6a4220'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-9.5, 3); c.quadraticCurveTo(0, 6.4, 9.5, 3.6); c.stroke();
+        c.fillStyle = '#c9a040'; c.fillRect(-1.1, 4, 2.2, 1.6);
+        c.restore();
+        /* the beam, under the hat */
+        var hy = -14.6, sway = run ? Math.sin(g) * 0.06 : 0, fl = run ? 0.06 * Math.sin(g * 7) : 0;
+        c.save(); c.translate(0, hy - 6.6); c.rotate(sway);
+        var lg = c.createLinearGradient(0, 0, 0, -38);
+        lg.addColorStop(0, 'rgba(255,240,170,' + (0.55 + fl).toFixed(3) + ')'); lg.addColorStop(1, 'rgba(255,240,170,0)');
+        c.fillStyle = lg; c.beginPath(); c.moveTo(-2.2, 0); c.lineTo(-12, -38); c.lineTo(12, -38); c.lineTo(2.2, 0); c.closePath(); c.fill();
+        c.restore();
+        /* the hard hat */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1.3, hy + 1.8, 7.8, 6.6, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#c99a12'; c.beginPath(); c.ellipse(0, hy, 7.6, 6.4, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,240,150,.45)'; c.beginPath(); c.ellipse(-1.2, hy - 1.2, 7, 5.6, 0, 3.4, 5.4); c.fill();
+        var hg = c.createRadialGradient(-1.8, hy - 2.2, 0.4, 0, hy, 5.6); hg.addColorStop(0, '#fff4b0'); hg.addColorStop(0.55, '#f2c21c'); hg.addColorStop(1, '#b8860c');
+        c.fillStyle = hg; c.beginPath(); c.arc(0, hy + 0.3, 5.3, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(150,110,10,.6)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(0.5, hy - 5); c.lineTo(0.5, hy + 5.5); c.stroke();
+        c.strokeStyle = 'rgba(255,250,210,.8)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-0.5, hy - 4.8); c.lineTo(-0.5, hy + 5); c.stroke();
+        /* the lamp on its front */
+        c.fillStyle = SHD; c.fillRect(-2.2, hy - 6.6, 5.6, 3.2);
+        c.fillStyle = '#3e4048'; c.fillRect(-2.6, hy - 7.4, 5.2, 3);
+        var lgl = c.createRadialGradient(0, hy - 6.4, 0.2, 0, hy - 6.4, 3.4); lgl.addColorStop(0, 'rgba(255,250,210,.9)'); lgl.addColorStop(1, 'rgba(255,250,210,0)');
+        c.fillStyle = lgl; c.beginPath(); c.arc(0, hy - 6.4, 3.4, 0, 6.2832); c.fill();
+        c.fillStyle = '#fffbe0'; c.beginPath(); c.arc(0, hy - 6.6, 1.5, 0, 6.2832); c.fill();
+        c.restore();
+      } },
+    /* Musk ox — the viking: a red cloak from his shoulders, its hem
+       rippling as he runs, a collar of fur across them, a round painted
+       shield of planks slung on his back with an iron rim, rivets and
+       boss, two bearded axes crossed over it and strapped where they cross
+       (asked for by the owner, 18 Nov 2026), and a steel helmet with a
+       bronze crest up on his head over the boss, his own horns coming out
+       through it, each through a hole with a bronze sleeve (it sat on his
+       nape until the owner asked) */
+    viking: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k, x;
+        /* the cloak, cut as the pirate's: over his shoulders, wider than
+           he is at the hem, red with a brown wool lining and a woven band */
+        capePaint(c, o, { nx: 8, ny: -17.2, scx: 18, scy: -18, sx: 21.2, sy: -10.6, sdx: 24.6, sdy: 8, hw: 23.4, hy: 27, sag: 6.4, pt: -15.4 },
+          { cols: ['#d2404a', '#9a1e28', '#4e0a12'], lining: '#4a3020', light: 'rgba(255,175,165,.14)', dark: 'rgba(40,0,6,.34)',
+            far: 'rgba(30,0,4,.3)', near: 'rgba(255,195,185,.14)', braid: ['rgba(50,30,6,.55)', '#d2a03c', 'rgba(255,236,170,.5)'], weave: '#2a4a86' });
+        /* the fur collar across his shoulders */
+        for (k = 0; k <= 12; k++) {
+          var t = k / 12, fx2 = -14 + t * 28, fy2 = -16.5 - Math.sin(t * Math.PI) * 3.2;
+          c.fillStyle = SHD; c.beginPath(); c.arc(fx2 + 1, fy2 + 1.4, 2.8, 0, 6.2832); c.fill();
+        }
+        for (k = 0; k <= 12; k++) {
+          var t2 = k / 12, fx3 = -14 + t2 * 28, fy3 = -16.5 - Math.sin(t2 * Math.PI) * 3.2;
+          var fgr = c.createRadialGradient(fx3 - 0.8, fy3 - 0.9, 0.3, fx3, fy3, 2.8); fgr.addColorStop(0, '#c8b8a0'); fgr.addColorStop(1, '#6a5a46');
+          c.fillStyle = fgr; c.beginPath(); c.arc(fx3, fy3, 2.7, 0, 6.2832); c.fill();
+        }
+        /* the shield */
+        var sy = 9, sr = 11.5;
+        c.save(); c.translate(0, sy); c.rotate(run ? Math.sin(g) * 0.07 : 0); c.scale(1.2, 1.2);   // shield and axes a fifth bigger (owner, 18 Nov)
+        c.fillStyle = SHD; c.beginPath(); c.arc(1.6, 2.2, sr + 0.6, 0, 6.2832); c.fill();
+        var wg = c.createRadialGradient(-4, -4, 1, 0, 0, sr); wg.addColorStop(0, '#c8873a'); wg.addColorStop(1, '#6a3e14');
+        c.fillStyle = wg; c.beginPath(); c.arc(0, 0, sr, 0, 6.2832); c.fill();
+        c.save(); c.beginPath(); c.arc(0, 0, sr, 0, 6.2832); c.clip();
+        c.fillStyle = 'rgba(184,40,46,.9)';
+        for (k = 0; k < 4; k++) { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, sr, k * Math.PI / 2 + 0.3, k * Math.PI / 2 + Math.PI / 4 + 0.3); c.closePath(); c.fill(); }
+        c.strokeStyle = 'rgba(60,30,8,.45)'; c.lineWidth = 0.5;
+        for (x = -sr + 3.3; x < sr; x += 3.3) { c.beginPath(); c.moveTo(x, -sr); c.lineTo(x, sr); c.stroke(); }
+        c.restore();
+        c.strokeStyle = '#5a5e68'; c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, sr - 0.6, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(230,236,244,.7)'; c.lineWidth = 0.7; c.beginPath(); c.arc(0, 0, sr - 0.9, 3.3, 4.9); c.stroke();
+        c.fillStyle = '#d8dce4';
+        for (k = 0; k < 10; k++) { var ra = k / 10 * 6.2832; c.beginPath(); c.arc(Math.cos(ra) * (sr - 0.6), Math.sin(ra) * (sr - 0.6), 0.55, 0, 6.2832); c.fill(); }
+        c.fillStyle = SHD; c.beginPath(); c.arc(1, 1.3, 3.8, 0, 6.2832); c.fill();
+        var bg = c.createRadialGradient(-1.2, -1.2, 0.3, 0, 0, 3.8); bg.addColorStop(0, '#f2f5f9'); bg.addColorStop(1, '#5e636e');
+        c.fillStyle = bg; c.beginPath(); c.arc(0, 0, 3.6, 0, 6.2832); c.fill();
+        /* two axes crossed over the shield, strapped where they cross, the
+           bearded blades out past its rim at the top */
+        var axe = function (k, sh) {
+          c.save(); if (sh) c.translate(1.3, 1.7);
+          c.rotate(k * 0.6); c.scale(k, 1);
+          var hd = function () { c.beginPath(); c.moveTo(0.6, -17.6); c.quadraticCurveTo(4.2, -18.2, 8.4, -22); c.quadraticCurveTo(11.4, -15, 7.6, -8.2); c.quadraticCurveTo(3.2, -10.6, 0.6, -12.2); c.closePath(); };
+          if (sh) {
+            c.fillStyle = SHD; c.fillRect(-1.1, -17, 2.2, 34); hd(); c.fill(); c.fillRect(-2.8, -17, 2, 4.4);
+            c.restore(); return;
+          }
+          var wg = c.createLinearGradient(-1, 0, 1, 0); wg.addColorStop(0, '#c8955c'); wg.addColorStop(0.5, '#8a5a2c'); wg.addColorStop(1, '#4e3016');
+          c.fillStyle = wg; c.fillRect(-1, -17.4, 2, 34);
+          c.fillStyle = '#3a2414'; c.fillRect(-1.15, 9.5, 2.3, 6.5);
+          c.strokeStyle = 'rgba(200,150,100,.5)'; c.lineWidth = 0.35;
+          for (var gq = 0; gq < 5; gq++) { c.beginPath(); c.moveTo(-1.1, 10 + gq * 1.3); c.lineTo(1.1, 10.8 + gq * 1.3); c.stroke(); }
+          c.fillStyle = '#5e636e'; c.beginPath(); c.arc(0, 17, 1.3, 0, 6.2832); c.fill();
+          var sg2 = c.createLinearGradient(1, -15, 10.6, -15); sg2.addColorStop(0, '#565c66'); sg2.addColorStop(0.55, '#b4bcc6'); sg2.addColorStop(1, '#f2f5f9');
+          c.fillStyle = sg2; hd(); c.fill();
+          c.strokeStyle = 'rgba(30,34,42,.6)'; c.lineWidth = 0.5; hd(); c.stroke();
+          c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(8.2, -21); c.quadraticCurveTo(10.8, -15, 7.6, -9); c.stroke();
+          c.fillStyle = '#4a4f58'; c.fillRect(-1.5, -18.2, 3, 6.4);
+          c.fillStyle = '#6a707a'; c.fillRect(-2.9, -17, 1.6, 4.2);
+          c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-1.3, -18, 0.7, 6);
+          c.restore();
+        };
+        axe(-1, true); axe(1, true);
+        axe(-1); axe(1);
+        /* the leather tie where they cross */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(0.9, 1.2, 2.2, 1.8, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#5a3a1c'; c.beginPath(); c.ellipse(0, 0, 2.1, 1.7, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(220,170,110,.5)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(-1.6, -0.6); c.lineTo(1.6, 0.6); c.moveTo(-1.6, 0.6); c.lineTo(1.6, -0.6); c.stroke();
+        c.restore();
+        /* the helmet: up on his head over the boss, so his own horns sweep
+           out from under it as a viking's would */
+        var HK = 1.15, hy = A.hy - 7, hrx = 9, hry = 7.4;               // HK: the owner asked for it bigger (18 Nov)
+        c.save(); c.translate(0, hy); c.scale(HK, HK); c.translate(0, -hy);
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1.5, hy + 2, hrx + 0.5, hry + 0.5, 0, 0, 6.2832); c.fill();
+        var hg = c.createRadialGradient(-3, hy - 3, 0.5, 0, hy, hrx + 0.6); hg.addColorStop(0, '#f6f8fb'); hg.addColorStop(0.45, '#a2a8b2'); hg.addColorStop(1, '#454a53');
+        c.fillStyle = hg; c.beginPath(); c.ellipse(0, hy, hrx, hry, 0, 0, 6.2832); c.fill();
+        /* the bronze rim and the bands over the crown */
+        c.strokeStyle = 'rgba(70,46,14,.6)'; c.lineWidth = 1.9; c.beginPath(); c.ellipse(0.3, hy + 0.4, hrx - 0.5, hry - 0.5, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = '#b07c30'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(0, hy, hrx - 0.6, hry - 0.6, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,226,160,.6)'; c.lineWidth = 0.45; c.beginPath(); c.ellipse(0, hy, hrx - 0.6, hry - 0.6, 0, 3.3, 4.9); c.stroke();
+        c.strokeStyle = 'rgba(70,46,14,.55)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-hrx + 1, hy + 0.4); c.quadraticCurveTo(0.3, hy - 1.4, hrx - 1, hy + 0.4); c.stroke();
+        c.strokeStyle = '#b8843a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-hrx + 1, hy); c.quadraticCurveTo(0, hy - 1.8, hrx - 1, hy); c.stroke();
+        /* the crest, nose to nape */
+        c.strokeStyle = 'rgba(70,46,14,.6)'; c.lineWidth = 2.1; c.beginPath(); c.moveTo(0.4, hy - hry - 0.6); c.lineTo(0.4, hy + hry + 0.4); c.stroke();
+        c.strokeStyle = '#c0903e'; c.lineWidth = 1.7; c.beginPath(); c.moveTo(0, hy - hry - 1); c.lineTo(0, hy + hry); c.stroke();
+        c.strokeStyle = 'rgba(255,232,175,.75)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-0.5, hy - hry - 0.6); c.lineTo(-0.5, hy + hry - 0.4); c.stroke();
+        c.fillStyle = '#ead8aa';
+        [-5, -2.4, 2.4, 5].forEach(function (ry) { c.beginPath(); c.arc(0.45, hy + ry, 0.5, 0, 6.2832); c.fill(); });
+        [-1, 1].forEach(function (k) { [-4.6, 4.6].forEach(function (rx) { c.beginPath(); c.arc(k * 0 + rx, hy - 0.9, 0.45, 0, 6.2832); c.fill(); }); });
+        c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(-3.6, hy - 3.4, 2.6, 1.2, -0.5, 0, 6.2832); c.fill();
+        c.restore(); hrx *= HK; hry *= HK;
+        /* his horns through the helmet: each comes out of a hole in its side
+           with a bronze sleeve, over the steel and casting its shadow on it.
+           The body's own horn outline (antler) redrawn over the helmet only */
+        var keepHorn = hornKind; hornKind = 'ox';
+        var hole = 5.2 * HK;
+        [-1, 1].forEach(function (k) {
+          c.save();
+          c.beginPath(); c.ellipse(0, hy, hrx + 0.9, hry + 0.9, 0, 0, 6.2832); c.clip();
+          c.beginPath(); c.rect(-30, hy - 20, 60, 40); c.ellipse(0, hy, hole, hry + 3, 0, 0, 6.2832); c.clip('evenodd');
+          c.save(); c.translate(1.3, 1.7); c.fillStyle = 'rgba(25,32,48,.38)'; c.beginPath(); antler(c, k); c.fill(); c.restore();
+          var hg2 = c.createLinearGradient(k * 1, -41, k * 21, -22);
+          hg2.addColorStop(0, '#ece2cb'); hg2.addColorStop(0.45, '#cdb894'); hg2.addColorStop(0.8, '#8a7152'); hg2.addColorStop(1, '#2e241b');
+          c.fillStyle = hg2; c.beginPath(); antler(c, k); c.fill();
+          c.strokeStyle = 'rgba(60,44,28,.55)'; c.lineWidth = 0.8; c.stroke();
+          c.strokeStyle = 'rgba(255,250,235,.6)'; c.lineWidth = 1;
+          c.beginPath(); c.moveTo(k * 3, -43); c.quadraticCurveTo(k * 15, -44.5, k * 21.5, -33); c.stroke();
+          c.restore();
+          /* the sleeve round the horn where it leaves the helmet */
+          var sx = k * (hole + 0.6), sy0 = -45.6, sy1 = -36.6, smy = (sy0 + sy1) / 2;
+          c.fillStyle = SHD; c.beginPath(); c.ellipse(sx + 1, smy + 1.4, 1.7, (sy1 - sy0) / 2 + 0.3, k * -0.12, 0, 6.2832); c.fill();
+          var bz = c.createLinearGradient(sx - 1.6, 0, sx + 1.6, 0); bz.addColorStop(0, '#f0c878'); bz.addColorStop(0.5, '#b8843a'); bz.addColorStop(1, '#6a4a18');
+          c.fillStyle = bz; c.beginPath(); c.ellipse(sx, smy, 1.6, (sy1 - sy0) / 2, k * -0.12, 0, 6.2832); c.fill();
+          c.strokeStyle = 'rgba(60,40,10,.6)'; c.lineWidth = 0.45; c.stroke();
+          c.fillStyle = '#f2e0b0'; [-2.8, 0, 2.8].forEach(function (ry) { c.beginPath(); c.arc(sx + k * 0.2 * ry * 0, smy + ry, 0.42, 0, 6.2832); c.fill(); });
+        });
+        hornKind = keepHorn;
+      } },
+    /* Bubbles — the astronaut: a white space helmet round his whole head
+       (asked for by the owner, 18 Nov 2026), a clear visor in front with
+       his face behind it (the owner wanted to see it; a gold one hid it), a
+       neck ring with the hoses plugged in, a lamp, and an aerial whose red
+       light blinks and whose whip sways as he runs; on his back a life-support pack with two tanks, lights that
+       blink as he runs and ribbed hoses up to the helmet, a mission patch on
+       his shoulder, and two little jets puffing from the pack as he runs */
+    astro: { pal: { body: ['#9aa6b8', '#6f7b8e', '#3e4757'], flipper: ['#a6b0c0', '#788396', '#424b5a'] },
+      sp: { feet: '#c8d0dc', edge: 'rgba(60,70,90,.7)' },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* his feet in moon boots (the owner asked, 18 Nov 2026): the foot's
+           own webbed shape (a boot shape of their own was not liked), white
+           with grey toes, a dark sole round the edge and a blue strap;
+           kicking in step with the feet and drawn only where they show
+           past his body */
+        c.save(); c.beginPath(); c.rect(-60, -80, 120, 160); penguinBody(c, true); c.clip('evenodd');
+        [-1, 1].forEach(function (kb) {
+          var kick = Math.max(0, Math.sin(g + (kb > 0 ? 0 : Math.PI)));
+          var at = function (sh) { c.save(); if (sh) c.translate(1.3, 1.7); c.translate(kb * 8.5, 22 + kick * 4.5); c.rotate(kb * (0.25 + 0.35 * kick)); };
+          at(true); c.fillStyle = SHD; penguinFoot(c, kb, 0, 0.6); c.fill(); c.restore();
+          at(false);
+          c.fillStyle = '#3a4252'; penguinFoot(c, kb, 0, 0.9); c.fill();        // the sole, round the edge
+          var bgr = c.createLinearGradient(-5 * kb, -2, 6 * kb, 14); bgr.addColorStop(0, '#ffffff'); bgr.addColorStop(0.55, '#dfe4ec'); bgr.addColorStop(1, '#a9b2c0');
+          c.fillStyle = bgr; penguinFoot(c, kb); c.fill();
+          c.save(); penguinFoot(c, kb); c.clip();
+          var tcg = c.createRadialGradient(0, 11, 0.4, 0, 12.4, 6.6); tcg.addColorStop(0, '#c4ccd8'); tcg.addColorStop(1, '#7c8698');
+          c.fillStyle = tcg; c.beginPath(); c.ellipse(kb * 0.2, 13.4, 7.4, 4.2, 0, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(25,32,48,.3)'; c.fillRect(-7, 5, 14, 2.3);
+          c.fillStyle = '#2f6fd0'; c.fillRect(-7, 4.3, 14, 2.1);
+          c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-7, 4.3, 14, 0.5);
+          c.restore();
+          c.fillStyle = '#e8edf4'; c.fillRect(kb * 1.6 - 1.1, 3.9, 2.2, 2.9); c.fillStyle = '#5e6878'; c.fillRect(kb * 1.6 - 0.5, 4.6, 1, 1.5);
+          c.strokeStyle = 'rgba(60,70,90,.6)'; c.lineWidth = 0.6; penguinFoot(c, kb); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-kb * 1.6, 0.6, 0.9, 2.6, 0.1 * kb, 0, 6.2832); c.fill();
+          c.restore();
+        });
+        c.restore();
+        if (run) for (k = -1; k <= 1; k += 2) {
+          var pa = 0.35 + 0.25 * Math.sin(g * 9 + k), pr = 1.6 + 0.6 * Math.sin(g * 7 + k * 2);
+          var jg = c.createRadialGradient(k * 4.5, 17.5, 0.2, k * 4.5, 18.5, pr * 1.8);
+          jg.addColorStop(0, 'rgba(255,255,255,' + pa.toFixed(2) + ')'); jg.addColorStop(1, 'rgba(200,230,255,0)');
+          c.fillStyle = jg; c.beginPath(); c.arc(k * 4.5, 18.5, pr * 1.8, 0, 6.2832); c.fill();
+        }
+        /* the hoses */
+        c.lineCap = 'round';
+        [-1, 1].forEach(function (k2) {
+          var hose = function (dx, dy) { c.beginPath(); c.moveTo(k2 * 7 + dx, -4 + dy); c.quadraticCurveTo(k2 * 13.5 + dx, -8 + dy, k2 * 9.5 + dx, -15.5 + dy); };
+          c.strokeStyle = SHD; c.lineWidth = 2.4; hose(1.2, 1.6); c.stroke();
+          c.strokeStyle = '#c4ccd8'; c.lineWidth = 2.2; hose(0, 0); c.stroke();
+          c.strokeStyle = 'rgba(70,80,96,.6)'; c.lineWidth = 2.2; c.setLineDash([0.5, 1.1]); hose(0, 0); c.stroke(); c.setLineDash([]);
+        });
+        /* the pack */
+        var pack = function (dx, dy) { c.beginPath(); c.moveTo(-9.5 + 3 + dx, -5 + dy); c.arcTo(9.5 + dx, -5 + dy, 9.5 + dx, 15 + dy, 3); c.arcTo(9.5 + dx, 15 + dy, -9.5 + dx, 15 + dy, 3); c.arcTo(-9.5 + dx, 15 + dy, -9.5 + dx, -5 + dy, 3); c.arcTo(-9.5 + dx, -5 + dy, 9.5 + dx, -5 + dy, 3); c.closePath(); };
+        c.fillStyle = SHD; pack(1.5, 2); c.fill();
+        var pg = c.createLinearGradient(-9, -5, 9, 15); pg.addColorStop(0, '#f6f8fb'); pg.addColorStop(1, '#b8c0cc');
+        c.fillStyle = pg; pack(0, 0); c.fill();
+        c.strokeStyle = '#6a7486'; c.lineWidth = 0.7; pack(0, 0); c.stroke();
+        /* two tanks, round in section */
+        [-5.2, 5.2].forEach(function (tx) {
+          var tg = c.createLinearGradient(tx - 2.8, 0, tx + 2.8, 0); tg.addColorStop(0, '#ffffff'); tg.addColorStop(0.5, '#dfe5ee'); tg.addColorStop(1, '#8a94a6');
+          c.fillStyle = tg; c.beginPath(); c.moveTo(tx - 2.8, -1.6); c.arc(tx, -1.6, 2.8, Math.PI, 0); c.lineTo(tx + 2.8, 11.6); c.arc(tx, 11.6, 2.8, 0, Math.PI); c.closePath(); c.fill();
+          c.strokeStyle = 'rgba(90,100,120,.5)'; c.lineWidth = 0.5; c.stroke();
+          c.fillStyle = '#e04a3a'; c.fillRect(tx - 2.8, 6.6, 5.6, 1);
+        });
+        /* the lights between them */
+        var lc = ['#ff4a3a', '#3ad66a', '#ffd23a'];
+        for (k = 0; k < 3; k++) {
+          var on = run ? (Math.floor(g * 1.5 + k * 1.3) % 2 === 0) : true;
+          c.fillStyle = '#2a3040'; c.beginPath(); c.arc(0, -1 + k * 3.4, 1.1, 0, 6.2832); c.fill();
+          if (on) {
+            var lg = c.createRadialGradient(0, -1 + k * 3.4, 0.1, 0, -1 + k * 3.4, 2.4); lg.addColorStop(0, lc[k]); lg.addColorStop(1, 'rgba(255,255,255,0)');
+            c.fillStyle = lg; c.beginPath(); c.arc(0, -1 + k * 3.4, 2.4, 0, 6.2832); c.fill();
+          }
+        }
+        /* the mission patch */
+        c.fillStyle = SHD; c.beginPath(); c.arc(-12.2, -6.4, 2.6, 0, 6.2832); c.fill();
+        c.fillStyle = '#1e3a7a'; c.beginPath(); c.arc(-13.2, -7.6, 2.5, 0, 6.2832); c.fill();
+        c.strokeStyle = '#e8eef6'; c.lineWidth = 0.5; c.stroke();
+        star5(c, -13.2, -7.6, 1.4, '#ffd23a');
+        /* the helmet: a white shell round his whole head, the gold visor
+           in front, a metal ring where it meets the suit with the hoses
+           going in, a lamp on the left and an aerial on the right whose
+           red light blinks and whose whip sways as he runs */
+        var hcx = 0, hcy = A.hy + 0.6, HR = A.hr + 2.1;
+        /* the visor is clear glass (the owner wanted to see his face): the
+           shell and its shadow leave a window for it */
+        var vy = A.ey - 3.4, vrx = 11.6, vry = 9.2;
+        c.save(); c.beginPath(); c.rect(-40, -70, 80, 130); c.ellipse(0, vy, vrx, vry, 0, 0, 6.2832); c.clip('evenodd');
+        c.fillStyle = SHD; c.beginPath(); c.arc(hcx + 1.6, hcy + 2.1, HR + 0.6, 0, 6.2832); c.fill();
+        var shg = c.createRadialGradient(hcx - 5.6, hcy - 6.4, 1, hcx, hcy, HR);
+        shg.addColorStop(0, '#ffffff'); shg.addColorStop(0.5, '#e2e7ef'); shg.addColorStop(0.84, '#a7b1c1'); shg.addColorStop(1, '#6c768a');
+        c.fillStyle = shg; c.beginPath(); c.arc(hcx, hcy, HR, 0, 6.2832); c.fill();
+        c.strokeStyle = '#4a5468'; c.lineWidth = 0.8; c.stroke();
+        c.restore();
+        /* the metal ring round the shell where it seals to the suit: all
+           the way round, grey (an arc of blue under his eyes, with his
+           face showing, read as a smile) */
+        c.strokeStyle = 'rgba(30,36,50,.45)'; c.lineWidth = 2.4; c.beginPath(); c.arc(hcx + 0.3, hcy + 0.4, HR - 0.8, 0, 6.2832); c.stroke();
+        c.strokeStyle = '#98a2b4'; c.lineWidth = 1.8; c.beginPath(); c.arc(hcx, hcy, HR - 0.8, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.45; c.beginPath(); c.arc(hcx, hcy, HR - 0.3, 3.3, 5.2); c.stroke();
+        c.strokeStyle = 'rgba(40,46,60,.5)'; c.lineWidth = 0.4; c.beginPath(); c.arc(hcx, hcy, HR - 1.7, 0, 6.2832); c.stroke();
+        /* where the hoses plug in */
+        [-1, 1].forEach(function (k2) {
+          var px = k2 * 9.5, py = hcy + Math.sqrt(Math.max(0, (HR - 0.8) * (HR - 0.8) - 90.25));
+          c.fillStyle = SHD; c.beginPath(); c.arc(px + 0.8, py + 1.1, 1.9, 0, 6.2832); c.fill();
+          var cg2 = c.createRadialGradient(px - 0.6, py - 0.6, 0.2, px, py, 1.9); cg2.addColorStop(0, '#f4f6fa'); cg2.addColorStop(1, '#5e6878');
+          c.fillStyle = cg2; c.beginPath(); c.arc(px, py, 1.8, 0, 6.2832); c.fill();
+        });
+        /* the visor: clear glass with a faint blue tint, darker toward its
+           rim, light glancing off it, his face behind; the rim dark */
+        c.save(); c.beginPath(); c.ellipse(0, vy, vrx, vry, 0, 0, 6.2832); c.clip();
+        var gl = c.createRadialGradient(-2, vy - 2, 1, 0, vy, vrx + 1);
+        gl.addColorStop(0, 'rgba(190,225,255,.06)'); gl.addColorStop(0.7, 'rgba(150,200,255,.14)'); gl.addColorStop(1, 'rgba(40,64,110,.4)');
+        c.fillStyle = gl; c.fillRect(-vrx, vy - vry, vrx * 2, vry * 2);
+        c.strokeStyle = 'rgba(25,32,48,.35)'; c.lineWidth = 2.2; c.beginPath(); c.ellipse(1, vy + 1.3, vrx, vry, 0, 0, 6.2832); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.5)';
+        c.beginPath(); c.moveTo(-9.6, vy - 2.2); c.quadraticCurveTo(-8.4, vy - 7.6, -2.4, vy - 8.4); c.quadraticCurveTo(-7, vy - 6.2, -8.4, vy - 1.4); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.32)';
+        c.beginPath(); c.ellipse(6.6, vy + 5.6, 2.6, 0.7, -0.6, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.arc(-6.4, vy + 3.8, 0.9, 0, 6.2832); c.fill();
+        c.restore();
+        c.strokeStyle = 'rgba(30,36,50,.45)'; c.lineWidth = 2.6; c.beginPath(); c.ellipse(0.4, vy + 0.6, vrx + 0.6, vry + 0.6, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = '#3e4757'; c.lineWidth = 1.9; c.beginPath(); c.ellipse(0, vy, vrx + 0.6, vry + 0.6, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(220,180,90,.75)'; c.lineWidth = 0.45; c.beginPath(); c.ellipse(0, vy, vrx - 0.2, vry - 0.2, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 0.4; c.beginPath(); c.ellipse(0, vy, vrx + 1.3, vry + 1.3, 0, 3.4, 4.8); c.stroke();
+        /* the lamp on the left of the shell */
+        var lx = -HR + 2.6, ly = hcy - 3.2;
+        c.fillStyle = SHD; c.fillRect(lx - 1.4 + 0.8, ly - 1.9 + 1.1, 3, 3.8);
+        c.fillStyle = '#5e6878'; c.fillRect(lx - 1.5, ly - 2, 3, 3.8);
+        var lmp = c.createRadialGradient(lx, ly - 1.6, 0.2, lx, ly - 1.6, 3.2); lmp.addColorStop(0, 'rgba(255,252,220,.95)'); lmp.addColorStop(1, 'rgba(255,252,220,0)');
+        c.fillStyle = lmp; c.beginPath(); c.arc(lx, ly - 1.6, 3.2, 0, 6.2832); c.fill();
+        /* the aerial on the right */
+        var ax = HR - 4, ay = hcy - 8.6, sw2 = run ? Math.sin(g * 3) * 1.4 : 0.4;
+        var tipx = ax + 3 + sw2, tipy = ay - 12.5;
+        c.strokeStyle = 'rgba(25,32,48,.22)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(ax + 0.6, ay + 0.8); c.lineTo(ax + 6.4 + sw2 * 0.5, ay + 7.6); c.stroke();
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(ax + 0.7, ay + 1, 1.9, 1.3, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#5e6878'; c.beginPath(); c.ellipse(ax, ay, 1.8, 1.2, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = '#3a4252'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo(ax + 0.6, ay - 7, tipx, tipy); c.stroke();
+        c.strokeStyle = 'rgba(230,236,246,.7)'; c.lineWidth = 0.35; c.beginPath(); c.moveTo(ax - 0.3, ay - 0.4); c.quadraticCurveTo(ax + 0.3, ay - 7, tipx - 0.3, tipy + 0.2); c.stroke();
+        var lit = run ? (Math.sin(g * 4) > -0.2) : true;
+        if (lit) {
+          var bgl = c.createRadialGradient(tipx, tipy, 0.2, tipx, tipy, 4); bgl.addColorStop(0, 'rgba(255,90,70,.75)'); bgl.addColorStop(1, 'rgba(255,90,70,0)');
+          c.fillStyle = bgl; c.beginPath(); c.arc(tipx, tipy, 4, 0, 6.2832); c.fill();
+        }
+        c.fillStyle = lit ? '#ff4a3a' : '#8a2a22'; c.beginPath(); c.arc(tipx, tipy, 1.4, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(tipx - 0.45, tipy - 0.45, 0.45, 0, 6.2832); c.fill();
+      } },
+    /* Sea otter — the lifeguard: a red and white float ring round her
+       middle, round and glossy, with its grab rope in loops, bobbing as she
+       runs; a red suit with a white cross showing through it; black
+       Wayfarer-style sunglasses (a cap and a towel were tried and taken
+       off again, 18 Nov 2026); wet from the sea, beads of water on her,
+       her fur glossy, drops flung off as she runs; sun cream on her nose; a whistle on a red
+       cord, swinging */
+    lifeguard: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        var y = 5 + (run ? Math.sin(g * 2) * 0.8 : 0), rx = 16.5, ry = 14.5;
+        /* the red lifeguard's suit (owner's pick, 18 Nov 2026), showing
+           through the ring and up to her neck, its straps over her
+           shoulders and a white cross on her front, inside the ring */
+        var suit = function () {
+          c.beginPath(); c.moveTo(-15.4, -12.6);
+          c.quadraticCurveTo(0, -17.4, 15.4, -12.6);
+          c.bezierCurveTo(17.4, -2, 16.4, 16, 9, 23); c.quadraticCurveTo(0, 26, -9, 23);
+          c.bezierCurveTo(-16.4, 16, -17.4, -2, -15.4, -12.6); c.closePath();
+        };
+        var sg = c.createLinearGradient(-12, -14, 12, 22); sg.addColorStop(0, '#d42a32'); sg.addColorStop(0.6, '#a8161f'); sg.addColorStop(1, '#6e0a12');
+        c.fillStyle = sg; suit(); c.fill();
+        c.save(); suit(); c.clip();
+        c.fillStyle = 'rgba(30,0,4,.3)'; c.beginPath(); c.ellipse(14, 6, 6, 20, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,190,190,.14)'; c.beginPath(); c.ellipse(-8, -2, 5, 12, 0.1, 0, 6.2832); c.fill();
+        c.restore();
+        [-1, 1].forEach(function (k2) {
+          c.strokeStyle = 'rgba(25,32,48,.3)'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(k2 * 8.2 + 0.8, -14.2 + 1.1); c.lineTo(k2 * 8.8 + 0.8, -20 + 1.1); c.stroke();
+          c.strokeStyle = '#c4202a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(k2 * 8.2, -14.2); c.lineTo(k2 * 8.8, -20); c.stroke();
+        });
+        var cyx = y + 0.4;
+        c.fillStyle = 'rgba(40,0,6,.35)'; c.fillRect(-1.5 + 0.7, cyx - 4.6 + 0.9, 3, 9.2); c.fillRect(-4.6 + 0.7, cyx - 1.5 + 0.9, 9.2, 3);
+        c.fillStyle = '#fbfaf6'; c.fillRect(-1.5, cyx - 4.6, 3, 9.2); c.fillRect(-4.6, cyx - 1.5, 9.2, 3);
+        c.strokeStyle = SHD; c.lineWidth = 7.6; c.beginPath(); c.ellipse(1.5, y + 2, rx, ry, 0, 0, 6.2832); c.stroke();
+        c.lineWidth = 7;
+        for (k = 0; k < 8; k++) {
+          c.strokeStyle = k % 2 ? '#f6f6f2' : '#e0342e';
+          c.beginPath(); c.ellipse(0, y, rx, ry, 0, k / 8 * 6.2832 + 0.2, (k + 1) / 8 * 6.2832 + 0.2); c.stroke();
+        }
+        c.strokeStyle = 'rgba(40,10,20,.22)'; c.lineWidth = 2; c.beginPath(); c.ellipse(0.6, y + 0.8, rx - 2.6, ry - 2.6, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(40,10,20,.25)'; c.lineWidth = 1.8; c.beginPath(); c.ellipse(0, y, rx + 2.6, ry + 2.6, 0, -0.6, 1.9); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.3; c.beginPath(); c.ellipse(-0.6, y - 0.8, rx + 0.6, ry + 0.6, 0, 3.3, 4.7); c.stroke();
+        /* the grab rope, in four loops */
+        for (k = 0; k < 4; k++) {
+          var a0 = k * Math.PI / 2 + 0.6, a1 = a0 + Math.PI / 2, am = (a0 + a1) / 2;
+          var p0 = [Math.cos(a0) * (rx + 3.4), y + Math.sin(a0) * (ry + 3.4)], p1 = [Math.cos(a1) * (rx + 3.4), y + Math.sin(a1) * (ry + 3.4)];
+          var cm = [Math.cos(am) * (rx + 7), y + Math.sin(am) * (ry + 7)];
+          c.strokeStyle = SHD; c.lineWidth = 1.1; c.beginPath(); c.moveTo(p0[0] + 1, p0[1] + 1.4); c.quadraticCurveTo(cm[0] + 1, cm[1] + 1.4, p1[0] + 1, p1[1] + 1.4); c.stroke();
+          c.strokeStyle = '#efe6c8'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(p0[0], p0[1]); c.quadraticCurveTo(cm[0], cm[1], p1[0], p1[1]); c.stroke();
+          c.fillStyle = '#d8ccaa'; c.beginPath(); c.arc(p0[0], p0[1], 0.9, 0, 6.2832); c.fill();
+        }
+        /* the whistle on its cord */
+        c.strokeStyle = SHD; c.lineWidth = 1; c.beginPath(); c.ellipse(1, -17.5, 9, 4, 0, 0.1, Math.PI - 0.1); c.stroke();
+        c.strokeStyle = '#d62a2a'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, -19, 9, 4, 0, 0.1, Math.PI - 0.1); c.stroke();
+        c.save(); c.translate(8.6, -17.6); c.rotate(run ? Math.sin(g * 2.2) * 0.5 : 0.3);
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1.1, 3.8, 1.6, 2.6, 0, 0, 6.2832); c.fill();
+        var wg = c.createLinearGradient(-1.5, 0, 1.5, 0); wg.addColorStop(0, '#ffffff'); wg.addColorStop(1, '#8a92a0');
+        c.fillStyle = wg; c.beginPath(); c.ellipse(0, 2.6, 1.5, 2.4, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#9aa2b0'; c.fillRect(-0.5, 4.4, 1, 1.8);
+        c.restore();
+        /* wet from the sea (the owner's pick, 18 Nov 2026): beads of water
+           on her fur, her suit and the ring, each with its light and its
+           shadow; her head's fur wet and glossy; and, as she runs, drops
+           flung off her sides that fall behind and fade */
+        var drop = function (x, yy, r) {
+          c.fillStyle = 'rgba(25,32,48,.22)'; c.beginPath(); c.arc(x + r * 0.45, yy + r * 0.6, r, 0, 6.2832); c.fill();
+          var dg = c.createRadialGradient(x - r * 0.35, yy - r * 0.35, r * 0.1, x, yy, r);
+          dg.addColorStop(0, 'rgba(255,255,255,.6)'); dg.addColorStop(0.55, 'rgba(190,225,255,.32)'); dg.addColorStop(1, 'rgba(50,90,140,.55)');
+          c.fillStyle = dg; c.beginPath(); c.arc(x, yy, r, 0, 6.2832); c.fill();
+          c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = Math.max(0.25, r * 0.22); c.beginPath(); c.arc(x, yy, r * 0.62, 0.2, 1.4); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.arc(x - r * 0.38, yy - r * 0.38, r * 0.28, 0, 6.2832); c.fill();
+        };
+        [[-2.3, 1.7], [0.35, 1.4], [2.05, 1.8], [-0.9, 1.15], [1.2, 1.0]].forEach(function (q) { drop(Math.cos(q[0]) * rx, y + Math.sin(q[0]) * ry, q[1]); });
+        drop(6.4, y + 6.6, 1.3); drop(-5.8, y - 4.4, 1.05);
+        drop(-4.6, -14.6, 1.1); drop(-5.4, 24.8, 1.15); drop(4.8, 25.6, 0.9);
+        /* her head: wet fur, darker, clumped and glossy */
+        c.save(); c.beginPath(); c.ellipse(0, -28, 13, 12, 0, 0, 6.2832); c.clip();
+        c.fillStyle = 'rgba(70,44,20,.12)'; c.fillRect(-14, -41, 28, 26);
+        /* the gloss of wet fur, along the lit upper left of her head (a ring
+           of strokes round the lower half read as a beard) */
+        c.lineCap = 'round';
+        c.strokeStyle = 'rgba(255,255,255,.42)'; c.lineWidth = 1.1; c.beginPath(); c.ellipse(0, -28, 10.6, 9.6, 0, 3.55, 4.45); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.26)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(0, -28, 8.4, 7.6, 0, 3.75, 4.35); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(0, -28, 11.6, 10.6, 0, 4.75, 5.2); c.stroke();
+        c.restore();
+        drop(-6.8, -36.9, 1.55); drop(7.8, -36.2, 1.2); drop(11.2, -21.8, 1.1);
+        /* sun cream on her nose */
+        var ny = A.hy - A.hr + 2.6;
+        c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.ellipse(0, ny, 2.6, 1.5, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(180,200,220,.6)'; c.beginPath(); c.ellipse(0.6, ny + 0.6, 1.6, 0.6, 0, 0, 6.2832); c.fill();
+        /* the sunglasses, Ray-Ban Wayfarer style (the owner's pick; no
+           logo): a thick black frame, lenses a trapezoid wider at the top,
+           the brow line swept up at the outer corners, a heavy bridge,
+           silver rivets at the hinges, dark green-grey lenses */
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        var lens = function (k2, dx, dy, grow) {
+          /* a trapezoid with every corner rounded (sharp ones were not liked):
+             the top straight and swept up outward, the bottom sagging a little */
+          var ox = k2 * A.es + dx, oy = A.ey + dy, gw = grow || 0;
+          var P = function (u, v) { return [ox + k2 * u, oy + v]; };
+          var TI = P(-3.5 - gw, -2.6 - gw), TO = P(4.5 + gw, -3.4 - gw), BO = P(3.6 + gw, 2.6 + gw), BM = P(0.3, 3.8 + gw), BI = P(-3 - gw, 2.2 + gw);
+          var st0 = [(TI[0] + TO[0]) / 2, (TI[1] + TO[1]) / 2];
+          c.beginPath(); c.moveTo(st0[0], st0[1]);
+          c.arcTo(TO[0], TO[1], BO[0], BO[1], 1.5 + gw);
+          c.arcTo(BO[0], BO[1], BM[0], BM[1], 2.4 + gw);
+          c.arcTo(BM[0], BM[1], BI[0], BI[1], 6 + gw);
+          c.arcTo(BI[0], BI[1], TI[0], TI[1], 2.2 + gw);
+          c.arcTo(TI[0], TI[1], TO[0], TO[1], 1.5 + gw);
+          c.closePath();
+        };
+        [-1, 1].forEach(function (k2) {
+          /* the temples, back to her ears */
+          c.strokeStyle = SHD; c.lineWidth = 1.7; c.beginPath(); c.moveTo(k2 * (A.es + 4.6) + 1.1, A.ey - 2.6 + 1.5); c.lineTo(k2 * 11.6 + 1.1, A.ey + 6 + 1.5); c.stroke();
+          c.strokeStyle = '#17181d'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(k2 * (A.es + 4.6), A.ey - 2.6); c.lineTo(k2 * 11.6, A.ey + 6); c.stroke();
+          c.fillStyle = SHD; lens(k2, 1.2, 1.6, 1.3); c.fill();
+        });
+        c.strokeStyle = SHD; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-A.es + 3.2 + 1.1, A.ey - 1.6 + 1.5); c.quadraticCurveTo(1.1, A.ey - 2.8 + 1.5, A.es - 3.2 + 1.1, A.ey - 1.6 + 1.5); c.stroke();
+        [-1, 1].forEach(function (k2) {
+          c.fillStyle = '#17181d'; lens(k2, 0, 0, 1.3); c.fill();                 // the frame
+          var lgr = c.createLinearGradient(k2 * A.es - 3, A.ey - 3, k2 * A.es + 3, A.ey + 3);
+          lgr.addColorStop(0, '#4e6458'); lgr.addColorStop(0.5, '#1c2620'); lgr.addColorStop(1, '#070a08');
+          c.fillStyle = lgr; lens(k2, 0, 0, 0); c.fill();
+          c.save(); lens(k2, 0, 0, 0); c.clip();
+          c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.moveTo(k2 * A.es - 2.6, A.ey - 1.8); c.lineTo(k2 * A.es - 0.6, A.ey - 2.6); c.lineTo(k2 * A.es - 2.4, A.ey + 1.6); c.lineTo(k2 * A.es - 3.2, A.ey + 0.8); c.closePath(); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(k2 * A.es + 0.6, A.ey - 3, 1, 6);
+          c.restore();
+          c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(k2 * A.es - k2 * 4.4, A.ey - 3.5); c.lineTo(k2 * A.es + k2 * 5.3, A.ey - 4.4); c.stroke();
+          c.fillStyle = '#d8dde4'; c.beginPath(); c.arc(k2 * (A.es + 4.6), A.ey - 2.9, 0.42, 0, 6.2832); c.fill();
+          c.beginPath(); c.arc(k2 * (A.es + 3.4), A.ey - 2.7, 0.32, 0, 6.2832); c.fill();
+        });
+        /* the bridge */
+        c.strokeStyle = '#17181d'; c.lineWidth = 2; c.beginPath(); c.moveTo(-A.es + 3.2, A.ey - 1.6); c.quadraticCurveTo(0, A.ey - 2.8, A.es - 3.2, A.ey - 1.6); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(-A.es + 3.4, A.ey - 2.2); c.quadraticCurveTo(0, A.ey - 3.3, A.es - 3.4, A.ey - 2.2); c.stroke();
+        if (run && !SPARE) {                          // looks only: not at low effects
+          var BASE = [[14, -28], [16.5, -12], [17.5, 6], [13, 20]];
+          for (k = 0; k < 8; k++) {
+            var sd = k % 2 ? 1 : -1, b0 = BASE[k >> 1], u = ((g * 0.3 + k * 0.37) % 1 + 1) % 1;
+            c.globalAlpha = (1 - u) * 0.9;
+            drop(sd * (b0[0] + u * 8), b0[1] + u * 9 + u * u * 3, 1.4 - u * 0.5);
+          }
+          c.globalAlpha = 1;
+        }
+      } },
+    /* Hare — the magician's rabbit: white, her ear tips light grey; a
+       black cape lined in crimson, its corners held up behind her by two
+       white doves, wings beating (asked for by the owner, 18 Nov 2026),
+       her ears laid back over it; three playing cards circling her, and
+       sparkles winking about her head. (A top hat was tried three ways and
+       taken off.) */
+    magic: {
+      /* white, as a magician's rabbit is (the owner, 18 Nov 2026), her ear
+         tips a light grey to show them off. A white hare on pale ice was
+         once unreadable (skins.js): the black cape now covers most of her
+         and a firmer grey outline keeps her head and ears off the ice */
+      pal: { body: ['#ffffff', '#e6e8ee', '#b2b7c4'], flipper: ['#fbfbfd', '#e2e5ec', '#aeb3c0'], mark: '#ffffff',
+             outline: 'rgba(64,74,96,.62)', earTip: '#b4bbc8' },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        var str = hareStretch(o), gf = str / hareStretch({ still: true }), ys = function (yy) { return yy * str; };
+        /* the magician's cape (asked for by the owner, 18 Nov 2026): black,
+           lined in crimson, stretching with her back as she bounds */
+        c.save(); c.scale(1, gf);
+        var hem = capePaint(c, o, { nx: 5.4, ny: -15.6, scx: 10.6, scy: -16.6, sx: 12.8, sy: -9.4, sdx: 16.8, sdy: 5, hw: 17.2, hy: 15.6, sag: 4, pt: -14 },
+          { cols: ['#3c3e4a', '#1d1e26', '#0a0a0e'], lining: '#a3172b', light: 'rgba(170,180,225,.13)', dark: 'rgba(0,0,0,.42)',
+            far: 'rgba(0,0,0,.32)', near: 'rgba(200,210,255,.12)', braid: ['rgba(40,20,4,.5)', '#d8b04a', 'rgba(255,240,190,.5)'] });
+        /* the corners turned up where the doves hold them, showing the lining */
+        [0, hem.length - 1].forEach(function (hi, side) {
+          var kk = side ? 1 : -1, p0 = hem[hi];
+          var tl = function (dx, dy) { c.beginPath(); c.moveTo(p0[0] + dx, p0[1] + dy); c.lineTo(p0[0] - kk * 4.6 + dx, p0[1] + 1.4 + dy); c.lineTo(p0[0] - kk * 1.2 + dx, p0[1] - 5.2 + dy); c.closePath(); };
+          c.fillStyle = 'rgba(0,0,0,.35)'; tl(0.8, 1.1); c.fill();
+          var lg = c.createLinearGradient(p0[0], p0[1] - 5, p0[0] - kk * 4, p0[1]); lg.addColorStop(0, '#d8344a'); lg.addColorStop(1, '#7a0e1e');
+          c.fillStyle = lg; tl(0, 0); c.fill();
+          c.strokeStyle = '#d8b04a'; c.lineWidth = 0.5; tl(0, 0); c.stroke();
+        });
+        c.restore();
+        /* her ears, laid back over the cape as they lie on her back */
+        hareEars(c, S, o, HARE_ANG, ys);
+        /* two white doves flying behind her, each holding a corner of the
+           cape in its beak, wings beating; their shadows fall further off,
+           as they are up in the air */
+        [0, hem.length - 1].forEach(function (hi, side) {
+          var kk = side ? 1 : -1, p0 = hem[hi], bx = p0[0] + kk * 0.8, by = p0[1] * gf + 7.4;
+          var fl = run ? 0.5 + 0.5 * Math.sin(g * 7 + side * 1.9) : 0.55, W = 3.6 + 4.2 * fl;
+          var dove = function (sh) {
+            c.save(); c.translate(bx + (sh ? 4.6 : 0), by + (sh ? 6.4 : 0)); c.rotate(kk * 0.28); c.scale(1.3, 1.3);
+            var wing = function (kw) { c.beginPath(); c.moveTo(kw * 1.2, -1.6); c.quadraticCurveTo(kw * (W * 0.6), -3.4 - fl * 1.4, kw * W, -1.2 - fl * 0.8); c.quadraticCurveTo(kw * (W * 0.7), 0.6, kw * 1.4, 1.8); c.closePath(); };
+            if (sh) {
+              c.fillStyle = 'rgba(25,32,48,.16)';
+              c.beginPath(); c.ellipse(0, 0.4, 1.9, 3.6, 0, 0, 6.2832); c.fill(); wing(-1); c.fill(); wing(1); c.fill();
+              c.restore(); return;
+            }
+            c.fillStyle = '#f4f5f8';
+            c.beginPath(); c.moveTo(-1.2, 2.6); c.lineTo(-2.2, 6.4); c.quadraticCurveTo(0, 7.2, 2.2, 6.4); c.lineTo(1.2, 2.6); c.closePath(); c.fill();
+            c.strokeStyle = 'rgba(120,130,150,.5)'; c.lineWidth = 0.3; c.beginPath(); c.moveTo(-0.7, 3.4); c.lineTo(-1.1, 6.4); c.moveTo(0.7, 3.4); c.lineTo(1.1, 6.4); c.stroke();
+            [-1, 1].forEach(function (kw) {
+              var wg = c.createLinearGradient(kw * 1.2, -2, kw * W, 0); wg.addColorStop(0, '#ffffff'); wg.addColorStop(1, '#c6cede');
+              c.fillStyle = wg; wing(kw); c.fill();
+              c.strokeStyle = 'rgba(110,120,145,.55)'; c.lineWidth = 0.35; c.stroke();
+              c.beginPath(); c.moveTo(kw * (W * 0.55), -1.8 - fl); c.lineTo(kw * (W * 0.62), 0.2); c.moveTo(kw * (W * 0.8), -1.4 - fl * 0.8); c.lineTo(kw * (W * 0.84), -0.2); c.stroke();
+            });
+            var bdg = c.createRadialGradient(-0.6, -1, 0.3, 0, 0.4, 3.6); bdg.addColorStop(0, '#ffffff'); bdg.addColorStop(1, '#cfd6e4');
+            c.fillStyle = bdg; c.beginPath(); c.ellipse(0, 0.4, 1.8, 3.4, 0, 0, 6.2832); c.fill();
+            c.beginPath(); c.arc(0, -3.6, 1.45, 0, 6.2832); c.fill();
+            c.strokeStyle = 'rgba(110,120,145,.5)'; c.lineWidth = 0.35; c.beginPath(); c.ellipse(0, 0.4, 1.8, 3.4, 0, 0, 6.2832); c.stroke();
+            c.fillStyle = '#f0a03a'; c.beginPath(); c.moveTo(-0.5, -4.9); c.lineTo(0, -6.1); c.lineTo(0.5, -4.9); c.closePath(); c.fill();
+            c.fillStyle = '#1a1c22'; c.beginPath(); c.arc(-0.75, -3.9, 0.32, 0, 6.2832); c.arc(0.75, -3.9, 0.32, 0, 6.2832); c.fill();
+            c.restore();
+          };
+          dove(true); dove(false);
+        });
+        /* the cards circling her */
+        for (k = 0; k < 3; k++) {
+          var an = (run ? g * 0.7 : 5.76) + k * 2.094, px = Math.cos(an) * 17, py = -2 + Math.sin(an) * 21;   // still: none over her face
+          c.save(); c.translate(px, py); c.rotate(an + 1.2);
+          c.fillStyle = SHD; c.fillRect(-2.2 + 1.1, -3 + 1.5, 4.4, 6);
+          c.fillStyle = '#fbfbf6'; c.fillRect(-2.2, -3, 4.4, 6);
+          c.strokeStyle = 'rgba(60,60,80,.55)'; c.lineWidth = 0.35; c.strokeRect(-2.2, -3, 4.4, 6);
+          c.strokeStyle = 'rgba(200,40,50,.5)'; c.strokeRect(-1.7, -2.5, 3.4, 5);
+          if (k === 1) {
+            c.fillStyle = '#16181e'; c.beginPath(); c.moveTo(0, -1.5); c.quadraticCurveTo(1.6, 0, 0.6, 0.8); c.quadraticCurveTo(0, 0.4, 0, 0.4); c.quadraticCurveTo(0, 0.4, -0.6, 0.8); c.quadraticCurveTo(-1.6, 0, 0, -1.5); c.fill(); c.fillRect(-0.25, 0.4, 0.5, 1);
+          } else {
+            c.fillStyle = '#d6202a'; c.beginPath(); c.moveTo(0, 1.3); c.quadraticCurveTo(-1.8, -0.2, -0.9, -1.1); c.quadraticCurveTo(-0.3, -1.5, 0, -0.7); c.quadraticCurveTo(0.3, -1.5, 0.9, -1.1); c.quadraticCurveTo(1.8, -0.2, 0, 1.3); c.fill();
+          }
+          c.restore();
+        }
+        /* sparkles winking about her head (the hat she wore is gone, at the
+           owner's word) */
+        var hb = -19.4;
+        var tw = function (q) { return run ? 0.45 + 0.5 * Math.abs(Math.sin(g * 1.7 + q * 1.9)) : 0.85; };
+        sparkle(c, 9.4, hb - 6.6, 2.2, tw(0)); sparkle(c, -10, hb - 3.4, 1.6, tw(1)); sparkle(c, 8.6, hb + 6.6, 1.4, tw(2)); sparkle(c, -6.4, hb - 9.4, 1.2, tw(3));
+      } },
+    /* Snow leopard — the ninja: a black mask across her eyes, knotted at
+       the back of her head, its two long tails streaming and rippling
+       behind her as she runs; two katanas crossed on her back, hilts over
+       her shoulders, black lacquered sheaths with the red cord wound at
+       the mouth, gold guards, grips bound in diamonds, tucked under a red
+       sash knotted at her waist whose ends stream back (asked for by the owner,
+       18 Nov 2026; ninja smoke was tried and taken off);
+       a darker coat */
+    ninja: { pal: { body: ['#7a7f8c', '#4c505c', '#262932'], flipper: ['#6f7480', '#454954', '#23262e'] },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* her gallop stretches her back and carries her head forward and
+           back: the katana and strap stretch with her, the mask rides her head */
+        var gf = leopardStretch(o) / leopardStretch({ still: true });
+        c.save(); c.scale(1, gf);
+        /* two katanas crossed on her back (the owner asked for two), the
+           hilts up over her shoulders: black lacquered sheaths, the red
+           cord wound at each mouth, a gold guard, the grip bound in white
+           and black diamonds, a metal cap on the pommel and on each tip;
+           rocking a little as she runs */
+        c.save(); c.translate(0, 2); c.rotate(run ? Math.sin(g) * 0.04 : 0); c.translate(0, -2);
+        var kat = function (k2, sh) {
+          var tx = -k2 * 9.4, ty = 19.6, mx = k2 * 6.2, my = -10.4, hx = k2 * 9.6, hy3 = -17.6;
+          var ux = hx - mx, uy = hy3 - my, ul = Math.hypot(ux, uy); ux /= ul; uy /= ul;
+          var nx = -uy, ny = ux;
+          var dx0 = sh ? 1.3 : 0, dy0 = sh ? 1.7 : 0;
+          c.lineCap = 'round';
+          if (sh) {
+            c.strokeStyle = SHD; c.lineWidth = 3; c.beginPath(); c.moveTo(tx + dx0, ty + dy0); c.lineTo(hx + dx0, hy3 + dy0); c.stroke();
+            c.fillStyle = SHD; c.beginPath(); c.ellipse(mx + dx0, my + dy0, 2.8, 1.2, Math.atan2(uy, ux) + Math.PI / 2, 0, 6.2832); c.fill();
+            return;
+          }
+          /* the sheath */
+          c.strokeStyle = '#0e0f13'; c.lineWidth = 2.7; c.beginPath(); c.moveTo(tx, ty); c.lineTo(mx, my); c.stroke();
+          c.strokeStyle = 'rgba(150,160,185,.55)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(tx + nx * 0.7, ty + ny * 0.7); c.lineTo(mx + nx * 0.7, my + ny * 0.7); c.stroke();
+          c.fillStyle = '#5e636e'; c.beginPath(); c.arc(tx, ty, 1.45, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.arc(tx - 0.4, ty - 0.4, 0.5, 0, 6.2832); c.fill();
+          /* the red cord wound below the mouth, and its loose end */
+          c.strokeStyle = '#b8262c'; c.lineWidth = 0.55;
+          for (var w = 0; w < 3; w++) {
+            var wx = mx - ux * (2 + w * 1.05), wy = my - uy * (2 + w * 1.05);
+            c.beginPath(); c.moveTo(wx + nx * 1.4, wy + ny * 1.4); c.lineTo(wx - nx * 1.4 - ux * 0.5, wy - ny * 1.4 - uy * 0.5); c.stroke();
+          }
+          var lx = mx - ux * 5, ly = my - uy * 5, cw = run ? Math.sin(g * 2.6 + k2) * 0.9 : 0.4;
+          c.beginPath(); c.moveTo(lx, ly); c.quadraticCurveTo(lx + k2 * 1.6 + cw, ly + 1.4, lx + k2 * 1 + cw * 1.2, ly + 3.2); c.stroke();
+          /* the guard */
+          var ga = Math.atan2(uy, ux) + Math.PI / 2;
+          c.fillStyle = '#6a5520'; c.beginPath(); c.ellipse(mx, my, 2.9, 1.2, ga, 0, 6.2832); c.fill();
+          c.fillStyle = '#d8b04a'; c.beginPath(); c.ellipse(mx - ux * 0.2 - nx * 0.1, my - uy * 0.2 - ny * 0.1, 2.3, 0.7, ga, 0, 6.2832); c.fill();
+          /* the grip, bound in diamonds, and the pommel cap */
+          c.strokeStyle = '#e8e2d0'; c.lineWidth = 2.1; c.beginPath(); c.moveTo(mx + ux * 0.6, my + uy * 0.6); c.lineTo(hx, hy3); c.stroke();
+          c.strokeStyle = '#1a1c22'; c.lineWidth = 0.5;
+          for (var q = 0; q < 5; q++) {
+            var qx = mx + ux * (1.4 + q * 1.15), qy = my + uy * (1.4 + q * 1.15);
+            c.beginPath(); c.moveTo(qx + nx * 1, qy + ny * 1); c.lineTo(qx - nx * 1 + ux * 1.1, qy - ny * 1 + uy * 1.1);
+            c.moveTo(qx - nx * 1, qy - ny * 1); c.lineTo(qx + nx * 1 + ux * 1.1, qy + ny * 1 + uy * 1.1); c.stroke();
+          }
+          c.fillStyle = '#c9a040'; c.beginPath(); c.arc(hx, hy3, 1.2, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,245,200,.7)'; c.beginPath(); c.arc(hx - 0.35, hy3 - 0.35, 0.4, 0, 6.2832); c.fill();
+        };
+        kat(-1, true); kat(1, true);
+        kat(-1, false); kat(1, false);
+        c.restore();
+        /* the strap across her back */
+        c.strokeStyle = SHD; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-10.5 + 1, -6 + 1.4); c.quadraticCurveTo(0 + 1, 2 + 1.4, 10.5 + 1, 6 + 1.4); c.stroke();
+        c.strokeStyle = '#2a2420'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(-10.5, -6); c.quadraticCurveTo(0, 2, 10.5, 6); c.stroke();
+        /* the red sash round her waist (the owner's pick), the scabbards
+           tucked under it, knotted on her right with both ends streaming
+           back as she runs */
+        var sw3 = run ? Math.sin(g * 2.4) : 0.3;
+        [[5.6, 6.6, 9.6, 18.2, 0], [4.6, 7, 5.6, 20, 1.3]].forEach(function (e) {
+          var rb = ribbon(function (t) {
+            var wv = (run ? Math.sin(g * 2.6 - t * 3.6 + e[4]) * 1.8 : Math.sin(1 - t * 2.4 + e[4]) * 0.8) * t;
+            return [e[0] + (e[2] - e[0]) * t + wv + sw3 * 0.6 * t, e[1] + (e[3] - e[1]) * t];
+          }, 10, function (t) { return 1.45 - t * 0.35; });
+          ribbonPaint(c, rb, '#d8343a', '#8e1820', 0.6);
+        });
+        var sash = function (dx, dy) {
+          c.beginPath(); c.moveTo(-9.9 + dx, 3.6 + dy); c.quadraticCurveTo(dx, 4.8 + dy, 9.9 + dx, 3.6 + dy);
+          c.lineTo(9.9 + dx, 7.3 + dy); c.quadraticCurveTo(dx, 8.5 + dy, -9.9 + dx, 7.3 + dy); c.closePath();
+        };
+        c.fillStyle = SHD; sash(1.2, 1.6); c.fill();
+        var shg = c.createLinearGradient(-10, 0, 10, 0); shg.addColorStop(0, '#ee4a4a'); shg.addColorStop(0.5, '#b8202a'); shg.addColorStop(1, '#5e0a12');
+        c.fillStyle = shg; sash(0, 0); c.fill();
+        c.save(); sash(0, 0); c.clip();
+        c.strokeStyle = 'rgba(60,0,8,.4)'; c.lineWidth = 0.45;
+        [5.1, 6.4].forEach(function (fy) { c.beginPath(); c.moveTo(-9.9, fy); c.quadraticCurveTo(0, fy + 1.2, 9.9, fy); c.stroke(); });
+        c.strokeStyle = 'rgba(255,190,180,.4)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(-9.9, 3.95); c.quadraticCurveTo(0, 5.15, 9.9, 3.95); c.stroke();
+        c.restore();
+        /* the knot */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(6, 7, 2.5, 2.1, 0.3, 0, 6.2832); c.fill();
+        var kg = c.createRadialGradient(4.4, 4.8, 0.3, 5, 5.6, 2.6); kg.addColorStop(0, '#f05a56'); kg.addColorStop(1, '#8e1820');
+        c.fillStyle = kg; c.beginPath(); c.ellipse(5, 5.6, 2.4, 2, 0.3, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(60,0,8,.5)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(3.8, 4.6); c.quadraticCurveTo(5, 5.8, 6.2, 6.8); c.stroke();
+        c.restore();
+        c.save(); c.translate(0, -29 * (gf - 1));
+        /* the mask, a cloth band tied round her head (made a little more
+           real at the owner's word, 18 Nov 2026): across her eyes it curves
+           with her head and narrows at the sides where it turns away, runs
+           back round the edge of her head to a knot at the back, and the
+           two tails stream from the knot; dark cloth, lit from the top
+           left, with soft folds, her eyes looking out of slits whose edges
+           shade them */
+        var ey = A.ey, ky = -21.6, HX = 8.9, HY = 8.3, HC = -29;
+        var front = function (dx, dy) {
+          c.beginPath(); c.moveTo(-8.8 + dx, ey - 0.8 + dy);
+          c.quadraticCurveTo(dx, ey - 6.6 + dy, 8.8 + dx, ey - 0.8 + dy);
+          c.quadraticCurveTo(9.8 + dx, ey + 1.4 + dy, 8.6 + dx, ey + 3.6 + dy);
+          c.quadraticCurveTo(dx, ey + 1.4 + dy, -8.6 + dx, ey + 3.6 + dy);
+          c.quadraticCurveTo(-9.8 + dx, ey + 1.4 + dy, -8.8 + dx, ey - 0.8 + dy); c.closePath();
+        };
+        /* round the sides of her head to the knot */
+        var sides = [-1, 1].map(function (k2) {
+          var a0 = Math.atan2((ey + 2 - HC) / HY, 8.7 / HX);
+          return ribbon(function (t) {
+            var an = a0 + (Math.PI / 2 - a0) * t;
+            return [k2 * Math.cos(an) * HX * (1 - 0.06 * t), HC + Math.sin(an) * HY - t * 0.4];
+          }, 10, function (t) { return 0.95 - t * 0.2; });
+        });
+        sides.forEach(function (rb) { c.fillStyle = SHD; rb.path(c, 1.1, 1.5); c.fill(); });
+        c.fillStyle = SHD; front(1.2, 1.6); c.fill();
+        /* the tails, from the knot */
+        [-1, 1].forEach(function (k2) {
+          var rb = ribbon(function (t) {
+            var wv = (run ? Math.sin(g * 2.4 - t * 4.2 + (k2 > 0 ? 1 : 0)) * 2.8 : Math.sin(1.2 - t * 3) * 1.4) * t;
+            return [k2 * (1 + t * 6) + wv, ky + t * 20];
+          }, 12, function (t) { return 1.25 - t * 0.6; });
+          ribbonPaint(c, rb, '#24272f', '#0a0b0e', 0.6);
+        });
+        sides.forEach(function (rb) { c.fillStyle = '#121318'; rb.path(c, 0, 0); c.fill(); c.save(); rb.path(c, 0, 0); c.clip(); c.fillStyle = '#2a2d36'; rb.path(c, -0.7, -0.6); c.fill(); c.restore(); });
+        var mg = c.createLinearGradient(-8, ey - 4, 8, ey + 4); mg.addColorStop(0, '#41454f'); mg.addColorStop(0.5, '#1f2128'); mg.addColorStop(1, '#0a0b0e');
+        c.fillStyle = mg; front(0, 0); c.fill();
+        c.save(); front(0, 0); c.clip();
+        /* soft folds along the cloth, and a crease where it turns away */
+        c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.45;
+        c.beginPath(); c.moveTo(-8.4, ey + 0.8); c.quadraticCurveTo(0, ey - 3.6, 8.4, ey + 0.8); c.stroke();
+        c.beginPath(); c.moveTo(-8, ey + 2.6); c.quadraticCurveTo(0, ey - 0.2, 8, ey + 2.6); c.stroke();
+        c.strokeStyle = 'rgba(150,160,185,.22)'; c.lineWidth = 0.4;
+        c.beginPath(); c.moveTo(-8.4, ey + 0.4); c.quadraticCurveTo(0, ey - 4, 8.4, ey + 0.4); c.stroke();
+        [-1, 1].forEach(function (k2) { c.strokeStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.moveTo(k2 * 7.6, ey - 0.6); c.lineTo(k2 * 8.6, ey + 2.6); c.stroke(); });
+        c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.ellipse(-3, ey - 3.2, 3.6, 0.6, -0.08, 0, 6.2832); c.fill();
+        c.restore();
+        /* her eyes in the slits */
+        [-1, 1].forEach(function (k2) {
+          var ex = k2 * A.es;
+          c.fillStyle = '#050608'; c.beginPath(); c.ellipse(ex, ey, 2.1, 1.35, k2 * 0.15, 0, 6.2832); c.fill();
+          var eg = c.createLinearGradient(ex, ey - 1.1, ex, ey + 1.1); eg.addColorStop(0, '#9fb0bf'); eg.addColorStop(0.45, '#d8e6f0'); eg.addColorStop(1, '#e8f0f6');
+          c.fillStyle = eg; c.beginPath(); c.ellipse(ex, ey + 0.1, 1.7, 1.0, k2 * 0.15, 0, 6.2832); c.fill();
+          c.fillStyle = '#16181e'; c.beginPath(); c.arc(ex + 0.2, ey + 0.15, 0.6, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.arc(ex - 0.15, ey - 0.15, 0.22, 0, 6.2832); c.fill();
+        });
+        /* the knot at the back of her head */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1, ky + 1.4, 2.8, 2.1, 0, 0, 6.2832); c.fill();
+        [-1, 1].forEach(function (k2) {
+          var lg2 = c.createRadialGradient(k2 * 1.4 - 0.5, ky - 0.6, 0.2, k2 * 1.4, ky, 1.8); lg2.addColorStop(0, '#3e424c'); lg2.addColorStop(1, '#0e0f13');
+          c.fillStyle = lg2; c.beginPath(); c.ellipse(k2 * 1.5, ky, 1.7, 1.3, k2 * 0.4, 0, 6.2832); c.fill();
+        });
+        c.fillStyle = '#1a1c22'; c.beginPath(); c.ellipse(0, ky + 0.1, 1.1, 1.2, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(-0.4, ky - 0.4, 0.5, 0, 6.2832); c.fill();
+        c.restore();
+        /* her ears, standing up over the band as it passes under them (the
+           owner, 18 Nov 2026: it hid them), with a little shadow of their own */
+        var lys = function (yy) { return yy * leopardStretch(o); };
+        c.save(); c.translate(0.8, 1.1); c.globalAlpha = 0.5;
+        var keepB = S.body[2], keepM = S.mark; S.body[2] = 'rgba(25,32,48,.6)'; S.mark = 'rgba(25,32,48,0)';
+        leopardEars(c, S, lys); S.body[2] = keepB; S.mark = keepM;
+        c.globalAlpha = 1; c.restore();
+        leopardEars(c, S, lys);
+      } },
+    /* Compass — the sea captain, sliding on his belly like any penguin
+       (a boat he stood in was tried and given up, 18 Nov 2026): his
+       captain's coat, navy, with a gold-edged stand collar, a seam and the
+       vent down his back, two gold buttons, gold epaulettes, sleeves on his
+       flippers with two gold rings at each cuff; a captain's cap fitted to
+       his head, seen from above, the white crown over all of it (his
+       pocket compass in his hand was tried and taken off, 18 Nov 2026),
+       the navy band and gold cord with the anchor, the
+       glossy black peak out over his face, and his beak and pipe coming out
+       from under it, the pipe with a red fire and plenty of smoke */
+    captain: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        var HX = 14.5, HY = 13.6, HC = -26;            // his head, as bodyPenguin draws it (a quarter bigger than life)
+        /* his captain's coat (the owner, 18 Nov 2026), navy over his back
+           below his head: the stand collar, a seam down the back, two gold
+           buttons at the waist and the vent between the tails */
+        c.save(); c.beginPath(); penguinBody(c, true); c.ellipse(0, HC, HX, HY, 0, 0, 6.2832); c.clip('evenodd');
+        var jg = c.createLinearGradient(-20, -18, 20, 26); jg.addColorStop(0, '#3e5c92'); jg.addColorStop(0.5, '#1d3157'); jg.addColorStop(1, '#0b1630');
+        c.fillStyle = jg; c.fillRect(-24, -22, 48, 52);
+        c.fillStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.ellipse(-9, -2, 5, 16, 0.12, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(15, 6, 6, 20, -0.1, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.6;
+        c.beginPath(); c.moveTo(0, -12); c.lineTo(0, 13); c.stroke();
+        c.beginPath(); c.moveTo(-9, -6); c.quadraticCurveTo(-11, 6, -8, 18); c.moveTo(9, -6); c.quadraticCurveTo(11, 6, 8, 18); c.stroke();
+        /* the vent: the tails parting a little at the bottom */
+        c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.moveTo(0, 12); c.lineTo(-1.8, 28); c.lineTo(1.8, 28); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(150,175,220,.3)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(-0.6, 12.4); c.lineTo(-2.2, 27); c.stroke();
+        /* the stand collar round his neck, gold-edged */
+        c.strokeStyle = '#122244'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(0, HC, HX + 1.2, HY + 1.2, 0, 0.55, Math.PI - 0.55); c.stroke();
+        c.strokeStyle = '#e0b440'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(0, HC, HX + 2.8, HY + 2.8, 0, 0.6, Math.PI - 0.6); c.stroke();
+        c.restore();
+        [-1, 1].forEach(function (k2) {
+          var bxx = k2 * 3.6, byy = 9.6;
+          c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(bxx + 0.5, byy + 0.7, 1.3, 0, 6.2832); c.fill();
+          var bgr = c.createRadialGradient(bxx - 0.4, byy - 0.4, 0.1, bxx, byy, 1.3); bgr.addColorStop(0, '#fff2b0'); bgr.addColorStop(1, '#a87818');
+          c.fillStyle = bgr; c.beginPath(); c.arc(bxx, byy, 1.2, 0, 6.2832); c.fill();
+        });
+        /* the sleeves on his flippers, navy down to two gold rings at the cuff,
+           going with them as they row; only where they show past his body */
+        c.save(); c.beginPath(); c.rect(-60, -80, 120, 160); penguinBody(c, true); c.clip('evenodd');
+        [-1, 1].forEach(function (k2) {
+          c.save(); penguinFlipperPose(c, k2, o, PENG_ANG);
+          penguinFlipperPath(c, k2); c.clip();
+          var sg = c.createLinearGradient(0, -6, k2 * 16, 8); sg.addColorStop(0, '#34507e'); sg.addColorStop(1, '#14244a');
+          c.fillStyle = sg; c.beginPath(); c.moveTo(-2, -12); c.lineTo(k2 * 14.6, -12); c.lineTo(k2 * 14.6, 14); c.lineTo(-2, 14); c.closePath(); c.fill();
+          c.strokeStyle = '#e0b440'; c.lineWidth = 0.9;
+          [12.6, 14.2].forEach(function (cx2) { c.beginPath(); c.moveTo(k2 * cx2, -12); c.lineTo(k2 * cx2, 14); c.stroke(); });
+          c.restore();
+        });
+        c.restore();
+        /* gold epaulettes on his shoulders */
+        [-1, 1].forEach(function (k2) {
+          c.save(); c.translate(k2 * 12.4, -10.6); c.rotate(k2 * 0.35);
+          var fs = run ? Math.sin(g * 2 + k2) * 0.18 : 0;
+          for (var q = 0; q < 9; q++) {
+            var a2 = -0.95 + q * 0.24 + fs;
+            c.strokeStyle = SHD; c.lineWidth = 0.6; c.beginPath(); c.moveTo(k2 * Math.cos(a2) * 3.8 + 1, Math.sin(a2) * 2.4 + 1.3); c.lineTo(k2 * Math.cos(a2) * 6.6 + 1, Math.sin(a2) * 4 + 1.3); c.stroke();
+            c.strokeStyle = q % 2 ? '#f0c43c' : '#c9962a'; c.beginPath(); c.moveTo(k2 * Math.cos(a2) * 3.8, Math.sin(a2) * 2.4); c.lineTo(k2 * Math.cos(a2) * 6.6, Math.sin(a2) * 4); c.stroke();
+          }
+          c.fillStyle = SHD; c.beginPath(); c.ellipse(1, 1.3, 4.4, 2.8, 0, 0, 6.2832); c.fill();
+          var eg = c.createRadialGradient(-1.2, -0.9, 0.3, 0, 0, 4.4); eg.addColorStop(0, '#fff2b0'); eg.addColorStop(0.6, '#e0b440'); eg.addColorStop(1, '#9a6a10');
+          c.fillStyle = eg; c.beginPath(); c.ellipse(0, 0, 4.2, 2.7, 0, 0, 6.2832); c.fill();
+          c.fillStyle = '#1e2a4a'; c.beginPath(); c.ellipse(0, 0, 2.3, 1.4, 0, 0, 6.2832); c.fill();
+          c.restore();
+        });
+        /* the cap, fitted to his head (the owner: the shape of his head),
+           seen from above: the white crown over all of it, the navy band and
+           gold cord with the anchor at the front, the glossy black peak out
+           over his face, and his beak and pipe coming out from under it */
+        var cx = 0, cy = HC, CRX = HX + 0.9, CRY = HY + 0.9, fy = cy - CRY + 1.2;
+        c.fillStyle = 'rgba(25,32,48,.34)'; c.beginPath(); c.ellipse(cx + 2, cy + 2.6, CRX, CRY, 0, 0, 6.2832); c.fill();
+        var beak = function (dx, dy) { c.beginPath(); c.moveTo(-3.6 + dx, fy + 0.6 + dy); c.quadraticCurveTo(dx, fy - 0.6 + dy, 3.6 + dx, fy + 0.6 + dy); c.quadraticCurveTo(2.2 + dx, fy - 8 + dy, dx, fy - 14.6 + dy); c.quadraticCurveTo(-2.2 + dx, fy - 8 + dy, -3.6 + dx, fy + 0.6 + dy); c.closePath(); };
+        var bk = (PENGUIN_SP[S.id] || {}).beak || '#f0541c';
+        c.fillStyle = 'rgba(25,32,48,.3)'; beak(1, 1.4); c.fill();
+        var bkg = c.createLinearGradient(-3, 0, 3, 0); bkg.addColorStop(0, '#ff8a4a'); bkg.addColorStop(0.5, bk); bkg.addColorStop(1, '#a8360c');
+        c.fillStyle = bkg; beak(0, 0); c.fill();
+        c.strokeStyle = 'rgba(255,220,190,.55)'; c.lineWidth = 0.45; c.beginPath(); c.moveTo(-1.3, fy - 1); c.quadraticCurveTo(-1.2, fy - 8, -0.2, fy - 13.4); c.stroke();
+        c.strokeStyle = 'rgba(120,30,0,.4)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(0, fy - 3.4); c.lineTo(0, fy - 12.8); c.stroke();
+        var wtg = c.createRadialGradient(cx - 5.4, cy - 5.2, 1, cx, cy, CRX + 1); wtg.addColorStop(0, '#ffffff'); wtg.addColorStop(0.6, '#e8ecf2'); wtg.addColorStop(1, '#a6afbf');
+        c.fillStyle = wtg; c.beginPath(); c.ellipse(cx, cy, CRX, CRY, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(100,110,130,.6)'; c.lineWidth = 0.55; c.stroke();
+        c.strokeStyle = 'rgba(130,140,160,.5)'; c.lineWidth = 0.5; c.beginPath(); c.ellipse(cx, cy + 0.6, CRX - 4, CRY - 3.6, 0, 0, 6.2832); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(cx - 5.4, cy - 5.4, 4.8, 2.1, -0.5, 0, 6.2832); c.fill();
+        var band = function () { c.beginPath(); c.moveTo(-12, fy + 4.4); c.quadraticCurveTo(cx, fy - 2.2, 12, fy + 4.4); c.quadraticCurveTo(cx, fy + 1.6, -12, fy + 4.4); c.closePath(); };
+        c.fillStyle = '#1c3054'; band(); c.fill();
+        c.strokeStyle = '#e0b440'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-11.2, fy + 3.8); c.quadraticCurveTo(cx, fy - 1.4, 11.2, fy + 3.8); c.stroke();
+        var peak = function (dx, dy) { c.beginPath(); c.moveTo(-11 + dx, fy + 2.8 + dy); c.quadraticCurveTo(dx, fy - 8.4 + dy, 11 + dx, fy + 2.8 + dy); c.quadraticCurveTo(dx, fy - 1 + dy, -11 + dx, fy + 2.8 + dy); c.closePath(); };
+        c.fillStyle = 'rgba(25,32,48,.32)'; peak(1, 1.6); c.fill();
+        var pkg = c.createLinearGradient(0, fy - 6, 0, fy + 2); pkg.addColorStop(0, '#4c515e'); pkg.addColorStop(1, '#07080b');
+        c.fillStyle = pkg; peak(0, 0); c.fill();
+        c.strokeStyle = 'rgba(190,200,220,.7)'; c.lineWidth = 0.5; peak(0, 0); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(-3.4, fy - 2.8, 3.6, 0.7, -0.08, 0, 6.2832); c.fill();
+        var ay = fy + 2.4;
+        c.fillStyle = '#e0b440'; c.beginPath(); c.ellipse(cx, ay, 2.6, 2.1, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#1c3054'; c.beginPath(); c.ellipse(cx, ay, 1.9, 1.5, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = '#f6d260'; c.lineWidth = 0.42;
+        c.beginPath(); c.moveTo(cx, ay - 1.1); c.lineTo(cx, ay + 1); c.moveTo(cx - 0.7, ay - 0.5); c.lineTo(cx + 0.7, ay - 0.5); c.stroke();
+        c.beginPath(); c.arc(cx, ay + 0.1, 0.85, 0.3, Math.PI - 0.3); c.stroke();
+        /* the pipe at the side of his beak, out in front of the peak: a red
+           fire in its bowl with little flames licking up and bent back as he
+           slides, and plenty of smoke streaming back from it (the owner
+           wanted both) */
+        var bx = 9.6, by = fy - 9.2;
+        var NS = SPARE ? 5 : 9;
+        for (k = NS - 1; k >= 0; k--) {
+          var p = ((run ? g * 0.3 : 0.15) + k / NS) % 1;
+          var px = bx + 1 + p * 10 + Math.sin(p * 5 + k * 1.7) * 2.4 * p, py = by - 2 + p * 26, r = 1.5 + p * 5;
+          var pa = 0.9 * (1 - p) * Math.min(1, 0.35 + p * 8);
+          /* grey enough to show on the pale ice: white smoke was lost on it */
+          var sgr = c.createRadialGradient(px - r * 0.3, py - r * 0.3, r * 0.1, px, py, r);
+          sgr.addColorStop(0, 'rgba(232,235,241,' + pa.toFixed(3) + ')'); sgr.addColorStop(0.55, 'rgba(160,168,184,' + (pa * 0.8).toFixed(3) + ')'); sgr.addColorStop(1, 'rgba(130,138,154,0)');
+          c.fillStyle = sgr; c.beginPath(); c.arc(px, py, r, 0, 6.2832); c.fill();
+        }
+        c.strokeStyle = SHD; c.lineWidth = 1.4; c.beginPath(); c.moveTo(1.8 + 1, fy - 7.6 + 1.3); c.lineTo(bx - 1 + 1, by + 0.4 + 1.3); c.stroke();
+        c.strokeStyle = '#5a3418'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(1.8, fy - 7.6); c.lineTo(bx - 1, by + 0.4); c.stroke();
+        c.strokeStyle = 'rgba(200,150,100,.5)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(2, fy - 8.1); c.lineTo(bx - 1.2, by - 0.2); c.stroke();
+        c.fillStyle = SHD; c.beginPath(); c.arc(bx + 1, by + 1.4, 2.3, 0, 6.2832); c.fill();
+        var pg = c.createRadialGradient(bx - 0.6, by - 0.6, 0.2, bx, by, 2.3); pg.addColorStop(0, '#b07a40'); pg.addColorStop(1, '#4a2810');
+        c.fillStyle = pg; c.beginPath(); c.arc(bx, by, 2.2, 0, 6.2832); c.fill();
+        /* the fire: a red glow, the coals, the flames */
+        var fl = run ? 0.8 + 0.2 * Math.sin(g * 9) : 0.9;
+        var glow = c.createRadialGradient(bx, by, 0.3, bx, by, 6 * fl);
+        glow.addColorStop(0, 'rgba(255,90,30,' + (0.55 * fl).toFixed(3) + ')'); glow.addColorStop(1, 'rgba(255,60,20,0)');
+        c.fillStyle = glow; c.beginPath(); c.arc(bx, by, 6 * fl, 0, 6.2832); c.fill();
+        var coal = c.createRadialGradient(bx - 0.3, by - 0.3, 0.1, bx, by, 1.5); coal.addColorStop(0, '#ffe27a'); coal.addColorStop(0.45, '#ff6a1c'); coal.addColorStop(1, '#b8160e');
+        c.fillStyle = coal; c.beginPath(); c.arc(bx, by, 1.45, 0, 6.2832); c.fill();
+        c.save(); c.translate(bx, by); c.rotate(run ? 2.3 : 0.15);
+        [[-0.8, 0.9, 0], [0.7, 0.8, 1.9], [0, 1.25, 3.7]].forEach(function (f) {
+          var h = (2.6 + 1.4 * f[1]) * (run ? 0.75 + 0.35 * Math.abs(Math.sin(g * 7 + f[2])) : 1), w = 0.95 * f[1];
+          var flame = function (sc) { c.beginPath(); c.moveTo(f[0] - w * sc, -0.4); c.quadraticCurveTo(f[0] - w * sc * 1.1, -h * 0.55 * sc, f[0], -h * sc); c.quadraticCurveTo(f[0] + w * sc * 1.1, -h * 0.55 * sc, f[0] + w * sc, -0.4); c.closePath(); };
+          c.fillStyle = '#e8261c'; flame(1); c.fill();
+          c.fillStyle = '#ff9a2a'; flame(0.68); c.fill();
+          c.fillStyle = '#ffe27a'; flame(0.36); c.fill();
+        });
+        c.restore();
+      } },
+    /* Owl — the wizard: her purple hat on her head, the round brim
+       covering it, the tall pointed crown rising from it and thrown back over a
+       shoulder like the elf's (WIZ_FLING), waving as she runs, shaded and
+       creased, a gold band under its foot, a star and a crescent moon on
+       it, sparkles circling her, and magic dust left behind her wings as
+       she flies */
+    wizard: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* magic dust left behind her wings as she flies (the owner, 18 Nov
+           2026: shed along the wings' back edges, not only off the tips):
+           motes of gold and violet and little four-point stars, born all
+           along each wing's trailing edge, drifting back, swinging away from
+           her turn, twinkling and fading as they go, over a faint violet
+           veil. The edge follows the wing's beat as bodyOwl draws it
+           (owlWing's trailing points, the hand swept as it sweeps, at 0.8).
+           Looks only: not at low effects. No randomness: seeded by index. */
+        if (run && !SPARE) {
+          var tn2 = clamp((o && o.turn) || 0, -1, 1);
+          var fl = Math.sin(g * 0.55) * (0.6 + 0.4 * Math.sin(g * 0.11)), up2 = Math.max(0, fl);
+          var span2 = 1 - 0.22 * up2, sw2 = 0.42 * up2, cs2 = Math.cos(sw2), sn2 = Math.sin(sw2);
+          /* the trailing edge, wing tip to body, in the wing's own frame */
+          var EDGE = [[49.5, 7.5], [46, 8.5], [45.5, 11], [41.5, 11.5], [40, 14], [35, 14.5], [28, 15.5], [20, 16], [12, 14.5], [6.5, 10]].map(function (p) {
+            if (p[0] <= 28) return [p[0] * 0.8, p[1] * 0.8];
+            var dx = (p[0] - 28) * span2, dy = p[1] + 10.5;
+            return [(28 + dx * cs2 - dy * sn2 * 0.25) * 0.8, (-10.5 + dx * sn2 + dy * cs2) * 0.8];
+          });
+          var edgeAt = function (u) {                 // u 0 at the tip, 1 at the body
+            var f = u * (EDGE.length - 1), j = Math.min(EDGE.length - 2, Math.floor(f)), t = f - j;
+            return [EDGE[j][0] + (EDGE[j + 1][0] - EDGE[j][0]) * t, EDGE[j][1] + (EDGE[j + 1][1] - EDGE[j][1]) * t];
+          };
+          /* gold and violet, deep enough to show on snow as well as at night */
+          var COLS = ['255,196,40', '168,96,255', '255,226,120', '124,72,230'];
+          var star4 = function (x, y, r, col, al) {
+            c.fillStyle = 'rgba(' + col + ',' + al.toFixed(3) + ')';
+            c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r);
+            c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill();
+          };
+          var LEN = 55, N = 34;             // well back behind her (the owner: further back)
+          [-1, 1].forEach(function (k2) {
+            /* the veil: the trailing edge drawn back and fading */
+            var gl = c.createLinearGradient(0, 8, 0, 8 + LEN * 0.75);
+            gl.addColorStop(0, 'rgba(150,100,255,.15)'); gl.addColorStop(1, 'rgba(150,100,255,0)');
+            c.fillStyle = gl; c.beginPath();
+            EDGE.forEach(function (p, j) { if (j) c.lineTo(k2 * p[0], p[1]); else c.moveTo(k2 * p[0], p[1]); });
+            for (var j = EDGE.length - 1; j >= 0; j--) c.lineTo(k2 * EDGE[j][0] - tn2 * 12, EDGE[j][1] + LEN * 0.7 * (0.6 + 0.4 * (1 - j / (EDGE.length - 1))));
+            c.closePath(); c.fill();
+            for (var i = 0; i < N; i++) {
+              var seed = Math.sin((i + 1) * 12.9898 + (k2 > 0 ? 78.2 : 0)) * 43758.5453; seed -= Math.floor(seed);
+              var u = ((i * 0.618 + seed * 0.3) % 1) * 0.92;
+              var age = (g * 0.3 + seed + i / N) % 1;
+              var e = edgeAt(u);
+              var px = k2 * e[0] - tn2 * age * age * 16 + Math.sin(g * 1.3 + i * 2.1) * age * 3.2;
+              var py = e[1] + 0.8 + age * LEN * (0.7 + seed * 0.5);
+              var al = Math.pow(1 - age, 0.7) * (0.6 + 0.4 * Math.abs(Math.sin(g * 2.2 + i * 1.7)));
+              var sz = (1 - age * 0.55) * (0.8 + seed * 1.0);
+              var col = COLS[i % COLS.length];
+              if (i % 3 === 0) star4(px, py, sz * 2.4, col, al);
+              else {
+                c.fillStyle = 'rgba(' + col + ',' + (al * 0.3).toFixed(3) + ')';
+                c.beginPath(); c.arc(px, py, sz * 1.9, 0, 6.2832); c.fill();
+                c.fillStyle = 'rgba(' + col + ',' + al.toFixed(3) + ')';
+                c.beginPath(); c.arc(px, py, sz, 0, 6.2832); c.fill();
+              }
+            }
+          });
+        }
+        var bx = 0, by = A.hy + 8.4;
+        /* the hat on her head, its round brim over all of it (the owner,
+           18 Nov 2026: smaller on her head it looked strange, then it hung on
+           her back by two gold cords; the round brim, 14 by 11, not a flat
+           oval, then went back on her head); drawn at its own size, scaled
+           about where it sits */
+        var HK = 0.9, HYB = A.hy - 1;
+        c.save(); c.translate(bx, HYB); c.scale(HK, HK); c.translate(-bx, -by);
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(bx + 1.5, by + 2, 14.4, 11.4, 0, 0, 6.2832); c.fill();
+        var bg = c.createRadialGradient(-4, by - 3, 1, 0, by, 14); bg.addColorStop(0, '#6a50c8'); bg.addColorStop(1, '#2a1c66');
+        c.fillStyle = bg; c.beginPath(); c.ellipse(bx, by, 14, 11, 0, 0, 6.2832); c.fill();
+        /* the brim shaded as felt in the sun from the top left (the owner,
+           18 Nov 2026: a few shadows on the hat): its edge darker toward the
+           bottom right and catching the light at the top left */
+        c.save(); c.beginPath(); c.ellipse(bx, by, 14, 11, 0, 0, 6.2832); c.clip();
+        c.strokeStyle = 'rgba(14,6,40,.45)'; c.lineWidth = 3.2;
+        c.beginPath(); c.ellipse(bx - 1.3, by - 1.5, 14, 11, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(190,170,255,.28)'; c.lineWidth = 1.6;
+        c.beginPath(); c.ellipse(bx + 1.1, by + 1.3, 14, 11, 0, 0, 6.2832); c.stroke();
+        c.restore();
+        c.fillStyle = 'rgba(255,220,120,.85)';
+        for (k = 0; k < 9; k++) { var a = k / 9 * 6.2832 + 0.3; c.beginPath(); c.arc(Math.cos(a) * 11.6, by + Math.sin(a) * 9.2, 0.45, 0, 6.2832); c.fill(); }
+        /* the point thrown over a shoulder the way the elf's is (the owner,
+           18 Nov 2026): to the side away from her turn, easing across and
+           staying there while she runs straight, waving more toward the tip */
+        var side = 1;
+        if (run) {
+          var tn = (o && o.turn) || 0;
+          if (tn > 0.1) WIZ_AIM = -1; else if (tn < -0.1) WIZ_AIM = 1;
+          WIZ_FLING += (WIZ_AIM - WIZ_FLING) * 0.14;
+          side = WIZ_FLING;
+        }
+        var ph = run ? g * 1.7 : 1.1, be = 0.98 * side + (run ? Math.sin(g) * 0.06 : 0), dx0 = Math.sin(be), dy0 = Math.cos(be);
+        var rb = ribbon(function (t) {
+          var wv = 3.6 * Math.pow(t, 1.3) * Math.sin(ph - t * 3.4), dr = 6 * t * t;
+          return [bx + 1.2 * side + dx0 * 22 * t + dy0 * wv, by - 0.6 + dy0 * 22 * t - dx0 * wv + dr];
+        }, 14, function (t) { return 7 * Math.pow(1 - t, 0.9) + 0.4; });
+        /* the gold band round the crown's foot, laid under the crown so the
+           point swinging over it covers it (the owner, 18 Nov 2026: drawn on
+           top, it showed over the moving point) */
+        c.strokeStyle = '#e0b440'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(bx, by + 0.8, 6.8, 4.8, 0, 0.15, Math.PI - 0.15); c.stroke();
+        /* the crown's shadow cast on the brim, toward the bottom right */
+        c.save(); c.beginPath(); c.ellipse(bx, by, 14, 11, 0, 0, 6.2832); c.clip();
+        c.fillStyle = 'rgba(14,6,40,.4)'; rb.path(c, 2.6, 3.2); c.fill();
+        c.restore();
+        ribbonPaint(c, rb, '#5a40b0', '#2c1c70', 1.4);
+        /* creases across the soft crown where it bends, each a dark fold
+           with a little light along its upper edge */
+        c.save(); rb.path(c, 0, 0); c.clip();
+        [3, 7, 11].forEach(function (i) {
+          var m = rb.mid[i], nx = -m[3], ny = m[2], ww = m[4] + 0.6, bw = 1.2;
+          c.strokeStyle = 'rgba(14,6,40,.6)'; c.lineWidth = 1.2;
+          c.beginPath(); c.moveTo(m[0] + nx * ww, m[1] + ny * ww); c.quadraticCurveTo(m[0] + m[2] * bw, m[1] + m[3] * bw, m[0] - nx * ww, m[1] - ny * ww); c.stroke();
+          c.strokeStyle = 'rgba(200,180,255,.35)'; c.lineWidth = 0.6;
+          c.beginPath(); c.moveTo(m[0] + nx * ww - m[2] * 0.7, m[1] + ny * ww - m[3] * 0.7); c.quadraticCurveTo(m[0] + m[2] * (bw - 0.7), m[1] + m[3] * (bw - 0.7), m[0] - nx * ww - m[2] * 0.7, m[1] - ny * ww - m[3] * 0.7); c.stroke();
+        });
+        c.restore();
+        c.strokeStyle = 'rgba(200,180,255,.35)'; c.lineWidth = 0.8; c.beginPath();
+        for (k = 2; k < 11; k++) { var m = rb.mid[k], lx = m[0] - m[3] * m[4] * 0.5, ly = m[1] + m[2] * m[4] * 0.5; if (k === 2) c.moveTo(lx, ly); else c.lineTo(lx, ly); }
+        c.stroke();
+        var m5 = rb.mid[6]; star5(c, m5[0], m5[1], 1.8, '#ffd23a');
+        var m9 = rb.mid[10];
+        c.fillStyle = '#ffe48a'; c.beginPath(); c.arc(m9[0], m9[1], 1.4, 0, 6.2832); c.fill();
+        c.fillStyle = '#4a33a0'; c.beginPath(); c.arc(m9[0] + 0.6, m9[1] - 0.4, 1.2, 0, 6.2832); c.fill();
+        c.restore();
+        for (k = 0; k < 4; k++) {
+          var sa = (run ? g * 1.2 : 0.4) + k * 1.571;
+          sparkle(c, Math.cos(sa) * 17, A.hy + 9 + Math.sin(sa) * 13, 1.7, run ? 0.55 + 0.4 * Math.abs(Math.sin(g * 2 + k)) : 0.9);
+        }
+      } },
+    /* Walrus — the gentleman: a black top hat on the crown of his head,
+       seen from above, tipped back so a sliver of its front shows with its
+       grey band; a gold monocle on its chain,
+       swinging as he runs; his moustache waxed and curled at the ends */
+    gent: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        /* the top hat on the crown of his head, seen from straight above as
+           the hill sees everything (the owner, 18 Nov 2026: bigger, and a
+           cylinder lying down his back looked strange): a round brim, the
+           crown's top a smaller circle over it, set a little back because
+           the hat is tipped back, so a sliver of its front shows with the
+           grey silk band round its foot (a red band read as a mouth under
+           the moustache); the tall crown throws a long shadow to the bottom
+           right. Clear of the moustache and the eyes. */
+        var hx = 0, hy = A.hy + 10, BR = 14, BRY = 11, CR = 8.4, CRY = 7.4, LEAN = 5;
+        var crownHull = function (dx, dy) {
+          c.beginPath();
+          c.ellipse(hx + dx, hy + dy, CR, CRY, 0, Math.PI, 2 * Math.PI);
+          c.lineTo(hx + CR + dx, hy + LEAN + dy);
+          c.ellipse(hx + dx, hy + LEAN + dy, CR, CRY, 0, 0, Math.PI);
+          c.closePath();
+        };
+        /* the brim's shadow on his head and back */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(hx + 1.6, hy + 2, BR, BRY, 0, 0, 6.2832); c.fill();
+        /* the brim: black felt, its edge rolled and catching the light at
+           the top left, darker toward the bottom right */
+        var brg = c.createRadialGradient(hx - 5, hy - 4, 1, hx, hy, BR);
+        brg.addColorStop(0, '#4a4d58'); brg.addColorStop(1, '#16171c');
+        c.fillStyle = brg; c.beginPath(); c.ellipse(hx, hy, BR, BRY, 0, 0, 6.2832); c.fill();
+        c.save(); c.beginPath(); c.ellipse(hx, hy, BR, BRY, 0, 0, 6.2832); c.clip();
+        c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2.4;
+        c.beginPath(); c.ellipse(hx - 1, hy - 1.2, BR, BRY, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(200,205,220,.35)'; c.lineWidth = 1.1;
+        c.beginPath(); c.ellipse(hx + 0.8, hy + 0.9, BR - 0.4, BRY - 0.4, 0, 3.3, 5.2); c.stroke();
+        /* the tall crown's shadow lying across the brim, long, to the bottom right */
+        c.fillStyle = 'rgba(0,0,0,.45)'; crownHull(3.4, 4.2); c.fill();
+        c.restore();
+        /* the crown's front, the sliver that shows: silk, lit at the left */
+        var sg = c.createLinearGradient(hx - CR, 0, hx + CR, 0);
+        sg.addColorStop(0, '#5a5e6c'); sg.addColorStop(0.35, '#2a2c35'); sg.addColorStop(1, '#0e0f13');
+        c.fillStyle = sg; crownHull(0, 0); c.fill();
+        /* the grey silk band round its foot, showing on the front */
+        c.save(); crownHull(0, 0); c.clip();
+        var bdg = c.createLinearGradient(hx - CR, 0, hx + CR, 0);
+        bdg.addColorStop(0, '#b4b9c6'); bdg.addColorStop(0.4, '#8a8f9c'); bdg.addColorStop(1, '#4a4e58');
+        c.fillStyle = bdg; c.beginPath();
+        c.ellipse(hx, hy, CR, CRY, 0, Math.PI, 2 * Math.PI);
+        c.lineTo(hx + CR, hy + LEAN * 0.38);
+        c.ellipse(hx, hy + LEAN * 0.38, CR, CRY, 0, 0, Math.PI);
+        c.closePath(); c.fill();
+        c.restore();
+        /* the crown's top, black silk with a soft sheen up to the left */
+        var tg = c.createRadialGradient(hx - 3, hy + LEAN - 3, 0.4, hx, hy + LEAN, CR);
+        tg.addColorStop(0, '#5c606e'); tg.addColorStop(0.55, '#2a2c35'); tg.addColorStop(1, '#15161b');
+        c.fillStyle = tg; c.beginPath(); c.ellipse(hx, hy + LEAN, CR, CRY, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 0.9;
+        c.beginPath(); c.ellipse(hx, hy + LEAN, CR - 1.6, CRY - 1.6, 0, 3.5, 4.7); c.stroke();
+        c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.6;
+        c.beginPath(); c.ellipse(hx, hy + LEAN, CR - 0.3, CRY - 0.3, 0, 0, 6.2832); c.stroke();
+        /* the moustache */
+        var my = A.hy - A.hr * 0.55;
+        [-1, 1].forEach(function (k2) {
+          var mo = function (dx, dy) {
+            c.beginPath(); c.moveTo(dx, my - 1.6 + dy);
+            c.quadraticCurveTo(k2 * 6 + dx, my - 2.4 + dy, k2 * 10 + dx, my + 0.4 + dy);
+            c.quadraticCurveTo(k2 * 6 + dx, my + 3.4 + dy, dx, my + 1.8 + dy); c.closePath();
+          };
+          c.fillStyle = SHD; mo(1.1, 1.5); c.fill();
+          var mg = c.createLinearGradient(0, my - 2, 0, my + 3); mg.addColorStop(0, '#6a4428'); mg.addColorStop(1, '#2e1a0e');
+          c.fillStyle = mg; mo(0, 0); c.fill();
+          c.strokeStyle = SHD; c.lineWidth = 1.1; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(k2 * 9.6 + 1, my + 0.6 + 1.4); c.quadraticCurveTo(k2 * 13.4 + 1, my + 0.2 + 1.4, k2 * 12.6 + 1, my - 3.2 + 1.4); c.quadraticCurveTo(k2 * 11.6 + 1, my - 4.6 + 1.4, k2 * 10.8 + 1, my - 3.4 + 1.4); c.stroke();
+          c.strokeStyle = '#3a2416'; c.lineWidth = 1;
+          c.beginPath(); c.moveTo(k2 * 9.6, my + 0.6); c.quadraticCurveTo(k2 * 13.4, my + 0.2, k2 * 12.6, my - 3.2); c.quadraticCurveTo(k2 * 11.6, my - 4.6, k2 * 10.8, my - 3.4); c.stroke();
+          c.strokeStyle = 'rgba(200,150,110,.45)'; c.lineWidth = 0.4;
+          for (var q = 1; q < 5; q++) { c.beginPath(); c.moveTo(k2 * q * 1.8, my - 0.8); c.lineTo(k2 * (q * 1.8 + 1.4), my + 1); c.stroke(); }
+        });
+        /* the monocle and its chain */
+        var ex = A.es, ey = A.ey, sw = run ? Math.sin(g * 2) * 2.6 : 0;
+        c.strokeStyle = SHD; c.lineWidth = 0.9; c.setLineDash([0.9, 0.7]);
+        c.beginPath(); c.moveTo(ex + 2.4 + 1, ey + 2.6 + 1.4); c.quadraticCurveTo(ex + 6 + sw + 1, ey + 10 + 1.4, ex - 1 + 1, ey + 16 + 1.4); c.stroke();
+        c.strokeStyle = '#e0b440'; c.lineWidth = 0.8;
+        c.beginPath(); c.moveTo(ex + 2.4, ey + 2.6); c.quadraticCurveTo(ex + 6 + sw, ey + 10, ex - 1, ey + 16); c.stroke();
+        c.setLineDash([]);
+        c.strokeStyle = SHD; c.lineWidth = 1.4; c.beginPath(); c.arc(ex + 1, ey + 1.4, 3.6, 0, 6.2832); c.stroke();
+        c.fillStyle = 'rgba(200,230,255,.3)'; c.beginPath(); c.arc(ex, ey, 3.3, 0, 6.2832); c.fill();
+        var rg = c.createLinearGradient(ex - 3, ey - 3, ex + 3, ey + 3); rg.addColorStop(0, '#fff2b0'); rg.addColorStop(0.5, '#e0b440'); rg.addColorStop(1, '#8a5a10');
+        c.strokeStyle = rg; c.lineWidth = 1.2; c.beginPath(); c.arc(ex, ey, 3.5, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.7; c.beginPath(); c.arc(ex, ey, 2.2, 3.6, 4.5); c.stroke();
+      } },
+
+    /* Narwhal — the unicorn: pastel, her tusk become a unicorn's horn
+       twisted in rainbow bands, a rainbow spout from her blowhole every so
+       often, and sparkles twinkling round her */
+    unicorn: { pal: { body: ['#d6a8e6', '#a874c4', '#6a3f8a'], flipper: ['#a8c8f0', '#6c92cc', '#3e5a8c'] },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k;
+        var cols = ['#ff5a5a', '#ffb43a', '#ffe14a', '#5ad06a', '#4aa8ff', '#9a6aff'];
+        /* her blow, in the colours of the rainbow (the owner, 18 Nov 2026;
+           the rainbow mane down her back was taken off) */
+        drawSpout(c, o, true);
+        /* the horn over the tusk, in its own frame */
+        c.save(); c.translate(-2.2, -41); c.rotate(-0.04);
+        var horn = function (dx, dy) { c.beginPath(); c.moveTo(-2.7 + dx, 2 + dy); c.lineTo(2.7 + dx, 2 + dy); c.lineTo(0.7 + dx, -27.5 + dy); c.quadraticCurveTo(dx, -29 + dy, -0.7 + dx, -27.5 + dy); c.closePath(); };
+        c.fillStyle = SHD; horn(1.3, 1.6); c.fill();
+        c.fillStyle = '#fff6f0'; horn(0, 0); c.fill();
+        c.save(); horn(0, 0); c.clip();
+        for (k = 0; k < 12; k++) {
+          var yy = 2 - k * 2.6;
+          c.fillStyle = cols[k % 6]; c.beginPath(); c.moveTo(-4, yy); c.lineTo(4, yy - 2.2); c.lineTo(4, yy - 3.6); c.lineTo(-4, yy - 1.4); c.closePath(); c.fill();
+        }
+        var hs = c.createLinearGradient(-2.7, 0, 2.7, 0); hs.addColorStop(0, 'rgba(255,255,255,.55)'); hs.addColorStop(0.4, 'rgba(255,255,255,0)'); hs.addColorStop(1, 'rgba(60,20,90,.35)');
+        c.fillStyle = hs; c.fillRect(-4, -30, 8, 33);
+        c.restore();
+        sparkle(c, 0, -29, 2.4, run ? 0.5 + 0.5 * Math.abs(Math.sin(g * 2.5)) : 0.95);
+        c.restore();
+        /* sparkles round her */
+        [[11, -18], [-12, -6], [10, 10], [-9, 20], [13, 24]].forEach(function (p, q) {
+          sparkle(c, p[0], p[1], 1.4 + (q % 2) * 0.5, run ? 0.35 + 0.6 * Math.abs(Math.sin(g * 1.3 + q * 1.7)) : 0.8);
+        });
+      } },
+    /* Reindeer — with Father Christmas on his back: red coat and hat with
+       its white trim and bobble, his beard, the reins to the antlers, a
+       sack of presents behind him; the reindeer's nose glows red */
+    santa: {
+      /* Father Christmas riding the reindeer, big enough to read at a
+         glance (the owner, 17 Nov 2026: he was small, and held the
+         reindeer by a string to its nose). From straight above: the hat
+         with its fur brim and its tip and bobble flopping back, the beard
+         spread over his chest, the red coat with white fur round its hem,
+         his arms out holding the reins, which run to the
+         antlers and are a string of Christmas-tree lights (the owner's
+         idea); his legs astride it, knees bent down its flanks, boots
+         toe-ahead; the sack of
+         presents on the rump; a collar of bells round its neck and its
+         nose glowing. While it runs he bobs with the stride, the bobble and
+         the bells swing, the lights twinkle one after another and the
+         string tightens and slackens, the sack bounces. A portrait
+         (o.still) holds still. */
+      paint: function (c, S, A, o) {
+        var g = (o && !o.still) ? (o.gait || 0) : 0, run = (o && !o.still) ? 1 : 0;
+        var bob = run * Math.sin(g * 2) * 0.9, sway = run * Math.sin(g) * 0.05;
+        var swing = run * Math.sin(g * 1.3 + 0.6) * 0.45, sag = 2.8 + run * Math.sin(g * 2 + 1) * 1.6;
+        var K = 1.55, sy = -1 + bob, k;
+        /* the collar of bells round the neck */
+        c.strokeStyle = '#a81c22'; c.lineWidth = 3; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(-8.5, -25); c.quadraticCurveTo(0, -20.5, 8.5, -25); c.stroke();
+        for (k = -1; k <= 1; k++) {
+          var bx = k * 5.6, by = -22.2 - Math.abs(k) * 1.4, ba = run * Math.sin(g * 2.6 + k) * 0.6;
+          c.save(); c.translate(bx, by); c.rotate(ba);
+          var bg = c.createRadialGradient(-0.6, 0.4, 0.2, 0, 1.2, 2.2); bg.addColorStop(0, '#fff2a0'); bg.addColorStop(1, '#c08a10');
+          c.fillStyle = bg; c.beginPath(); c.arc(0, 1.4, 1.9, 0, 6.2832); c.fill();
+          c.fillStyle = '#5a3a08'; c.beginPath(); c.arc(0, 2.6, 0.5, 0, 6.2832); c.fill();
+          c.restore();
+        }
+        /* the sack on the rump, bouncing, presents showing at its mouth */
+        var sb = 1 + run * Math.sin(g * 2 + 0.7) * 0.05;
+        c.save(); c.translate(0, 26 + bob * 0.6); c.scale(sb, 2 - sb);
+        dropShadow(c, 0, 0, 10.5, 11);
+        /* green, with a gold cord and gold stars, so it stands out from
+           the reindeer's brown (the owner: it looked like the reindeer) */
+        var sg = c.createRadialGradient(-3.5, -3, 1, 0, 0, 12); sg.addColorStop(0, '#3fb062'); sg.addColorStop(0.6, '#1f7a3e'); sg.addColorStop(1, '#0f4a24');
+        c.fillStyle = sg;
+        c.beginPath(); c.moveTo(-8, -8); c.quadraticCurveTo(-12, 2, -9, 9); c.quadraticCurveTo(0, 14, 9, 9); c.quadraticCurveTo(12, 2, 8, -8); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(10,40,20,.45)'; c.lineWidth = 0.7;
+        c.beginPath(); c.moveTo(-5, -4); c.quadraticCurveTo(-2, 3, -4, 9); c.moveTo(4, -5); c.quadraticCurveTo(6, 2, 4, 9); c.stroke();
+        c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(3.5, 4, 6, 6.5, 0, 0, 6.2832); c.fill();
+        [[-4.6, 2, 1.6], [3.8, 6.2, 1.3], [-1, 7.4, 1.1], [5.2, -1.4, 1]].forEach(function (st) {
+          c.fillStyle = '#f0c43c'; c.beginPath();
+          for (var q = 0; q < 10; q++) { var a = q / 10 * 6.2832 - Math.PI / 2, rr = q % 2 ? st[2] * 0.45 : st[2]; c.lineTo(st[0] + Math.cos(a) * rr, st[1] + Math.sin(a) * rr); }
+          c.closePath(); c.fill();
+        });
+        /* the presents showing at its mouth, ribbons and bows */
+        [['#e23a3a', '#f0c43c', -6.2, -11, 5.6, 5], ['#2f7fe0', '#e8eef6', 0.6, -12.6, 5.4, 5.2], ['#9a4fe0', '#f0c43c', -2.2, -8.6, 5, 4.2], ['#f6f6f2', '#e23a3a', 3.6, -9.4, 4.4, 4]].forEach(function (b) {
+          c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(b[2] + 0.8, b[3] + 0.9, b[4], b[5]);
+          c.fillStyle = b[0]; c.fillRect(b[2], b[3], b[4], b[5]);
+          c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(b[2], b[3], b[4], 1);
+          c.fillStyle = b[1]; c.fillRect(b[2] + b[4] / 2 - 0.6, b[3], 1.2, b[5]); c.fillRect(b[2], b[3] + b[5] / 2 - 0.6, b[4], 1.2);
+          c.beginPath(); c.ellipse(b[2] + b[4] / 2 - 1.1, b[3] + b[5] / 2, 1.2, 0.7, 0.5, 0, 6.2832); c.ellipse(b[2] + b[4] / 2 + 1.1, b[3] + b[5] / 2, 1.2, 0.7, -0.5, 0, 6.2832); c.fill();
+        });
+        c.strokeStyle = '#f0c43c'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-8.4, -6.5); c.quadraticCurveTo(0, -4, 8.4, -6.5); c.stroke();
+        c.fillStyle = '#f0c43c'; c.beginPath(); c.arc(6.6, -5.2, 1.2, 0, 6.2832); c.arc(7.6, -3.2, 0.9, 0, 6.2832); c.fill();
+        c.restore();
+        /* his legs astride the reindeer: red trousers out from under the
+           coat over its back, the knees bent down its flanks, black boots
+           with a fur cuff, toes pointing ahead; running, his heels tap its
+           sides by turns, urging it on (the owner wanted legs again, but
+           not the boots that hung straight down before) */
+        [-1, 1].forEach(function (k) {
+          /* seen from above, a rider's thigh runs FORWARD from the hip to
+             the knee, the most forward point; the shin drops from it and
+             the boot hangs under the knee, toe ahead (drawn the other way
+             round, the knee looked bent backwards) */
+          var kick = run * Math.sin(g * 2 + (k > 0 ? 0 : Math.PI)) * 1.2;
+          var hip = [k * 8, 7 + bob], knee = [k * 17.5, -5 + bob * 0.7], ank = [k * 19, 1 + kick + bob * 0.5];
+          c.lineCap = 'round';
+          /* the shin and the boot first: they are lower, under the thigh */
+          c.strokeStyle = 'rgba(30,40,60,.26)'; c.lineWidth = 4.8;
+          c.beginPath(); c.moveTo(knee[0] + 1.8, knee[1] + 2.4); c.lineTo(ank[0] + 1.8, ank[1] + 2.4); c.stroke();
+          c.strokeStyle = '#a81820'; c.lineWidth = 4.1;
+          c.beginPath(); c.moveTo(knee[0], knee[1]); c.lineTo(ank[0], ank[1]); c.stroke();
+          c.save(); c.translate(ank[0], ank[1]); c.rotate(-k * 0.1); c.scale(1.12, 1.12);
+          c.fillStyle = 'rgba(30,40,60,.26)'; c.beginPath(); c.ellipse(1.6, -1.4, 3, 5, 0, 0, 6.2832); c.fill();
+          var bg3 = c.createRadialGradient(-k * 0.8, -3, 0.4, 0, -2, 5); bg3.addColorStop(0, '#4a4e5a'); bg3.addColorStop(1, '#0e1016');
+          c.fillStyle = bg3;
+          c.beginPath(); c.moveTo(-2.5, 1.2); c.quadraticCurveTo(-2.8, -4.6, 0, -6.6); c.quadraticCurveTo(2.8, -4.6, 2.5, 1.2); c.closePath(); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-k * 0.9, -3.9, 0.7, 1.6, 0, 0, 6.2832); c.fill();
+          c.fillStyle = '#f6f6f2'; c.beginPath(); c.ellipse(0, 1.2, 3.3, 1.6, 0, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(160,178,200,.45)'; c.beginPath(); c.ellipse(0.6, 1.7, 2, 0.8, 0, 0, 6.2832); c.fill();
+          c.restore();
+          /* the thigh over it, from under the coat forward to the knee */
+          c.strokeStyle = 'rgba(30,40,60,.26)'; c.lineWidth = 5.8;
+          c.beginPath(); c.moveTo(hip[0] + 1.8, hip[1] + 2.6); c.lineTo(knee[0] + 1.8, knee[1] + 2.6); c.stroke();
+          var tg = c.createLinearGradient(hip[0], hip[1], knee[0], knee[1]); tg.addColorStop(0, '#9a141c'); tg.addColorStop(1, '#e0383a');
+          c.strokeStyle = tg; c.lineWidth = 5.3;
+          c.beginPath(); c.moveTo(hip[0], hip[1]); c.lineTo(knee[0], knee[1]); c.stroke();
+          c.fillStyle = '#e0383a'; c.beginPath(); c.arc(knee[0], knee[1], 2.75, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.arc(knee[0] - 0.8, knee[1] - 0.9, 1, 0, 6.2832); c.fill();
+          c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.2;
+          c.beginPath(); c.moveTo(hip[0] - k * 0.4, hip[1] - 2); c.lineTo(knee[0] - k * 0.6, knee[1] - 1.8); c.stroke();
+        });
+        /* Father Christmas himself */
+        var hands = [];
+        c.save(); c.translate(0, sy); c.rotate(sway); c.scale(K, K);
+        /* shadows, toward the bottom right as from the hill's sun, so his
+           shape reads from straight above (the owner, 17 Nov 2026): his
+           whole figure on the reindeer's back first */
+        c.fillStyle = 'rgba(25,32,48,.32)';
+        c.beginPath(); c.ellipse(2.4, 2.4, 9.6, 10.6, 0.08, 0, 6.2832); c.fill();
+        c.beginPath(); c.ellipse(2.2, -9.6, 5.6, 6.4, 0, 0, 6.2832); c.fill();
+        var cg = c.createRadialGradient(-3.5, -3, 1, 0, 0, 12); cg.addColorStop(0, '#ff6a5e'); cg.addColorStop(0.6, '#d42a2e'); cg.addColorStop(1, '#8a1018');
+        c.fillStyle = cg; c.beginPath(); c.ellipse(0, -0.4, 8.4, 9.9, 0, 0, 6.2832); c.fill();
+        /* the coat's own roundness: lit top left, falling away bottom right */
+        c.save(); c.beginPath(); c.ellipse(0, -0.4, 8.4, 9.9, 0, 0, 6.2832); c.clip();
+        c.fillStyle = 'rgba(40,0,6,.28)'; c.beginPath(); c.ellipse(4.6, 5.6, 9, 10.5, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,190,180,.22)'; c.beginPath(); c.ellipse(-3.8, -3.2, 4.2, 5.4, -0.4, 0, 6.2832); c.fill();
+        c.restore();
+        /* white fur along the hem of the coat, behind him, and the belt */
+        c.strokeStyle = '#f6f6f2'; c.lineWidth = 2.4; c.beginPath(); c.ellipse(0, -0.4, 7.3, 8.7, 0, 0.35, Math.PI - 0.35); c.stroke();
+        /* no belly and no belt: the owner tried them in front of the beard
+           and behind it and preferred him without (17 Nov 2026) */
+        /* the arms out to the reins, white cuffs, black gloves */
+        var pull = run * Math.sin(g * 2 + 0.3) * 0.8;
+        [-1, 1].forEach(function (k) {
+          var hx = k * 6.4, hy = -12.5 - pull;
+          /* each arm's shadow on the coat and the reindeer, then the arm */
+          c.strokeStyle = 'rgba(25,32,48,.3)'; c.lineWidth = 3.6; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(k * 8.4 + 1.2, -0.4); c.quadraticCurveTo(k * 9.4 + 1.2, -6.4, hx + 1.2, hy + 3.8); c.stroke();
+          c.fillStyle = 'rgba(25,32,48,.3)'; c.beginPath(); c.arc(hx + 1.2, hy + 1.6, 1.9, 0, 6.2832); c.fill();
+          c.strokeStyle = '#c42026'; c.lineWidth = 3.6; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(k * 8.4, -2); c.quadraticCurveTo(k * 9.4, -8, hx, hy + 2.2); c.stroke();
+          c.strokeStyle = '#f6f6f2'; c.lineWidth = 3.8; c.beginPath(); c.moveTo(k * 7.3, -9.6); c.lineTo(k * 6.9, -10.8); c.stroke();
+          c.fillStyle = '#16181e'; c.beginPath(); c.arc(hx, hy, 1.9, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(hx - 0.6, hy - 0.6, 0.6, 0, 6.2832); c.fill();
+          c.strokeStyle = 'rgba(40,0,6,.35)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(k * 9.3, -6); c.quadraticCurveTo(k * 9.6, -9, hx + k * 1.2, hy + 2.6); c.stroke();
+          hands.push([hx, hy]);
+        });
+        /* the beard, out in front of his face over his chest, its shadow
+           on the coat and the reindeer first */
+        c.fillStyle = 'rgba(25,32,48,.3)';
+        [[1.4, -8.6, 3.5], [-1.8, -7.8, 2.6], [4.6, -7.8, 2.6], [1.4, -11.2, 2.4]].forEach(function (b) { c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.2832); c.fill(); });
+        c.fillStyle = '#ffffff';
+        [[0, -10, 3.5], [-3, -9.2, 2.6], [3, -9.2, 2.6], [-1.4, -12, 2.4], [1.4, -12, 2.4], [0, -13.1, 1.8]].forEach(function (b) { c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.2832); c.fill(); });
+        c.fillStyle = 'rgba(150,168,192,.55)'; [[-1.6, -11, 1.1], [1.8, -9.6, 1], [0, -12.8, 0.8], [2.6, -8.2, 1.4], [3.2, -10.6, 1.1]].forEach(function (b) { c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.2832); c.fill(); });
+        c.fillStyle = '#f2a08a'; c.beginPath(); c.arc(0, -9.6, 1.3, 0, 6.2832); c.fill();
+        /* white hair showing round the back of his head, under the hat,
+           and the hat's shadow over it */
+        c.fillStyle = '#eef2f6'; c.beginPath(); c.ellipse(0, -4.4, 5.6, 5, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(25,32,48,.32)'; c.beginPath(); c.arc(1.5, -4.4, 4.8, 0, 6.2832); c.fill();
+        c.save(); c.translate(1.8, -2.6); c.rotate(0.55 + swing);
+        c.beginPath(); c.moveTo(-2.6, 0); c.quadraticCurveTo(-0.2, 4.5, 0.4, 8.2); c.lineTo(2.2, 7.6); c.quadraticCurveTo(2.6, 3.4, 2.6, 0); c.closePath(); c.fill();
+        c.beginPath(); c.arc(1.4, 8.8, 2.1, 0, 6.2832); c.fill();
+        c.restore();
+        /* the hat on top: its crown, the fur brim, the tip and bobble
+           flopping back over his shoulder */
+        var hg = c.createRadialGradient(-1.6, -7.4, 0.5, 0, -6, 5); hg.addColorStop(0, '#ff5a50'); hg.addColorStop(1, '#a8141c');
+        c.fillStyle = hg; c.beginPath(); c.arc(0, -6, 4.6, 0, 6.2832); c.fill();
+        c.strokeStyle = '#f6f6f2'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, -6, 4.4, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+        c.save(); c.translate(0.6, -4.4); c.rotate(0.55 + swing);
+        c.fillStyle = '#b8181e'; c.beginPath(); c.moveTo(-2.6, 0); c.quadraticCurveTo(-0.2, 4.5, 0.4, 8.2); c.lineTo(2.2, 7.6); c.quadraticCurveTo(2.6, 3.4, 2.6, 0); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.moveTo(0.8, 0.5); c.quadraticCurveTo(1.6, 4.5, 2.2, 7.6); c.lineTo(2.6, 0); c.closePath(); c.fill();
+        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(1.4, 8.8, 2.1, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(160,178,200,.55)'; c.beginPath(); c.arc(2, 9.4, 0.9, 0, 6.2832); c.fill();
+        c.restore();
+        c.restore();
+        c.restore();
+        /* the reins: a string of Christmas-tree lights from his gloves to
+           the antlers, the bulbs taking turns to shine brighter */
+        var cs = Math.cos(sway), sn = Math.sin(sway), LIGHT = ['#ff3b3b', '#ffd23a', '#3bd66a', '#3aa8ff', '#ff7ae0'];
+        var tw = (o && !o.still) ? ((o.gait || 0) * 0.9) : 0;
+        [-1, 1].forEach(function (k, j) {
+          var hx0 = hands[j][0] * K, hy0 = hands[j][1] * K;
+          var hx = hx0 * cs - hy0 * sn, hy = sy + hx0 * sn + hy0 * cs;
+          var ax = k * 11, ay = -44.5, mx = (hx + ax) / 2 + k * 1.2, my = (hy + ay) / 2 + sag;
+          c.strokeStyle = '#1f3a22'; c.lineWidth = 0.9; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo(mx, my, ax, ay); c.stroke();
+          var n = 7, b;
+          for (b = 1; b < n; b++) {
+            var t = b / n, u = 1 - t;
+            var px = u * u * hx + 2 * u * t * mx + t * t * ax, py = u * u * hy + 2 * u * t * my + t * t * ay;
+            var col = LIGHT[(b + j * 2) % LIGHT.length];
+            var on = run ? 0.55 + 0.45 * Math.max(0, Math.sin(tw - b * 0.9 - j * 1.7)) : 0.85;
+            var hl = c.createRadialGradient(px, py, 0.2, px, py, 3.6);
+            hl.addColorStop(0, mixHex(col, '#ffffff', 0.3)); hl.addColorStop(0.35, col); hl.addColorStop(1, 'rgba(255,255,255,0)');
+            c.globalAlpha = on * 0.55; c.fillStyle = hl; c.beginPath(); c.arc(px, py, 3.6, 0, 6.2832); c.fill();
+            c.globalAlpha = 1;
+            c.fillStyle = col; c.beginPath(); c.ellipse(px, py, 0.95, 1.35, Math.atan2(my - py, mx - px), 0, 6.2832); c.fill();
+            c.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.5 * on).toFixed(2) + ')'; c.beginPath(); c.arc(px - 0.3, py - 0.4, 0.4, 0, 6.2832); c.fill();
+          }
+          c.fillStyle = '#1f3a22'; c.beginPath(); c.arc(ax, ay, 1.1, 0, 6.2832); c.fill();
+        });
+        /* the reindeer's nose, glowing red */
+        var nr = 5 + run * Math.sin(g * 3) * 0.8, ny = A.hy - A.hr - 2;
+        var nose = c.createRadialGradient(0, ny, 0.3, 0, ny, nr);
+        nose.addColorStop(0, '#ffb0a0'); nose.addColorStop(0.35, '#ff2a1a'); nose.addColorStop(1, 'rgba(255,40,40,0)');
+        c.fillStyle = nose; c.beginPath(); c.arc(0, ny, nr, 0, 6.2832); c.fill();
+      } },
+    /* Emperor penguin — the king, seen from straight above as the hill sees
+       everything (the owner, 18 Nov 2026: the robe and the crown had the
+       wrong perspective, a robe hung flat as if he stood facing us and a
+       crown seen from the front lying on his neck). A red velvet robe over
+       his back, cut and pleated as the pirate's cloak (capePaint), lined
+       with ermine, a broad ermine band along its hem with the black tails,
+       swinging out behind him in a turn; an ermine collar round his neck;
+       and a gold crown on the back of his head behind his eyes seen from
+       above: its ring with jewels, pearl-tipped points standing out round
+       it, the red velvet cap inside under two crossing gold arches and an
+       orb with its cross at the top, throwing a long shadow */
+    king: {
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k, i;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        /* the robe */
+        var hem = capePaint(c, o, { nx: 8, ny: -16, scx: 18, scy: -17, sx: 21, sy: -10, sdx: 25, sdy: 8, hw: 23.5, hy: 25, sag: 6, pt: -14 },
+          { cols: ['#d8303c', '#9a1624', '#5a0a14'], lining: '#f2f2ec', light: 'rgba(255,170,170,.16)', dark: 'rgba(40,0,8,.38)',
+            far: 'rgba(30,0,6,.3)', near: 'rgba(255,190,190,.14)', braid: ['rgba(60,38,4,.55)', '#e0b440', 'rgba(255,236,170,.5)'] });
+        /* the ermine band along the hem, broad and white, its black tails */
+        var hemPath = function (dx, dy) {
+          c.beginPath(); c.moveTo(hem[0][0] + dx, hem[0][1] + dy);
+          for (i = 1; i < hem.length; i++) { var p0 = hem[i - 1], p1 = hem[i]; c.quadraticCurveTo((p0[0] + p1[0]) / 2 + dx, Math.max(p0[1], p1[1]) + 2.6 + dy, p1[0] + dx, p1[1] + dy); }
+        };
+        c.strokeStyle = SHD; c.lineWidth = 4.6; hemPath(1.2, 0.6); c.stroke();
+        c.strokeStyle = '#f6f6f2'; c.lineWidth = 4.2; hemPath(0, -1.6); c.stroke();
+        c.strokeStyle = 'rgba(150,160,180,.45)'; c.lineWidth = 1; hemPath(0.4, -0.2); c.stroke();
+        c.fillStyle = '#16181e';
+        for (i = 0; i < hem.length - 1; i++) {
+          var q0 = hem[i], q1 = hem[i + 1], tx = (q0[0] + q1[0]) / 2, ty = (q0[1] + q1[1]) / 2 + 0.2;
+          c.beginPath(); c.ellipse(tx, ty, 0.7, 1.3, 0, 0, 6.2832); c.fill();
+        }
+        /* the ermine collar round his neck, over the robe's top */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1.2, -13.4, 14, 4.6, 0, 0, 6.2832); c.fill();
+        var eg = c.createLinearGradient(0, -19, 0, -10); eg.addColorStop(0, '#ffffff'); eg.addColorStop(1, '#d6dce6');
+        c.fillStyle = eg; c.beginPath(); c.ellipse(0, -14.6, 14, 4.4, 0, 0, 6.2832); c.fill();
+        c.fillStyle = '#16181e';
+        [[-10.5, -15], [-5.2, -12.4], [5.2, -12.4], [10.5, -15], [0, -11.6]].forEach(function (p) { c.beginPath(); c.ellipse(p[0], p[1], 0.7, 1.3, 0, 0, 6.2832); c.fill(); });
+        /* the crown, from above, on the back of his head */
+        var cx = 0, cy = A.hy + 5.4, R = 7.4, RY = 6.4, NP = 8;
+        var gold = c.createLinearGradient(cx - R, cy - RY, cx + R, cy + RY);
+        gold.addColorStop(0, '#fff3b0'); gold.addColorStop(0.5, '#f0c43c'); gold.addColorStop(1, '#a8740c');
+        /* its long shadow, to the bottom right: it stands tall */
+        c.fillStyle = 'rgba(25,32,48,.34)'; c.beginPath(); c.ellipse(cx + 2.6, cy + 3.4, R + 2.4, RY + 2.4, 0, 0, 6.2832); c.fill();
+        /* the points standing out round the ring, each tipped with a pearl */
+        for (k = 0; k < NP; k++) {
+          var a = k / NP * 6.2832 + Math.PI / NP, ca = Math.cos(a), sa = Math.sin(a);
+          var bx = cx + ca * R, by = cy + sa * RY, px = cx + ca * (R + 3.4), py = cy + sa * (RY + 3.2);
+          var nx = -sa * 1.7, ny = ca * 1.5;
+          c.fillStyle = SHD; c.beginPath(); c.moveTo(bx - nx + 1, by - ny + 1.3); c.lineTo(px + 1, py + 1.3); c.lineTo(bx + nx + 1, by + ny + 1.3); c.closePath(); c.fill();
+          c.fillStyle = gold; c.strokeStyle = '#7a520a'; c.lineWidth = 0.35;
+          c.beginPath(); c.moveTo(bx - nx, by - ny); c.lineTo(px, py); c.lineTo(bx + nx, by + ny); c.closePath(); c.fill(); c.stroke();
+          var pg = c.createRadialGradient(px - 0.35, py - 0.35, 0.1, px, py, 1.1); pg.addColorStop(0, '#ffffff'); pg.addColorStop(1, '#d8d0c4');
+          c.fillStyle = pg; c.beginPath(); c.arc(px, py, 1, 0, 6.2832); c.fill();
+        }
+        /* the red velvet cap inside the ring, domed */
+        var vg = c.createRadialGradient(cx - 2.4, cy - 2.4, 0.4, cx, cy, R);
+        vg.addColorStop(0, '#ff6a72'); vg.addColorStop(0.6, '#c01c2c'); vg.addColorStop(1, '#6a0a14');
+        c.fillStyle = vg; c.beginPath(); c.ellipse(cx, cy, R - 0.6, RY - 0.6, 0, 0, 6.2832); c.fill();
+        /* the two gold arches crossing over it, lit along their top-left edge */
+        [[cx - R + 1, cy, cx + R - 1, cy], [cx, cy - RY + 1, cx, cy + RY - 1]].forEach(function (ar) {
+          c.strokeStyle = 'rgba(60,20,0,.35)'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(ar[0] + 0.5, ar[1] + 0.6); c.lineTo(ar[2] + 0.5, ar[3] + 0.6); c.stroke();
+          c.strokeStyle = gold; c.lineWidth = 1.5; c.beginPath(); c.moveTo(ar[0], ar[1]); c.lineTo(ar[2], ar[3]); c.stroke();
+          c.strokeStyle = 'rgba(255,250,210,.7)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(ar[0] - 0.4, ar[1] - 0.4); c.lineTo(ar[2] - 0.4, ar[3] - 0.4); c.stroke();
+        });
+        /* the ring itself, a gold band with jewels between the points */
+        c.strokeStyle = 'rgba(80,50,4,.6)'; c.lineWidth = 3.2; c.beginPath(); c.ellipse(cx + 0.3, cy + 0.4, R, RY, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = gold; c.lineWidth = 2.6; c.beginPath(); c.ellipse(cx, cy, R, RY, 0, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(255,250,210,.6)'; c.lineWidth = 0.5; c.beginPath(); c.ellipse(cx, cy, R - 0.6, RY - 0.6, 0, 3.4, 5.0); c.stroke();
+        var gems = ['#e2364a', '#2f8be0', '#2fbf6e', '#9a4fe0'];
+        for (k = 0; k < NP; k++) {
+          var ga = k / NP * 6.2832, gx = cx + Math.cos(ga) * R, gy = cy + Math.sin(ga) * RY;
+          c.fillStyle = gems[k % 4]; c.beginPath(); c.arc(gx, gy, 0.85, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(gx - 0.3, gy - 0.3, 0.3, 0, 6.2832); c.fill();
+        }
+        /* the orb at the top where the arches meet, with its little cross */
+        c.fillStyle = SHD; c.beginPath(); c.arc(cx + 1, cy + 1.3, 2, 0, 6.2832); c.fill();
+        var og = c.createRadialGradient(cx - 0.6, cy - 0.6, 0.2, cx, cy, 2); og.addColorStop(0, '#fff3b0'); og.addColorStop(1, '#b8840c');
+        c.fillStyle = og; c.beginPath(); c.arc(cx, cy, 1.9, 0, 6.2832); c.fill();
+        c.strokeStyle = '#8a5a08'; c.lineWidth = 0.7;
+        c.beginPath(); c.moveTo(cx - 1.3, cy - 0.2); c.lineTo(cx + 1.3, cy - 0.2); c.moveTo(cx, cy - 1.4); c.lineTo(cx, cy + 1); c.stroke();
+        /* the pearls glint as he runs */
+        if (run) sparkle(c, cx + Math.cos(g) * (R + 3.4), cy + Math.sin(g) * (RY + 3.2), 1.3, 0.5 + 0.5 * Math.abs(Math.sin(g * 1.7)));
+      } },
+    /* Orca — the robot whale, seen from straight above (the owner, 18 Nov
+       2026: reworked): steel plates whose seams bow round her body and end
+       at its edges, round rivets along them, scratches and dents in them, a hatch with warning stripes
+       and a vent on her tail stock, two vent grilles where an orca's white
+       patches are, a dark visor across her eyes with a red light sweeping
+       to and fro, an aerial whose bulb blinks,
+       and a jet in her tail: a steel nozzle at the end of the stock,
+       swinging with the beat, a blue flame and a stream of sparks behind */
+    robot: { pal: { body: ['#9aa8b8', '#5c6a7c', '#2c3440'], flipper: ['#8a98aa', '#526072', '#262e3a'], mark: '#6e7c8e' },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k, i;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        /* her outline as bodyOrca builds it: the half-width at y */
+        var LUMPS = [[0, -34, 9, 11], [0, -18, 14, 16], [0, 2, 15, 22], [0, 24, 10, 14]];
+        var halfW = function (y) {
+          var w = 0;
+          LUMPS.forEach(function (L) { var u = (y - L[1]) / L[3]; if (u * u < 1) w = Math.max(w, L[2] * Math.sqrt(1 - u * u)); });
+          return w;
+        };
+        /* the seams: rings round her body, bowing back toward the tail as
+           a ring round something round does seen from a little behind,
+           ending at her edges; each a dark groove with a lit lip */
+        var seamAt = function (y) {
+          var w = halfW(y) - 0.4, bow = w * 0.22;
+          var path = function (dx, dy) { c.beginPath(); c.moveTo(-w + dx, y + dy); c.quadraticCurveTo(dx, y + bow * 2 + dy, w + dx, y + dy); };
+          c.strokeStyle = 'rgba(20,28,40,.6)'; c.lineWidth = 0.9; path(0, 0); c.stroke();
+          c.strokeStyle = 'rgba(230,240,255,.45)'; c.lineWidth = 0.5; path(0.5, 0.7); c.stroke();
+          /* rivets along it, a little in from her edges */
+          [-0.62, 0.62].forEach(function (f) {
+            var x = w * f, yy = y + 2.2 + bow * 2 * (1 - f * f) * 0.5 * 2 * 0.5;
+            c.fillStyle = 'rgba(20,28,40,.5)'; c.beginPath(); c.arc(x + 0.4, yy + 0.5, 1, 0, 6.2832); c.fill();
+            var rg = c.createRadialGradient(x - 0.3, yy - 0.3, 0.1, x, yy, 1); rg.addColorStop(0, '#ffffff'); rg.addColorStop(1, '#8a96a8');
+            c.fillStyle = rg; c.beginPath(); c.arc(x, yy, 0.9, 0, 6.2832); c.fill();
+          });
+        };
+        [-22, -9, 18, 31].forEach(seamAt);
+        /* scratches in the steel (the owner, 18 Nov 2026): fine scores, some
+           alone and some in little bunches as from one scrape, each a dark
+           groove with the bright bare metal beside it, and a couple of
+           shallow dents; all within her outline, fixed (seeded by index) */
+        var rnd = function (n) { var v = Math.sin(n * 91.345 + 7.13) * 43758.5453; return v - Math.floor(v); };
+        for (i = 0; i < 9; i++) {
+          var sy0 = -28 + rnd(i) * 58, sw0 = halfW(sy0) * 0.78, sx0 = (rnd(i + 20) * 2 - 1) * sw0;
+          var san = -0.6 + rnd(i + 40) * 1.2 + (rnd(i + 60) > 0.5 ? Math.PI / 2 : 0), n2 = rnd(i + 80) > 0.55 ? 3 : 1;
+          for (var j = 0; j < n2; j++) {
+            var off = (j - (n2 - 1) / 2) * 0.9, sl = 2.4 + rnd(i * 7 + j) * 4.5;
+            var ox = sx0 - Math.sin(san) * off, oy = sy0 + Math.cos(san) * off;
+            var ex2 = ox + Math.cos(san) * sl, ey2 = oy + Math.sin(san) * sl;
+            if (Math.abs(ex2) > halfW(ey2) * 0.9) continue;
+            c.strokeStyle = 'rgba(20,26,36,.45)'; c.lineWidth = 0.35;
+            c.beginPath(); c.moveTo(ox, oy); c.quadraticCurveTo((ox + ex2) / 2 + 0.3, (oy + ey2) / 2 + 0.3, ex2, ey2); c.stroke();
+            c.strokeStyle = 'rgba(235,242,250,.6)'; c.lineWidth = 0.3;
+            c.beginPath(); c.moveTo(ox + 0.25, oy + 0.3); c.quadraticCurveTo((ox + ex2) / 2 + 0.55, (oy + ey2) / 2 + 0.6, ex2 + 0.25, ey2 + 0.3); c.stroke();
+          }
+        }
+        [[-6.5, -15, 1.8], [7, 11, 1.4]].forEach(function (d) {
+          var dg = c.createRadialGradient(d[0] + d[2] * 0.4, d[1] + d[2] * 0.4, 0.1, d[0], d[1], d[2]);
+          dg.addColorStop(0, 'rgba(20,26,36,.35)'); dg.addColorStop(0.7, 'rgba(20,26,36,.1)'); dg.addColorStop(1, 'rgba(20,26,36,0)');
+          c.fillStyle = dg; c.beginPath(); c.arc(d[0], d[1], d[2], 0, 6.2832); c.fill();
+          c.strokeStyle = 'rgba(235,242,250,.45)'; c.lineWidth = 0.35; c.beginPath(); c.arc(d[0], d[1], d[2] * 0.85, 0.2, 1.8); c.stroke();
+        });
+        /* the vent grilles where an orca has her white patches */
+        [-1, 1].forEach(function (k2) {
+          c.save(); c.translate(k2 * 7, -29); c.rotate(-k2 * 0.18);
+          c.fillStyle = SHD; c.beginPath(); c.ellipse(0.6, 0.8, 3.1, 6.9, 0, 0, 6.2832); c.fill();
+          var vg = c.createLinearGradient(-3, 0, 3, 0); vg.addColorStop(0, '#4a5464'); vg.addColorStop(1, '#1c222c');
+          c.fillStyle = vg; c.beginPath(); c.ellipse(0, 0, 3, 6.8, 0, 0, 6.2832); c.fill();
+          c.save(); c.beginPath(); c.ellipse(0, 0, 2.4, 6.1, 0, 0, 6.2832); c.clip();
+          for (var s2 = -5; s2 <= 5; s2 += 1.6) {
+            c.fillStyle = 'rgba(8,10,14,.85)'; c.fillRect(-3, s2, 6, 0.8);
+            c.fillStyle = 'rgba(200,214,232,.4)'; c.fillRect(-3, s2 + 0.8, 6, 0.3);
+          }
+          c.restore();
+          c.strokeStyle = 'rgba(210,222,238,.5)'; c.lineWidth = 0.4; c.beginPath(); c.ellipse(0, 0, 3, 6.8, 0, 3.5, 5.4); c.stroke();
+          c.restore();
+        });
+        /* the hatch, on her tail stock */
+        var hx = -4.6, hy = 21.6, hw = 9.2, hh = 7;
+        c.fillStyle = SHD; c.fillRect(hx + 1.2, hy + 1.6, hw, hh);
+        c.fillStyle = '#e8b81c'; c.fillRect(hx, hy, hw, hh);
+        c.save(); c.beginPath(); c.rect(hx, hy, hw, hh); c.clip();
+        c.fillStyle = '#1a1c22';
+        for (k = -3; k < 7; k++) { c.beginPath(); c.moveTo(hx + k * 2.4, hy); c.lineTo(hx + k * 2.4 + 1.2, hy); c.lineTo(hx + k * 2.4 + 1.2 + hh, hy + hh); c.lineTo(hx + k * 2.4 + hh, hy + hh); c.closePath(); c.fill(); }
+        c.restore();
+        var pg = c.createLinearGradient(hx, hy, hx + hw, hy + hh); pg.addColorStop(0, '#c8d2de'); pg.addColorStop(1, '#6a7688');
+        c.fillStyle = pg; c.fillRect(hx + 1.4, hy + 1.4, hw - 2.8, hh - 2.8);
+        c.strokeStyle = 'rgba(20,28,40,.65)'; c.lineWidth = 0.5;
+        for (k = 0; k < 3; k++) { c.beginPath(); c.moveTo(hx + 2.4, hy + 2.5 + k * 1.1); c.lineTo(hx + hw - 2.4, hy + 2.5 + k * 1.1); c.stroke(); }
+        /* the jet: a steel nozzle at the end of her tail stock, turned with
+           the beat as bodyOrca swings the peduncle (tw), a blue flame out of
+           it and sparks streaming back; the flame and sparks are looks
+           only (not at low effects), the nozzle is part of her */
+        var tw = Math.sin(o.gait || 0) * 0.3;
+        var nx = tw * 9, ny = 41;
+        c.save(); c.translate(nx, ny); c.rotate(-tw);
+        if (!SPARE) {
+          var fl = (run ? 1 : 0.6) * (0.85 + 0.15 * Math.sin(g * 9));
+          var FL = 21 * fl;
+          var fgl = c.createRadialGradient(0, 3, 0.5, 0, 3, FL);
+          fgl.addColorStop(0, 'rgba(120,200,255,.5)'); fgl.addColorStop(1, 'rgba(80,160,255,0)');
+          c.fillStyle = fgl; c.beginPath(); c.arc(0, 3, FL, 0, 6.2832); c.fill();
+          var flame = function (w, L, col) {
+            c.fillStyle = col; c.beginPath(); c.moveTo(-w, 1.5);
+            c.quadraticCurveTo(-w * 0.9, 1.5 + L * 0.5, 0, 1.5 + L); c.quadraticCurveTo(w * 0.9, 1.5 + L * 0.5, w, 1.5); c.closePath(); c.fill();
+          };
+          flame(3, FL, 'rgba(60,140,255,.75)');
+          flame(2, FL * 0.72, 'rgba(140,210,255,.9)');
+          flame(1.1, FL * 0.42, 'rgba(255,255,255,.95)');
+        }
+        /* the nozzle: a steel ring, dark inside, lit at the top left */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1, 1.4, 3.6, 2.6, 0, 0, 6.2832); c.fill();
+        var ng = c.createLinearGradient(-3.4, -2, 3.4, 2); ng.addColorStop(0, '#d8e0ea'); ng.addColorStop(0.5, '#8290a2'); ng.addColorStop(1, '#3a4452');
+        c.fillStyle = ng; c.beginPath(); c.ellipse(0, 0, 3.4, 2.5, 0, 0, 6.2832); c.fill();
+        c.fillStyle = SPARE ? '#151a22' : 'rgba(150,215,255,.95)'; c.beginPath(); c.ellipse(0, 0.3, 2, 1.4, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(20,28,40,.6)'; c.lineWidth = 0.4; c.beginPath(); c.ellipse(0, 0, 3.4, 2.5, 0, 0, 6.2832); c.stroke();
+        c.restore();
+        /* the sparks, streaming back from the nozzle and fanning out with
+           the tail's swing, cooling from white to blue to orange */
+        if (!SPARE && run) {
+          for (i = 0; i < 22; i++) {
+            var sd = Math.sin((i + 1) * 12.9898) * 43758.5453; sd -= Math.floor(sd);
+            var age = (g * 0.35 + i / 22) % 1;
+            var tw0 = Math.sin((o.gait || 0) - age * 2.2) * 0.3;             // where the nozzle pointed as it left
+            var dist = 8 + age * 34;
+            var sx = tw0 * 9 + Math.sin(tw0) * dist + (sd - 0.5) * age * 8 - clamp(o.turn || 0, -1, 1) * age * age * 10;
+            var sy = ny + Math.cos(tw0) * dist;
+            var al = (1 - age) * (0.6 + 0.4 * Math.abs(Math.sin(g * 3 + i)));
+            var col = age < 0.3 ? '255,255,255' : age < 0.6 ? '140,210,255' : '255,170,80';
+            c.fillStyle = 'rgba(' + col + ',' + (al * 0.3).toFixed(3) + ')'; c.beginPath(); c.arc(sx, sy, 2.6 * (1 - age * 0.5), 0, 6.2832); c.fill();
+            c.fillStyle = 'rgba(' + col + ',' + al.toFixed(3) + ')'; c.beginPath(); c.arc(sx, sy, 1.1 * (1 - age * 0.4) + sd * 0.5, 0, 6.2832); c.fill();
+          }
+        }
+        /* the aerial, tilted back off her head */
+        var ab = [0, A.hy + 3], at = [3.2, A.hy + 13 + (run ? Math.sin(g * 2) * 0.8 : 0)];
+        c.strokeStyle = SHD; c.lineWidth = 0.9; c.beginPath(); c.moveTo(ab[0] + 1, ab[1] + 1.4); c.lineTo(at[0] + 1, at[1] + 1.4); c.stroke();
+        c.strokeStyle = '#3a4250'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(ab[0], ab[1]); c.lineTo(at[0], at[1]); c.stroke();
+        var blink = run ? (Math.sin(g * 3) > 0 ? 1 : 0.25) : 1;
+        var bl = c.createRadialGradient(at[0], at[1], 0.1, at[0], at[1], 3); bl.addColorStop(0, 'rgba(255,70,60,' + blink + ')'); bl.addColorStop(1, 'rgba(255,70,60,0)');
+        c.fillStyle = bl; c.beginPath(); c.arc(at[0], at[1], 3, 0, 6.2832); c.fill();
+        c.fillStyle = blink > 0.5 ? '#ff5a4a' : '#8a2a24'; c.beginPath(); c.arc(at[0], at[1], 1.1, 0, 6.2832); c.fill();
+        /* the visor and its sweeping light (the owner, 18 Nov 2026: the
+           visor across her eyes as it first was; a band wrapping her head
+           was tried and given up) */
+        c.fillStyle = SHD; c.beginPath(); c.ellipse(1.2, A.ey + 1.6, A.es + 5.2, 3.6, 0, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(10,16,24,.92)'; c.beginPath(); c.ellipse(0, A.ey, A.es + 5, 3.4, 0, 0, 6.2832); c.fill();
+        c.strokeStyle = '#6a7688'; c.lineWidth = 0.6; c.stroke();
+        var sx = run ? Math.sin(g * 1.6) * (A.es + 2.6) : 0;
+        c.save(); c.beginPath(); c.ellipse(0, A.ey, A.es + 4.4, 2.8, 0, 0, 6.2832); c.clip();
+        var sg = c.createRadialGradient(sx, A.ey, 0.2, sx, A.ey, 6); sg.addColorStop(0, 'rgba(255,90,60,.95)'); sg.addColorStop(0.35, 'rgba(255,60,40,.5)'); sg.addColorStop(1, 'rgba(255,60,40,0)');
+        c.fillStyle = sg; c.fillRect(-20, A.ey - 4, 40, 8);
+        c.restore();
+        c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-3, A.ey - 1.8, 4, 0.6, 0, 0, 6.2832); c.fill();
+      } },
+    /* Aurora — the galaxy: deep space blue and violet; on her back, where
+       Aurora has her northern lights, a spiral galaxy turning slowly round
+       a bright core (the owner, 18 Nov 2026: it was a nebula over the
+       northern lights, too like Aurora herself); a crown of stars in place
+       of her ice crystals, twinkling in turn; stars on her; star dust left
+       behind her as she runs; a little ringed planet circling her; and now
+       and then a shooting star across her back */
+    galaxy: { pal: { body: ['#4a3a9a', '#24186a', '#0c0830'], flipper: ['#5a40b0', '#2c1c78', '#100a38'], accessory: 'galaxy',
+      trim: '#c8a8ff', trimEdge: 'rgba(90,60,170,.5)' }, sp: { stripe: '#c8a8ff', ear0: '255,140,220', ear1: '180,140,255', neck: '200,160,255' },
+      paint: function (c, S, A, o) {
+        var run = (o && !o.still) ? 1 : 0, g = run ? (o.gait || 0) : 0, k, t = (o && o.gait) || 0, i;
+        var rnd = function (n) { var v = Math.sin(n * 12.9898 + 4.1) * 43758.5453; return v - Math.floor(v); };
+        /* star dust behind her: white, blue and a little nebula pink, born
+           across her back end and drifting back, swinging away from her
+           turn, twinkling out. Looks only: not at low effects. */
+        if (run && !SPARE) {
+          var tn = clamp((o && o.turn) || 0, -1, 1);
+          var DC = ['255,255,255', '150,200,255', '255,150,230', '200,180,255'];
+          for (i = 0; i < 30; i++) {
+            var sd = rnd(i), age = (g * 0.3 + sd + i / 30) % 1;
+            var x0 = (rnd(i + 50) * 2 - 1) * 12, y0 = 18 + rnd(i + 90) * 6;
+            var dx = x0 * (1 + age * 0.5) - tn * age * age * 14 + Math.sin(g * 1.2 + i * 2.3) * age * 2.5;
+            var dy = y0 + age * 46 * (0.7 + sd * 0.5);
+            var al = Math.pow(1 - age, 0.8) * (0.55 + 0.45 * Math.abs(Math.sin(g * 2.4 + i * 1.9)));
+            var col = DC[i % 4], sz = (1 - age * 0.5) * (0.6 + sd * 0.9);
+            if (i % 4 === 0) sparkle(c, dx, dy, sz * 2.6, al);
+            else {
+              c.fillStyle = 'rgba(' + col + ',' + (al * 0.3).toFixed(3) + ')'; c.beginPath(); c.arc(dx, dy, sz * 2, 0, 6.2832); c.fill();
+              c.fillStyle = 'rgba(' + col + ',' + al.toFixed(3) + ')'; c.beginPath(); c.arc(dx, dy, sz, 0, 6.2832); c.fill();
+            }
+          }
+        }
+        /* the spiral galaxy across her back, kept inside her body as the
+           northern lights were: two arms of light wound out from a bright
+           core, each a string of soft glows, blue at their ends and pink
+           and violet nearer in, turning slowly; dark dust along the arms'
+           inner edges */
+        var rot = t * 0.025;
+        c.save();
+        c.beginPath(); c.ellipse(0, -1, 14.5, 19, 0, 0, 6.2832); c.clip();
+        c.globalCompositeOperation = 'lighter';
+        for (var arm = 0; arm < 2; arm++) {
+          for (i = 0; i < 26; i++) {
+            var u = i / 25, th = rot + arm * Math.PI + u * 3.6 * Math.PI / 1.6;
+            var rr = 1.5 + 15 * Math.pow(u, 1.1);
+            var ax = Math.cos(th) * rr, ay = -1 + Math.sin(th) * rr * 1.2;
+            var cc2 = u < 0.35 ? '255,170,235' : u < 0.7 ? '190,150,255' : '130,190,255';
+            var gr = 2.2 + 3 * (1 - u), ga = 0.34 * (1 - u * 0.55);
+            var gl = c.createRadialGradient(ax, ay, 0, ax, ay, gr);
+            gl.addColorStop(0, 'rgba(' + cc2 + ',' + ga.toFixed(3) + ')'); gl.addColorStop(1, 'rgba(' + cc2 + ',0)');
+            c.fillStyle = gl; c.beginPath(); c.arc(ax, ay, gr, 0, 6.2832); c.fill();
+            if (i % 3 === 1) { c.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - u * 0.4)).toFixed(3) + ')'; c.beginPath(); c.arc(ax + (rnd(i + arm * 40) - 0.5) * 2, ay + (rnd(i + arm * 40 + 7) - 0.5) * 2, 0.35 + rnd(i) * 0.35, 0, 6.2832); c.fill(); }
+          }
+        }
+        c.globalCompositeOperation = 'source-over';
+        c.strokeStyle = 'rgba(8,4,24,.16)'; c.lineWidth = 1.6;
+        for (arm = 0; arm < 2; arm++) {
+          c.beginPath();
+          for (i = 0; i <= 20; i++) {
+            var u2 = 0.12 + i / 20 * 0.75, th2 = rot + arm * Math.PI + u2 * 3.6 * Math.PI / 1.6 - 0.35;
+            var r2 = 1.5 + 15 * Math.pow(u2, 1.1) - 1.2, X = Math.cos(th2) * r2, Y = -1 + Math.sin(th2) * r2 * 1.2;
+            if (i) c.lineTo(X, Y); else c.moveTo(X, Y);
+          }
+          c.stroke();
+        }
+        var core = c.createRadialGradient(0, -1, 0, 0, -1, 6);
+        core.addColorStop(0, 'rgba(255,250,235,.95)'); core.addColorStop(0.35, 'rgba(255,200,240,.6)'); core.addColorStop(1, 'rgba(200,150,255,0)');
+        c.fillStyle = core; c.beginPath(); c.arc(0, -1, 6, 0, 6.2832); c.fill();
+        c.restore();
+        /* stars on her */
+        var st = [[-12, -6], [-6, 10], [3, 2], [10, 12], [-2, -12], [12, -2], [-9, 18], [6, 20], [0, 16], [-14, 4]];
+        for (k = 0; k < st.length; k++) sparkle(c, st[k][0], st[k][1], 1.3 + (k % 3) * 0.5, 0.6 + 0.4 * Math.abs(Math.sin(t * 0.2 + k)));
+        /* the crown of stars, where Aurora's ice crystals stand: five
+           five-pointed stars, gold and white, the middle one biggest,
+           each twinkling in its turn */
+        [-162, -128, -90, -52, -18].forEach(function (deg, ci) {
+          var ca = deg * Math.PI / 180, cx = Math.cos(ca) * 13.4, cy = -26 + Math.sin(ca) * (ci === 2 ? 15.6 : 12.6);
+          var big = ci === 2 ? 3.4 : (ci === 1 || ci === 3 ? 2.6 : 2.1);
+          var tw = 0.75 + 0.25 * Math.sin(t * 0.35 + ci * 1.3);
+          var gl2 = c.createRadialGradient(cx, cy, 0, cx, cy, big * 2.4);
+          gl2.addColorStop(0, 'rgba(255,240,180,' + (0.55 * tw).toFixed(3) + ')'); gl2.addColorStop(1, 'rgba(255,240,180,0)');
+          c.fillStyle = gl2; c.beginPath(); c.arc(cx, cy, big * 2.4, 0, 6.2832); c.fill();
+          c.save(); c.translate(cx, cy); c.rotate(ca + Math.PI / 2);
+          star5(c, 0.9, 1.2, big, 'rgba(25,32,48,.35)');
+          star5(c, 0, 0, big, ci % 2 ? '#fff6d8' : '#ffd23a');
+          star5(c, -big * 0.15, -big * 0.18, big * 0.45, 'rgba(255,255,255,.75)');
+          c.restore();
+          if (tw > 0.97) sparkle(c, cx, cy, big * 1.3, 0.9);
+        });
+        /* the shooting star */
+        var p = run ? (g * 0.18) % 1 : 0.45;
+        if (p < 0.7) {
+          var q = p / 0.7, sx = -13 + q * 24, sy = -14 + q * 28, al2 = Math.sin(q * Math.PI);
+          var tg = c.createLinearGradient(sx, sy, sx - 7, sy - 8); tg.addColorStop(0, 'rgba(255,255,255,' + al2.toFixed(2) + ')'); tg.addColorStop(1, 'rgba(255,255,255,0)');
+          c.strokeStyle = tg; c.lineWidth = 1.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - 7, sy - 8); c.stroke();
+          sparkle(c, sx, sy, 1.6, al2);
+        }
+        /* the planet and its ring */
+        var an = run ? g * 0.6 : 0.8, px = Math.cos(an) * 19, py = -2 + Math.sin(an) * 22;
+        c.fillStyle = SHD; c.beginPath(); c.arc(px + 1.4, py + 1.9, 3, 0, 6.2832); c.fill();
+        c.strokeStyle = 'rgba(242,226,192,.9)'; c.lineWidth = 0.8;
+        c.beginPath(); c.ellipse(px, py, 5.2, 1.5, -0.4, Math.PI, 2 * Math.PI); c.stroke();
+        var pl = c.createRadialGradient(px - 1, py - 1, 0.3, px, py, 3); pl.addColorStop(0, '#ffe2a8'); pl.addColorStop(0.6, '#e8964a'); pl.addColorStop(1, '#8a4414');
+        c.fillStyle = pl; c.beginPath(); c.arc(px, py, 2.9, 0, 6.2832); c.fill();
+        c.beginPath(); c.ellipse(px, py, 5.2, 1.5, -0.4, 0, Math.PI); c.stroke();
+      } }
+  };
+
+  var ALTED = {};
+  function altSkin(S, alt) {
+    var D = ALT_PAINT[alt];
+    if (!D || !S) return S;
+    var key = S.id + ':' + alt;
+    if (ALTED[key]) return ALTED[key];
+    var o = {}, k;
+    for (k in S) o[k] = S[k];
+    if (D.pal) for (k in D.pal) o[k] = D.pal[k];
+    if (D.sp) o.spOver = D.sp;
+    o.altPaint = D.paint;
+    return (ALTED[key] = o);
+  }
+  var PLAYER_ALT = '';                // the skin the player's animal is in (Game.setLook)
+
   function paintCreature(c, S, o) {
+    if (o.alt) S = altSkin(S, o.alt);
     var ang = o.ang || 0, wag = o.wag || 0, lift = o.lift || 0;
     var gait = o.gait || 0, turn = o.turn || 0;
     c.save();
@@ -7922,7 +10432,10 @@ var Game = (function () {
       c.scale(1 + 0.13 * sq, 1 - 0.11 * sq);
     }
 
-    litBody(c, function (cc) { (BODIES[S.shape] || bodyPenguin)(cc, S, ang, wag, o); });
+    litBody(c, function (cc) {
+      (BODIES[S.shape] || bodyPenguin)(cc, S, ang, wag, o);
+      if (S.altPaint) { cc.save(); S.altPaint(cc, S, wearAt(S), o); cc.restore(); }
+    });
 
     if (o.shield >= 0) {
       var r = 48;
@@ -8049,7 +10562,7 @@ var Game = (function () {
     if (roll < 0.98) paintCreature(ctx, S, {
       ang: ang, wag: Math.sin(gait) * 0.1, gait: gait, turn: turn,
       scale: 1.45 * (1 - 0.42 * roll), lift: lift, air: airborne(), squash: W.squash || 0,
-      shield: (W.shield > 0 && !crashed) ? W.t : -1
+      shield: (W.shield > 0 && !crashed) ? W.t : -1, alt: PLAYER_ALT
     });
     if (roll > 0) {
       ctx.save();
@@ -9361,7 +11874,6 @@ var Game = (function () {
       if (rafId == null && !suspended) rafId = requestAnimationFrame(loop);
     },
     tap: tap,
-    undoTap: undoTap,
     revive: revive,
     /* A revive paid for with something other than a spare life (a short ad,
        in the Android app): the life is handed over and spent at once. */
@@ -9768,7 +12280,11 @@ var Game = (function () {
       try { paintHint(kind, size); } catch (e) { /* a missing icon is not a crash */ }
       ctx = keepCtx; W = keepW;
     },
-    drawSkinPreview: function (cv, skinId, size) {
+    /* what the player's animal wears: { color, wear } or null (looks) */
+    /* the skin the player's animal is in ('' its own coat) */
+    setLook: function (alt) { PLAYER_ALT = ALT_PAINT[alt] ? alt : ''; },
+    altIds: function () { return Object.keys(ALT_PAINT); },
+    drawSkinPreview: function (cv, skinId, size, alt) {
       if (!cv || !cv.getContext || typeof SKINS === 'undefined') return;
       EYE = null;                                    // a portrait looks at you, open-eyed
       var k = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -9782,7 +12298,7 @@ var Game = (function () {
       c.save();
       c.translate(size / 2, size / 2 + size * 0.03);
       paintCreature(c, skinById(skinId),
-                    { ang: 0, wag: 0, scale: size / 112, shield: -1, still: true });
+                    { ang: 0, wag: 0, scale: size / 112, shield: -1, still: true, alt: alt || '' });
       c.restore();
     },
     /* stepping the world by hand, for tests and screenshots */

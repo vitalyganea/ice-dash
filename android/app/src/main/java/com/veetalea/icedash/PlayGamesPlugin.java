@@ -107,7 +107,15 @@ public class PlayGamesPlugin extends Plugin {
                 call.resolve(r);
                 return;
             }
-            PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(board, score)
+            /* The player's card (ui.js profileTag: creature, look, frame,
+               title, trophies) goes with the score as its tag, so the
+               game's own board can show each player's card without a
+               server. Play keeps the tag of the best score only. */
+            String tag = call.getData().optString("tag", "");
+            if (!tag.matches("[0-9a-z]{1,12}")) tag = "";
+            (tag.isEmpty()
+                ? PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(board, score)
+                : PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(board, score, tag))
                 .addOnSuccessListener(d -> {
                     Log.i(TAG, "score " + score + " taken: " + d);
                     r.put("sent", true);
@@ -323,6 +331,8 @@ public class PlayGamesPlugin extends Plugin {
         o.put("name", s.getScoreHolderDisplayName());
         o.put("score", s.getRawScore());
         o.put("me", me);
+        String tag = s.getScoreTag();
+        if (tag != null && !tag.isEmpty()) o.put("tag", tag);
         return o;
     }
 
