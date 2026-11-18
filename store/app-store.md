@@ -172,6 +172,7 @@ declaration (the owner confirms), then the owner's "Submit for Review".
 | 1.2.9 | 4 | 3 Nov 2026, run 4 | Low sharpness on the iPhone never under half the screen's density (SYSTEMS row 150) |
 | 1.2.9 | 5 | 3 Nov 2026, run 5 | no tracking question, NSUserTrackingUsageDescription gone (SYSTEMS row 151); the build to submit |
 | 1.2.9 | 6 | 4 Nov 2026, run 6, test_ads | build 5 with Google's test ads, for App Review's screen recording only; never submitted |
+| 1.3.0 | 11 | 18 Nov 2026, run 11, branch `1.3.0` | skins for every creature, My profile, portraits, day and week boards (SYSTEMS rows 172-180); submitted for review 18 Nov 2026 |
 
 ## 1.2.11 (prepared 16 Nov 2026)
 
@@ -222,3 +223,20 @@ saved. What's New in all seven localizations (the 1.2.12 block of
 and in the review notes. **Sent for review 17 Nov 2026** with the owner's word: Add for Review
 (the submission carried the seven name changes), Submit; 1.2.12 Waiting for
 Review, 1.2.11 live meanwhile.
+
+## 1.3.0 (18 Nov 2026)
+
+A skin for every creature, My profile with portraits, a player's profile
+from the board, the Today and This week boards with that day's and week's
+scores, Freeride first on the title, trophies to earn first, no fish in deep
+snow, smoother on slow phones (SYSTEMS rows 172-180). 1.2.12 was live (Ready
+for Distribution) by then. Branch `1.3.0` (not merged to main yet), commit
+af152ad; `ios-release.yml` run 11 dispatched on that branch, **build 11**,
+Ready to Submit in TestFlight. Version 1.3.0 created, What's New in all seven
+localizations (the 1.3.0 block of `app-store-listing.md`), build 11 chosen,
+release automatic to all users at once. The first Add for Review hung on
+"Processing" and the version page then answered "We can't process your
+request" (with an unrelated "News Request" notice) until reopened from the
+app list, where 1.3.0 already read Ready for Review: the draft submission had
+been made. **Submitted for review 18 Nov 2026 ~22:20** on the owner's word
+("fa build si posteaza"): 1 Item Submitted, Waiting for Review.
