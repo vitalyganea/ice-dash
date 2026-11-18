@@ -19,6 +19,7 @@ js/achievements.js
 js/album.js
 js/comic.js
 js/game.js
+js/portraits.js
 js/ui.js
 img/logo.png
 img/logo.webp

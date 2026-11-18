@@ -1598,8 +1598,11 @@
     el.className = 'pcard';
     var av = document.createElement('div');
     av.className = 'pcard-av pf-' + (p.frame || 'ice');
+    /* its face: the creature's portrait (portraits.js), head and shoulders
+       from the front, its skin's if it wears one */
     var cv = document.createElement('canvas');
-    Game.drawSkinPreview(cv, p.skin, o.size || 92, p.alt || '');
+    if (typeof drawPortrait === 'function') drawPortrait(cv, o.size || 92, p.skin, p.alt || '');
+    else Game.drawSkinPreview(cv, p.skin, o.size || 92, p.alt || '');
     av.appendChild(cv);
     el.appendChild(av);
     var mid = document.createElement('div');
