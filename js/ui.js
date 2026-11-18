@@ -2430,8 +2430,12 @@
 
     var list = $('ach-list');
     list.textContent = '';
-    /* the ones waiting to be paid come first, where they are seen */
-    var order = owedAll.concat(ACHIEVEMENTS.filter(function (a) { return owedAll.indexOf(a) < 0; }));
+    /* the ones waiting to be paid come first, where they are seen; then the
+       ones still to earn; the ones earned and paid go last (the owner,
+       18 Nov 2026: what is left to do above what is done) */
+    var order = owedAll.concat(
+      ACHIEVEMENTS.filter(function (a) { return owedAll.indexOf(a) < 0 && save.ach.indexOf(a.id) < 0; }),
+      ACHIEVEMENTS.filter(function (a) { return owedAll.indexOf(a) < 0 && save.ach.indexOf(a.id) >= 0; }));
     order.forEach(function (a) {
       var p = achProgress(a, save);
       var got = save.ach.indexOf(a.id) >= 0;
