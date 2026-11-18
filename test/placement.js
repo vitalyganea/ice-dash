@@ -21,7 +21,7 @@ var fail = 0;
 function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++; }
 
 var K = (H.setSeed(1), G.start(0, {}), G._consts()); G.stop();
-var CHUTE = K.CHUTE, DRIFT = K.DRIFT;
+var CHUTE = K.CHUTE, DRIFT = K.DRIFT, PR = K.PR;
 var PICKUP = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1 };
 var HAZARD = { rock: 1, tree: 1, geyser: 1 };
 var SPAN = { tunnel: 1, crevasse: 1, nunatak: 1, finish: 1 };
@@ -82,11 +82,12 @@ global.COURSES.forEach(function (cd, ci) { ride(1000 + ci, 6000, cd.id); });
 /* (a free ride's seed and a marked run's both key their own list) */
 var bySeed = {};
 all.forEach(function (e) { (bySeed[e.seed] = bySeed[e.seed] || []).push(e); });
-var bad = { roof: [], crevasse: [], nunatak: [], offRun: [], overlap: [], lava: [] };
+var bad = { roof: [], crevasse: [], nunatak: [], offRun: [], overlap: [], lava: [], deep: [] };
 Object.keys(bySeed).forEach(function (s) {
   var L = bySeed[s];
   var spans = L.filter(function (e) { return SPAN[e.o.t]; });
   var solids = L.filter(function (e) { return HAZARD[e.o.t]; });
+  var drifts = L.filter(function (e) { return e.o.t === 'drift'; });
   L.forEach(function (e) {
     var o = e.o, rr = reach(o);
     if (SPAN[o.t] || o.t === 'ramp') return;
@@ -113,6 +114,11 @@ Object.keys(bySeed).forEach(function (s) {
           Math.abs(rel + hr) + 8 > CHUTE + wob(o.d, rel + hr < 0 ? -1 : 1)) bad.offRun.push(e);
     }
     else if (Math.abs(rel) + rr > edge) bad.offRun.push(e);
+    /* a fish or a find where reaching it means wading: the deep snow slows
+       him wherever his middle comes within its radius and a little more */
+    if (PICKUP[o.t]) drifts.forEach(function (D) {
+      if (Math.hypot(D.o.x - o.x, D.o.d - o.d) < D.o.r + PR * 0.6) bad.deep.push(e);
+    });
     /* a drift lying round a tree is just snow banked against it: allowed */
     if (PICKUP[o.t] || o.t === 'geyser' || o.t === 'gate') {
       solids.forEach(function (S) {
@@ -157,6 +163,7 @@ if (process.env.STRICT !== '0') {
   ok(uniq(bad.offRun).length === 0, 'nothing on the run reaches past the banks');
   ok(uniq(bad.overlap).length === 0, 'no fish, find, geyser, drift or gate inside a boulder or tree');
   ok(uniq(bad.lava).length === 0, 'no scenery standing in the lava channels');
+  ok(uniq(bad.deep).length === 0, 'no fish or find in deep snow, where reaching it slows him');
 }
 console.log(fail ? '\n' + fail + ' placement check(s) FAILED' : '\nplacement checks passed');
 process.exit(fail ? 1 : 0);

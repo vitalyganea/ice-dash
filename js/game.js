@@ -421,12 +421,23 @@ var Game = (function () {
     return o.r || 0;
   }
   /* gathered once a row: what stands, and what spans the run */
-  var tidySolids = [], tidySpans = [];
+  var tidySolids = [], tidySpans = [], tidyDrifts = [];
   function solidNear(x, d, rr, except) {          // a boulder, tree or geyser within rr of (x, d)
     for (var i = 0; i < tidySolids.length; i++) {
       var q = tidySolids[i];
       if (q === except || q._gone) continue;
       var need = laidReach(q) + rr, dx = q.x - x, dd = q.d - d;
+      if (dx * dx + dd * dd < need * need) return q;
+    }
+    return null;
+  }
+  /* deep snow a pickup lies in: where his middle would be in the snow's
+     slowing reach to take it (the radius bog() uses), with a little room */
+  function driftNear(x, d) {
+    for (var i = 0; i < tidyDrifts.length; i++) {
+      var q = tidyDrifts[i];
+      if (q._gone) continue;
+      var need = q.r + PR * 0.6 + 2, dx = q.x - x, dd = q.d - d;
       if (dx * dx + dd * dd < need * need) return q;
     }
     return null;
@@ -465,11 +476,12 @@ var Game = (function () {
   }
   function tidyLaid() {
     var from = W.dist + PLAYER_Y / 0.9 + 60, out = [], i, o, any = false;
-    tidySolids = []; tidySpans = [];
+    tidySolids = []; tidySpans = []; tidyDrifts = [];
     for (i = 0; i < W.objects.length; i++) {
       o = W.objects[i];
       if (o.d + (o.span || 0) < from - 120) continue;                // long behind what is being judged
       if (o.t === 'rock' || o.t === 'tree' || o.t === 'geyser') tidySolids.push(o);
+      else if (o.t === 'drift') tidyDrifts.push(o);
       else if (o.t === 'tunnel' || o.t === 'crevasse' || o.t === 'nunatak' || o.t === 'ramp') tidySpans.push(o);
     }
     /* first what stands (geysers, then boulders and trees), so a pickup is
@@ -519,6 +531,20 @@ var Game = (function () {
               }
             }
             if (!moved) o._gone = true;
+          }
+          /* in deep snow: slid out of it the nearer way, clear of boulders
+             and the banks, or not there (reported by the owner, 18 Nov 2026:
+             fish lay under the snow that slows him) */
+          if (!o._gone && driftNear(o.x, o.d)) {
+            var freed = false;
+            for (var st2 = 8; st2 <= 80 && !freed; st2 += 8) {
+              for (var dr2 = -1; dr2 <= 1 && !freed; dr2 += 2) {
+                var nx2 = o.x + dr2 * st2, nrel2 = nx2 - c;
+                if (Math.abs(nrel2) > bankEdge(o.d, nrel2 < 0 ? -1 : 1) - 6 - rr) continue;
+                if (!solidNear(nx2, o.d, rr * 0.6, null) && !driftNear(nx2, o.d)) { o.x = nx2; freed = true; }
+              }
+            }
+            if (!freed) o._gone = true;
           }
         }
       }
