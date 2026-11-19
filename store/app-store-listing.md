@@ -32,6 +32,65 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.1 (19 Nov 2026)
+
+The New Year event, cards on the board at once, the score on the revive
+screen, banks you can ride to. Under 500 characters each (Google Play's limit).
+
+en:
+```
+• New Year Event until 7 January: collect gifts in Freeride and claim prizes at every step, up to 3,000 fish, 50 gold and an exclusive wreath frame
+• The leaderboard shows everyone's profile as it is now
+• Your score and how far you are from your best, right where you choose to use a life
+• The edge of the ice is where you see it: no more invisible wall
+• Smaller fixes
+```
+
+ro:
+```
+• Evenimentul de Anul Nou, până pe 7 ianuarie: strânge cadouri în Liber și ridică premii la fiecare etapă, până la 3000 de pești, 50 de aur și o ramă exclusivă cu coroniță
+• Clasamentul arată profilul fiecăruia așa cum e acum
+• Scorul tău și cât mai ai până la record, chiar când alegi să folosești o viață
+• Marginea gheții e acolo unde o vezi: fără perete invizibil
+• Mici reparații
+```
+
+ru:
+```
+• Новогоднее событие до 7 января: собирай подарки во «Фрирайде» и забирай призы на каждом этапе — до 3000 рыб, 50 золотых и эксклюзивная рамка-венок
+• Таблица рекордов показывает профиль каждого таким, какой он сейчас
+• Твои очки и сколько осталось до рекорда — прямо там, где решаешь потратить жизнь
+• Край льда там, где ты его видишь: никакой невидимой стены
+• Мелкие исправления
+```
+
+es (Spain and Mexico):
+```
+• Evento de Año Nuevo hasta el 7 de enero: reúne regalos en Libre y reclama premios en cada etapa, hasta 3000 peces, 50 de oro y un marco exclusivo de corona
+• La clasificación muestra el perfil de cada uno tal como es ahora
+• Tu puntuación y lo que te falta para tu récord, justo al decidir si usar una vida
+• El borde del hielo está donde lo ves: sin pared invisible
+• Pequeñas correcciones
+```
+
+pt-BR:
+```
+• Evento de Ano Novo até 7 de janeiro: junte presentes no Livre e resgate prêmios a cada etapa, até 3000 peixes, 50 de ouro e uma moldura exclusiva de guirlanda
+• O ranking mostra o perfil de cada um como está agora
+• Sua pontuação e quanto falta para o recorde, bem na hora de usar uma vida
+• A borda do gelo fica onde você a vê: sem parede invisível
+• Pequenas correções
+```
+
+de:
+```
+• Neujahrs-Event bis zum 7. Januar: sammle Geschenke in Freie Fahrt und hol dir auf jeder Stufe Preise, bis zu 3000 Fische, 50 Gold und einen exklusiven Kranz-Rahmen
+• Die Bestenliste zeigt jedes Profil so, wie es jetzt ist
+• Deine Punkte und wie weit es noch bis zum Rekord ist, genau dort, wo du ein Leben einsetzen kannst
+• Der Rand des Eises ist da, wo du ihn siehst: keine unsichtbare Wand mehr
+• Kleine Korrekturen
+```
+
 ## What's New in 1.3.0 (18 Nov 2026)
 
 A skin for every creature and My profile. One block per localization;

@@ -44,12 +44,19 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
     private static let cloudWait = 3.0
 
     private var board = ""
+    /* The cards board (1.3.1): only the newest card of each player, its
+       "score" the time the card went up, which only grows, so every new card
+       is a new best and Game Center keeps its context at once (it keeps one
+       only with a best). ICEDashLeaderboardCards; empty, no cards board. */
+    private var cards = ""
+    private func which(_ call: CAPPluginCall) -> String { return call.getString("which") == "cards" ? cards : board }
     private var signInView: UIViewController?
     private var signInWaiting: [(Bool) -> Void] = []
     private var shown: CAPPluginCall?
 
     override public func load() {
         board = (Bundle.main.object(forInfoDictionaryKey: "ICEDashLeaderboardFreeride") as? String ?? "")
+        cards = (Bundle.main.object(forInfoDictionaryKey: "ICEDashLeaderboardCards") as? String ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         NSUbiquitousKeyValueStore.default.synchronize()
         if board.isEmpty { return }
@@ -113,7 +120,8 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         /* the player's card (ui.js profileCode), a whole number of 42 bits,
            sent as a string so nothing on the way rounds it */
         let context = Int(call.getString("ctx") ?? "") ?? 0
-        if board.isEmpty || score <= 0 {
+        let b = which(call)
+        if b.isEmpty || score <= 0 {
             call.resolve(["sent": false])
             return
         }
@@ -123,7 +131,7 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
                 call.resolve(["sent": false])
                 return
             }
-            GKLeaderboard.submitScore(score, context: context, player: GKLocalPlayer.local, leaderboardIDs: [self.board]) { error in
+            GKLeaderboard.submitScore(score, context: context, player: GKLocalPlayer.local, leaderboardIDs: [b]) { error in
                 if let error = error {
                     self.log("score \(score) refused: \(error.localizedDescription)")
                     call.resolve(["sent": false, "error": error.localizedDescription])
@@ -139,7 +147,8 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
        ("day", "week" or "all"), each { rank, name, score, me }, me: the
        player's own row, which may be far below them, or absent }. */
     @objc func top(_ call: CAPPluginCall) {
-        if board.isEmpty {
+        let b = which(call)
+        if b.isEmpty {
             call.reject("no board")
             return
         }
@@ -150,7 +159,7 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
                 call.reject("not signed in")
                 return
             }
-            GKLeaderboard.loadLeaderboards(IDs: [self.board]) { boards, error in
+            GKLeaderboard.loadLeaderboards(IDs: [b]) { boards, error in
                 guard let lb = boards?.first else {
                     self.log("board not loaded: \(error?.localizedDescription ?? "no such board")")
                     call.reject(error?.localizedDescription ?? "no board")

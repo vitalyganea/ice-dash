@@ -14,4 +14,7 @@
     <string name="admob_app_id" translatable="false">ca-app-pub-6104904420104536~8263726642</string>
     <string name="game_services_project_id" translatable="false">378437852809</string>
     <string name="leaderboard_freeride" translatable="false">CgkIib2d5YELEAIQAQ</string>
+    <!-- leaderboard_cards: Play Games Services → Leaderboards → Cards, each
+         player's newest profile card (PlayGamesPlugin.java, `cards`) -->
+    <string name="leaderboard_cards" translatable="false">CgkIib2d5YELEAIQAg</string>
 </resources>

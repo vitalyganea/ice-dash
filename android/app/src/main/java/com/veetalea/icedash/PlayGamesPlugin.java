@@ -50,6 +50,13 @@ public class PlayGamesPlugin extends Plugin {
     /* the whole save, as one saved game in the player's Play Games account */
     private static final String CLOUD = "icedash-save";
     private String board = "";
+    /* The cards board (1.3.1): no ranking anyone looks at, only the newest
+       card of each player. Its "score" is the time the card went up, which
+       only ever grows, so every new card is a new best and Play keeps it at
+       once (it keeps a tag only with a best; on the Freeride board a card
+       changed after the best was never seen). Empty: no cards board. */
+    private String cards = "";
+    private String which(PluginCall call) { return "cards".equals(call.getString("which", "")) ? cards : board; }
 
     @Override
     public void load() {
@@ -57,6 +64,8 @@ public class PlayGamesPlugin extends Plugin {
         String id = getContext().getString(R.string.leaderboard_freeride).trim();
         if (project.isEmpty() || id.isEmpty()) return;
         board = id;
+        int cid = getContext().getResources().getIdentifier("leaderboard_cards", "string", getContext().getPackageName());
+        if (cid != 0) cards = getContext().getString(cid).trim();
         PlayGamesSdk.initialize(getContext());
     }
 
@@ -94,8 +103,9 @@ public class PlayGamesPlugin extends Plugin {
            missing, and up to 1.2.1 no score ever reached the board. */
         long score = call.getData().optLong("score", 0);
         JSObject r = new JSObject();
-        if (board.isEmpty() || score <= 0) {
-            Log.i(TAG, "score not sent: " + (board.isEmpty() ? "no board" : "no score (" + call.getData().opt("score") + ")"));
+        final String b = which(call);
+        if (b.isEmpty() || score <= 0) {
+            Log.i(TAG, "score not sent: " + (b.isEmpty() ? "no board" : "no score (" + call.getData().opt("score") + ")"));
             r.put("sent", false);
             call.resolve(r);
             return;
@@ -114,8 +124,8 @@ public class PlayGamesPlugin extends Plugin {
             String tag = call.getData().optString("tag", "");
             if (!tag.matches("[0-9a-z]{1,12}")) tag = "";
             (tag.isEmpty()
-                ? PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(board, score)
-                : PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(board, score, tag))
+                ? PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(b, score)
+                : PlayGames.getLeaderboardsClient(getActivity()).submitScoreImmediate(b, score, tag))
                 .addOnSuccessListener(d -> {
                     Log.i(TAG, "score " + score + " taken: " + d);
                     r.put("sent", true);
@@ -135,7 +145,8 @@ public class PlayGamesPlugin extends Plugin {
        player's own row, which may be far below them, or absent }. */
     @PluginMethod
     public void top(PluginCall call) {
-        if (board.isEmpty()) {
+        final String b = which(call);
+        if (b.isEmpty()) {
             call.reject("no board");
             return;
         }
@@ -152,7 +163,7 @@ public class PlayGamesPlugin extends Plugin {
                     return;
                 }
                 LeaderboardsClient lb = PlayGames.getLeaderboardsClient(getActivity());
-                lb.loadCurrentPlayerLeaderboardScore(board, span, everyone).addOnCompleteListener(m -> {
+                lb.loadCurrentPlayerLeaderboardScore(b, span, everyone).addOnCompleteListener(m -> {
                     JSObject r = new JSObject();
                     LeaderboardScore mine = m.isSuccessful() && m.getResult() != null ? m.getResult().get() : null;
                     String myId = null;
@@ -161,7 +172,7 @@ public class PlayGamesPlugin extends Plugin {
                         if (mine.getScoreHolder() != null) myId = mine.getScoreHolder().getPlayerId();
                     }
                     final String me = myId;
-                    lb.loadTopScores(board, span, everyone, PAGE, true)
+                    lb.loadTopScores(b, span, everyone, PAGE, true)
                         .addOnSuccessListener(d -> more(lb, d.get(), new LinkedHashMap<>(), new ArrayList<>(), me, r, call))
                         .addOnFailureListener(e -> {
                             Log.w(TAG, "board not loaded: " + e);

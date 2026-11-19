@@ -29,7 +29,7 @@
   ];
 
   function defaults() {
-    return { best: 0, boardBest: 0, runs: 0, sfx: true, music: true,
+    return { best: 0, boardBest: 0, cardSent: 0, runs: 0, sfx: true, music: true,
              fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
              lang: detectLang(),
              /* Trophy progress is kept as running totals rather than being
@@ -91,6 +91,7 @@
       /* the highest score the board has taken; a save from before it was
          kept had sent its best with every save, so that is taken */
       save.boardBest = o.boardBest === undefined ? save.best : Math.max(0, parseInt(o.boardBest, 10) || 0);
+      save.cardSent = Math.max(0, parseInt(o.cardSent, 10) || 0);   // the card the cards board last took (1.3.1)
       save.runs  = Math.max(0, parseInt(o.runs, 10) || 0);
       save.sfx   = o.sfx !== false;
       save.music = o.music !== false;
@@ -262,8 +263,24 @@
     if (!first && currentScreen !== 'game') show(currentScreen);
     pushScore();
   }
+  /* The player's card, to the cards board whenever it is not the one the
+     board last took (native.js PLAT.cardSend): a new avatar, frame, title or
+     trophy is seen by everyone at once (the owner, 19 Nov 2026). A moment
+     after the change, so a few taps make one send. */
+  var cardT = null;
+  function cardSoon() {
+    if (!PLAT.cardSend) return;
+    if (cardT) clearTimeout(cardT);
+    cardT = setTimeout(function () {
+      cardT = null;
+      var c = profileCode(myCard());
+      if (c > 0 && c !== save.cardSent) PLAT.cardSend(c);
+    }, 1200);
+  }
+  PLAT.cardSent = function (c) { if (c !== save.cardSent) { save.cardSent = c; store(); } };
   function store() {
     if (!canSave) return;
+    cardSoon();
     if (saving) { saveAgain = true; return; }
     var data = JSON.stringify(save);
     if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} pushScore(); pushCloud(data); return; }
@@ -793,7 +810,7 @@
      their cards are newer: a row takes the freshest card seen for that
      player (by name, all a row has), today's, then this week's, then its
      own. The fresher boards are fetched alongside (fetchFresh). */
-  var freshCards = { day: {}, week: {} };
+  var freshCards = { cards: {}, day: {}, week: {} };
   function cardCode(x) { var c = x && (x.tag || x.ctx); return c && c !== '0' ? c : 0; }
   function noteCards(span, rows) {
     if (!freshCards[span]) return;
@@ -801,14 +818,16 @@
   }
   function rowCard(x) {
     if (x.me) return myCard();
-    var c = (boardSpan !== 'day' && freshCards.day[x.name]) || (boardSpan === 'all' && freshCards.week[x.name]) || cardCode(x);
+    var c = freshCards.cards[x.name] || (boardSpan !== 'day' && freshCards.day[x.name]) || (boardSpan === 'all' && freshCards.week[x.name]) || cardCode(x);
     return profileFrom(c || 0);
   }
-  /* the fresher boards' cards, quietly, then the avatars painted again */
+  /* the fresher boards' cards, quietly, then the avatars painted again: the
+     cards board (1.3.1: each player's card as it is now, the hundred newest),
+     and today's and this week's */
   function fetchFresh(list, ask) {
-    var spans = boardSpan === 'all' ? ['day', 'week'] : boardSpan === 'week' ? ['day'] : [];
+    var spans = (PLAT.cardTop ? ['cards'] : []).concat(boardSpan === 'all' ? ['day', 'week'] : boardSpan === 'week' ? ['day'] : []);
     spans.forEach(function (sp) {
-      PLAT.boardTop(sp).then(function (r) {
+      (sp === 'cards' ? PLAT.cardTop() : PLAT.boardTop(sp)).then(function (r) {
         noteCards(sp, r && r.rows);
         if (ask !== boardAsk || currentScreen !== 'board') return;
         Array.prototype.forEach.call(list.querySelectorAll('.board-row'), function (row) {

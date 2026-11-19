@@ -35,6 +35,8 @@
 	<string>$(ICEDASH_ADMOB_APP_ID)</string>
 	<key>ICEDashLeaderboardFreeride</key>
 	<string>$(ICEDASH_BOARD_FREERIDE)</string>
+	<key>ICEDashLeaderboardCards</key>
+	<string>$(ICEDASH_BOARD_CARDS)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>

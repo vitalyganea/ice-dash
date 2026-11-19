@@ -270,6 +270,38 @@
       return Promise.resolve(send()).then(function () { return PG.top({ span: span }); });
     };
   }
+  /* The cards board (1.3.1): each player's card as it is now, at once. A
+     board keeps a card only with a best, so a card changed after the best
+     was never seen on the Freeride board (the owner, 19 Nov 2026); here the
+     "score" is the time the card goes up, seconds since 2026, which only
+     grows: every card is a new best. A card that cannot go now (not signed
+     in, no network) waits and goes at the next chance. */
+  var cardPend = 0, cardSending = null, cardLast = 0;
+  function sendCard() {
+    if (!board || !cardPend || cardSending) return cardSending;
+    var code = cardPend; cardPend = 0;
+    var sc = Math.max(cardLast + 1, Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 1000)), sub = { score: sc, which: 'cards' };
+    if (IOS) sub.ctx = String(code); else sub.tag = code.toString(36);
+    cardSending = PG.submit(sub).then(function (r) {
+      cardSending = null;
+      if (r && r.sent) { cardLast = sc; if (PLAT.cardSent) PLAT.cardSent(code); if (cardPend) sendCard(); }
+      else if (!cardPend) cardPend = code;
+      return !!(r && r.sent);
+    }, function () { cardSending = null; if (!cardPend) cardPend = code; return false; });
+    return cardSending;
+  }
+  if (PG && PG.submit) {
+    PLAT.cardSend = function (code) { if (code > 0) cardPend = code; return Promise.resolve(sendCard()); };
+    if (PG.addListener && IOS) PG.addListener('signedIn', function () { sendCard(); });
+    window.addEventListener('icedash-board', function () { sendCard(); });
+  }
+  /* the newest cards: { rows: [{ name, tag | ctx }] }, the hundred newest */
+  if (PG && PG.top) {
+    PLAT.cardTop = function () {
+      if (!board) return Promise.reject(new Error('no board'));
+      return PG.top({ span: 'all', which: 'cards' });
+    };
+  }
   /* The player's own place of all time, for the best on the title, once a
      best still on its way has gone: { rank, score } or null. */
   if (PG && PG.mine) {

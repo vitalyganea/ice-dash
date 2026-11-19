@@ -138,7 +138,7 @@ var PLATFORMS = {
    unless __adSkip is set, when it is closed early. Everything asked of
    them is counted. */
 var FAKE_NATIVE = "(function(){var L={};" +
-  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[]};window.__reviews=0;window.__cloud={loads:0,saves:[]};" +
+  "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[],cards:[]};window.__reviews=0;window.__cloud={loads:0,saves:[]};" +
   "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
   "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
   "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
@@ -157,12 +157,13 @@ var FAKE_NATIVE = "(function(){var L={};" +
   /* as on the phone: the handle itself, not a promise of one */
   " addListener:on}," +
   "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
-  " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
+  " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:true});}__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
   " show:function(){__board.shown++;return Promise.resolve();}," +
   /* the board's rows: a hundred players for all time, the player 345th
      and so below them all (or, __boardHideMe, not on it: a private Play
      Games profile); nobody yet today */
-  " top:function(o){__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
+  /* the cards board (1.3.1): Ana's newest card, a circus seal in Snow */
+  " top:function(o){if(o.which==='cards')return Promise.resolve({rows:[{rank:1,name:'Ana',score:9e6,tag:'x21mlmr'}]});__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
   /* this week the second player ran again with a newer card (a pirate
      puffin in Aurora): the all-time board shows it, not their best's */
   "  if(o.span==='week')return later({rows:[{rank:1,name:'Snowcap',score:9000,me:false,tag:'wkacrgp'}]});" +
@@ -195,8 +196,8 @@ var FAKE_NATIVE_IOS = [
    " requestTrackingAuthorization:function(){__ads.order.push('ask');return Promise.resolve();},"],
   [" prepareRewardVideoAd:function(){__ads.prepared++;", " prepareRewardVideoAd:function(o){__ads.prepared++;__ads.units.push(o.adId);"],
   ["PlayGames:{status:", "GameCenter:{addListener:function(n,f){if(n==='signedIn')on(n,function(){__gcIn=true;f();});return on('x',function(){});},status:"],
-  [" submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:true});},",
-   " submit:function(o){__board.submits.push(o.score);return Promise.resolve({sent:__gcIn});},"]
+  [" submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:true});}__board.submits.push(o.score);return Promise.resolve({sent:true});},",
+   " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:__gcIn});}__board.submits.push(o.score);return Promise.resolve({sent:__gcIn});},"]
 ].reduce(function (s, r) { return swap(s, r[0], r[1]); }, FAKE_NATIVE);
 
 async function walk(cdp, sid, P) {
@@ -467,6 +468,11 @@ async function walk(cdp, sid, P) {
        'rows with a card show its creature in its frame, rows without one an empty ring, and the player\'s own row theirs (' + JSON.stringify(av) + ')');
     ok(await ev("document.querySelectorAll('#board-list .board-row')[1].querySelector('.board-av').classList.contains('pf-aurora')"),
        'a player who ran this week with a newer card shows it on the all-time board, not the card of their best (reported, 19 Nov 2026)');
+    ok(await ev("document.querySelectorAll('#board-list .board-row')[2].querySelector('.board-av').classList.contains('pf-snow')"),
+       'and the cards board (1.3.1) comes first: a card changed a moment ago is what everyone sees');
+    var cs = await ev("(function(){var c=__board.cards,P=window.ICEDASH_PLATFORM;return {n:c.length,tag:c.length?(c[c.length-1].tag||c[c.length-1].ctx):null,mine:P&&P.boardCard?P.boardCard():0,up:c.every(function(x,i){return !i||x.score>c[i-1].score;}),score:c.length?c[c.length-1].score:0};})()");
+    ok(cs.n >= 1 && (cs.tag === cs.mine.toString(36) || cs.tag === String(cs.mine)) && cs.up && cs.score > 2e7,
+       'the player\'s own card has gone to the cards board, its score the time (only ever growing) (' + JSON.stringify(cs) + ')');
     await click('#board-list .board-row');
     ok(await waitFor('#sheet-prof', 2000) &&
        await ev("document.querySelector('#sheet-prof .pcard-name').textContent") === 'Pingu' &&

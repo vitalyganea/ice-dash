@@ -11,3 +11,5 @@
 //   board and shows no button for one (GameCenterPlugin.swift).
 ICEDASH_ADMOB_APP_ID = ca-app-pub-6104904420104536~5953442824
 ICEDASH_BOARD_FREERIDE = freeride
+// the cards board: each player's newest profile card (GameCenterPlugin.swift, `cards`)
+ICEDASH_BOARD_CARDS = cards
