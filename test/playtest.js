@@ -163,6 +163,9 @@ var FAKE_NATIVE = "(function(){var L={};" +
      and so below them all (or, __boardHideMe, not on it: a private Play
      Games profile); nobody yet today */
   " top:function(o){__board.tops.push(o.span);var later=function(v){return new Promise(function(res){setTimeout(function(){res(v);},window.__boardDelay||0);});};" +
+  /* this week the second player ran again with a newer card (a pirate
+     puffin in Aurora): the all-time board shows it, not their best's */
+  "  if(o.span==='week')return later({rows:[{rank:1,name:'Snowcap',score:9000,me:false,tag:'wkacrgp'}]});" +
   "  if(o.span!=='all')return later({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
   /* the first three carry a card (1.3.0): a Play Games tag, as profileTag makes them */
@@ -462,6 +465,8 @@ async function walk(cdp, sid, P) {
     var av = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row');return {first:!!r[0].querySelector('.board-av canvas'),gold:r[0].querySelector('.board-av').classList.contains('pf-gold'),fourth:r[3].querySelector('.board-av').classList.contains('none'),me:!!document.querySelector('#board-list .board-row.me .board-av canvas')};})()");
     ok(av.first && av.gold && av.fourth && av.me,
        'rows with a card show its creature in its frame, rows without one an empty ring, and the player\'s own row theirs (' + JSON.stringify(av) + ')');
+    ok(await ev("document.querySelectorAll('#board-list .board-row')[1].querySelector('.board-av').classList.contains('pf-aurora')"),
+       'a player who ran this week with a newer card shows it on the all-time board, not the card of their best (reported, 19 Nov 2026)');
     await click('#board-list .board-row');
     ok(await waitFor('#sheet-prof', 2000) &&
        await ev("document.querySelector('#sheet-prof .pcard-name').textContent") === 'Pingu' &&

@@ -783,9 +783,44 @@
       '<text x="20" y="18.2" text-anchor="middle" font-size="10.5" font-weight="900" fill="' + c[1] + '">' + place + '</text>' +
       '</svg>';
   }
-  /* a row's card: the player's own as it is now, anyone else's as it went
-     up with their best (a Play Games tag, a Game Center context), or none */
-  function rowCard(x) { return x.me ? myCard() : profileFrom(x.tag || x.ctx || 0); }
+  /* A row's card: the player's own as it is now; anyone else's as it went
+     up with a score (a Play Games tag, a Game Center context), or none.
+     Play Games and Game Center keep only the card of a board's best score,
+     so on the all-time board a card stays as it was when the best was set:
+     a player who chose an avatar afterwards was shown the old one, or none
+     if the best came from before 1.3.0 (reported by the owner, 19 Nov 2026).
+     The day's and the week's boards get every run since 1.3.0 (row 177), so
+     their cards are newer: a row takes the freshest card seen for that
+     player (by name, all a row has), today's, then this week's, then its
+     own. The fresher boards are fetched alongside (fetchFresh). */
+  var freshCards = { day: {}, week: {} };
+  function cardCode(x) { var c = x && (x.tag || x.ctx); return c && c !== '0' ? c : 0; }
+  function noteCards(span, rows) {
+    if (!freshCards[span]) return;
+    (rows || []).forEach(function (x) { var c = cardCode(x); if (x && x.name && c) freshCards[span][x.name] = c; });
+  }
+  function rowCard(x) {
+    if (x.me) return myCard();
+    var c = (boardSpan !== 'day' && freshCards.day[x.name]) || (boardSpan === 'all' && freshCards.week[x.name]) || cardCode(x);
+    return profileFrom(c || 0);
+  }
+  /* the fresher boards' cards, quietly, then the avatars painted again */
+  function fetchFresh(list, ask) {
+    var spans = boardSpan === 'all' ? ['day', 'week'] : boardSpan === 'week' ? ['day'] : [];
+    spans.forEach(function (sp) {
+      PLAT.boardTop(sp).then(function (r) {
+        noteCards(sp, r && r.rows);
+        if (ask !== boardAsk || currentScreen !== 'board') return;
+        Array.prototype.forEach.call(list.querySelectorAll('.board-row'), function (row) {
+          var card = rowCard(row.boardRow), av = row.querySelector('.board-av');
+          if (!av) return;
+          av.className = 'board-av pf-' + ((card && card.frame) || 'ice') + (card ? '' : ' none');
+          av.textContent = '';
+        });
+        paintAvatars(list);
+      }, function () {});
+    });
+  }
   function boardRow(x) {
     var row = document.createElement('button');
     row.className = 'board-row' + (x.me ? ' me' : '');
@@ -881,6 +916,7 @@
       if (ask !== boardAsk || currentScreen !== 'board') return;
       list.innerHTML = '';
       var rows = (r && r.rows) || [], me = r && r.me;
+      noteCards(boardSpan, rows);
       var mine = null;
       rows.forEach(function (x) { var el = boardRow(x); if (x.me) mine = el; list.appendChild(el); });
       if (me && me.rank > 0 && !mine) {
@@ -893,6 +929,7 @@
          the player takes the best for lost. */
       say(!mine && save.best > 0 ? 'board.private' : rows.length ? '' : 'board.empty');
       paintAvatars(list);
+      fetchFresh(list, ask);
       /* the list opens at the top, or with the player's own row in view */
       list.scrollTop = 0;
       if (mine && mine.offsetTop + mine.offsetHeight > list.clientHeight)
