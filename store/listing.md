@@ -345,7 +345,11 @@ safety) are kept in `play-console.md`; this table is the listing side.
   `store/promo/mascot/penguin3d.png` (since 2 Nov 2026 keyed from a green-screen
   version of it, cleaner all round); the AI asset declaration was left at
   "Don't label assets" by the owner's choice. Captions and their checked
-  wording are in `TEXT` in `store/promo.js`. `node store/poster.js` makes a
+  wording are in `TEXT` in `store/promo.js`. Remade for 1.3.0 on 19 Nov 2026
+  (not yet uploaded): the new logo and title, creatures in their skins on
+  the hill and in the market ("18 creatures, 18 skins"), and `07-profile`
+  (My profile, the portraits) in place of `07-modes`; the old `07-modes`
+  pictures were moved out of the upload folders. `node store/poster.js` makes a
   2400×3000 poster (`store/promo/poster-en.png`) with the two screenshots
   pasted in at 1:1 and checked pixel by pixel.
 - Video: the 31 s wide trailer (`node store/trailer/compose.js wide`, SYSTEMS

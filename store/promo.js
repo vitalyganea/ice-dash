@@ -31,7 +31,7 @@ var FORMATS = {
      exactly, so the card is the store's shape): on the 13-inch shape the
      menus took a third of the width and their words could not be read */
   ipad:   { FW: 540, FH: 720,  dsf: 2064 / 540, shape: { width: 780, height: 1040, deviceScaleFactor: 2.6, mobile: true }, dir: 'ipad', ios: true, fit: true,
-            zoom: { market: 1.08, lines: 1.1, modes: 1.75, title: 1.1 } }
+            zoom: { market: 1.08, lines: 1.1, modes: 1.75, title: 1.1, profile: 1.08 } }
 };
 var FMT = FORMATS.play, FW = 540, FH = 960, SHAPE = FMT.shape;
 /* the card the game sits on: as wide as the frame leaves, as tall as the
@@ -66,35 +66,39 @@ var APP_IOS = APP.replace("isNativePlatform:function(){return true;},", "isNativ
 var TEXT = {
   en: { tapw: 'TAP!', tap: ['ONE TAP.', 'ENDLESS ICE.'], fish: ['DODGE TREES,', 'CATCH FISH!'],
         worlds: ['14 MOUNTAIN', 'WORLDS', 'Each with its own weather and music'],
-        market: ['18 CREATURES', 'TO UNLOCK'], rush: ['BEAT', 'THE CLOCK!', '20 seconds. Grab time bubbles.'],
-        lines: ['10 HAND-MADE', 'LINES', 'Three stars on each'], modes: ['DAILY LINE,', 'TIME RUSH & MORE'],
+        market: ['18 CREATURES,', '18 SKINS'], rush: ['BEAT', 'THE CLOCK!', '20 seconds. Grab time bubbles.'],
+        lines: ['10 HAND-MADE', 'LINES', 'Three stars on each'], modes: ['DAILY LINE,', 'TIME RUSH & MORE'], profile: ['MY PROFILE:', 'PICK YOUR PORTRAIT'],
         title: ['SIMPLE TO LEARN,', 'HARD TO MASTER'], signs: ['PLAYS OFFLINE', 'NO ACCOUNT NEEDED'] },
   ro: { tapw: 'ATINGE!', tap: ['O ATINGERE.', 'GHEAȚĂ FĂRĂ SFÂRȘIT.'], fish: ['OCOLEȘTE BRAZII,', 'PRINDE PEȘTI!'],
         worlds: ['14 LUMI', 'DE MUNTE', 'Fiecare cu vremea și muzica ei'],
-        market: ['18 CREATURI', 'DE DEBLOCAT'], rush: ['ÎNVINGE', 'CRONOMETRUL!', '20 de secunde. Prinde bule de timp.'],
-        lines: ['10 TRASEE', 'FĂCUTE DE MÂNĂ', 'Trei stele pe fiecare'], modes: ['LINIA ZILEI,', 'CONTRA TIMP ȘI ALTELE'],
+        market: ['18 CREATURI,', '18 SKIN-URI'], rush: ['ÎNVINGE', 'CRONOMETRUL!', '20 de secunde. Prinde bule de timp.'],
+        lines: ['10 TRASEE', 'FĂCUTE DE MÂNĂ', 'Trei stele pe fiecare'], modes: ['LINIA ZILEI,', 'CONTRA TIMP ȘI ALTELE'], profile: ['PROFILUL MEU:', 'ALEGE-ȚI PORTRETUL'],
         title: ['UȘOR DE ÎNVĂȚAT,', 'GREU DE STĂPÂNIT'], signs: ['MERGE OFFLINE', 'FĂRĂ CONT'] },
   ru: { tapw: 'КОСНИСЬ!', tap: ['ОДНО КАСАНИЕ.', 'БЕСКОНЕЧНЫЙ ЛЁД.'], fish: ['ОБЪЕЗЖАЙ ЕЛИ,', 'ЛОВИ РЫБУ!'],
         worlds: ['14 ГОРНЫХ', 'МИРОВ', 'У каждого своя погода и музыка'],
-        market: ['18 СУЩЕСТВ', 'ЖДУТ ТЕБЯ'], rush: ['ОБГОНИ', 'ВРЕМЯ!', '20 секунд. Лови пузыри времени.'],
-        lines: ['10 ТРАСС', 'РУЧНОЙ РАБОТЫ', 'Три звезды на каждой'], modes: ['ЛИНИЯ ДНЯ,', 'НА ВРЕМЯ И НЕ ТОЛЬКО'],
+        market: ['18 СУЩЕСТВ,', '18 СКИНОВ'], rush: ['ОБГОНИ', 'ВРЕМЯ!', '20 секунд. Лови пузыри времени.'],
+        lines: ['10 ТРАСС', 'РУЧНОЙ РАБОТЫ', 'Три звезды на каждой'], modes: ['ЛИНИЯ ДНЯ,', 'НА ВРЕМЯ И НЕ ТОЛЬКО'], profile: ['МОЙ ПРОФИЛЬ:', 'ВЫБЕРИ ПОРТРЕТ'],
         title: ['ЛЕГКО НАЧАТЬ,', 'ТРУДНО СТАТЬ МАСТЕРОМ'], signs: ['БЕЗ ИНТЕРНЕТА', 'БЕЗ РЕГИСТРАЦИИ'] },
   es: { tapw: '¡TOCA!', tap: ['UN TOQUE.', 'HIELO SIN FIN.'], fish: ['ESQUIVA PINOS,', '¡ATRAPA PECES!'],
         worlds: ['14 MUNDOS', 'DE MONTAÑA', 'Cada uno con su clima y su música'],
-        market: ['18 CRIATURAS', 'POR DESBLOQUEAR'], rush: ['¡GÁNALE AL', 'RELOJ!', '20 segundos. Atrapa burbujas de tiempo.'],
-        lines: ['10 RUTAS', 'HECHAS A MANO', 'Tres estrellas en cada una'], modes: ['LÍNEA DEL DÍA,', 'CONTRARRELOJ Y MÁS'],
+        market: ['18 CRIATURAS,', '18 ASPECTOS'], rush: ['¡GÁNALE AL', 'RELOJ!', '20 segundos. Atrapa burbujas de tiempo.'],
+        lines: ['10 RUTAS', 'HECHAS A MANO', 'Tres estrellas en cada una'], modes: ['LÍNEA DEL DÍA,', 'CONTRARRELOJ Y MÁS'], profile: ['MI PERFIL:', 'ELIGE TU RETRATO'],
         title: ['FÁCIL DE APRENDER,', 'DIFÍCIL DE DOMINAR'], signs: ['SIN INTERNET', 'SIN CUENTA'] },
   pt: { tapw: 'TOQUE!', tap: ['UM TOQUE.', 'GELO SEM FIM.'], fish: ['DESVIE DOS PINHEIROS,', 'PEGUE PEIXES!'],
         worlds: ['14 MUNDOS', 'DE MONTANHA', 'Cada um com seu clima e sua música'],
-        market: ['18 CRIATURAS', 'PARA DESBLOQUEAR'], rush: ['VENÇA O', 'RELÓGIO!', '20 segundos. Pegue bolhas de tempo.'],
-        lines: ['10 PISTAS', 'FEITAS À MÃO', 'Três estrelas em cada uma'], modes: ['LINHA DO DIA,', 'CONTRA O TEMPO E MAIS'],
+        market: ['18 CRIATURAS,', '18 VISUAIS'], rush: ['VENÇA O', 'RELÓGIO!', '20 segundos. Pegue bolhas de tempo.'],
+        lines: ['10 PISTAS', 'FEITAS À MÃO', 'Três estrelas em cada uma'], modes: ['LINHA DO DIA,', 'CONTRA O TEMPO E MAIS'], profile: ['MEU PERFIL:', 'ESCOLHA SEU RETRATO'],
         title: ['FÁCIL DE APRENDER,', 'DIFÍCIL DE DOMINAR'], signs: ['JOGUE OFFLINE', 'SEM CONTA'] },
   de: { tapw: 'TIPP!', tap: ['EIN TIPP.', 'ENDLOSES EIS.'], fish: ['WEICH DEN BÄUMEN AUS,', 'FANG FISCHE!'],
         worlds: ['14 BERG-', 'WELTEN', 'Jede mit eigenem Wetter und eigener Musik'],
-        market: ['18 TIERE', 'ZUM FREISCHALTEN'], rush: ['SCHLAG', 'DIE UHR!', '20 Sekunden. Schnapp dir Zeitblasen.'],
-        lines: ['10 HANDGEMACHTE', 'STRECKEN', 'Drei Sterne pro Strecke'], modes: ['TAGESLINIE,', 'ZEITRENNEN UND MEHR'],
+        market: ['18 TIERE,', '18 SKINS'], rush: ['SCHLAG', 'DIE UHR!', '20 Sekunden. Schnapp dir Zeitblasen.'],
+        lines: ['10 HANDGEMACHTE', 'STRECKEN', 'Drei Sterne pro Strecke'], modes: ['TAGESLINIE,', 'ZEITRENNEN UND MEHR'], profile: ['MEIN PROFIL:', 'WÄHL DEIN PORTRÄT'],
         title: ['LEICHT ZU LERNEN,', 'SCHWER ZU MEISTERN'], signs: ['OFFLINE SPIELBAR', 'KEIN KONTO NÖTIG'] }
 };
+
+/* the skins owned and worn in the pictures (since 1.3.0, 19 Nov 2026) */
+var ALTS = { own: ['pirate', 'circus', 'viking', 'astro', 'ninja', 'zombie', 'lifeguard'],
+             on: { puffin: 'pirate', seal: 'circus', muskox: 'viking', bubbles: 'astro', leopard: 'ninja' } };
 
 /* The stretches for the worlds picture: six that look nothing alike
    (js/biomes.js order: Night Run, Emberflow, Frozen Jungle, Cosmic Ice,
@@ -473,7 +477,7 @@ function frame(o) {
   if (o.kind === 'card') {
     if (o.fancy) body += '<div class="ring" style="top:' + (cardTop - 13) + 'px"></div>';
     body += '<div class="card" style="top:' + cardTop + 'px"><img src="' + o.img + '"' +
-      (o.zoom ? ' style="transform:scale(' + o.zoom + ')"' : '') + '></div>';
+      (o.zoom ? ' style="transform:scale(' + o.zoom + ')' + (o.origin ? ';transform-origin:' + o.origin : '') + '"' : '') + '></div>';
     if (o.rider) body += tapCue(Math.round(CARD.left + 7 + o.rider[0] * k), Math.round(cardTop + 7 + o.rider[1] * k), o.tapw);
     else if (o.tap) body += '<div class="tap" style="left:' + o.tap[0] + 'px;top:' + o.tap[1] + 'px"><i></i><i></i><b>TAP</b></div>';
     if (o.signs) body += '<div class="sign s1">' + o.signs[0] + '</div><div class="sign s2">' + o.signs[1] + '</div>';
@@ -607,14 +611,15 @@ async function main() {
     /* the worlds, once for every language */
     var tiles = [];
     for (var w = 0; w < WORLDS.length; w++) {
-      tiles.push(await scene(path.join(tmp, 'world' + w + '.png'), Object.assign({}, M.SAVE, { lang: 'en', equipped: ['seal', 'puffin', 'otter', 'orca', 'leopard', 'muskox'][w] }),
+      tiles.push(await scene(path.join(tmp, 'world' + w + '.png'), Object.assign({}, M.SAVE, { lang: 'en', alts: ALTS, equipped: ['seal', 'puffin', 'otter', 'orca', 'leopard', 'muskox'][w] }),
         ride(WORLDS[w], '#btn-free'), 6000));
     }
     tiles = tiles.map(png64);
     for (var li = 0; li < langs.length; li++) {
       var lang = langs[li], T = TEXT[lang];
       if (!T) { console.error('no captions for ' + lang); continue; }
-      var save = Object.assign({}, M.SAVE, { lang: lang });
+      /* 1.3.0: some creatures in their skins, the pirate puffin as the avatar */
+      var save = Object.assign({}, M.SAVE, { lang: lang, alts: ALTS, prof: { av: { skin: 'puffin', alt: 'pirate' } } });
       var dir = M.mkdir(path.join(OUT, FMT.dir, lang)), raw = {};
       raw.tap = await scene(path.join(tmp, lang + '-tap.png'), save, ride('null', '#btn-free'), 6500);
       raw.fish = await scene(path.join(tmp, lang + '-fish.png'), Object.assign({}, save, { equipped: 'seal' }),
@@ -622,14 +627,14 @@ async function main() {
       raw.rush = await scene(path.join(tmp, lang + '-rush.png'), Object.assign({}, save, { equipped: 'puffin' }), ride('null', '#btn-rush'), 5000);
       raw.market = await scene(path.join(tmp, lang + '-market.png'), save, "document.querySelector('[data-action=\"shop\"]').click()");
       raw.lines = await scene(path.join(tmp, lang + '-lines.png'), save, "document.querySelector('[data-action=\"runs\"]').click()");
-      raw.modes = await scene(path.join(tmp, lang + '-modes.png'), save, "document.querySelector('[data-action=\"modes\"]').click()");
+      raw.profile = await scene(path.join(tmp, lang + '-profile.png'), save, "document.querySelector('[data-action=\"profile\"]').click()", 1500);
       raw.title = await scene(path.join(tmp, lang + '-title.png'), save, null, 1500);
       /* the penguin, in a different place and pose on each */
       var MAS = {
         '01-one-tap': { at: 'TR', pose: 'wave', tilt: -9 }, '02-catch-fish': { at: 'BL', pose: 'fish', tilt: 5 },
         '03-worlds': { at: 'TL', pose: 'cheer', tilt: 8 }, '04-creatures': { at: 'BR', pose: 'point', tilt: -5 },
         '05-time-rush': { at: 'TL', pose: 'point', tilt: 11 }, '06-known-lines': { at: 'TR', pose: 'star', tilt: -5 },
-        '07-modes': { at: 'BL', pose: 'cheer', tilt: -4 }, '08-offline': { at: 'TL', pose: 'wave', tilt: 6 }
+        '07-profile': { at: 'BL', pose: 'cheer', tilt: -4 }, '08-offline': { at: 'TL', pose: 'wave', tilt: 6 }
       };
       /* a menu brought closer on a big screen; Play's frames as they were */
       var zoom = function (k, d) { return (FMT.zoom && FMT.zoom[k]) || d || 0; };
@@ -640,7 +645,7 @@ async function main() {
         ['04-creatures', { kind: 'card', img: raw.market, lines: T.market, zoom: zoom('market', 0) }],
         ['05-time-rush', { kind: 'card', img: raw.rush, lines: T.rush }],
         ['06-known-lines', { kind: 'card', img: raw.lines, lines: T.lines, zoom: zoom('lines', 0) }],
-        ['07-modes', { kind: 'card', img: raw.modes, lines: T.modes, zoom: zoom('modes', 1.38) }],
+        ['07-profile', { kind: 'card', img: raw.profile, lines: T.profile, zoom: zoom('profile', 1.12), origin: '50% 4%' }],   // closer from the top: the card and the portraits
         ['08-offline', { kind: 'card', img: raw.title, lines: T.title, signs: T.signs, zoom: zoom('title', 0) }]
       ];
       var files = [];
