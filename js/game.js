@@ -415,6 +415,16 @@ var Game = (function () {
      hill for every creature. test/placement.js holds it to this. */
   var PICKUPS = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1 };
   function bankEdge(d, side) { return CHUTE + Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4; }
+  /* Where his middle stops against a bank. The bank is drawn winding (bankX,
+     the same wobble as bankEdge), but the wall used to stand straight at
+     CHUTE - PR: where the bank bowed out he bounced off clear ice, and a
+     lane of ice that looked wide enough between the last boulder of a row
+     and the bank (37-50 px, about 1 row in 22) was shut. Reported by
+     players, 18 Nov 2026 ("you physically cannot get through some parts
+     of the road"). Now the wall follows the bank as drawn, his body (the
+     radius he is hit with) touching it; never nearer the middle than it
+     stood, so no opening laid against the old wall gets narrower. */
+  function wallAt(d, side) { return Math.max(CHUTE - PR, bankEdge(d, side) - PR * 0.78); }
   function laidReach(o) {                          // how far a thing reaches on the ice, as drawn
     if (o.t === 'drift') return o.r * 0.9;
     if (o.t === 'rock' || o.t === 'tree') return o.r * 0.9;
@@ -1261,8 +1271,9 @@ var Game = (function () {
     W.px += W.vx;
 
     var c = chuteHere();
-    if (W.px < c - CHUTE + PR) { W.px = c - CHUTE + PR; W.dir = 1;  bank(); }
-    if (W.px > c + CHUTE - PR) { W.px = c + CHUTE - PR; W.dir = -1; bank(); }
+    var wl = wallAt(W.dist, -1), wr = wallAt(W.dist, 1);
+    if (W.px < c - wl) { W.px = c - wl; W.dir = 1;  bank(); }
+    if (W.px > c + wr) { W.px = c + wr; W.dir = -1; bank(); }
     W.tilt = lerp(W.tilt, clamp(W.vx / Math.max(1, W.speed), -1.1, 1.1), 0.18);
 
     for (var i = W.objects.length - 1; i >= 0; i--) {
@@ -12439,6 +12450,7 @@ var Game = (function () {
                                     SPEED_MAX: SPEED_MAX, HARD_OVER: HARD_OVER,
                                     ROW_GAP0: ROW_GAP0, ROW_GAP1: ROW_GAP1,
                                     DRIFT: DRIFT, TURN: TURN,
-                                    reach: reachBetweenRows() }; }
+                                    reach: reachBetweenRows() }; },
+    _wallAt: function (d, side) { return wallAt(d, side); }
   };
 })();

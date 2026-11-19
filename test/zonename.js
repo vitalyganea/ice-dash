@@ -12,7 +12,9 @@ function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++
 
 function keepAlive() {
   var W = G.debug();
-  W.objects = W.objects.filter(function (o) { return o.t !== 'rock' && o.t !== 'tree' && o.t !== 'crevasse'; });
+  /* everything that can end the run (geysers and spines too: with the wall
+     following the bank, 19 Nov 2026, his slide met a geyser) */
+  W.objects = W.objects.filter(function (o) { return o.t !== 'rock' && o.t !== 'tree' && o.t !== 'crevasse' && o.t !== 'geyser' && o.t !== 'nunatak'; });
 }
 
 [['a marked run', 'firstlight'], ['freeride', null]].forEach(function (c) {
