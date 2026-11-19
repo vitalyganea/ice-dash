@@ -173,6 +173,7 @@ declaration (the owner confirms), then the owner's "Submit for Review".
 | 1.2.9 | 5 | 3 Nov 2026, run 5 | no tracking question, NSUserTrackingUsageDescription gone (SYSTEMS row 151); the build to submit |
 | 1.2.9 | 6 | 4 Nov 2026, run 6, test_ads | build 5 with Google's test ads, for App Review's screen recording only; never submitted |
 | 1.3.0 | 11 | 18 Nov 2026, run 11, branch `1.3.0` | skins for every creature, My profile, portraits, day and week boards (SYSTEMS rows 172-180); submitted for review 18 Nov 2026 |
+| 1.3.1 | 12 | 20 Nov 2026, run 12, branch `1.3.0` | the New Year event, the cards board (Game Center leaderboard `cards` still to be made in App Store Connect and added to the version), the revive score, the bank wall (SYSTEMS rows 181-187) |
 
 ## 1.2.11 (prepared 16 Nov 2026)
 
