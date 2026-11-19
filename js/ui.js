@@ -72,7 +72,9 @@
                 creatures are in theirs: { own: [ids], on: { creature: id } } */
              alts: { own: [], on: {} },
              /* the profile card: frames bought, and the frame and title on it */
-             prof: { own: ['ice'], frame: 'ice', title: 'rookie' } };
+             prof: { own: ['ice'], frame: 'ice', title: 'rookie' },
+             /* events (events.js): { id: { g: gifts gathered, got: [steps claimed] } } */
+             ev: {} };
   }
   /* Switches a platform's adapter may set before the game loads (only
      crazygames.js does). Unset, everything behaves as it always has. */
@@ -152,6 +154,16 @@
             if (SKIN_BY_ID[ak2] && ALT_BY_ID[aid2] && ALT_BY_ID[aid2].of === ak2 && save.alts.own.indexOf(aid2) >= 0) save.alts.on[ak2] = aid2;
           }
       }
+      /* the events: a count and the steps claimed, for events this build knows */
+      save.ev = {};
+      if (o.ev && typeof o.ev === 'object' && typeof eventById === 'function')
+        for (var evid in o.ev) {
+          var EVk = eventById(evid), eo = o.ev[evid], egot = [];
+          if (!EVk || !eo || typeof eo !== 'object') continue;
+          if (Object.prototype.toString.call(eo.got) === '[object Array]')
+            eo.got.forEach(function (i) { i = parseInt(i, 10); if (i >= 0 && i < EVk.stages.length && egot.indexOf(i) < 0) egot.push(i); });
+          save.ev[evid] = { g: Math.max(0, parseInt(eo.g, 10) || 0), got: egot, seen: !!eo.seen };
+        }
       save.prof = { own: ['ice'], frame: 'ice', title: 'rookie' };
       if (o.prof && typeof o.prof === 'object') {
         if (Object.prototype.toString.call(o.prof.own) === '[object Array]')
@@ -280,13 +292,14 @@
                   pause: $('screen-pause'), over: $('screen-over'),
                   shop: $('screen-shop'), settings: $('screen-settings'),
                   ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'), comic: $('screen-comic'),
-                  revive: $('screen-revive'), tutdone: $('screen-tutdone'), board: $('screen-board') };
+                  revive: $('screen-revive'), tutdone: $('screen-tutdone'), board: $('screen-board'),
+                  event: $('screen-event') };
   var hud = $('hud');
   var currentScreen = 'title';
 
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
-  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1, profile: 1 };
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1, profile: 1, event: 1 };
   var justOpened = false;
   function show(name) {
     closeSheet();
@@ -308,6 +321,8 @@
       $('tutdone-go').textContent = t('tut.done.go', { n: t('course.' + COURSES[0].id + '.name') });
     if (name === 'help') buildHints();
     if (name === 'profile') { framePick = ''; buildProfile(); }
+    if (name === 'event') buildEvent();
+    if (evTimer && name !== 'event') { clearInterval(evTimer); evTimer = null; }
     if (name === 'shop') { buildShop(); seeMarket(); }
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
@@ -411,7 +426,7 @@
   function showGame() { show('game'); }
 
   /* --------------------------- game -------------------------- */
-  var lastCourse = null, lastMode = null;
+  var lastCourse = null, lastMode = null, rideEv = null;
   function ride(courseId, mode) {
     pendingRes = null;
     adLifeUsed = false;
@@ -422,9 +437,11 @@
     Sfx.unlock();
     hideLesson(); waitingFor = null;
     /* Each mode is measured against its own best: Time Rush in metres. */
+    /* an event's gifts are on the Freeride hill only (events.js) */
+    rideEv = (!lastCourse && !lastMode && typeof liveEvent === 'function') ? liveEvent() : null;
     Game.start(lastMode === 'rush' ? save.bestRush : lastMode === 'avalanche' ? save.bestAv : save.best,
                { hud: function () {}, over: onOver, lesson: onLesson, fx: onFx },
-               save.equipped, lastCourse, save.lives || 0, { mode: lastMode });
+               save.equipped, lastCourse, save.lives || 0, { mode: lastMode, gifts: !!rideEv });
     tutChrome();
   }
 
@@ -941,6 +958,8 @@
     }
     save.fish += res.coins || 0;
     save.gold += res.gold || 0;
+    /* the event's gifts, counted in even if it ended while he rode */
+    if (res.gifts > 0 && rideEv) eventState(save, rideEv).g += res.gifts;
     save.totFish  += res.fish  || 0;
     save.totGold  += res.gold  || 0;
     save.totGates += res.gates || 0;
@@ -1009,6 +1028,7 @@
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
+    if (rideEv && !cd && !mRun) bits.push(t('unit.gifts') + ': ' + (res.gifts || 0));
     if (rushRun) bits[0] = t('unit.clocks') + ': ' + (res.clocks || 0);
     if (avRun) bits[0] = t('unit.avrings') + ': ' + (res.gates || 0);
     if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
@@ -1289,6 +1309,7 @@
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
       case 'modes':      Sfx.click(); show('modes'); break;
+      case 'event':      Sfx.click(); show('event'); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'next-line':  Sfx.click(); ride($('over-next').getAttribute('data-run')); break;
       case 'close-sheet': Sfx.click(); closeSheet(); break;
@@ -1299,6 +1320,7 @@
         /* The back arrow and Esc close an open window before they leave
            the screen under it. */
         if (closeSheet()) break;
+        if (currentScreen === 'event') { show('modes'); break; }   // an event is opened from the modes
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
@@ -1678,14 +1700,17 @@
     });
     var fr = $('prof-frames');
     fr.textContent = '';
+    var evNow = typeof eventShown === 'function' ? eventShown(save) : null;
     FRAMES.forEach(function (F) {
       var on = save.prof.frame === F.id, own = save.prof.own.indexOf(F.id) >= 0;
+      if (F.currency === 'event' && !own && !(evNow && evNow.id === F.event)) return;   // an event's, gone with it
       var el = document.createElement('button');
       el.className = 'look-tile frame-tile' + (on ? ' on' : '') + (framePick === F.id ? ' picked' : '');
       el.setAttribute('data-frame', F.id);
       var sw = document.createElement('span'); sw.className = 'pf-swatch pf-' + F.id; el.appendChild(sw);
       var nm = document.createElement('span'); nm.className = 'look-name'; nm.textContent = t('prof.f.' + F.id); el.appendChild(nm);
       if (on) { var w = document.createElement('span'); w.className = 'skin-tag tag-worn'; w.textContent = '✓'; el.appendChild(w); }
+      else if (!own && F.currency === 'event') { var et = document.createElement('span'); et.className = 'skin-tag tag-event'; et.textContent = t('prof.f.event'); el.appendChild(et); }
       else if (!own) el.appendChild(priceTag(F, 'skin-tag tag-price'));
       fr.appendChild(el);
     });
@@ -1722,8 +1747,9 @@
   $('prof-frames').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-frame]') : null;
     if (!b) return;
-    var id = b.getAttribute('data-frame');
+    var id = b.getAttribute('data-frame'), PF = FRAMES[idxOf(FRAMES, id)];
     Sfx.click();
+    if (PF && PF.currency === 'event' && save.prof.own.indexOf(id) < 0) { show('event'); return; }   // won there, not bought
     if (save.prof.own.indexOf(id) >= 0) { framePick = ''; save.prof.frame = id; store(); }
     else framePick = framePick === id ? '' : id;
     buildProfile();
@@ -2250,7 +2276,20 @@
        finished first). Inside, the Daily Line keeps a quiet mark until it
        is finished, so the reason to come back is not lost once seen. */
     var more = $('more-sub');
-    if (more) more.textContent = [t('mode.daily'), t('mode.rush'), t('mode.av')].join(' · ');
+    var evS = typeof eventShown === 'function' ? eventShown(save) : null, evOwed = evS ? eventOwed(save, evS).length : 0;
+    if (more) more.textContent = (evS ? [t('ev.' + evS.name + '.short')] : []).concat([t('mode.daily'), t('mode.rush'), t('mode.av')]).join(' · ');
+    /* the event, first in the list while it runs (or while a prize it gave waits) */
+    var eb = $('btn-event');
+    if (eb) {
+      eb.classList.toggle('hidden', !evS);
+      if (evS) {
+        $('event-name').textContent = t('ev.' + evS.name + '.name');
+        $('event-sub').textContent = (evOwed ? t('ev.claim') : t('ev.have', { n: num(eventState(save, evS).g) }) + ' / ' + num(evS.goal)) +
+                                     ' · ' + evLeftText(evS);
+        $('event-badge').classList.toggle('hidden', !evOwed);
+        $('event-new').classList.toggle('hidden', !!eventState(save, evS).seen || !eventOn(evS));
+      }
+    }
     var today = dailyKey(), dailyOpen = open && save.dailyLast !== today;
     /* A mode not yet ridden wears the same gold dot as an unfinished Daily
        Line: just opened, it is the newest thing on the screen. Ridden once,
@@ -2262,8 +2301,156 @@
     for (var id in untried) { var mbtn = $(id); if (mbtn) mbtn.classList.toggle('todo', untried[id]); }
     var inside = untried['btn-daily'] || untried['btn-rush'] || untried['btn-av'];
     var mb = $('more-badge');
-    if (mb) mb.classList.toggle('hidden', !(inside && save.modesSeen !== today));
+    /* the badge: something new inside, until the list has been opened today; or an event's prize waiting */
+    if (mb) mb.classList.toggle('hidden', !(((inside || (evS && eventOn(evS) && !eventState(save, evS).seen)) && save.modesSeen !== today) || evOwed));
   }
+
+  /* ---- the event (events.js) ----
+     Its page: the picture, what to gather and by when, how many so far,
+     and every step with its prize, claimed with its button once reached
+     (the owner, 19 Nov 2026). The time left ticks while the page is open. */
+  var evTimer = null;
+  function evLeftText(ev) {
+    if (!eventOn(ev)) return t('ev.over');
+    var L = eventLeft(ev);
+    return t('ev.left', { d: L.d, h: L.h });
+  }
+  function prizeOf(st) {
+    var box = document.createElement('span');
+    box.className = 'ev-prize';
+    [['fish', st.fish], ['gold', st.gold]].forEach(function (c) {
+      if (!c[1]) return;
+      var it = document.createElement('span'); it.className = 'ev-prize-it';
+      it.appendChild(coin(c[0], 16)); it.appendChild(document.createTextNode(num(c[1])));
+      box.appendChild(it);
+    });
+    if (st.frame) {
+      var fr = document.createElement('span'); fr.className = 'ev-prize-it';
+      var sw = document.createElement('span'); sw.className = 'pf-swatch pf-mini pf-' + st.frame; fr.appendChild(sw);
+      fr.appendChild(document.createTextNode(t('prof.f.' + st.frame)));
+      box.appendChild(fr);
+    }
+    return box;
+  }
+  /* The painting covers the screen as it is really shown: its size and place
+     worked out from the event screen's own box, at the painting's shape,
+     held to the foot when upright (the board is low) and to the middle on
+     its side (the board is central). From the box and not from vh: on an
+     iPhone, Safari's bars come and go and vh is not what is seen (the
+     owner, 19 Nov 2026, an iPhone 15). Again on every resize. */
+  function fitEvent() {
+    var sc = $('screen-event'), el = sc && sc.querySelector('.ev-scene');
+    if (!el || currentScreen !== 'event') return;
+    var W = sc.clientWidth, H = sc.clientHeight; if (!W || !H) return;
+    var up = H > W, ar = up ? 768 / 1376 : 1677 / 938, bw = up ? 0.74 : 0.31;
+    var w = Math.max(W, H * ar), h = Math.max(H, W / ar);
+    /* the board whole across, with a little room: on a very tall, narrow
+       screen (9:32) the painting is drawn smaller than the screen is tall,
+       the night sky carrying on above it */
+    var maxW = (W - 16) / bw;
+    if (w > maxW) { w = maxW; h = w / ar; }
+    /* On a small screen the painting is brought closer round its board, so
+       the table is not a slot to scroll through: the board at least 60% of
+       the screen's height or 220 px, while it stays whole on the screen and
+       the button still fits under it (the edges, and who stands there, go). */
+    var bh = up ? 0.22 : 0.32, want = Math.min(H * 0.6, 220);
+    if (h * bh < want) {
+      var h2 = want / bh;
+      h2 = Math.min(h2, maxW / ar);                                   // whole across
+      h2 = up ? Math.min(h2, (H - 4) / 0.375)                          // its top on the screen (held to the foot)
+              : Math.min(h2, (H / 2 - 4) / 0.19, (H / 2 - 62) / 0.13); // its top, and the button under it
+      if (h2 > h) { h = h2; w = h * ar; }
+    }
+    var top = up ? H - h : (H - h) / 2;
+    el.classList.toggle('ev-up', up);
+    el.style.width = w + 'px'; el.style.height = h + 'px';
+    el.style.left = ((W - w) / 2) + 'px';
+    el.style.top = top + 'px';
+    el.style.setProperty('--vis', (H - top) + 'px');   // where the screen ends, in the scene (the button stays above it)
+    /* the way to Freeride never under Back (a small phone, upright) */
+    var foot = el.querySelector('.ev-foot'), pb = $('ev-play'), bk = $('btn-back');
+    if (foot && pb && bk) {
+      foot.style.transform = ''; pb.classList.remove('ev-play-small');
+      var hits = function () {
+        var p = pb.getBoundingClientRect(), q = bk.getBoundingClientRect();
+        return q.width && p.left < q.right + 8 && p.right > q.left && p.top < q.bottom && p.bottom > q.top ? [p, q] : null;
+      };
+      var hh = hits();
+      if (hh) foot.style.transform = 'translateX(' + Math.max(0, Math.min(hh[1].right + 8 - hh[0].left, W - 4 - hh[0].right)) + 'px)';
+      if (hits()) { pb.classList.add('ev-play-small'); hh = hits();      // big letters on a small phone
+                    if (hh) foot.style.transform = 'translateX(' + Math.max(0, Math.min(hh[1].right + 8 - hh[0].left, W - 4 - hh[0].right)) + 'px)'; }
+      if ((hh = hits())) foot.style.transform += ' translateY(' + (hh[1].top - 8 - hh[0].bottom) + 'px)';   // else above Back
+    }
+  }
+  window.addEventListener('resize', fitEvent);
+  window.addEventListener('orientationchange', function () { setTimeout(fitEvent, 250); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fitEvent);
+  function buildEvent() {
+    var ev = eventShown(save) || EVENTS[0], S = eventState(save, ev);
+    if (!S.seen) { S.seen = true; store(); }   // NEW goes once the page has been seen
+    fitEvent(); setTimeout(fitEvent, 60);
+    $('ev-title').textContent = t('ev.' + ev.name + '.name');
+    $('ev-text').textContent = t('ev.' + ev.name + '.text');
+    $('ev-goal').textContent = t('ev.goal', { n: ev.goal }).replace(String(ev.goal), num(ev.goal));
+    $('ev-left').textContent = evLeftText(ev);
+    $('ev-count').textContent = t('ev.have', { n: num(Math.min(S.g, 99999)) }) + ' / ' + num(ev.goal);
+    $('ev-fill').style.width = Math.min(100, S.g / ev.goal * 100) + '%';
+    var ticks = $('ev-ticks'); ticks.textContent = '';
+    ev.stages.forEach(function (st) {
+      var k = document.createElement('i'); k.style.left = Math.min(100, st.n / ev.goal * 100) + '%';
+      k.className = S.g >= st.n ? 'on' : ''; ticks.appendChild(k);
+    });
+    var list = $('ev-stages'); list.textContent = '';
+    ev.stages.forEach(function (st, i) {
+      var got = S.got.indexOf(i) >= 0, ready = !got && S.g >= st.n;
+      var row = document.createElement('div');
+      row.className = 'ev-stage st-' + (i % 4) + (got ? ' got' : ready ? ' ready' : '');
+      var main = document.createElement('div'); main.className = 'ev-st-main';
+      var n = document.createElement('span'); n.className = 'ev-st-n';
+      n.textContent = t('ev.stage', { n: st.n }).replace(String(st.n), num(st.n));
+      main.appendChild(n);
+      main.appendChild(prizeOf(st));
+      row.appendChild(main);
+      if (ready) {
+        var b = document.createElement('button');
+        b.className = 'btn btn-sm btn-gold ev-claim'; b.setAttribute('data-claim', String(i));
+        b.textContent = t('ev.claim'); row.appendChild(b);
+      } else {
+        var tg = document.createElement('span'); tg.className = 'ev-st-tag';
+        tg.textContent = got ? '\u2713 ' + t('ev.claimed') : num(Math.min(S.g, st.n)) + ' / ' + num(st.n);
+        row.appendChild(tg);
+      }
+      list.appendChild(row);
+    });
+    $('ev-play').classList.toggle('hidden', !eventOn(ev));
+    /* A new player: Freeride is shut until the first Known Line is
+       finished. The page says so, and its button rides that line; it used
+       to drop him in the Known Lines list with no word why (the owner,
+       19 Nov 2026). */
+    var open = freeUnlocked(), first = t('course.' + COURSES[0].id + '.name'), play = $('ev-play');
+    play.setAttribute('data-action', open ? 'play' : 'tut-first');
+    play.textContent = open ? t('ev.play') : t('tut.done.go', { n: first });
+    $('ev-lock').textContent = open ? '' : t('mode.free.locked', { n: first });
+    if (evTimer) clearInterval(evTimer);
+    evTimer = setInterval(function () { if (currentScreen === 'event') $('ev-left').textContent = evLeftText(ev); }, 30000);
+  }
+  $('ev-stages').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-claim]') : null;
+    if (!b) return;
+    var ev = eventShown(save) || EVENTS[0], i = parseInt(b.getAttribute('data-claim'), 10), st = ev.stages[i], S = eventState(save, ev);
+    if (!st || S.g < st.n || S.got.indexOf(i) >= 0) return;
+    S.got.push(i);
+    if (st.fish) save.fish += st.fish;
+    if (st.gold) save.gold += st.gold;
+    /* the frame is put on at once: it is what the whole event was for */
+    if (st.frame && save.prof.own.indexOf(st.frame) < 0) { save.prof.own.push(st.frame); save.prof.frame = st.frame; }
+    Sfx.gold(); buzz(28);
+    var r = b.getBoundingClientRect();
+    screenBurst(st.gold && !st.fish ? 'gold' : 'best', r.left + r.width / 2, r.top + r.height / 2);
+    store();
+    buildEvent();
+    refreshModes();
+  });
 
   /* The creature the purse is saving towards: the cheapest one not owned
      yet, in the money it is priced in. */

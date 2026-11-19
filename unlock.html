@@ -65,6 +65,7 @@
   <div class="row">
     <button class="go"  id="all">Unlock everything</button>
     <button           id="skins">Skins only, empty wallet</button>
+    <button           id="gifts">New Year event: 1000 gifts</button>
     <button class="wipe" id="wipe">Back to a fresh save</button>
     <a class="btn" href="index.html">Open the game →</a>
   </div>
@@ -131,6 +132,21 @@ document.getElementById('skins').onclick = function () {
   s.owned = SKINS.map(function (k) { return k.id; });
   write(s);
 };
+/* The New Year event's gifts (js/events.js), all 1,000, added to the save
+   as it is: every step reached and none claimed, so each Claim prize can be
+   pressed (the owner, 19 Nov 2026). Freeride is opened too, as the event
+   needs it. */
+document.getElementById('gifts').onclick = function () {
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (!s) s = base();
+  s.tutDone = true;
+  s.courses = s.courses || {};
+  if (!(s.courses.firstlight > 0)) s.courses.firstlight = 1;
+  s.ev = s.ev || {};
+  s.ev.ny2027 = { g: 1000, got: [], seen: !!(s.ev.ny2027 && s.ev.ny2027.seen) };
+  write(s);
+};
 document.getElementById('wipe').onclick = function () {
   try { localStorage.removeItem(KEY); } catch (e) {}
   render();
@@ -148,6 +164,7 @@ function render() {
     'wearing    ' + o.equipped + '\n' +
     'owned      ' + (o.owned || []).length + ' of ' + SKINS.length + '  (' + (o.owned || []).join(', ') + ')\n' +
     'trophies   ' + (o.ach || []).length + ' of ' + ACHIEVEMENTS.length + '\n' +
+    'New Year   ' + ((o.ev && o.ev.ny2027) ? o.ev.ny2027.g + ' gifts, steps claimed: ' + (o.ev.ny2027.got || []).length + ' of 4' : 'no gifts yet') + '\n' +
     'runs       ' + COURSES.filter(function (c) { return (o.courses || {})[c.id]; }).length +
       ' of ' + COURSES.length + ' open,  ' +
       COURSES.reduce(function (a, c) { return a + ((o.courses || {})[c.id] || 0); }, 0) +

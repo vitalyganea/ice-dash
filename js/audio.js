@@ -68,6 +68,10 @@ var Sfx = (function () {
     unlock: resume,
     turn:   function(){ tone({ freq:420, to:620, dur:0.08, type:'sine', vol:0.16 });
                         noise(0.07, 0.07, 1400); },
+    /* an event's gift: a small sleigh bell, two bright strikes */
+    gift:   function(){ [1568,2093].forEach(function(f,i){
+                          tone({ freq:f, dur:0.16, type:'sine', vol:0.2, delay:i*0.07 });
+                          tone({ freq:f*2.01, dur:0.09, type:'triangle', vol:0.07, delay:i*0.07 }); }); },
     gold:   function(){ [784,1046,1318,1760].forEach(function(f,i){
                           tone({ freq:f, dur:0.2, type:'triangle', vol:0.24, delay:i*0.055 }); }); },
     bubble: function(){ tone({ freq:300, to:900, dur:0.3, type:'sine', vol:0.22 });

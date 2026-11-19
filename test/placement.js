@@ -22,7 +22,7 @@ function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++
 
 var K = (H.setSeed(1), G.start(0, {}), G._consts()); G.stop();
 var CHUTE = K.CHUTE, DRIFT = K.DRIFT, PR = K.PR;
-var PICKUP = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1 };
+var PICKUP = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1, gift: 1 };
 var HAZARD = { rock: 1, tree: 1, geyser: 1 };
 var SPAN = { tunnel: 1, crevasse: 1, nunatak: 1, finish: 1 };
 
@@ -52,7 +52,7 @@ function steer(W) {
 var all = [], biomeAt = [];
 function ride(seed, frames, course) {
   H.setSeed(seed);
-  G.start(0, {}, 'snowcap', course);
+  G.start(0, {}, 'snowcap', course, 0, { gifts: !course });   // Freeride with an event's gifts laid too
   var seen = new Set();
   for (var f = 0; f < frames; f++) {
     var W = G.debug(); if (!W || W.state !== 'run') break;

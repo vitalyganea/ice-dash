@@ -55,8 +55,8 @@ ok(SKINS.every(function (sk) { return ALT_SKINS.filter(function (A) { return A.o
    ALT_SKINS.every(function (A) { return !!SKIN_BY_ID[A.of]; }),
    'every creature has exactly one skin of its own (' + ALT_SKINS.length + ')');
 ok(ALT_SKINS.every(function (L) { return L.price > 0 && (L.currency === 'fish' || L.currency === 'gold'); }) &&
-   FRAMES[0].price === 0 && FRAMES.slice(1).every(function (F) { return F.price > 0; }),
-   'every skin and frame but the first frame has a price in fish or gold');
+   FRAMES[0].price === 0 && FRAMES.slice(1).every(function (F) { return F.price > 0 || (F.currency === 'event' && !!F.event); }),
+   'every skin and frame but the first frame has a price in fish or gold, or is an event\'s prize');
 
 console.log('\nC. paint, on its creature');
 var H = require('./harness.js'), G = global.Game;

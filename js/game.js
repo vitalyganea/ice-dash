@@ -97,6 +97,12 @@ var Game = (function () {
   var SIGHT_FRAMES = 7 * 60;                        // the next gaps light up
   var CALL_FRAMES  = 5 * 60;                        // every fish bends to you
   var CREV_SPAN = 150;                  // how wide the hole in the ice is
+  /* An event's gifts: one every GIFT_EVERY of hill (45 m) once past the
+     first GIFT_FROM, a little either side of it. Gathered about three in
+     four, that is some 25 on a run of 1,500 m, the owner's 1,000 in about
+     forty runs. Laid off the row's own hash, not Math.random, so a seed
+     gives the same hill with gifts or without. */
+  var GIFT_EVERY = 360, GIFT_FROM = 800;
   var RAMP_LEAD = 52;                   // how far the ramp sits before it
   var AIR_DIST  = 340;                  // hill covered while airborne
   var HARD_OVER = 30000;                // world units to reach full difficulty
@@ -112,7 +118,7 @@ var Game = (function () {
   /* Moments worth feeling in the hand: the UI turns these into a buzz on
      a phone, if the player has it on. The engine only says what happened. */
   function fx(e) { if (hooks.fx) { try { hooks.fx(e); } catch (x) {} } }
-  var pendingMode = null;
+  var pendingMode = null, pendingGifts = false;   // gifts: an event is on (events.js), Freeride only
   var drawK = 1;
 
   /* The canvas draws its own words. i18n.js may not be there — the engine
@@ -270,7 +276,7 @@ var Game = (function () {
       lastTapT: -999, tapPrev: -999, tapX: 0, tapD: -1e9, tapDir: 0, perfects: 0, perfT: 0, perfX: 0, perfD: 0,
       perfChain: 0, perfChainBest: 0, lastPerfT: -1e9,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
-      lives: 0, revives: 0, finds: 0
+      lives: 0, revives: 0, finds: 0, gifts: 0, giftsOn: false, nextGiftD: 0
     };
     W = w;
     if (pendingCourse) {
@@ -290,6 +296,10 @@ var Game = (function () {
     if (pendingMode === 'rush' && !w.course) { w.mode = 'rush'; w.timeT = RUSH_START; }
     /* Avalanche is the open hill with the snow coming down behind you. */
     if (pendingMode === 'avalanche' && !w.course) { w.mode = 'avalanche'; w.avGap = AV_GAP0; }
+    /* An event's gifts: only on the open hill in Freeride, never in the
+       demo behind the menu (the owner, 19 Nov 2026) */
+    w.giftsOn = pendingGifts && !w.course && w.mode === 'free';
+    w.nextGiftD = GIFT_FROM;
     /* The name of the stretch you are on, once as the run begins. Not in
        the tutorial, whose own words sit in that same place. */
     w.zoneT = w.hold ? 0 : ZONE_SHOW;
@@ -413,7 +423,7 @@ var Game = (function () {
      only ever takes a thing away, slides a pickup over or fits a drift
      smaller — it never draws a random number, so a seed is still the same
      hill for every creature. test/placement.js holds it to this. */
-  var PICKUPS = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1 };
+  var PICKUPS = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1, gift: 1 };
   function bankEdge(d, side) { return CHUTE + Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4; }
   /* Where his middle stops against a bank. The bank is drawn winding (bankX,
      the same wobble as bankEdge), but the wall used to stand straight at
@@ -819,6 +829,14 @@ var Game = (function () {
                          x: place(gap + Math.sin(phase + i * 0.85) * sweep, fd), d: fd,
                          r: 15, got: false, ph: fishPh[i] });
       }
+    }
+    /* an event's gift, in the opening and off its middle, so it is taken
+       on purpose (it asks a lean, as the shoal does) */
+    if (W.giftsOn && d >= W.nextGiftD) {
+      var gh = hh(d, 3), gside = hh(d, 5) < 0.5 ? -1 : 1, gfd = d + 30;
+      W.objects.push({ t: 'gift', x: place(gap + gside * Math.min(gapW / 2 - 22, 26 + gh * 46), gfd), d: gfd,
+                       r: 18, got: false, ph: hh(d, 7) * 6.28, v: Math.floor(hh(d, 9) * 3) });
+      W.nextGiftD = d + GIFT_EVERY * (0.8 + hh(d, 11) * 0.4);
     }
     var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
     var goldOff = rnd(90, 150), goldPh = rnd(0, 6.28);
@@ -1237,7 +1255,7 @@ var Game = (function () {
       }
       if (W.endT === 46 && hooks.over)
         hooks.over({ score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
-                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved,
+                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',
                      mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
@@ -1312,7 +1330,7 @@ var Game = (function () {
       var grab = (o.r + PR) * (perk().reach || 1);
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble' || o.t === 'find' ||
            o.t === 'rush' || o.t === 'chill' || o.t === 'sight' || o.t === 'call' ||
-           o.t === 'clock') && !o.got &&
+           o.t === 'clock' || o.t === 'gift') && !o.got &&
           Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
@@ -1327,6 +1345,7 @@ var Game = (function () {
           fx('gold');
         }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
+        else if (o.t === 'gift') { W.gifts++; if (Sfx.gift) Sfx.gift(); else Sfx.berry(); tone = '#ffb3b3'; W.tapFlash = 8; fx('gift'); }   // the event's only: no points, no fish
         else if (o.t === 'clock') {
           W.timeT += clockGain(); W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10; fx('clock');
         }
@@ -2304,6 +2323,7 @@ var Game = (function () {
       else if (o.t === 'gold')   { if (!o.got) drawFish(x, y, o, true); }
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
       else if (o.t === 'find')   { if (!o.got) drawFind(x, y, o); }
+      else if (o.t === 'gift')   { if (!o.got) drawGift(x, y, o); }
       else if (o.t === 'clock')  { if (!o.got) drawClock(x, y, o); }
       else if (o.t === 'rush')   { if (!o.got) drawRushBall(x, y, o); }
       else if (o.t === 'chill' || o.t === 'sight' || o.t === 'call') {
@@ -3931,6 +3951,65 @@ var Game = (function () {
     function ch(j) { var v = A[j] + (B2[j] - A[j]) * f2; return Math.round(v + (255 - v) * wh); }
     return ch(0) + ',' + ch(1) + ',' + ch(2);
   }
+  /* ---- an event's gift ----
+     A small wrapped box seen from up the hill: its lid lit from the top
+     left, a ribbon round it and a bow on top, its shadow falling to the
+     lower right as everything's does. Painted once a colour into a little
+     picture and drawn from it, so a hill full of them costs a draw each. */
+  var GIFT_COL = [
+    { box: '#e0393e', dark: '#97202a', lite: '#ff8077', rib: '#ffd34a', ribD: '#c38d10' },
+    { box: '#2c9e57', dark: '#17653a', lite: '#73d896', rib: '#ef4148', ribD: '#9c1f25' },
+    { box: '#3a7fe0', dark: '#1e4e9e', lite: '#87bbff', rib: '#f6f8fc', ribD: '#aebbd0' }
+  ];
+  function paintGift(c, cx, cy, s, v) {
+    var C = GIFT_COL[v % GIFT_COL.length];
+    var w = s * 1.5, h = s * 1.05, top = s * 0.55;          // front face, and how deep the lid reads
+    var x0 = cx - w / 2, y0 = cy - h / 2 + top * 0.35;
+    c.save();
+    c.fillStyle = 'rgba(15,22,40,.26)';                        // the shadow, lower right
+    c.beginPath(); c.ellipse(cx + s * 0.22, cy + h * 0.62, w * 0.62, s * 0.3, 0, 0, 6.2832); c.fill();
+    c.fillStyle = C.dark;                                      // the front
+    c.fillRect(x0, y0, w, h);
+    c.fillStyle = C.box;
+    c.fillRect(x0, y0, w * 0.72, h);
+    c.fillStyle = C.lite;                                      // the lid, seen from above
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + w * 0.16, y0 - top); c.lineTo(x0 + w * 1.16 - w * 0.16, y0 - top); c.lineTo(x0 + w, y0); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.28)';
+    c.beginPath(); c.moveTo(x0 + w * 0.1, y0 - top * 0.2); c.lineTo(x0 + w * 0.2, y0 - top * 0.8); c.lineTo(x0 + w * 0.45, y0 - top * 0.8); c.lineTo(x0 + w * 0.35, y0 - top * 0.2); c.closePath(); c.fill();
+    var rw = w * 0.17;                                         // the ribbon: down the front, across the lid
+    c.fillStyle = C.ribD; c.fillRect(cx - rw / 2, y0, rw, h);
+    c.fillStyle = C.rib; c.fillRect(cx - rw / 2, y0, rw * 0.6, h);
+    c.beginPath(); c.moveTo(cx - rw / 2, y0); c.lineTo(cx - rw / 2 + w * 0.08, y0 - top); c.lineTo(cx + rw / 2 + w * 0.08, y0 - top); c.lineTo(cx + rw / 2, y0); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(x0 + w * 0.08, y0 - top * 0.5 - rw * 0.3); c.lineTo(x0 + w * 1.08, y0 - top * 0.5 - rw * 0.3);
+    c.lineTo(x0 + w * 1.08 - w * 0.02, y0 - top * 0.5 + rw * 0.3); c.lineTo(x0 + w * 0.08 - w * 0.02, y0 - top * 0.5 + rw * 0.3); c.closePath(); c.fill();
+    var bx = cx + w * 0.04, by = y0 - top * 0.55;              // the bow: two loops and a knot
+    [-1, 1].forEach(function (sd) {
+      c.fillStyle = C.ribD;
+      c.beginPath(); c.ellipse(bx + sd * s * 0.32, by - s * 0.1, s * 0.3, s * 0.2, sd * 0.5, 0, 6.2832); c.fill();
+      c.fillStyle = C.rib;
+      c.beginPath(); c.ellipse(bx + sd * s * 0.3, by - s * 0.14, s * 0.24, s * 0.14, sd * 0.5, 0, 6.2832); c.fill();
+    });
+    c.fillStyle = C.ribD; c.beginPath(); c.arc(bx, by - s * 0.06, s * 0.13, 0, 6.2832); c.fill();
+    c.fillStyle = C.rib; c.beginPath(); c.arc(bx - s * 0.03, by - s * 0.09, s * 0.08, 0, 6.2832); c.fill();
+    c.restore();
+  }
+  var GIFT_PICS = {};
+  function giftPic(v) {
+    if (GIFT_PICS[v] !== undefined) return GIFT_PICS[v];
+    var P = null;
+    if (typeof document !== 'undefined' && document.createElement) {
+      var cv = document.createElement('canvas'), g = cv && cv.getContext ? cv.getContext('2d') : null;
+      if (g && g.ellipse) { cv.width = cv.height = 96; paintGift(g, 48, 50, 30, v); P = cv; }
+    }
+    return (GIFT_PICS[v] = P);
+  }
+  function drawGift(x, y, o) {
+    var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0);
+    glowAt(ctx, x, y + bob, o.r * 2.1, [[0, '255,236,170', 0.42], [1, '255,236,170', 0]], 1);
+    if (P && ctx.drawImage) { var k = s / 30; ctx.drawImage(P, x - 48 * k, y + bob - 50 * k, 96 * k, 96 * k); }
+    else paintGift(ctx, x, y + bob, s, o.v || 0);
+  }
+
   function drawFind(x, y, o, c) {
     c = c || ctx;
     var r = o.r, a = (W ? W.t : 0) * 0.021 + o.ph, k, i;
@@ -11516,6 +11595,18 @@ var Game = (function () {
       ctx.fillText(lifeTxt, lx + pp + ic, tY);
       w = lx + wLife + pp * 2 - x0;
     }
+    /* an event's gifts this run, in a pill of their own after the rest */
+    if (W.giftsOn) {
+      var gTxt = String(W.gifts), wG = ic * 1.08 + measureAt(tab(gTxt), fM), gx = x0 + w + u * 0.35;
+      pill(gx, py, wG + pp * 2, ph);
+      var gp = giftPic(0), gcx = gx + pp + ic * 0.48, gcy = py + ph / 2;
+      if (gp && ctx.drawImage) { var gk = (ph * 0.95) / 96; ctx.drawImage(gp, gcx - 48 * gk, gcy - 52 * gk, 96 * gk, 96 * gk); }
+      else paintGift(ctx, gcx, gcy, ph * 0.3, 0);
+      ctx.font = '800 ' + fM + FONT;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(gTxt, gx + pp + ic * 1.08, tY);
+      w = gx + wG + pp * 2 - x0;
+    }
     hudLayout = { w: Math.round(w), fx: Math.round(fx), digits: score.length + '|' + distTxt.length + '|' + fishTxt.length };
 
     /* and the best, small, in gold underneath */
@@ -11933,6 +12024,7 @@ var Game = (function () {
       hooks.hud = cbs.hud; hooks.over = cbs.over; hooks.lesson = cbs.lesson || null;
       hooks.fx = cbs.fx || null;
       pendingMode = (opts && opts.mode) || null;
+      pendingGifts = !!(opts && opts.gifts);
       newRun();
       if (W.hold) lesson({ key: 'tut.start', wait: true });
       if (Sfx.mood) Sfx.mood(biome().mood || 'base');   // the stretch it starts in
@@ -11954,7 +12046,7 @@ var Game = (function () {
       if (!ctx) setup();
       if (!ctx) return;
       if (typeof SKINS !== 'undefined') skin = skinById(skinId);
-      pendingCourse = null; pendingMode = null;
+      pendingCourse = null; pendingMode = null; pendingGifts = false;
       hooks.hud = null; hooks.over = function () {}; hooks.lesson = null; hooks.fx = null;
       var keepS = Sfx; Sfx = silentSfx();
       try { newRun(); } finally { Sfx = keepS; }
@@ -12451,6 +12543,15 @@ var Game = (function () {
                                     ROW_GAP0: ROW_GAP0, ROW_GAP1: ROW_GAP1,
                                     DRIFT: DRIFT, TURN: TURN,
                                     reach: reachBetweenRows() }; },
-    _wallAt: function (d, side) { return wallAt(d, side); }
+    _wallAt: function (d, side) { return wallAt(d, side); },
+    /* an event's gift on a canvas of its own (the event page, the HUD's) */
+    drawGift: function (canvas, size, v) {
+      var dpr = Math.min(3, window.devicePixelRatio || 1);
+      canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+      canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+      var g = canvas.getContext('2d'); if (!g) return;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, size, size);
+      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0);
+    }
   };
 })();

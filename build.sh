@@ -20,9 +20,12 @@ js/album.js
 js/comic.js
 js/game.js
 js/portraits.js
+js/events.js
 js/ui.js
 img/logo.png
 img/logo.webp
+img/event-ny-h.webp
+img/event-ny-v.webp
 "
 
 for f in $FILES; do

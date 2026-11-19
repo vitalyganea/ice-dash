@@ -342,7 +342,10 @@ var FRAMES = [
   { id: 'snow',   price: 400,  currency: 'fish' },
   { id: 'neon',   price: 1200, currency: 'fish' },
   { id: 'aurora', price: 1800, currency: 'fish' },
-  { id: 'gold',   price: 5,    currency: 'gold' }
+  { id: 'gold',   price: 5,    currency: 'gold' },
+  /* won, not bought: the New Year event's last step (events.js). Last in
+     the list, as profileCode wants; an older game reads it as Ice */
+  { id: 'wreath', price: 0,    currency: 'event', event: 'ny2027' }
 ];
 /* ach: the trophy that wins it ('*' every trophy, null from the start) */
 var TITLES = [

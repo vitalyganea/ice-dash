@@ -144,7 +144,7 @@
         <small data-i18n="mode.runs.sub">Six lines down the mountain, the same every time.</small>
       </button>
       <button class="btn btn-big btn-purple mode-btn mode-more" id="btn-more" data-action="modes">
-        <b data-i18n="mode.more">More modes</b>
+        <b data-i18n="mode.more">More modes and events</b>
         <small id="more-sub">Daily Line · Time Rush · Avalanche</small>
         <span id="more-badge" class="badge hidden" aria-hidden="true">!</span>
       </button>
@@ -318,8 +318,15 @@
 
 <section id="screen-modes" class="screen hidden">
   <div class="panel panel-wide">
-    <h2 class="panel-title-text" data-i18n="mode.more">More modes</h2>
+    <h2 class="panel-title-text" data-i18n="mode.more">More modes and events</h2>
     <div class="btn-row modes-list">
+      <!-- the event first, while it runs (events.js; the owner, 19 Nov 2026) -->
+      <button class="btn btn-big btn-wreath mode-btn mode-event hidden" id="btn-event" data-action="event">
+        <span class="tag-new hidden" id="event-new" data-i18n="ev.new">NEW</span>
+        <b id="event-name">New Year Event</b>
+        <small id="event-sub"></small>
+        <span id="event-badge" class="badge hidden" aria-hidden="true">!</span>
+      </button>
       <button class="btn btn-big btn-purple mode-btn" id="btn-daily" data-action="daily">
         <b data-i18n="mode.daily">Daily Line</b>
         <small id="daily-sub" data-i18n="mode.daily.sub">A new line every day.</small>
@@ -336,6 +343,30 @@
         <span class="todo-dot" aria-hidden="true"></span>
       </button>
     </div>
+  </div>
+</section>
+
+<!-- An event's page (events.js): its picture, what to gather and by when,
+     how many so far, and its steps, each prize claimed with a button -->
+<section id="screen-event" class="screen ev-screen hidden">
+  <!-- The event's painting over the whole screen, one upright and one on its
+       side (the owner's, made with Gemini, 19 Nov 2026), each with an empty
+       board of ice in a wreath: the table lies on that board. -->
+  <div class="ev-scene">
+    <div class="ev-board" id="ev-board">
+      <h2 class="ev-title" id="ev-title">New Year Event</h2>
+      <p class="ev-left" id="ev-left"></p>
+      <p class="ev-lock" id="ev-lock"></p>
+      <p class="ev-goal" id="ev-goal"></p>
+      <div class="ev-prog">
+        <div class="ev-bar"><i id="ev-fill"></i><span class="ev-ticks" id="ev-ticks"></span></div>
+        <div class="ev-count" id="ev-count"></div>
+      </div>
+      <div class="ev-stages" id="ev-stages"></div>
+      <p class="ev-text" id="ev-text"></p>
+    </div>
+    <!-- the way to the gifts, on the empty ice under the board -->
+    <div class="ev-foot"><button class="btn btn-big btn-blue" id="ev-play" data-action="play">Go to Freeride</button></div>
   </div>
 </section>
 
@@ -508,6 +539,7 @@
 <script src="js/comic.js"></script>
 <script src="js/game.js"></script>
 <script src="js/portraits.js"></script>
+<script src="js/events.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
