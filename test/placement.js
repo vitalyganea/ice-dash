@@ -22,7 +22,7 @@ function ok(c, m) { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fail++
 
 var K = (H.setSeed(1), G.start(0, {}), G._consts()); G.stop();
 var CHUTE = K.CHUTE, DRIFT = K.DRIFT, PR = K.PR;
-var PICKUP = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1, gift: 1 };
+var PICKUP = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, twin: 1, call: 1, gift: 1 };
 var HAZARD = { rock: 1, tree: 1, geyser: 1 };
 var SPAN = { tunnel: 1, crevasse: 1, nunatak: 1, finish: 1 };
 

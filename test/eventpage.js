@@ -2,12 +2,13 @@
    eventpage.js — the event's page at every screen
    -----------------------------------------------------------
    The page is one scene: the owner's painting over the whole screen and
-   the table on the painting's own board (SYSTEMS row 184). At every shape
+   the table in a frame of snow of its own over it, bigger and higher than
+   the painting's board (SYSTEMS row 184; the owner, 20 Nov 2026). At every shape
    from 9:32 to 32:9, phones, tablets and desktops, in the longest
    languages and with a phone's letters at 130%, in real Chrome:
      1. the painting covers the whole screen;
-     2. the board is whole on the screen, and under the table there is the
-        board's own empty ice (the table hidden, the pixels read back);
+     2. the table's frame is whole on the screen, its snow and icicles
+        too, and at least 300 px tall upright where the screen has room;
      3. nothing sticks out sideways: no text cut, no button out of its row;
      4. the letters are 12 px or more and stand out from what is under them;
      5. the way to Freeride is on the screen, off the board, clear of Back.
@@ -64,7 +65,7 @@ function probe(zoom) {
   (zoom ? "var els=[].slice.call(document.querySelectorAll('#screen-event *'));var fz=els.map(function(e){return parseFloat(getComputedStyle(e).fontSize)});" +
           "els.forEach(function(e,i){e.style.fontSize=(fz[i]*" + zoom + ")+'px'});window.dispatchEvent(new Event('resize'));await sl(300);" : "") +
   "var W=innerWidth,H=innerHeight,R=function(e){var r=e.getBoundingClientRect();return{l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height}};" +
-  "var bd=document.getElementById('ev-board'),scene=R(document.querySelector('.ev-scene')),board=R(bd),play=R(document.getElementById('ev-play')),back=R(document.getElementById('btn-back'));" +
+  "var bd=document.getElementById('ev-board'),scene=R(document.querySelector('.ev-scene')),board=R(bd),frame=R(document.getElementById('ev-frame')),play=R(document.getElementById('ev-play')),back=R(document.getElementById('btn-back'));" +
   "var bad=[];" +
   /* past any phone's shape (taller than 2.4:1, a 9:32 sliver) the painting is
      drawn so the board is whole, the night carrying on above it */
@@ -72,6 +73,9 @@ function probe(zoom) {
   "if(scene.l>0.5||scene.r<W-0.5||scene.b<H-0.5||(!sliver&&scene.t>0.5))bad.push('the painting does not cover the screen');" +
   "if(board.l<-0.5||board.t<-0.5||board.r>W+0.5||board.b>H+0.5)bad.push('the board is cut by the screen');" +
   "if(board.h<100||board.w<200)bad.push('the board is too small ('+Math.round(board.w)+'x'+Math.round(board.h)+')');" +
+  /* the frame's snow stands 15 px over it and its icicles 14 px under it */
+  "if(frame.l<-0.5||frame.t<15||frame.r>W+0.5||frame.b>H-14)bad.push('the frame or its snow is cut by the screen');" +
+  "if(H>W&&H>=640&&frame.h<300)bad.push('the table is small for an upright screen ('+Math.round(frame.h)+' px)');" +
   "if(bd.scrollWidth>bd.clientWidth+1)bad.push('the table scrolls sideways');" +
   /* every visible thing on the board inside it across, and inside its row */
   "[].slice.call(bd.querySelectorAll('*')).forEach(function(e){var r=e.getBoundingClientRect();if(!r.width||!r.height||getComputedStyle(e).visibility==='hidden')return;" +
@@ -90,6 +94,11 @@ function probe(zoom) {
   "var minPx=99,minC=99,worst='';var walk=document.createTreeWalker(bd,NodeFilter.SHOW_TEXT);var n;" +
   "while((n=walk.nextNode())){if(!n.nodeValue.trim())continue;var p=n.parentElement,cs=getComputedStyle(p);if(!p.getBoundingClientRect().width)continue;" +
   "  var px=parseFloat(cs.fontSize);if(px<minPx)minPx=px;var fg=rgb(cs.color),bg=under(p),a=lum(fg),b=lum(bg),c=(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);" +
+  /* letters filled with a gradient (the title): each of its colours against
+     what is under the letters, the worst of them counting */
+  "  if(cs.webkitTextFillColor==='rgba(0, 0, 0, 0)'&&/text/.test(cs.backgroundClip+cs.webkitBackgroundClip)){var ub=under(p.parentElement),lb=lum(ub);c=99;" +
+  "    (cs.backgroundImage.match(/(#[0-9a-f]{6}|rgba?\\([^)]*\\))/gi)||[]).forEach(function(st){var v=st[0]==='#'?[parseInt(st.substr(1,2),16),parseInt(st.substr(3,2),16),parseInt(st.substr(5,2),16)]:rgb(st);" +
+  "      var la=lum(v),cc=(Math.max(la,lb)+0.05)/(Math.min(la,lb)+0.05);if(cc<c)c=cc})}" +
   "  var bold=parseInt(cs.fontWeight,10)>=700,big=px>=24||(bold&&px>=18.6);var need=big?3:(bold?3:4.5);" +
   "  if(c<need&&c<minC){minC=c;worst=n.nodeValue.trim().slice(0,24)+' ('+c.toFixed(2)+')'}}" +
   "if(minPx<12)bad.push('letters of '+minPx.toFixed(1)+' px');" +
@@ -97,17 +106,11 @@ function probe(zoom) {
   /* the way to Freeride */
   "if(play.l<0||play.t<0||play.r>W||play.b>H)bad.push('Go to Freeride is off the screen');" +
   "function hit(a,b){return a.l<b.r-2&&b.l<a.r-2&&a.t<b.b-2&&b.t<a.b-2}" +
-  "if(hit(play,board))bad.push('Go to Freeride lies on the board');" +
+  "if(hit(play,frame))bad.push('Go to Freeride lies on the table');" +
   "if(hit(play,back))bad.push('Go to Freeride is under Back');" +
   "var bbHit=hit(back,{l:board.l,t:board.t,r:board.r,b:Math.min(board.b,board.t+bd.clientHeight)});" +
   "window.__probe=JSON.stringify({W:W,H:H,board:board,dpr:devicePixelRatio,bad:bad,backOnBoard:bbHit,fits:bd.scrollHeight<=bd.clientHeight+1,contentH:bd.scrollHeight,boardH:bd.clientHeight})})().catch(function(e){window.__probe=JSON.stringify({bad:['the probe failed: '+e],board:{l:0,t:0,r:1,b:1,w:1,h:1},dpr:1})});1";
 }
-
-/* the board's own ice under the table: what share of it is pale ice */
-var PALE = "import sys\nfrom PIL import Image\nim=Image.open(sys.argv[1]).convert('RGB');x0,y0,x1,y1=[int(float(v)) for v in sys.argv[2:6]]\n" +
-  "x0=max(0,x0);y0=max(0,y0);x1=min(im.size[0],x1);y1=min(im.size[1],y1)\nn=p=0\n" +
-  "for y in range(y0,y1,max(1,(y1-y0)//60)):\n for x in range(x0,x1,max(1,(x1-x0)//60)):\n  r,g,b=im.getpixel((x,y));mx=max(r,g,b);mn=min(r,g,b);n+=1\n  if mx>150 and mx-mn<95 and b>=r-10:p+=1\n" +
-  "print(p/max(1,n))";
 
 (async function () {
   var B = await M.start(ROOT, 8861, 9361), shots = [];
@@ -121,15 +124,8 @@ var PALE = "import sys\nfrom PIL import Image\nim=Image.open(sys.argv[1]).conver
       var r = JSON.parse(got || '{"bad":["no answer from the page"],"board":{"l":0,"t":0,"r":1,"b":1,"w":1,"h":1},"dpr":1}');
       var file = path.join(OUT, String(i).padStart(3, '0') + '.png');
       await B.shoot(tab, file);
-      /* the table hidden: under it, the board's own ice */
-      await tab.ev("document.getElementById('ev-board').style.visibility='hidden';document.querySelector('.ev-foot').style.visibility='hidden';1");
-      await M.sleep(150);
-      var bare = path.join(OUT, String(i).padStart(3, '0') + '-bare.png');
-      await B.shoot(tab, bare);
       await B.close(tab);
-      var k = r.dpr, bb = r.board;
-      var pale = +cp.execFileSync('python3', ['-c', PALE, bare, bb.l * k + 6, bb.t * k + 6, bb.r * k - 6, bb.b * k - 6]).toString();
-      if (pale < 0.8) r.bad.push('under the table is not the board (' + Math.round(pale * 100) + '% ice)');
+      var bb = r.board;
       ok(!r.bad.length, label + (r.bad.length ? ': ' + r.bad.join('; ') : '') + '  [board ' + Math.round(bb.w) + 'x' + Math.round(bb.h) +
          (r.fits ? ', all on it' : ', scrolls ' + r.contentH + '/' + r.boardH) + (r.backOnBoard ? ', Back over its corner' : '') + ']');
       shots.push([file, label]);

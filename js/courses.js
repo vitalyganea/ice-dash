@@ -20,7 +20,7 @@
        w     a patch of deep soft snow: it costs pace, never a life
        ^     a meltwater geyser, standing clear of the racing line
        -     a cold draught: the hill runs slow for a few seconds
-       >     a clear sight of the next three openings
+       >     two fish going round: for a while every fish counts twice
        &     every fish on the hill bends towards you
        |     a tongue of polished blue ice
        !     opening a little tighter than the course's norm
@@ -213,11 +213,11 @@ function parseCourse(cd, CHUTE) {
       rush: tk.indexOf('R') >= 0,
       /* The hazards and bonuses the open hill grows on its own, so a
          marked line can be written with them too. w deep snow, ^ a
-         geyser, - the slow-down, > the far sight, & the fish call. */
+         geyser, - the slow-down, > the twin fish, & the fish call. */
       drift: tk.indexOf('w') >= 0,
       geyser: tk.indexOf('^') >= 0,
       chill: tk.indexOf('-') >= 0,
-      sight: tk.indexOf('>') >= 0,
+      twin: tk.indexOf('>') >= 0,
       call: tk.indexOf('&') >= 0,
       gate: tk.indexOf('|') >= 0
     });

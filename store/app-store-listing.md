@@ -32,6 +32,66 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.2 (20 Nov 2026)
+
+Geysers throw you instead of stopping you, the twin fish, every player's own
+avatar on the board, the event page made bigger. Under 500 characters each
+(Google Play's limit).
+
+en:
+```
+• Geysers no longer end your run: they throw you over whatever lies ahead
+• New on the hill: two fish in a round of ice — for 8 seconds every fish counts twice
+• The leaderboard shows the avatar each player picked in My profile
+• New Year Event: a bigger table in a frame of snow, prettier gifts and a richer wreath
+• Smaller fixes
+```
+
+ro:
+```
+• Gheizerele nu-ți mai termină cursa: te aruncă peste tot ce e în față
+• Nou pe pârtie: doi pești într-un cerc de gheață — 8 secunde fiecare pește se pune de două ori
+• Clasamentul arată avatarul ales de fiecare jucător în Profilul meu
+• Evenimentul de Anul Nou: un tabel mai mare într-o ramă de zăpadă, cadouri mai frumoase și o coroniță mai bogată
+• Mici reparații
+```
+
+ru:
+```
+• Гейзеры больше не обрывают забег: они подбрасывают тебя над всем, что впереди
+• Новое на склоне: две рыбки в ледяном круге — 8 секунд каждая рыба считается дважды
+• В таблице рекордов — аватар, который каждый выбрал в «Моём профиле»
+• Новогоднее событие: таблица больше и в снежной рамке, подарки красивее, венок богаче
+• Мелкие исправления
+```
+
+es (Spain and Mexico):
+```
+• Los géiseres ya no terminan tu bajada: te lanzan por encima de lo que venga
+• Nuevo en la pista: dos peces en un círculo de hielo — durante 8 segundos cada pez cuenta doble
+• La clasificación muestra el avatar que cada jugador eligió en Mi perfil
+• Evento de Año Nuevo: una tabla más grande en un marco de nieve, regalos más bonitos y una corona más rica
+• Pequeñas correcciones
+```
+
+pt-BR:
+```
+• Os gêiseres não encerram mais sua descida: eles te lançam por cima do que vier
+• Novo na pista: dois peixes num círculo de gelo — por 8 segundos cada peixe conta em dobro
+• O ranking mostra o avatar que cada jogador escolheu em Meu perfil
+• Evento de Ano Novo: uma tabela maior numa moldura de neve, presentes mais bonitos e uma guirlanda mais rica
+• Pequenas correções
+```
+
+de:
+```
+• Geysire beenden deine Fahrt nicht mehr: sie werfen dich über alles vor dir
+• Neu auf der Piste: zwei Fische in einem Eisring — 8 Sekunden lang zählt jeder Fisch doppelt
+• Die Bestenliste zeigt den Avatar, den jeder in Mein Profil gewählt hat
+• Neujahrs-Event: eine größere Tabelle in einem Schneerahmen, schönere Geschenke und ein reicherer Kranz
+• Kleine Korrekturen
+```
+
 ## What's New in 1.3.1 (19 Nov 2026)
 
 The New Year event, cards on the board at once, the score on the revive

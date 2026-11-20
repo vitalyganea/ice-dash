@@ -80,7 +80,7 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
 - **Hazards** — boulders and pines (one opening per row), crevasses crossed
   by an ice ramp, snow bridges that cast a shadow over a cleared stretch,
   deep snow (never fatal: it costs pace, and pace is score), meltwater
-  geysers (lethal only while up, and never over the middle of an opening)
+  geysers (while up they throw him over what lies ahead, a ramp's length, landing safe as from any jump; never over the middle of an opening)
   and nunataks, spines of rock that split the run in two for a few hundred
   metres with both ways past open and proved.
 - **Pickups** — fish (currency), golden fish, snow bubble (absorbs one

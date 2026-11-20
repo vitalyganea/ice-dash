@@ -103,8 +103,9 @@ one side. A tap sends him the other way. That is the whole game.
   the one thing on the hill you choose rather than dodge
 - **deep snow**, which never kills you and only bogs you down — the game's
   one outcome that is neither fine nor fatal — and **meltwater geysers**,
-  lethal only while they are up, standing clear of the middle of an opening
-  so there is always a way round
+  which while they are up throw you over whatever lies ahead (a ramp's
+  length, landing safe), standing clear of the middle of an opening so
+  riding round is always there too
 - Three more things to pick up: a **cold draught** that runs the whole hill
   slow for three seconds, a **lens of clear ice** that lights up the next
   openings before you reach them, and a **ring of fish** that pulls every

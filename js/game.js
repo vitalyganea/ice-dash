@@ -82,10 +82,12 @@ var Game = (function () {
      proved at full speed. The game had only two outcomes before this,
      fine or dead, and nothing in between. */
   var BOG_FACTOR = 0.68;
-  /* A geyser is lethal only while it is up, and it never covers the whole
-     opening: it sits off to one side of it, so the other side is always
-     there to be taken. You cannot brake, so the way past a bad cycle is to
-     weave wider and arrive later — a new thing to do with the same tap. */
+  /* A geyser no longer kills (the owner, 20 Nov 2026): while it is up it
+     throws him into the air, a ramp's length, over whatever stands beyond
+     it, and he lands with a touchdown's moment of safety like any jump. It
+     still never covers the whole opening, so riding round it is a choice:
+     the burst is a short cut, not a toll. A throw is not counted as a jump
+     (the day's tasks and the trophies stay what they were). */
   var GEYSER_PERIOD = 170, GEYSER_UP = 54, GEYSER_R = 42;
   /* The fork. A nunatak is rock that never got buried — a spine of it
      standing up through the run and splitting the ice in two for a few
@@ -94,7 +96,7 @@ var Game = (function () {
      the first choice in the game that is a bet rather than a dodge, and
      it is still made with the same single tap. */
   var FORK_MIN = 96;                  // the narrowest the far way past may be
-  var SIGHT_FRAMES = 7 * 60;                        // the next gaps light up
+  var TWIN_FRAMES  = 8 * 60;                        // every fish counts twice (in place of the lens, the owner, 20 Nov 2026)
   var CALL_FRAMES  = 5 * 60;                        // every fish bends to you
   var CREV_SPAN = 150;                  // how wide the hole in the ice is
   /* An event's gifts: one every GIFT_EVERY of hill (45 m) once past the
@@ -263,7 +265,7 @@ var Game = (function () {
       t: 0, dist: 0, speed: SPEED0, score: 0, fish: 0, gold: 0, gates: 0, coins: 0,
       shield: 0, invuln: 0, saved: 0,
       rushT: 0, lastRush: -1e9, smashed: 0, rushes: 0, grace: 0,
-      chillT: 0, sightT: 0, callT: 0, bog: 0,
+      chillT: 0, sightT: 0, twinT: 0, callT: 0, bog: 0,
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], spray: [], squash: 0, impact: 0, streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
@@ -423,7 +425,7 @@ var Game = (function () {
      only ever takes a thing away, slides a pickup over or fits a drift
      smaller — it never draws a random number, so a seed is still the same
      hill for every creature. test/placement.js holds it to this. */
-  var PICKUPS = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, sight: 1, call: 1, gift: 1 };
+  var PICKUPS = { fish: 1, gold: 1, find: 1, bubble: 1, clock: 1, rush: 1, chill: 1, twin: 1, call: 1, gift: 1 };
   function bankEdge(d, side) { return CHUTE + Math.sin(d * 0.011 + side * 2.1) * 9 + Math.sin(d * 0.03) * 4; }
   /* Where his middle stops against a bank. The bank is drawn winding (bankX,
      the same wobble as bankEdge), but the wall used to stand straight at
@@ -689,7 +691,7 @@ var Game = (function () {
         W.objects.push({ t: 'geyser', x: place(gsx, d), d: d,
                          r: GEYSER_R, ph: 0 });
     }
-    ['chill', 'sight', 'call'].forEach(function (k, ki) {
+    ['chill', 'twin', 'call'].forEach(function (k, ki) {
       if (!cr[k]) return;
       W.objects.push({ t: k, x: place(clamp(cr.gap + 100, -CHUTE + 28, CHUTE - 28), d + 40),
                        d: d + 40, r: 22, got: false, ph: 0.4 + ki });
@@ -835,7 +837,8 @@ var Game = (function () {
     if (W.giftsOn && d >= W.nextGiftD) {
       var gh = hh(d, 3), gside = hh(d, 5) < 0.5 ? -1 : 1, gfd = d + 30;
       W.objects.push({ t: 'gift', x: place(gap + gside * Math.min(gapW / 2 - 22, 26 + gh * 46), gfd), d: gfd,
-                       r: 18, got: false, ph: hh(d, 7) * 6.28, v: Math.floor(hh(d, 9) * 3) });
+                       r: 18, got: false, ph: hh(d, 7) * 6.28, v: Math.floor(hh(d, 9) * 3),
+                       flip: hh(d, 13) < 0.5 });   // some face the other way (the owner, 20 Nov 2026)
       W.nextGiftD = d + GIFT_EVERY * (0.8 + hh(d, 11) * 0.4);
     }
     var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
@@ -892,7 +895,7 @@ var Game = (function () {
     /* The three readable finds. Each sits off the racing line like the
        golden fish does, so taking one costs you the safe line. */
     if (Math.random() < 0.030 && at > 1400) {
-      var pk = ['chill', 'sight', 'call'][(Math.random() * 3) | 0];
+      var pk = ['chill', 'twin', 'call'][(Math.random() * 3) | 0];
       var kd = d + 50;
       W.objects.push({ t: pk,
                        x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(60, 130),
@@ -1329,15 +1332,16 @@ var Game = (function () {
       }
       var grab = (o.r + PR) * (perk().reach || 1);
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble' || o.t === 'find' ||
-           o.t === 'rush' || o.t === 'chill' || o.t === 'sight' || o.t === 'call' ||
+           o.t === 'rush' || o.t === 'chill' || o.t === 'twin' || o.t === 'call' ||
            o.t === 'clock' || o.t === 'gift') && !o.got &&
           Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
         if (o.t === 'fish')      {
           comboUp();
-          W.fish++; W.score += 25 * comboMult();
-          W.coins += (W.fish <= FIRST_CATCH) ? 2 : 1;      // early catch pays double
+          var tw = W.twinT > 0 ? 2 : 1;                    // the twin fish: every catch counts twice
+          W.fish++; W.score += 25 * comboMult() * tw;
+          W.coins += ((W.fish <= FIRST_CATCH) ? 2 : 1) * tw;   // early catch pays double
           Sfx.berry();
         }
         else if (o.t === 'gold') {
@@ -1352,8 +1356,8 @@ var Game = (function () {
         else if (o.t === 'chill') {
           W.chillT = CHILL_FRAMES; Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
         }
-        else if (o.t === 'sight') {
-          W.sightT = SIGHT_FRAMES; Sfx.gold(); tone = '#d6ffa8'; W.tapFlash = 14;
+        else if (o.t === 'twin') {
+          W.twinT = TWIN_FRAMES; Sfx.gold(); tone = '#ffe08a'; W.tapFlash = 14;
         }
         else if (o.t === 'call') {
           W.callT = CALL_FRAMES; Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
@@ -1456,13 +1460,19 @@ var Game = (function () {
         }
         continue;
       }
-      /* A geyser kills only while it is up. */
+      /* A geyser, while it is up, throws him over what lies ahead. */
       if (o.t === 'geyser') {
-        if (geyserUp(o) && W.invuln <= 0 && !rushing() && !airborne() &&
+        if (geyserUp(o) && !rushing() && !airborne() &&
             Math.abs(o.x - W.px) < o.r * 0.62 + PR * 0.7 &&
             Math.abs(o.d - W.dist) < o.r * 0.62 + PR * 0.7) {
-          if (W.shield > 0) { W.shield = 0; W.saved++; W.invuln = 80; W.shake = 16; }
-          else { crash(o); continue; }
+          W.airSpan = AIR_DIST * (perk().rampBoost || 1);
+          W.airTo = W.dist + W.airSpan;
+          W.geyserThrows = (W.geyserThrows || 0) + 1;
+          W.shake = Math.max(W.shake, 10); W.tapFlash = Math.max(W.tapFlash, 8);
+          Sfx.jump();
+          for (var gw = 0; gw < 18; gw++)
+            W.puffs.push({ x: W.px + frnd(-16, 16), d: W.dist - frnd(-8, 20),
+                           life: 26, max: 26, s: frnd(5, 13), tint: '#bfe8ff' });
         }
         continue;
       }
@@ -1622,6 +1632,7 @@ var Game = (function () {
     if (W.grace > 0) W.grace--;
     if (W.chillT > 0) W.chillT--;
     if (W.sightT > 0) W.sightT--;
+    if (W.twinT > 0) W.twinT--;
     if (W.callT  > 0) W.callT--;
     if (!W.course) W.biomeT += W.speed;
     /* Carry the overshoot over instead of dropping it: zeroing here makes
@@ -2326,7 +2337,7 @@ var Game = (function () {
       else if (o.t === 'gift')   { if (!o.got) drawGift(x, y, o); }
       else if (o.t === 'clock')  { if (!o.got) drawClock(x, y, o); }
       else if (o.t === 'rush')   { if (!o.got) drawRushBall(x, y, o); }
-      else if (o.t === 'chill' || o.t === 'sight' || o.t === 'call') {
+      else if (o.t === 'chill' || o.t === 'twin' || o.t === 'call') {
         if (!o.got) drawFind3(x, y, o);
       }
       else if (o.t === 'drift')  drawDrift(x, y, o, B);
@@ -3701,41 +3712,28 @@ var Game = (function () {
     }
   }
 
-  /* The ice lens: a thick, clear lens of ice lying on the hill. Through it
-     the ice is bigger, and a path of gold lights runs up it, the openings
-     ahead lit before you get there. It gathers the sun into a bright spot
-     in its shadow, as a lens does. */
-  function paintLensFind(r, a) {
+  /* The twin fish (in place of the ice lens, the owner, 20 Nov 2026): a
+     round of clear ice with two fish in it, one silver and one gold,
+     going round after each other's tails, a warm light between them.
+     Taken, for eight seconds every fish counts twice. */
+  function paintTwinFind(r, a) {
     var k;
-    ctx.fillStyle = 'rgba(40,92,142,.24)';
-    ctx.beginPath(); ctx.ellipse(r * 0.32, r * 0.44, r * 0.95, r * 0.82, 0, 0, 6.2832); ctx.fill();
-    var fg = ctx.createRadialGradient(r * 0.44, r * 0.6, 0, r * 0.44, r * 0.6, r * 0.36);
-    fg.addColorStop(0, 'rgba(255,252,222,.95)'); fg.addColorStop(1, 'rgba(255,240,180,0)');
-    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(r * 0.44, r * 0.6, r * 0.36, 0, 6.2832); ctx.fill();
-    var lg = ctx.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.1, 0, 0, r * 0.92);
-    lg.addColorStop(0, 'rgba(236,250,255,.5)'); lg.addColorStop(0.65, 'rgba(176,222,248,.55)'); lg.addColorStop(1, 'rgba(96,160,214,.85)');
+    findShadow(r, 1);
+    var lg = ctx.createRadialGradient(-r * 0.2, -r * 0.25, r * 0.1, 0, 0, r * 0.95);
+    lg.addColorStop(0, 'rgba(240,251,255,.92)'); lg.addColorStop(0.6, 'rgba(186,226,248,.88)'); lg.addColorStop(1, 'rgba(104,166,218,.92)');
     ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(0, 0, r * 0.92, 0, 6.2832); ctx.fill();
+    var wg = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.62);                  // the warm light between them
+    wg.addColorStop(0, 'rgba(255,236,150,.85)'); wg.addColorStop(1, 'rgba(255,214,90,0)');
+    ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 6.2832); ctx.fill();
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, 6.2832); ctx.clip();
-    ctx.strokeStyle = 'rgba(80,140,196,.35)'; ctx.lineWidth = Math.max(0.8, r * 0.05);   // the ice's grain, magnified
-    ctx.beginPath(); ctx.moveTo(-r, -r * 0.3); ctx.quadraticCurveTo(-r * 0.2, -r * 0.1, r, -r * 0.55);
-    ctx.moveTo(-r * 0.7, r); ctx.quadraticCurveTo(-r * 0.1, r * 0.2, r * 0.3, -r); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,214,110,.6)'; ctx.lineWidth = r * 0.12; ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (k = 0; k <= 20; k++) {
-      var uu = k / 20, qx = Math.sin(uu * 3.4 - 0.6) * r * 0.4, qy = r * 0.7 - uu * r * 1.4;
-      if (k) ctx.lineTo(qx, qy); else ctx.moveTo(qx, qy);
-    }
-    ctx.stroke();
-    for (k = 0; k < 6; k++) {
-      var u = k / 5, px = Math.sin(u * 3.4 - 0.6) * r * 0.4, py = r * 0.7 - u * r * 1.4;
-      var lit = (a * 0.8 - u + 10) % 1, glow = Math.max(0, 1 - lit * 3);
-      if (glow > 0.15) {
-        ctx.fillStyle = 'rgba(255,240,180,' + (0.4 * glow).toFixed(3) + ')';
-        ctx.beginPath(); ctx.arc(px, py, r * 0.28, 0, 6.2832); ctx.fill();
-      }
-      ctx.fillStyle = 'rgba(255,200,54,' + (0.82 + 0.18 * glow).toFixed(3) + ')';
-      ctx.beginPath(); ctx.arc(px, py, r * (0.13 + 0.07 * glow), 0, 6.2832); ctx.fill();
+    for (k = 0; k < 2; k++) {                        // the two fish, round after each other
+      var an = -a * 1.1 + k * Math.PI, rad = r * 0.4;
+      ctx.save();
+      ctx.translate(Math.cos(an) * rad, Math.sin(an) * rad * 0.9);
+      ctx.rotate(an - Math.PI / 2);
+      realFish(ctx, r * 0.42, r * 0.15, a * 5 + k * 2, k === 1, 0.5);
+      ctx.restore();
     }
     ctx.restore();
     ctx.lineCap = 'round';
@@ -3745,7 +3743,9 @@ var Game = (function () {
     ctx.beginPath(); ctx.arc(0, 0, r * 0.86, -0.55, 2.3); ctx.stroke();
     ctx.strokeStyle = 'rgba(232,248,255,.9)'; ctx.lineWidth = Math.max(0.8, r * 0.04);
     ctx.beginPath(); ctx.arc(0, 0, r * 0.93, 0, 6.2832); ctx.stroke();
-    skyWindow(r * 0.9, 0.75);
+    for (k = 0; k < 3; k++) glint4(Math.cos(k * 2.1 + a) * r * 0.62, Math.sin(k * 2.1 + a) * r * 0.55,
+                                   r * 0.1, 0.5 + 0.5 * Math.sin(a * 2.4 + k * 1.9));
+    skyWindow(r * 0.9, 0.7);
   }
 
   /* The magnet: a horseshoe magnet painted red, its ends ground bright
@@ -3822,7 +3822,7 @@ var Game = (function () {
     ctx.save();
     ctx.translate(x, y);
     if (o.t === 'chill') paintChillFind(r, a);
-    else if (o.t === 'sight') paintLensFind(r, a);
+    else if (o.t === 'twin') paintTwinFind(r, a);
     else paintMagnetFind(r, a);
     ctx.restore();
   }
@@ -3952,63 +3952,137 @@ var Game = (function () {
     return ch(0) + ',' + ch(1) + ',' + ch(2);
   }
   /* ---- an event's gift ----
-     A small wrapped box seen from up the hill: its lid lit from the top
-     left, a ribbon round it and a bow on top, its shadow falling to the
-     lower right as everything's does. Painted once a colour into a little
-     picture and drawn from it, so a hill full of them costs a draw each. */
+     A wrapped box seen from up the hill, three-quarters on: its front, its
+     side away from the sun in shade, a lid a little wider than the box,
+     wrapping paper with a pattern of its own, a ribbon round it all with
+     a sheen, a bow of two folded loops and curling tails, a pinch of snow
+     on the lid and a soft shadow to the lower right. Made richer at the
+     owner's word, 20 Nov 2026. Painted once a colour into a picture (twice
+     the size it is drawn, for sharp phones) and drawn from it, so a hill
+     full of them still costs one draw each. */
   var GIFT_COL = [
-    { box: '#e0393e', dark: '#97202a', lite: '#ff8077', rib: '#ffd34a', ribD: '#c38d10' },
-    { box: '#2c9e57', dark: '#17653a', lite: '#73d896', rib: '#ef4148', ribD: '#9c1f25' },
-    { box: '#3a7fe0', dark: '#1e4e9e', lite: '#87bbff', rib: '#f6f8fc', ribD: '#aebbd0' }
+    { box: '#e0393e', dark: '#97202a', lite: '#ff8077', rib: '#ffd34a', ribD: '#c38d10', ribL: '#fff1a8', pat: 'dots',  ink: 'rgba(255,255,255,.55)' },
+    { box: '#2c9e57', dark: '#17653a', lite: '#73d896', rib: '#ef4148', ribD: '#9c1f25', ribL: '#ff9a9a', pat: 'flake', ink: 'rgba(255,255,255,.6)' },
+    { box: '#3a7fe0', dark: '#1e4e9e', lite: '#87bbff', rib: '#f6f8fc', ribD: '#aebbd0', ribL: '#ffffff', pat: 'star',  ink: 'rgba(255,224,120,.75)' }
   ];
-  function paintGift(c, cx, cy, s, v) {
-    var C = GIFT_COL[v % GIFT_COL.length];
-    var w = s * 1.5, h = s * 1.05, top = s * 0.55;          // front face, and how deep the lid reads
-    var x0 = cx - w / 2, y0 = cy - h / 2 + top * 0.35;
+  function paintGift(c, cx, cy, s, v, flip) {
+    var C = GIFT_COL[v % GIFT_COL.length], k;
+    var w = s * 1.32, h = s * 0.96, sd = s * 0.42, top = s * 0.72;  // front, side, how deep the lid reads
+    var x0 = cx - w / 2 - sd * 0.25, y0 = cy - h / 2 + top * 0.3, x1 = x0 + w;
+    var lo = s * 0.08, lh = s * 0.2;                                 // the lid's overhang and its band
+    function quad(p) { c.beginPath(); c.moveTo(p[0], p[1]); for (var q = 2; q < p.length; q += 2) c.lineTo(p[q], p[q + 1]); c.closePath(); }
+    var FRONT = [x0, y0, x1, y0, x1, y0 + h, x0, y0 + h];
+    var SIDE = [x1, y0, x1 + sd, y0 - top * 0.7, x1 + sd, y0 + h - top * 0.7, x1, y0 + h];
+    var LTOP = [x0 - lo, y0 - lh, x1 + lo, y0 - lh, x1 + lo + sd, y0 - lh - top * 0.7, x0 - lo + sd, y0 - lh - top * 0.7];
+    var LFRONT = [x0 - lo, y0 - lh, x1 + lo, y0 - lh, x1 + lo, y0 + lh * 0.35, x0 - lo, y0 + lh * 0.35];
+    var LSIDE = [x1 + lo, y0 - lh, x1 + lo + sd, y0 - lh - top * 0.7, x1 + lo + sd, y0 + lh * 0.35 - top * 0.7, x1 + lo, y0 + lh * 0.35];
     c.save();
-    c.fillStyle = 'rgba(15,22,40,.26)';                        // the shadow, lower right
-    c.beginPath(); c.ellipse(cx + s * 0.22, cy + h * 0.62, w * 0.62, s * 0.3, 0, 0, 6.2832); c.fill();
-    c.fillStyle = C.dark;                                      // the front
-    c.fillRect(x0, y0, w, h);
-    c.fillStyle = C.box;
-    c.fillRect(x0, y0, w * 0.72, h);
-    c.fillStyle = C.lite;                                      // the lid, seen from above
-    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + w * 0.16, y0 - top); c.lineTo(x0 + w * 1.16 - w * 0.16, y0 - top); c.lineTo(x0 + w, y0); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(255,255,255,.28)';
-    c.beginPath(); c.moveTo(x0 + w * 0.1, y0 - top * 0.2); c.lineTo(x0 + w * 0.2, y0 - top * 0.8); c.lineTo(x0 + w * 0.45, y0 - top * 0.8); c.lineTo(x0 + w * 0.35, y0 - top * 0.2); c.closePath(); c.fill();
-    var rw = w * 0.17;                                         // the ribbon: down the front, across the lid
-    c.fillStyle = C.ribD; c.fillRect(cx - rw / 2, y0, rw, h);
-    c.fillStyle = C.rib; c.fillRect(cx - rw / 2, y0, rw * 0.6, h);
-    c.beginPath(); c.moveTo(cx - rw / 2, y0); c.lineTo(cx - rw / 2 + w * 0.08, y0 - top); c.lineTo(cx + rw / 2 + w * 0.08, y0 - top); c.lineTo(cx + rw / 2, y0); c.closePath(); c.fill();
-    c.beginPath(); c.moveTo(x0 + w * 0.08, y0 - top * 0.5 - rw * 0.3); c.lineTo(x0 + w * 1.08, y0 - top * 0.5 - rw * 0.3);
-    c.lineTo(x0 + w * 1.08 - w * 0.02, y0 - top * 0.5 + rw * 0.3); c.lineTo(x0 + w * 0.08 - w * 0.02, y0 - top * 0.5 + rw * 0.3); c.closePath(); c.fill();
-    var bx = cx + w * 0.04, by = y0 - top * 0.55;              // the bow: two loops and a knot
-    [-1, 1].forEach(function (sd) {
+    for (k = 0; k < 4; k++) {                                        // a soft shadow, lower right
+      c.fillStyle = 'rgba(12,22,44,' + (0.09 - k * 0.015).toFixed(3) + ')';
+      c.beginPath(); c.ellipse(cx + s * 0.28, cy + h * 0.6, w * (0.55 + k * 0.09), s * (0.2 + k * 0.05), 0, 0, 6.2832); c.fill();
+    }
+    if (flip) { c.translate(cx + s * 0.2, 0); c.scale(-1, 1); c.translate(-cx - s * 0.2, 0); }   // turned the other way; its shadow still falls to the right
+    function paper(face, g0, g1) {                                   // a face of the box, with its pattern
+      quad(face);
+      var g = c.createLinearGradient(face[0], face[1], face[4], face[5]);
+      g.addColorStop(0, g0); g.addColorStop(1, g1);
+      c.fillStyle = g; c.fill();
+      c.save(); quad(face); c.clip();
+      c.fillStyle = C.ink; c.strokeStyle = C.ink; c.lineWidth = Math.max(0.6, s * 0.035); c.lineCap = 'round';
+      for (var yy = -2; yy < 7; yy++) for (var xx = -2; xx < 8; xx++) {
+        var px = x0 + xx * s * 0.3 + (yy % 2) * s * 0.15, py = y0 - top + yy * s * 0.28;
+        if (C.pat === 'dots') { c.beginPath(); c.arc(px, py, s * 0.05, 0, 6.2832); c.fill(); }
+        else if (C.pat === 'star') {
+          c.beginPath();
+          for (var a = 0; a < 10; a++) { var rr = a % 2 ? s * 0.03 : s * 0.075, an = a * Math.PI / 5 - Math.PI / 2;
+            if (a) c.lineTo(px + Math.cos(an) * rr, py + Math.sin(an) * rr); else c.moveTo(px + Math.cos(an) * rr, py + Math.sin(an) * rr); }
+          c.closePath(); c.fill();
+        } else {
+          c.beginPath();
+          for (var b = 0; b < 3; b++) { var ba = b * Math.PI / 3; c.moveTo(px - Math.cos(ba) * s * 0.07, py - Math.sin(ba) * s * 0.07); c.lineTo(px + Math.cos(ba) * s * 0.07, py + Math.sin(ba) * s * 0.07); }
+          c.stroke();
+        }
+      }
+      c.restore();
+    }
+    paper(SIDE, C.dark, C.dark);                                     // the side away from the sun
+    c.fillStyle = 'rgba(0,0,0,.18)'; quad(SIDE); c.fill();
+    paper(FRONT, C.box, C.dark);                                     // the front, darker to its foot
+    var rw = w * 0.16, rx = cx - sd * 0.25 - rw / 2;                 // the ribbon down the front and the side
+    function ribbon(p) {
+      quad(p); var g = c.createLinearGradient(p[0], 0, p[2], 0);
+      g.addColorStop(0, C.ribD); g.addColorStop(0.35, C.rib); g.addColorStop(0.55, C.ribL); g.addColorStop(1, C.ribD);
+      c.fillStyle = g; c.fill();
+    }
+    ribbon([rx, y0, rx + rw, y0, rx + rw, y0 + h, rx, y0 + h]);
+    var sy = y0 + h * 0.48;
+    c.fillStyle = C.ribD; quad([x1, sy - rw * 0.4, x1 + sd, sy - rw * 0.4 - top * 0.7, x1 + sd, sy + rw * 0.4 - top * 0.7, x1, sy + rw * 0.4]); c.fill();
+    paper(LSIDE, C.dark, C.dark); c.fillStyle = 'rgba(0,0,0,.12)'; quad(LSIDE); c.fill();
+    paper(LFRONT, C.lite, C.box);                                    // the lid's band, lit
+    ribbon([rx, y0 - lh, rx + rw, y0 - lh, rx + rw, y0 + lh * 0.35, rx, y0 + lh * 0.35]);
+    c.fillStyle = 'rgba(0,0,0,.22)';                                 // where the lid sits over the box
+    c.fillRect(x0, y0 + lh * 0.35, w, s * 0.05);
+    paper(LTOP, C.lite, C.box);                                      // the lid from above
+    c.fillStyle = 'rgba(255,255,255,.22)'; quad(LTOP); c.fill();
+    var tx = rx + sd * 0.5, ty = y0 - lh - top * 0.35;               // the ribbon across the lid, both ways
+    c.fillStyle = C.rib;
+    quad([rx, y0 - lh, rx + rw, y0 - lh, rx + rw + sd, y0 - lh - top * 0.7, rx + sd, y0 - lh - top * 0.7]); c.fill();
+    quad([x0 - lo + sd * 0.5, ty - rw * 0.3, x1 + lo + sd * 0.5, ty - rw * 0.3, x1 + lo + sd * 0.5, ty + rw * 0.3, x0 - lo + sd * 0.5, ty + rw * 0.3]); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.45)';
+    c.fillRect(x0 - lo + sd * 0.5, ty - rw * 0.3, w + lo * 2, rw * 0.18);
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = Math.max(0.6, s * 0.04);   // the lid's lit edge
+    c.beginPath(); c.moveTo(x0 - lo, y0 - lh); c.lineTo(x1 + lo, y0 - lh); c.stroke();
+    var bx = tx + rw * 0.2, by = ty - s * 0.06;                     // the bow
+    [-1, 1].forEach(function (d) {                                   // two tails, curling
       c.fillStyle = C.ribD;
-      c.beginPath(); c.ellipse(bx + sd * s * 0.32, by - s * 0.1, s * 0.3, s * 0.2, sd * 0.5, 0, 6.2832); c.fill();
-      c.fillStyle = C.rib;
-      c.beginPath(); c.ellipse(bx + sd * s * 0.3, by - s * 0.14, s * 0.24, s * 0.14, sd * 0.5, 0, 6.2832); c.fill();
+      c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + d * s * 0.2, by + s * 0.25, bx + d * s * 0.34, by + s * 0.34);
+      c.lineTo(bx + d * s * 0.24, by + s * 0.38); c.quadraticCurveTo(bx + d * s * 0.12, by + s * 0.22, bx - d * s * 0.04, by + s * 0.04); c.closePath(); c.fill();
     });
-    c.fillStyle = C.ribD; c.beginPath(); c.arc(bx, by - s * 0.06, s * 0.13, 0, 6.2832); c.fill();
-    c.fillStyle = C.rib; c.beginPath(); c.arc(bx - s * 0.03, by - s * 0.09, s * 0.08, 0, 6.2832); c.fill();
+    [-1, 1].forEach(function (d) {                                   // two loops, folded
+      var lx = bx + d * s * 0.3, ly = by - s * 0.14;
+      var g = c.createRadialGradient(lx - d * s * 0.06, ly - s * 0.08, 0, lx, ly, s * 0.34);
+      g.addColorStop(0, C.ribL); g.addColorStop(0.5, C.rib); g.addColorStop(1, C.ribD);
+      c.fillStyle = g;
+      c.beginPath(); c.moveTo(bx, by - s * 0.05);
+      c.bezierCurveTo(bx + d * s * 0.18, by - s * 0.5, bx + d * s * 0.6, by - s * 0.32, bx + d * s * 0.5, by - s * 0.06);
+      c.bezierCurveTo(bx + d * s * 0.42, by + s * 0.1, bx + d * s * 0.16, by + s * 0.04, bx, by - s * 0.02); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.22)';                               // the fold inside it
+      c.beginPath(); c.moveTo(bx + d * s * 0.06, by - s * 0.06);
+      c.quadraticCurveTo(bx + d * s * 0.3, by - s * 0.26, bx + d * s * 0.4, by - s * 0.1);
+      c.quadraticCurveTo(bx + d * s * 0.26, by - s * 0.06, bx + d * s * 0.06, by - s * 0.03); c.closePath(); c.fill();
+    });
+    var kg = c.createRadialGradient(bx - s * 0.04, by - s * 0.08, 0, bx, by - s * 0.04, s * 0.13);
+    kg.addColorStop(0, C.ribL); kg.addColorStop(1, C.ribD);
+    c.fillStyle = kg; c.beginPath(); c.ellipse(bx, by - s * 0.04, s * 0.12, s * 0.1, 0, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.95)';                           // a pinch of snow on the lid's far corner
+    c.beginPath(); c.ellipse(x0 - lo + sd * 0.8, y0 - lh - top * 0.62, s * 0.2, s * 0.08, -0.5, 0, 6.2832); c.fill();
+    c.beginPath(); c.ellipse(x0 - lo + sd * 0.55, y0 - lh - top * 0.5, s * 0.11, s * 0.06, -0.5, 0, 6.2832); c.fill();
+    [[x0 + w * 0.15, y0 + h * 0.25, 0.09], [x1 + sd * 0.6, y0 - lh - top * 0.5, 0.07]].forEach(function (g) {   // glints
+      c.fillStyle = 'rgba(255,255,255,.9)';
+      var gx = g[0], gy = g[1], gs = s * g[2];
+      c.beginPath(); c.moveTo(gx, gy - gs); c.quadraticCurveTo(gx, gy, gx + gs, gy); c.quadraticCurveTo(gx, gy, gx, gy + gs);
+      c.quadraticCurveTo(gx, gy, gx - gs, gy); c.quadraticCurveTo(gx, gy, gx, gy - gs); c.fill();
+    });
     c.restore();
   }
   var GIFT_PICS = {};
-  function giftPic(v) {
-    if (GIFT_PICS[v] !== undefined) return GIFT_PICS[v];
+  function giftPic(v, flip) {
+    var key = v + (flip ? 'f' : '');
+    if (GIFT_PICS[key] !== undefined) return GIFT_PICS[key];
     var P = null;
     if (typeof document !== 'undefined' && document.createElement) {
       var cv = document.createElement('canvas'), g = cv && cv.getContext ? cv.getContext('2d') : null;
-      if (g && g.ellipse) { cv.width = cv.height = 96; paintGift(g, 48, 50, 30, v); P = cv; }
+      if (g && g.ellipse) { cv.width = cv.height = 192; paintGift(g, 96, 100, 60, v, flip); P = cv; }
     }
-    return (GIFT_PICS[v] = P);
+    return (GIFT_PICS[key] = P);
   }
   function drawGift(x, y, o) {
-    var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0);
+    var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0, o.flip);
     glowAt(ctx, x, y + bob, o.r * 2.1, [[0, '255,236,170', 0.42], [1, '255,236,170', 0]], 1);
-    if (P && ctx.drawImage) { var k = s / 30; ctx.drawImage(P, x - 48 * k, y + bob - 50 * k, 96 * k, 96 * k); }
-    else paintGift(ctx, x, y + bob, s, o.v || 0);
+    if (P && ctx.drawImage) { var k = s / 60; ctx.drawImage(P, x - 96 * k, y + bob - 100 * k, 192 * k, 192 * k); }
+    else paintGift(ctx, x, y + bob, s, o.v || 0, o.flip);
   }
+
 
   function drawFind(x, y, o, c) {
     c = c || ctx;
@@ -7924,7 +7998,7 @@ var Game = (function () {
     else if (kind === 'find')   drawFind(c, c, { r: 21, ph: 0.4 });
     else if (kind === 'rush')   drawRushBall(c, c, { r: 22, ph: 1.4 });
     else if (kind === 'clock')  drawClock(c, c, { r: 22, ph: 0.8 });
-    else if (kind === 'chill' || kind === 'sight' || kind === 'call')
+    else if (kind === 'chill' || kind === 'twin' || kind === 'call')
                                 drawFind3(c, c, { t: kind, r: 21, ph: 0.5 });
     else if (kind === 'drift')  drawDrift(c, c, { r: 26, ph: 1.0 }, B);
     else if (kind === 'geyser') hintGeyser(c, c, B);
@@ -11295,7 +11369,7 @@ var Game = (function () {
      faint version of it permanently. */
   function drawSightLine() {
     if (!seeing()) return;
-    var full = W.sightT > 0;
+    var full = W.sightT > 0;                          // (the lens is gone from the hill: only the owl's line, faint)
     var fade = full ? Math.min(1, W.sightT / 45) : 0.42;
     var rows = [], i;
     for (i = 0; i < W.rows.length && rows.length < 3; i++)
@@ -11600,7 +11674,7 @@ var Game = (function () {
       var gTxt = String(W.gifts), wG = ic * 1.08 + measureAt(tab(gTxt), fM), gx = x0 + w + u * 0.35;
       pill(gx, py, wG + pp * 2, ph);
       var gp = giftPic(0), gcx = gx + pp + ic * 0.48, gcy = py + ph / 2;
-      if (gp && ctx.drawImage) { var gk = (ph * 0.95) / 96; ctx.drawImage(gp, gcx - 48 * gk, gcy - 52 * gk, 96 * gk, 96 * gk); }
+      if (gp && ctx.drawImage) { var gk = (ph * 0.95) / 192; ctx.drawImage(gp, gcx - 96 * gk, gcy - 104 * gk, 192 * gk, 192 * gk); }
       else paintGift(ctx, gcx, gcy, ph * 0.3, 0);
       ctx.font = '800 ' + fM + FONT;
       ctx.fillStyle = '#ffffff';
@@ -11638,7 +11712,7 @@ var Game = (function () {
       rr(ctx, px2, rY, pw, ph2, ph2 / 2); ctx.stroke();
       /* the bar, emptying along the bottom */
       var bw = (pw - ph2) * Math.max(0, left / max);
-      ctx.fillStyle = kind === 'call' ? '#e2453c' : kind === 'sight' ? '#7cc443' : kind === 'chill' ? '#55b8f0' : '#3f93cc';
+      ctx.fillStyle = kind === 'call' ? '#e2453c' : kind === 'twin' ? '#f0b429' : kind === 'chill' ? '#55b8f0' : '#3f93cc';
       rr(ctx, px2 + ph2 / 2, rY + ph2 - u * 0.42, bw, u * 0.22, u * 0.11); ctx.fill();
       /* its picture */
       var ix = px2 + u * 0.95, iy = rY + ph2 * 0.46, ir = u * 0.48;
@@ -11657,12 +11731,12 @@ var Game = (function () {
           var sa3 = sf * Math.PI / 3;
           ctx.beginPath(); ctx.moveTo(ix - Math.cos(sa3) * ir, iy - Math.sin(sa3) * ir); ctx.lineTo(ix + Math.cos(sa3) * ir, iy + Math.sin(sa3) * ir); ctx.stroke();
         }
-      } else if (kind === 'sight') {                 // a lens with the gold line in it
-        ctx.fillStyle = '#e9f8d8'; ctx.strokeStyle = '#4f9a3c'; ctx.lineWidth = Math.max(1.4, ir * 0.2);
-        ctx.beginPath(); ctx.arc(ix - ir * 0.1, iy - ir * 0.1, ir * 0.68, 0, 6.2832); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(ix + ir * 0.38, iy + ir * 0.38); ctx.lineTo(ix + ir * 0.85, iy + ir * 0.85); ctx.stroke();
-        ctx.fillStyle = '#ffcd3a';
-        for (var sd = 0; sd < 3; sd++) { ctx.beginPath(); ctx.arc(ix - ir * 0.45 + sd * ir * 0.35, iy + ir * 0.12 - sd * ir * 0.22, ir * 0.11, 0, 6.2832); ctx.fill(); }
+      } else if (kind === 'twin') {                  // two fish, crossed
+        [-1, 1].forEach(function (sg) {
+          ctx.save(); ctx.translate(ix, iy); ctx.rotate(sg * 0.62);
+          realFish(ctx, ir * 0.95, ir * 0.38, 0.6, sg > 0, 0.4);
+          ctx.restore();
+        });
       } else {                                       // the rush: a ball of packed powder
         var bgr = ctx.createRadialGradient(ix - ir * 0.3, iy - ir * 0.3, 1, ix, iy, ir);
         bgr.addColorStop(0, '#ffffff'); bgr.addColorStop(1, '#a9d8f2');
@@ -11679,7 +11753,7 @@ var Game = (function () {
     if (W.rushT > 0)  timerPill(W.rushT, RUSH_FRAMES, 'rush');
     if (W.callT > 0)  timerPill(W.callT, CALL_FRAMES, 'call');
     if (W.chillT > 0) timerPill(W.chillT, CHILL_FRAMES, 'chill');
-    if (W.sightT > 0) timerPill(W.sightT, SIGHT_FRAMES, 'sight');
+    if (W.twinT > 0)  timerPill(W.twinT, TWIN_FRAMES, 'twin');
 
     if (W.shield > 0) {
       ctx.save();
@@ -12545,13 +12619,13 @@ var Game = (function () {
                                     reach: reachBetweenRows() }; },
     _wallAt: function (d, side) { return wallAt(d, side); },
     /* an event's gift on a canvas of its own (the event page, the HUD's) */
-    drawGift: function (canvas, size, v) {
+    drawGift: function (canvas, size, v, flip) {
       var dpr = Math.min(3, window.devicePixelRatio || 1);
       canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
       canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
       var g = canvas.getContext('2d'); if (!g) return;
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, size, size);
-      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0);
+      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0, flip);
     }
   };
 })();

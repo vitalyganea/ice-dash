@@ -196,7 +196,7 @@
       <li data-hint="rush"   data-i18n-html="help.rush"></li>
       <li data-hint="find"   data-i18n-html="help.find"></li>
       <li data-hint="chill"  data-i18n-html="help.chill"></li>
-      <li data-hint="sight"  data-i18n-html="help.sight"></li>
+      <li data-hint="twin"   data-i18n-html="help.twin"></li>
       <li data-hint="call"   data-i18n-html="help.call"></li>
       <li data-hint="clock"  data-i18n-html="help.clock"></li>
     </ul>
@@ -350,9 +350,11 @@
      how many so far, and its steps, each prize claimed with a button -->
 <section id="screen-event" class="screen ev-screen hidden">
   <!-- The event's painting over the whole screen, one upright and one on its
-       side (the owner's, made with Gemini, 19 Nov 2026), each with an empty
-       board of ice in a wreath: the table lies on that board. -->
+       side (the owner's, made with Gemini, 19 Nov 2026). The table is in a
+       frame of snow of its own, bigger and higher than the painting's board
+       (the owner, 20 Nov 2026), so the painting stays as it is. -->
   <div class="ev-scene">
+    <div class="ev-frame" id="ev-frame">
     <div class="ev-board" id="ev-board">
       <h2 class="ev-title" id="ev-title">New Year Event</h2>
       <p class="ev-left" id="ev-left"></p>
@@ -365,7 +367,8 @@
       <div class="ev-stages" id="ev-stages"></div>
       <p class="ev-text" id="ev-text"></p>
     </div>
-    <!-- the way to the gifts, on the empty ice under the board -->
+    </div>
+    <!-- the way to the gifts, under the table -->
     <div class="ev-foot"><button class="btn btn-big btn-blue" id="ev-play" data-action="play">Go to Freeride</button></div>
   </div>
 </section>

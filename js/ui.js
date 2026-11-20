@@ -870,7 +870,24 @@
     row.appendChild(place); row.appendChild(av); row.appendChild(name); row.appendChild(score);
     return row;
   }
-  var avatarJob = 0;
+  /* The face on a row is the player's avatar as My profile shows it (the
+     portrait), not the creature as it rides the hill (the owner, 20 Nov
+     2026). Each creature and skin is painted once and copied to every row
+     that wears it. */
+  var avatarJob = 0, rowFaces = {};
+  function rowFace(skin, alt) {
+    var key = skin + ':' + alt, f = rowFaces[key];
+    if (!f) {
+      f = document.createElement('canvas');
+      if (typeof drawPortrait === 'function') drawPortrait(f, 34, skin, alt);
+      else Game.drawSkinPreview(f, skin, 34, alt);
+      rowFaces[key] = f;
+    }
+    var cv = document.createElement('canvas');
+    cv.width = f.width; cv.height = f.height;
+    cv.getContext('2d').drawImage(f, 0, 0);
+    return cv;
+  }
   function paintAvatars(list) {
     var job = ++avatarJob, rows = Array.prototype.slice.call(list.querySelectorAll('.board-row')), i = 0;
     (function some() {
@@ -878,10 +895,7 @@
       for (var n = 0; n < 8 && i < rows.length; n++, i++) {
         var card = rowCard(rows[i].boardRow), av = rows[i].querySelector('.board-av');
         if (!card || !av) continue;
-        var cv = document.createElement('canvas');
-        Game.drawSkinPreview(cv, card.skin, 34, card.alt || '');
-        cv.style.width = cv.style.height = '';
-        av.appendChild(cv);
+        av.appendChild(rowFace(card.skin, card.alt || ''));
       }
       if (i < rows.length) requestAnimationFrame(some);
     })();
@@ -2394,6 +2408,17 @@
      its side (the board is central). From the box and not from vh: on an
      iPhone, Safari's bars come and go and vh is not what is seen (the
      owner, 19 Nov 2026, an iPhone 15). Again on every resize. */
+  /* the iPhone's home bar, in px (env() is read by CSS only, so through a
+     hidden element of the event screen's own) */
+  var evSafeEl = null;
+  function evSafeBottom() {
+    if (!evSafeEl) {
+      evSafeEl = document.createElement('div');
+      evSafeEl.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;height:0;padding-bottom:env(safe-area-inset-bottom,0px)';
+      document.body.appendChild(evSafeEl);
+    }
+    return parseFloat(getComputedStyle(evSafeEl).paddingBottom) || 0;
+  }
   function fitEvent() {
     var sc = $('screen-event'), el = sc && sc.querySelector('.ev-scene');
     if (!el || currentScreen !== 'event') return;
@@ -2423,8 +2448,33 @@
     el.style.left = ((W - w) / 2) + 'px';
     el.style.top = top + 'px';
     el.style.setProperty('--vis', (H - top) + 'px');   // where the screen ends, in the scene (the button stays above it)
+    /* The table in its frame of snow, from the screen and not from the
+       painting's board (the owner, 20 Nov 2026: bigger, higher): across
+       the screen with a margin, its top a third of the way down (the
+       painting's faces above it), down to the button, which goes right
+       under it, clear of an iPhone's home bar. On its side, centred and
+       half the screen across. At least 300 px tall where there is room. */
+    var fr = $('ev-frame'), foot = el.querySelector('.ev-foot');
+    if (fr && foot) {
+      var pbh = $('ev-play') ? $('ev-play').offsetHeight : 0;          // big letters make the button taller
+      var sb = evSafeBottom(), footH = Math.max(64, pbh + 12), gap = 22, snow = 16;
+      var bottom = H - sb - footH - gap - 6, fw, fy;
+      if (up) {
+        fw = Math.min(W - 20, 520);
+        fy = Math.max(snow, Math.round(H * 0.3));
+        if (bottom - fy < 300) fy = Math.max(snow, bottom - 300);
+      } else {
+        fw = Math.max(Math.min(W * 0.5, 640), Math.min(360, W - 20));
+        fy = Math.max(snow, Math.round(H * 0.07));
+      }
+      var fx = (W - fw) / 2, ox = (W - w) / 2;
+      fr.style.left = (fx - ox) + 'px'; fr.style.top = (fy - top) + 'px';
+      fr.style.width = fw + 'px'; fr.style.height = Math.max(100, bottom - fy) + 'px';
+      foot.style.left = (fx - ox) + 'px'; foot.style.width = fw + 'px';
+      foot.style.top = (Math.max(fy + 100, bottom) + gap - top) + 'px';
+    }
     /* the way to Freeride never under Back (a small phone, upright) */
-    var foot = el.querySelector('.ev-foot'), pb = $('ev-play'), bk = $('btn-back');
+    var pb = $('ev-play'), bk = $('btn-back');
     if (foot && pb && bk) {
       foot.style.transform = ''; pb.classList.remove('ev-play-small');
       var hits = function () {
