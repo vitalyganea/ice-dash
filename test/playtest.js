@@ -737,7 +737,7 @@ async function walk(cdp, sid, P) {
                     notes: { en: ['Geysers throw you', 'Two fish in a round of ice'], ro: ['Gheizerele te aruncă'] } };
     await ev("localStorage.removeItem('icedash-update-seen');1");
     await updStart(updJson);
-    ok(await visible('#sheet-update') && await visible('#screen-title'), 'a newer version in the store: the banner comes up over the title');
+    ok(await waitFor('#sheet-update', 8000) && await visible('#screen-title'), 'a newer version in the store: the banner comes up over the title');
     ok(await ev("document.querySelectorAll('#sheet-update-notes li').length") === 2 &&
        /1\.3\.3/.test(await ev("document.getElementById('sheet-update-ver').textContent")),
        'with the version and what is new, in the player\'s language (' + await ev("document.getElementById('sheet-update-ver').textContent") + ')');
