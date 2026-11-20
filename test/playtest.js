@@ -634,6 +634,9 @@ async function walk(cdp, sid, P) {
 
     /* Play's review card: only after a high point, a moment after the
        results, never into a new run, and once in the month. */
+    /* the month's mark from an earlier walk in this browser profile would
+       hold the card back: each walk starts without it */
+    await ev("localStorage.removeItem('icedash-review');1");
     ok(await ev("__reviews") === 0, 'no review is asked for after an ordinary run');
     async function bestRun(n, quick) {
       await clickFor('#screen-over [data-action="play"]', '#hud');
