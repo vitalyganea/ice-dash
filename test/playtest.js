@@ -139,11 +139,21 @@ var PLATFORMS = {
    them is counted. */
 var FAKE_NATIVE = "(function(){var L={};" +
   "window.__ads={prepared:0,shown:0,privacy:0};window.__board={submits:[],shown:0,tops:[],cards:[]};window.__reviews=0;window.__cloud={loads:0,saves:[]};" +
+  /* a newer version in the store (1.3.3): the app's version and version.json
+     come from the tab's sessionStorage (appVer, updJson), and Play says it has
+     the update unless playHas is '0'; with no appVer nothing is asked */
+  "window.__upd={checks:0,starts:0,fetches:0};var F0=window.fetch;window.fetch=function(u){if(String(u).indexOf('version.json')>=0){__upd.fetches++;" +
+  "  var j=null;try{j=sessionStorage.getItem('updJson');}catch(e){}return Promise.resolve({ok:!!j,json:function(){return Promise.resolve(JSON.parse(j));}});}" +
+  "  return F0.apply(this,arguments);};" +
   "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
   "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
   "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
   "window.Capacitor={isNativePlatform:function(){return true;},Plugins:{" +
-  "App:{addListener:on,exitApp:function(){}}," +
+  "App:{addListener:on,exitApp:function(){},getInfo:function(){var v=null;try{v=sessionStorage.getItem('appVer');}catch(e){}" +
+  "  return v?Promise.resolve({version:v}):Promise.reject(new Error('no version'));}}," +
+  "AppUpdate:{check:function(){__upd.checks++;var h=null;try{h=sessionStorage.getItem('playHas');}catch(e){}" +
+  "  return Promise.resolve({answered:true,available:h!=='0',versionCode:h!=='0'?99:0});}," +
+  " start:function(){__upd.starts++;return Promise.resolve({started:true});}}," +
   "AdMob:{requestConsentInfo:function(){return Promise.resolve({status:'OBTAINED',canRequestAds:true," +
   "  privacyOptionsRequirementStatus:'REQUIRED'});}," +
   " showConsentForm:function(){return Promise.resolve({status:'OBTAINED',canRequestAds:true});}," +
@@ -170,7 +180,8 @@ var FAKE_NATIVE = "(function(){var L={};" +
   "  if(o.span!=='all')return later({rows:[]});" +
   "  var rows=[],names=['Pingu','Snowcap','Ana','A very long Play Games name that will not fit'];" +
   /* the first three carry a card (1.3.0): a Play Games tag, as profileTag makes them */
-  "  var tags=['13gw9201','11hv4tjo','1103uw26'];" +
+  /* Pingu's carries three medals too (1.3.3): the old card with them added */
+  "  var tags=['1qe0uuezq9','11hv4tjo','1103uw26'];" +
   "  for(var i=1;i<=100;i++)rows.push({rank:i,name:names[i-1]||('Player '+i),score:60000-i*400,me:false,tag:tags[i-1]});" +
   "  return later({rows:rows,me:window.__boardHideMe?null:{rank:345,name:'Me',score:4200,me:true}});}," +
   /* the save in the cloud: none, unless the tab was given one */
@@ -252,6 +263,14 @@ async function walk(cdp, sid, P) {
      creatures long and its Back button starts below the fold, so a click
      at its page coordinates landed outside the window and did nothing. */
   async function click(sel) {
+    /* a panel still popping in moves its buttons: wait until this one is
+       where it will stay, or a tap meant for it lands on its neighbour */
+    var was = '';
+    for (var st = 0; st < 12; st++) {
+      var now = await ev("(function(){var e=document.querySelector(" + JSON.stringify(sel) + ");if(!e)return '';var r=e.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)].join();})()");
+      if (now === was) break;
+      was = now; await sleep(80);
+    }
     var box = await ev("(function(){var e=document.querySelector(" + JSON.stringify(sel) +
       ");if(!e)return {miss:'no such element'};" +
       "try{e.scrollIntoView({block:'center'});}catch(x){}" +
@@ -479,6 +498,12 @@ async function walk(cdp, sid, P) {
        await ev("document.querySelector('#sheet-prof .pcard-av').classList.contains('pf-gold')") &&
        /Legend/.test(await ev("document.querySelector('#sheet-prof .pcard-title').textContent")),
        'a tap on a row opens that player\'s card: name, frame, title (' + (await ev("document.querySelector('#sheet-prof .pcard').innerText.replace(/\\n/g,' / ')")) + ')');
+    ok(await ev("document.querySelectorAll('#sheet-prof .pcard-medals canvas').length") === 3 &&
+       await ev("document.querySelector('#sheet-prof .pcard-medals canvas').getAttribute('aria-label')") === await ev("t('ach.dist5000.name')") &&
+       await ev("!!document.querySelector('#sheet-prof .pcard-title canvas.pcard-tico')"),
+       'and its three medals, in the order picked, and its title\'s icon');
+    ok(await ev("!!document.querySelector('#sheet-prof .pcard.hero.hero-gold') && document.querySelectorAll('#sheet-prof .pcard-stats > span').length === 3 && document.querySelector('#sheet-prof .pcard-stats b').textContent === '#1'"),
+       'the card is the big one from My profile, in its frame\'s colours, with the place and not the creatures');
     await shot('a1c-card');
     await click('#sheet-prof .sheet-x');
     await shot('a1b-board');
@@ -692,9 +717,53 @@ async function walk(cdp, sid, P) {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 711, deviceScaleFactor: 2.25, mobile: true }, sid);
     var big = await plaqueAt(123456), small = await plaqueAt(345);
     ok(big.num.replace(/\s/g, '') === '#123456' && big.line && !big.unit && big.inside, '320 px across, place 123 456: one line, without the word points (' + JSON.stringify(big) + ')');
-    ok(small.num === '#345' && small.line && small.unit, 'and place 345 keeps the word (' + JSON.stringify(small) + ')');
+    /* 1.3.3: My profile's avatar sits beside the plaque, so at 320 px the
+       word may go for a short place too; one line, inside, either way */
+    ok(small.num === '#345' && small.line && small.inside, 'and place 345 too: one line, inside (' + JSON.stringify(small) + ')');
     await ev("sessionStorage.removeItem('rank');1");
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: P.w, height: P.h, deviceScaleFactor: 3, mobile: P.mobile }, sid);
+
+    /* A newer version in the store (1.3.3): the banner with what is new on
+       the title, once a version; Update puts up Play's own update; a version
+       older than the store's min cannot put it away; a phone Play has no
+       update for yet hears nothing. */
+    async function updStart(json, playHas) {
+      await ev("sessionStorage.setItem('appVer','1.3.2');sessionStorage.setItem('updJson'," + JSON.stringify(JSON.stringify(json)) +
+        ");sessionStorage.setItem('playHas','" + (playHas === false ? '0' : '1') + "');1");
+      await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+      await sleep(4500);
+    }
+    var updJson = { android: { version: '1.3.3', min: '' }, ios: { version: '1.3.3', min: '' },
+                    notes: { en: ['Geysers throw you', 'Two fish in a round of ice'], ro: ['Gheizerele te aruncă'] } };
+    await ev("localStorage.removeItem('icedash-update-seen');1");
+    await updStart(updJson);
+    ok(await visible('#sheet-update') && await visible('#screen-title'), 'a newer version in the store: the banner comes up over the title');
+    ok(await ev("document.querySelectorAll('#sheet-update-notes li').length") === 2 &&
+       /1\.3\.3/.test(await ev("document.getElementById('sheet-update-ver').textContent")),
+       'with the version and what is new, in the player\'s language (' + await ev("document.getElementById('sheet-update-ver').textContent") + ')');
+    ok(await visible('#sheet-update .upd-later') && await visible('#sheet-update .sheet-x'), 'and Later and the cross to put it away');
+    await click('#sheet-update-go');
+    await sleep(300);
+    ok(await ev("__upd.starts") === 1, 'Update puts up Play\'s own update screen');
+    await click('#sheet-update .upd-later');
+    await sleep(300);
+    ok(!(await visible('#sheet-update')), 'Later puts it away');
+    await updStart(updJson);
+    ok(!(await visible('#sheet-update')), 'and it does not come back for the same version');
+    updJson.android.min = '1.3.3';
+    await updStart(updJson);
+    ok(await visible('#sheet-update') && !(await visible('#sheet-update .upd-later')) && await visible('#sheet-update-must'),
+       'older than the store\'s min: it comes back every start, with no Later');
+    await ev("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));1");
+    await sleep(300);
+    ok(await visible('#sheet-update'), 'and Back (Esc) does not put it away');
+    updJson.android.min = '';
+    await ev("localStorage.removeItem('icedash-update-seen');1");
+    await updStart(updJson, false);
+    ok(!(await visible('#sheet-update')), 'Play has no update for this phone yet: nothing is shown');
+    await ev("sessionStorage.removeItem('appVer');sessionStorage.removeItem('updJson');sessionStorage.removeItem('playHas');localStorage.removeItem('icedash-update-seen');1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    await sleep(2000);
 
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
@@ -1406,12 +1475,57 @@ async function walk(cdp, sid, P) {
     var svl = await readSave();
     ok(svl.fish === f0l - 800 && svl.alts.own.indexOf('zombie') >= 0 && svl.alts.on.snowcap === 'zombie',
        'Buy pays for it and the creature wears it (' + f0l + ' fish -> ' + svl.fish + ', ' + JSON.stringify(svl.alts) + ')');
+    /* a creature not yet bought: its skin can be neither tried on nor bought */
+    await ev("document.querySelector('#sheet-skin [data-action=close-sheet]').click();1");
+    await sleep(200);
+    await clickFor('#shop-grid [data-pick="puffin"]', '#sheet-skin');
+    var lockedAlt = await ev("(function(){var t=document.querySelector('#sheet-alts .look-tile[data-alt]:not([data-alt=\"\"])');return t?t.disabled:null;})()");
+    await ev("(function(){var e=document.querySelector('#sheet-alts .look-tile[data-alt]:not([data-alt=\"\"])');if(e)e.click();})();1");
+    await sleep(200);
+    ok(lockedAlt === true && !(await visible('#sheet-alt-buy')), 'a creature not yet bought: its skin is shut, a tap does nothing');
+    await ev("document.querySelector('#sheet-skin [data-action=close-sheet]').click();1");
+    await sleep(200);
+    await clickFor('#shop-grid [data-pick="snowcap"]', '#sheet-skin');
     await shot('16e-skin');
     await click('#sheet-skin .sheet-x');
     await clickFor('#btn-back', '#screen-title');
+    /* the free gift beside the Market (1.3.3): there on the title, a tap
+       pays fish, a golden fish or a life, and it is gone for 12 hours */
+    if (await visible('#btn-gift')) {
+      var g0 = await readSave();
+      await click('#btn-gift');
+      var g1 = await readSave();
+      ok(await waitFor('#sheet-gift', 2000) && (g1.fish > g0.fish || g1.gold > g0.gold || (g1.lives || 0) > (g0.lives || 0)) &&
+         g1.gift > 0 && !(await visible('#btn-gift')),
+         'the free gift opens, pays (' + (await ev("document.getElementById('gift-prize').textContent")) + ') and is gone until the next');
+      ok(await waitFor('#sheet-gift.gift-done', 4000), 'and after the opening, the words and the button');
+      await click('#sheet-gift [data-action="close-sheet"]');
+    } else ok(false, 'the free gift is on the title for a save that never opened one');
     await clickFor('[data-action="profile"]', '#screen-profile');
-    ok(await ev("!!document.querySelector('#prof-preview .pcard') && document.querySelectorAll('#prof-frames .look-tile').length === FRAMES.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.length && !!document.querySelector('#prof-avatars [data-av=\"snowcap:zombie\"]')"),
-       'My profile: the card, the avatars (the zombie among them), the frames and the titles');
+    /* only what the player has (1.3.3): the frames owned, the titles won,
+       no price and no word on how to get anything; the frames are bought
+       in the Market */
+    ok(await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));return !!document.querySelector('#prof-preview .pcard.hero') && document.querySelectorAll('#prof-frames .look-tile').length === s.prof.own.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.filter(function(T){return titleWon(s,T);}).length && !document.querySelector('#screen-profile .tag-price, #screen-profile .tag-event, #screen-profile .title-row.locked, #screen-profile .look-buy') && !!document.querySelector('#prof-avatars [data-av=\"snowcap:zombie\"]');})()"),
+       'My profile: the big card, the avatars (the zombie among them), only the frames owned and the titles won, nothing to buy');
+    ok(await ev("document.querySelectorAll('#shop-frames .look-tile').length === FRAMES.filter(function(F){return F.currency!=='event';}).length"),
+       'and the Market has the frames to buy');
+    /* the medals (1.3.3): none to three of the trophies earned */
+    await click('#screen-profile [data-ptab="me"]');
+    var mt = await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));return {tiles:document.querySelectorAll('#prof-medals .medal-tile').length,earned:s.ach.length};})()");
+    ok(mt.tiles === mt.earned, 'Medals lists every trophy earned and no other (' + mt.tiles + ' of ' + mt.earned + ')');
+    if (mt.tiles) {
+      var tiles = await ev("Array.prototype.map.call(document.querySelectorAll('#prof-medals .medal-tile'),function(e){return e.getAttribute('data-medal');})");
+      for (var mi = 0; mi < Math.min(4, tiles.length); mi++) await click('#prof-medals [data-medal="' + tiles[mi] + '"]');
+      var ms = (await readSave()).prof.medals;
+      ok(ms.length === Math.min(3, tiles.length) && await ev("document.querySelectorAll('#prof-preview .pcard-medals canvas').length") === ms.length,
+         'up to three go on the card, a fourth is refused (' + ms.join() + ')');
+      await click('#prof-medals [data-medal="' + tiles[0] + '"]');
+      ok((await readSave()).prof.medals.indexOf(tiles[0]) < 0, 'a tap on one worn takes it off');
+      if (await ev("!!(window.ICEDASH_PLATFORM&&ICEDASH_PLATFORM.boardCard)"))
+        ok(await ev("JSON.stringify(profileFrom(ICEDASH_PLATFORM.boardCard()).medals)===JSON.stringify(JSON.parse(localStorage.getItem('icedash-save-v1')).prof.medals)"),
+           'and the card sent to the board carries them');
+    }
+    await click('#screen-profile [data-ptab="av"]');
     await click('#prof-avatars [data-av="snowcap:zombie"]');
     var avl = (await readSave()).prof.av;
     ok(avl && avl.skin === 'snowcap' && avl.alt === 'zombie', 'the zombie picked as the avatar is kept (' + JSON.stringify(avl) + ')');

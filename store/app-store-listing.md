@@ -32,6 +32,72 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.3 (20 Nov 2026)
+
+A free gift every 12 hours, medals on your card, My profile made over, a
+word when a newer version is out. Under 500 characters each (Google Play's
+limit).
+
+en:
+```
+• A free gift beside the Market every 12 hours: fish, a golden fish or a life
+• Medals: put up to 3 of your trophies on your card — everyone sees them on the leaderboard
+• My profile made over: a big card, icons for the titles, only what you own; frames are now in the Market
+• Tap a player on the leaderboard to see their big card
+• A notice when a newer version is out
+• Three kinds of gifts on the hill, fresh snow on the buttons
+```
+
+ro:
+```
+• Un cadou gratuit lângă Piață la fiecare 12 ore: pești, un pește auriu sau o viață
+• Medalii: pune până la 3 trofee pe cardul tău — toți le văd în clasament
+• Profilul meu refăcut: un card mare, iconițe pentru titluri, doar ce ai tu; ramele sunt acum în Piață
+• Atinge un jucător din clasament ca să-i vezi cardul mare
+• Un anunț când apare o versiune nouă
+• Trei feluri de cadouri pe pârtie, zăpadă nouă pe butoane
+```
+
+ru:
+```
+• Бесплатный подарок у Рынка каждые 12 часов: рыба, золотая рыбка или жизнь
+• Медали: выбери до 3 трофеев для своей карточки — их видят все в таблице рекордов
+• «Мой профиль» обновлён: большая карточка, значки титулов, только то, что у тебя есть; рамки теперь на Рынке
+• Нажми на игрока в таблице рекордов, чтобы увидеть его большую карточку
+• Сообщение, когда выходит новая версия
+• Три вида подарков на склоне, свежий снег на кнопках
+```
+
+es (Spain and Mexico):
+```
+• Un regalo gratis junto al Mercado cada 12 horas: peces, un pez dorado o una vida
+• Medallas: pon hasta 3 de tus trofeos en tu tarjeta — todos las ven en la clasificación
+• Mi perfil renovado: una tarjeta grande, iconos para los títulos, solo lo que tienes; los marcos ahora están en el Mercado
+• Toca a un jugador de la clasificación para ver su tarjeta grande
+• Un aviso cuando sale una versión nueva
+• Tres tipos de regalos en la pista, nieve nueva en los botones
+```
+
+pt-BR:
+```
+• Um presente grátis ao lado do Mercado a cada 12 horas: peixes, um peixe dourado ou uma vida
+• Medalhas: coloque até 3 dos seus troféus no seu cartão — todos veem no ranking
+• Meu perfil renovado: um cartão grande, ícones para os títulos, só o que você tem; as molduras agora estão no Mercado
+• Toque num jogador do ranking para ver o cartão grande dele
+• Um aviso quando sai uma versão nova
+• Três tipos de presentes na pista, neve nova nos botões
+```
+
+de:
+```
+• Alle 12 Stunden ein Gratisgeschenk neben dem Markt: Fische, ein Goldfisch oder ein Leben
+• Medaillen: Lege bis zu 3 deiner Trophäen auf deine Karte — alle sehen sie in der Bestenliste
+• Mein Profil neu: eine große Karte, Symbole für die Titel, nur was du hast; Rahmen gibt es jetzt im Markt
+• Tippe in der Bestenliste auf einen Spieler, um seine große Karte zu sehen
+• Ein Hinweis, wenn eine neue Version da ist
+• Drei Arten von Geschenken auf der Piste, frischer Schnee auf den Knöpfen
+```
+
 ## What's New in 1.3.2 (20 Nov 2026)
 
 Geysers throw you instead of stopping you, the twin fish, every player's own

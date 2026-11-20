@@ -72,9 +72,12 @@
                 creatures are in theirs: { own: [ids], on: { creature: id } } */
              alts: { own: [], on: {} },
              /* the profile card: frames bought, and the frame and title on it */
-             prof: { own: ['ice'], frame: 'ice', title: 'rookie' },
+             prof: { own: ['ice'], frame: 'ice', title: 'rookie', medals: [] },
              /* events (events.js): { id: { g: gifts gathered, got: [steps claimed] } } */
-             ev: {} };
+             ev: {},
+             /* when the free gift beside the Market was last opened (ms; 0
+                never): it comes back GIFT_EVERY later (1.3.3) */
+             gift: 0 };
   }
   /* Switches a platform's adapter may set before the game loads (only
      crazygames.js does). Unset, everything behaves as it always has. */
@@ -139,6 +142,8 @@
                  ? { key: o.daily.key, stars: Math.max(0, Math.min(3, parseInt(o.daily.stars, 10) || 0)) }
                  : { key: '', stars: 0 };
       save.finds = Math.max(0, Math.min(99, parseInt(o.finds, 10) || 0));
+      /* a time ahead of the clock (the clock put back) counts from now */
+      save.gift = Math.min(Date.now(), Math.max(0, parseInt(o.gift, 10) || 0));
       save.courses = {};
       if (o.courses && typeof o.courses === 'object')
         for (var cid in o.courses)
@@ -165,7 +170,7 @@
             eo.got.forEach(function (i) { i = parseInt(i, 10); if (i >= 0 && i < EVk.stages.length && egot.indexOf(i) < 0) egot.push(i); });
           save.ev[evid] = { g: Math.max(0, parseInt(eo.g, 10) || 0), got: egot, seen: !!eo.seen };
         }
-      save.prof = { own: ['ice'], frame: 'ice', title: 'rookie' };
+      save.prof = { own: ['ice'], frame: 'ice', title: 'rookie', medals: [] };
       if (o.prof && typeof o.prof === 'object') {
         if (Object.prototype.toString.call(o.prof.own) === '[object Array]')
           o.prof.own.forEach(function (id) { if (idxOf(FRAMES, id) >= 0 && save.prof.own.indexOf(id) < 0) save.prof.own.push(id); });
@@ -189,6 +194,11 @@
                    ? o.claimed.filter(function (id) { return save.ach.indexOf(id) >= 0; })
                    : save.ach.slice();
       if (!titleWon(save, TITLES[idxOf(TITLES, save.prof.title)])) save.prof.title = 'rookie';
+      /* the medals shown: none to three trophies, each one earned */
+      if (o.prof && Object.prototype.toString.call(o.prof.medals) === '[object Array]')
+        o.prof.medals.forEach(function (id) {
+          if (save.prof.medals.length < MEDAL_MAX && save.ach.indexOf(id) >= 0 && save.prof.medals.indexOf(id) < 0) save.prof.medals.push(id);
+        });
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
@@ -337,7 +347,7 @@
     if (name === 'tutdone')
       $('tutdone-go').textContent = t('tut.done.go', { n: t('course.' + COURSES[0].id + '.name') });
     if (name === 'help') buildHints();
-    if (name === 'profile') { framePick = ''; buildProfile(); }
+    if (name === 'profile') buildProfile();
     if (name === 'event') buildEvent();
     if (evTimer && name !== 'event') { clearInterval(evTimer); evTimer = null; }
     if (name === 'shop') { buildShop(); seeMarket(); }
@@ -350,6 +360,8 @@
       refreshModes();
     }
     if (name === 'title') {
+      profileBtn();
+      giftBtn();
       /* the hill comes alive behind the menu (unless a run is only paused) */
       if (!Game.isRunning()) Game.attract(save.equipped);
       if (Game.isDemo() && Game.isPaused()) Game.resume();
@@ -745,8 +757,14 @@
        the best (#10 000 on a phone 320 px across), the word "points" goes
        instead, and only then. */
     el.classList.remove('tight');
+    var me = el.parentNode && el.parentNode.classList.contains('title-me') ? el.parentNode : null;
+    if (me) me.classList.remove('stack');
     var words = el.querySelector('.bp-text'), place = $('bp-rank');
-    if (go && words.offsetHeight && place.offsetTop - words.offsetTop > 10) el.classList.add('tight');
+    function under() { return go && words.offsetHeight && place.offsetTop - words.offsetTop > 10; }
+    if (under()) el.classList.add('tight');
+    /* still two lines beside My profile's avatar: the avatar goes above
+       the plaque, and the plaque has the whole row (1.3.3) */
+    if (me && under()) { me.classList.add('stack'); el.classList.remove('tight'); if (under()) el.classList.add('tight'); }
   }
   /* Asked of Google when the title comes up: once every five minutes, or
      at once when the best has changed since. The answer comes in behind
@@ -909,7 +927,7 @@
     var box = $('sheet-prof-card');
     box.textContent = '';
     box.appendChild(profileCard(card || { skin: 'snowcap', frame: 'ice', title: 'rookie', trophies: 0 },
-                                { name: x.me ? t('prof.you') : (x.name || '—'), best: x.score, rank: x.rank, size: 120 }));
+                                { name: x.me ? t('prof.you') : (x.name || '—'), best: x.score, rank: x.rank, size: 118, hero: true }));
     $('sheet-prof-note').textContent = card ? '' : t('prof.nocard');
     $('sheet-prof').classList.remove('hidden');
   });
@@ -1383,6 +1401,7 @@
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'next-line':  Sfx.click(); ride($('over-next').getAttribute('data-run')); break;
       case 'close-sheet': Sfx.click(); closeSheet(); break;
+      case 'gift':       openGift(); break;
       case 'lang':       Sfx.click(); buildLangs(); $('sheet-lang').classList.remove('hidden'); break;
       case 'back-title':
         Sfx.click();
@@ -1539,7 +1558,130 @@
       el.appendChild(b);
       el.setAttribute('aria-label', w[2] + ' ' + t('cur.' + w[1], { n: w[2] }));
     });
+    purseSnow();
   }
+  /* ---- the game's snow (the owner, 20 Nov 2026) ----
+     First made for the Market's purse, then put on everything that wears
+     snow: the coloured buttons, the purse and the event's table. Drawn for
+     each thing as it is, in one piece: down each rounded corner it follows
+     the rim, thin low down and thicker over the top; along the top a row of
+     round lumps like small snowballs pressed together; under it a softer,
+     packed layer, a little bluer, with a wavy seam; rounded scallops and a
+     few drops on its lower edge and small icicles of clear ice; a quiet
+     grain, glints and crystals; a soft shadow. Sized from the thing's
+     height (a small button gets thinner snow), drawn once a size and kept,
+     and drawn again when the thing changes size. */
+  var snowPics = {};
+  function snowPic(W, Hc, rad) {
+    var k = Math.max(0.5, Math.min(1.15, Hc / 56)), r = Math.max(4, Math.min(rad, Hc / 2));
+    var key = W + 'x' + Hc + 'x' + Math.round(r) + 'x' + k.toFixed(2);
+    if (snowPics[key]) return snowPics[key];
+    var T = Math.round(10 * k), ox = 4, VW = W + ox * 2, n = Math.max(60, Math.min(420, Math.round(W * 0.9)));
+    var icMax = Math.min(7.5 * k, Hc * 0.13), VH = T + r + 4 + icMax;
+    var arc = Math.PI * r * 0.36, flat = W - 2 * r, L = 2 * arc + flat, out = [], inn = [];
+    function rim(d) {                           // a point on the top edge, d along it from the left end
+      var a;
+      if (d < arc) { a = Math.PI * (1.2 + 0.3 * d / arc); return [ox + r + Math.cos(a) * r, T + r + Math.sin(a) * r, a]; }
+      if (d > arc + flat) { a = Math.PI * (1.5 + 0.3 * (d - arc - flat) / arc); return [ox + W - r + Math.cos(a) * r, T + r + Math.sin(a) * r, a]; }
+      return [ox + r + (d - arc), T, Math.PI * 1.5];
+    }
+    var bumps = Math.max(5, Math.round(L / (9 * k))), sc = Math.max(6, Math.round(L / (6.5 * k)));
+    for (var i = 0; i <= n; i++) {
+      var u = i / n, d = u * L, p = rim(d), nx = Math.cos(p[2]), ny = Math.sin(p[2]);
+      var edge = Math.min(1, Math.min(d, L - d) / (arc + 10 * k));            // thin at the ends
+      var bf = u * bumps, bi = Math.floor(bf), fr = bf - bi;
+      var bs = 0.75 + 0.5 * Math.abs(Math.sin(bi * 2.39 + 0.5));
+      var lump = 2.6 * k * bs * Math.sqrt(Math.max(0, 1 - Math.pow(2 * fr - 1, 2)));
+      var th = 1.5 * k + 5 * k * edge + lump * (0.45 + 0.55 * edge);
+      out.push([p[0] + nx * th, p[1] + ny * th]);
+      var sf = u * sc + 0.5, sfr = sf - Math.floor(sf);
+      var scallop = 1.3 * k * Math.sqrt(Math.max(0, 1 - Math.pow(2 * sfr - 1, 2)));
+      var drop = Math.pow(Math.max(0, Math.sin(d / k * 0.19 + 1.3)), 10) * 3.8 * k;
+      var drip = edge * (0.8 * k + scallop + drop);
+      inn.push([p[0] - nx * (1.2 * k + drip), p[1] - ny * (1.2 * k + drip)]);
+    }
+    function f1(v) { return v.toFixed(1); }
+    function smooth(pts, move) {               // a smooth line through the points
+      var dd = (move ? 'M' : 'L') + f1(pts[0][0]) + ' ' + f1(pts[0][1]);
+      for (var j = 1; j < pts.length - 1; j++)
+        dd += 'Q' + f1(pts[j][0]) + ' ' + f1(pts[j][1]) + ' ' + f1((pts[j][0] + pts[j + 1][0]) / 2) + ' ' + f1((pts[j][1] + pts[j + 1][1]) / 2);
+      var q = pts[pts.length - 1]; return dd + 'L' + f1(q[0]) + ' ' + f1(q[1]);
+    }
+    var shape = smooth(out, true) + smooth(inn.slice().reverse(), false) + 'Z';
+    var e0 = Math.round(n * 0.1), e1 = n - e0;
+    var crest = smooth(out.slice(e0, e1).map(function (q) { return [q[0], q[1] + 1.6 * k]; }), true);
+    var seed = 7, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    var seam = out.map(function (q, m) {
+      var r2 = inn[m], w2 = 0.5 + 0.06 * Math.sin(m / n * L / 20 + 0.8);
+      return [q[0] + (r2[0] - q[0]) * w2, q[1] + (r2[1] - q[1]) * w2];
+    });
+    var s0 = Math.round(n * 0.06), s1 = n - s0;
+    var tex = "<path d='" + smooth(seam, true) + smooth(inn.slice().reverse(), false) + "Z' fill='rgba(150,192,228,.24)'/>" +
+      "<path d='" + smooth(seam.slice(s0, s1), true) + "' fill='none' stroke='rgba(120,165,205,.35)' stroke-width='" + f1(0.7 * k) + "'/>" +
+      "<path d='" + smooth(seam.slice(s0, s1).map(function (q) { return [q[0], q[1] - 0.9 * k]; }), true) + "' fill='none' stroke='%23fff' stroke-width='" + f1(0.8 * k) + "' opacity='.85'/>";
+    var step = Math.max(1, Math.round(n / bumps));
+    for (var lk = 0; lk < n; lk += step) {
+      var lq = out[lk], lr = inn[lk];
+      tex += "<ellipse cx='" + f1((lq[0] + lr[0]) / 2 - k) + "' cy='" + f1(lq[1] + 2.4 * k) + "' rx='" + f1((2.6 + rnd() * 2) * k) +
+             "' ry='" + f1(1.3 * k) + "' fill='%23fff' opacity='" + (0.45 + rnd() * 0.3).toFixed(2) + "'/>";
+    }
+    for (var gk = 0; gk < L / 3; gk++) {
+      var gi = Math.min(n, Math.round(rnd() * n)), gt = 0.25 + rnd() * 0.6;
+      var gx = out[gi][0] + (inn[gi][0] - out[gi][0]) * gt + (rnd() - 0.5) * 2, gy = out[gi][1] + (inn[gi][1] - out[gi][1]) * gt;
+      tex += "<circle cx='" + f1(gx) + "' cy='" + f1(gy) + "' r='" + ((0.25 + rnd() * 0.45) * k).toFixed(2) + "' fill='" + (rnd() < 0.55 ? "rgba(120,165,205,.45)" : "%23fff") + "'/>";
+    }
+    var crys = Math.max(2, Math.round(L / 50));
+    for (var ck = 0; ck < crys; ck++) {
+      var cq = out[Math.round((0.1 + 0.8 * (ck + 0.3 + rnd() * 0.4) / crys) * n)], cx2 = cq[0], cy2 = cq[1] + 3 * k, cs = (1.3 + rnd() * 0.6) * k;
+      tex += "<path d='M" + f1(cx2) + ' ' + f1(cy2 - cs) + 'Q' + f1(cx2) + ' ' + f1(cy2) + ' ' + f1(cx2 + cs) + ' ' + f1(cy2) + 'Q' + f1(cx2) + ' ' + f1(cy2) + ' ' + f1(cx2) + ' ' + f1(cy2 + cs) +
+             'Q' + f1(cx2) + ' ' + f1(cy2) + ' ' + f1(cx2 - cs) + ' ' + f1(cy2) + 'Q' + f1(cx2) + ' ' + f1(cy2) + ' ' + f1(cx2) + ' ' + f1(cy2 - cs) + "Z' fill='%23fff' opacity='.9'/>";
+    }
+    var ice = '', ni = Math.max(2, Math.round(L / 34));
+    for (var ik = 0; ik < ni; ik++) {
+      var q = inn[Math.round((0.14 + 0.72 * (ik + 0.5) / ni + (rnd() - 0.5) * 0.04) * n)];
+      var iw = (1.6 + (ik % 3) * 0.4) * k, ih = Math.min(icMax, (5.5 + ((ik * 7) % 5) * 1.1) * k);
+      ice += "<path d='M" + f1(q[0] - iw) + ' ' + f1(q[1] - 0.6 * k) + 'Q' + f1(q[0]) + ' ' + f1(q[1] + ih * 0.5) + ' ' + f1(q[0]) + ' ' + f1(q[1] + ih) +
+             'Q' + f1(q[0]) + ' ' + f1(q[1] + ih * 0.5) + ' ' + f1(q[0] + iw) + ' ' + f1(q[1] - 0.6 * k) + "Z' fill='url(%23ic)' stroke='rgba(90,140,185,.35)' stroke-width='" + f1(0.4 * k) + "'/>";
+    }
+    var glints = '';
+    [0.3, 0.62, 0.81].forEach(function (g, m) { var q2 = out[Math.round(g * n)]; glints += "<circle cx='" + f1(q2[0] + 2 * k) + "' cy='" + f1(q2[1] + 3.2 * k) + "' r='" + f1((m ? 0.7 : 0.9) * k) + "' fill='%23d6ecfb'/>"; });
+    var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + VW + ' ' + f1(VH) + "'>" +
+      "<linearGradient id='g' x2='0' y2='1'><stop offset='0' stop-color='%23fff'/><stop offset='.55' stop-color='%23eef7fd'/><stop offset='1' stop-color='%23bcd6ea'/></linearGradient>" +
+      "<linearGradient id='ic' x2='0' y2='1'><stop offset='0' stop-color='%23f4fbff'/><stop offset='1' stop-color='rgba(170,215,245,.55)'/></linearGradient>" +
+      "<path d='" + shape + "' fill='rgba(0,40,90,.22)' transform='translate(0 " + f1(2.2 * k) + ")'/>" +
+      "<path d='" + shape + "' fill='url(%23g)' stroke='rgba(70,110,150,.4)' stroke-width='" + f1(0.8 * k) + "' stroke-linejoin='round'/>" +
+      "<clipPath id='c'><path d='" + shape + "'/></clipPath><g clip-path='url(%23c)'>" + tex + '</g>' + ice +
+      "<path d='" + crest + "' fill='none' stroke='%23fff' stroke-width='" + f1(1.4 * k) + "' stroke-linecap='round' opacity='.95'/>" + glints + '</svg>';
+    return (snowPics[key] = { url: 'url("data:image/svg+xml,' + svg.replace(/</g, '%3C').replace(/>/g, '%3E').replace(/"/g, "'") + '")',
+                              w: VW, h: VH, x: ox, y: T });
+  }
+  function snowOn(el) {
+    var W = Math.round(el.offsetWidth), Hc = Math.round(el.offsetHeight);
+    if (!W || !Hc) return;
+    var cs = getComputedStyle(el), rad = parseFloat(cs.borderTopLeftRadius) || 0;
+    var P = snowPic(W, Hc, rad), bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
+    el.style.setProperty('--sc', P.url);
+    el.style.setProperty('--sc-w', P.w + 'px');
+    el.style.setProperty('--sc-h', P.h.toFixed(1) + 'px');
+    el.style.setProperty('--sc-x', (-P.x - bl) + 'px');
+    el.style.setProperty('--sc-y', (-P.y - bt) + 'px');
+  }
+  var SNOWY = '.btn, #screen-shop .wallet, .ev-frame, .pcard.hero';
+  var snowRO = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { snowOn(e.target); }); }) : null;
+  function snowWatch(el) {
+    if (el.__snow) return;
+    el.__snow = 1;
+    if (snowRO) snowRO.observe(el); else snowOn(el);
+  }
+  function snowAll(root) {
+    if (root.matches && root.matches(SNOWY)) snowWatch(root);
+    if (root.querySelectorAll) Array.prototype.forEach.call(root.querySelectorAll(SNOWY), snowWatch);
+  }
+  snowAll(document);
+  if (window.MutationObserver) new MutationObserver(function (ms) {
+    ms.forEach(function (m) { Array.prototype.forEach.call(m.addedNodes, function (nd) { if (nd.nodeType === 1) snowAll(nd); }); });
+  }).observe(document.body, { childList: true, subtree: true });
+  function purseSnow() { var el = document.querySelector('#screen-shop .wallet'); if (el) snowOn(el); }
 
   function owns(id) { return save.owned.indexOf(id) >= 0; }
   function balance(cur) { return cur === 'gold' ? save.gold : save.fish; }
@@ -1609,7 +1751,8 @@
   function myCard() {
     var av = avatarOf();
     return { skin: av.skin, alt: av.alt, frame: save.prof.frame,
-             title: save.prof.title, trophies: achDone() };
+             title: save.prof.title, trophies: achDone(),
+             medals: (save.prof.medals || []).filter(function (id) { return save.ach.indexOf(id) >= 0; }) };
   }
   /* what native.js sends up with a best (a tag on Play Games, the context
      on Game Center) */
@@ -1622,6 +1765,33 @@
   function buildShop() {
     wallet();
     buildCreatures();
+    buildShopFrames();
+  }
+  /* The frames for the card, in the Market (1.3.3): bought here, worn from
+     My profile, which shows only what the player has. The event's frame is
+     won, not bought, and is not here. */
+  function buildShopFrames() {
+    var fr = $('shop-frames');
+    if (!fr) return;
+    fr.textContent = '';
+    FRAMES.forEach(function (F) {
+      if (F.currency === 'event') return;
+      var own = save.prof.own.indexOf(F.id) >= 0;
+      var el = document.createElement('button');
+      el.className = 'look-tile frame-tile' + (own ? ' owned' : '') + (framePick === F.id ? ' picked' : '');
+      el.setAttribute('data-frame', F.id);
+      var sw = document.createElement('span'); sw.className = 'pf-swatch pf-' + F.id; el.appendChild(sw);
+      var nm = document.createElement('span'); nm.className = 'look-name'; nm.textContent = t('prof.f.' + F.id); el.appendChild(nm);
+      if (own) { var w = document.createElement('span'); w.className = 'skin-tag tag-worn'; w.textContent = '✓'; el.appendChild(w); }
+      else el.appendChild(priceTag(F, 'skin-tag tag-price'));
+      fr.appendChild(el);
+    });
+    var bar = $('shop-frame-buy'), pick = framePick && save.prof.own.indexOf(framePick) < 0 ? framePick : '';
+    bar.classList.toggle('hidden', !pick);
+    if (pick) {
+      $('shop-frame-name').textContent = t('prof.f.' + pick);
+      buyButton($('shop-frame-btn'), FRAMES[idxOf(FRAMES, pick)]);
+    }
   }
 
   /* a price: the currency's fish and the sum */
@@ -1663,6 +1833,9 @@
       var el = document.createElement('button');
       el.className = 'look-tile' + (on === aid ? ' on' : '') + (altPick === aid && aid ? ' picked' : '');
       el.setAttribute('data-alt', aid);
+      /* a creature not yet bought: its skin cannot be tried or bought (the
+         owner, 20 Nov 2026), the note under the tiles says why */
+      if (aid && !own) { el.disabled = true; el.classList.add('locked'); }
       var cv = document.createElement('canvas');
       cv.className = 'look-pic';
       Game.drawSkinPreview(cv, id, 64, aid);
@@ -1685,7 +1858,7 @@
   }
   $('sheet-alts').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-alt]') : null;
-    if (!b || !sheetSkin) return;
+    if (!b || !sheetSkin || b.disabled) return;
     var aid = b.getAttribute('data-alt');
     Sfx.click();
     if (owns(sheetSkin) && (!aid || ownsAlt(aid))) {
@@ -1717,7 +1890,8 @@
   function profileCard(p, o) {
     o = o || {};
     var el = document.createElement('div');
-    el.className = 'pcard';
+    /* hero: My profile's own card, big, in its frame's colours (1.3.3) */
+    el.className = 'pcard' + (o.hero ? ' hero hero-' + (p.frame || 'ice') : '');
     var av = document.createElement('div');
     av.className = 'pcard-av pf-' + (p.frame || 'ice');
     /* its face: the creature's portrait (portraits.js), head and shoulders
@@ -1733,13 +1907,41 @@
     nm.className = 'pcard-name'; nm.textContent = o.name || t('prof.you');
     mid.appendChild(nm);
     var ti = document.createElement('div');
-    ti.className = 'pcard-title'; ti.textContent = t('prof.t.' + (p.title || 'rookie'));
+    ti.className = 'pcard-title';
+    /* its icon before the words (1.3.3) */
+    var tic = document.createElement('canvas'); tic.className = 'pcard-tico';
+    if (typeof drawTitleIcon === 'function') drawTitleIcon(tic, o.hero ? 16 : 18, p.title || 'rookie', o.hero ? '#fff' : false);
+    ti.appendChild(tic);
+    ti.appendChild(document.createTextNode(t('prof.t.' + (p.title || 'rookie'))));
     mid.appendChild(ti);
+    /* the medals the player picked to show, none to three (1.3.3) */
+    if (p.medals && p.medals.length && typeof drawMedal === 'function') {
+      var md = document.createElement('div'); md.className = 'pcard-medals';
+      p.medals.forEach(function (id) {
+        var mc = document.createElement('canvas');
+        mc.setAttribute('role', 'img'); mc.setAttribute('aria-label', t('ach.' + id + '.name'));
+        mc.title = t('ach.' + id + '.name');
+        drawMedal(mc, o.hero ? 40 : 34, id);
+        md.appendChild(mc);
+      });
+      mid.appendChild(md);
+    }
     var st = document.createElement('div');
     st.className = 'pcard-stats';
-    if (o.rank) { var rk = document.createElement('span'); rk.textContent = t('title.rank.num', { n: o.rank }); st.appendChild(rk); }
-    var be = document.createElement('span'); be.textContent = t('prof.best') + ' ' + num(o.best || 0); st.appendChild(be);
-    var tr = document.createElement('span'); tr.textContent = t('prof.trophies') + ' ' + (p.trophies || 0); st.appendChild(tr);
+    function stat(label, val) {
+      var sp = document.createElement('span');
+      if (o.hero) { var b = document.createElement('b'); b.textContent = val; var sm = document.createElement('small'); sm.textContent = label; sp.appendChild(b); sp.appendChild(sm); }
+      else sp.textContent = label + ' ' + val;
+      st.appendChild(sp);
+    }
+    /* the hero card on the board (the owner, 20 Nov 2026: as in My
+       profile): the place is a pill of its own, in place of the creatures,
+       which the board does not know for anyone else */
+    if (o.rank && !o.hero) { var rk = document.createElement('span'); rk.textContent = t('title.rank.num', { n: o.rank }); st.appendChild(rk); }
+    if (o.rank && o.hero) stat(t('prof.place'), '#' + o.rank);
+    stat(t('prof.best'), num(o.best || 0));
+    stat(t('prof.trophies'), o.hero && typeof ACHIEVEMENTS !== 'undefined' ? (p.trophies || 0) + '/' + ACHIEVEMENTS.length : String(p.trophies || 0));
+    if (o.hero && o.mine) stat(t('prof.creatures'), save.owned.length + '/' + SKINS.length);
     mid.appendChild(st);
     el.appendChild(mid);
     return el;
@@ -1748,8 +1950,7 @@
     var box = $('prof-preview');
     box.textContent = '';
     var shown = myCard();
-    if (framePick) shown.frame = framePick;
-    box.appendChild(profileCard(shown, { best: save.best, size: 96 }));
+    box.appendChild(profileCard(shown, { best: save.best, size: 118, hero: true, mine: true }));
     /* the avatars: every creature owned, and its skin if that is owned too */
     var ag = $('prof-avatars'), cur = avatarOf();
     ag.textContent = '';
@@ -1770,41 +1971,254 @@
     });
     var fr = $('prof-frames');
     fr.textContent = '';
-    var evNow = typeof eventShown === 'function' ? eventShown(save) : null;
     FRAMES.forEach(function (F) {
       var on = save.prof.frame === F.id, own = save.prof.own.indexOf(F.id) >= 0;
-      if (F.currency === 'event' && !own && !(evNow && evNow.id === F.event)) return;   // an event's, gone with it
+      if (!own) return;                    // only what the player has (the owner, 20 Nov 2026)
       var el = document.createElement('button');
-      el.className = 'look-tile frame-tile' + (on ? ' on' : '') + (framePick === F.id ? ' picked' : '');
+      el.className = 'look-tile frame-tile' + (on ? ' on' : '');
       el.setAttribute('data-frame', F.id);
       var sw = document.createElement('span'); sw.className = 'pf-swatch pf-' + F.id; el.appendChild(sw);
       var nm = document.createElement('span'); nm.className = 'look-name'; nm.textContent = t('prof.f.' + F.id); el.appendChild(nm);
       if (on) { var w = document.createElement('span'); w.className = 'skin-tag tag-worn'; w.textContent = '✓'; el.appendChild(w); }
-      else if (!own && F.currency === 'event') { var et = document.createElement('span'); et.className = 'skin-tag tag-event'; et.textContent = t('prof.f.event'); el.appendChild(et); }
-      else if (!own) el.appendChild(priceTag(F, 'skin-tag tag-price'));
       fr.appendChild(el);
     });
-    var bar = $('prof-buy');
-    bar.classList.toggle('hidden', !framePick);
-    if (framePick) {
-      $('prof-buy-name').textContent = t('prof.f.' + framePick);
-      buyButton($('prof-buy-btn'), FRAMES[idxOf(FRAMES, framePick)]);
-    }
     var tl = $('prof-titles');
     tl.textContent = '';
     TITLES.forEach(function (T) {
       var won = titleWon(save, T), on = save.prof.title === T.id;
+      if (!won) return;                    // only what the player has
       var el = document.createElement('button');
-      el.className = 'title-row' + (on ? ' on' : '') + (won ? '' : ' locked');
+      el.className = 'title-row' + (on ? ' on' : '');
       el.setAttribute('data-title', T.id);
+      var ic = document.createElement('canvas'); ic.className = 'title-ico';
+      if (typeof drawTitleIcon === 'function') drawTitleIcon(ic, 34, T.id);
+      el.appendChild(ic);
       var nm = document.createElement('span'); nm.className = 'title-name'; nm.textContent = t('prof.t.' + T.id); el.appendChild(nm);
       var ds = document.createElement('span'); ds.className = 'title-need';
       if (on) ds.textContent = '✓';
-      else if (!won) ds.textContent = T.ach === '*' ? t('prof.t.all') : t('prof.t.need', { s: t('ach.' + T.ach + '.name') });
       el.appendChild(ds);
       tl.appendChild(el);
     });
+    /* the medals: every trophy earned, a tap puts it on the card or takes
+       it off; none to three (the owner, 20 Nov 2026) */
+    var mg = $('prof-medals'), mine = save.prof.medals;
+    mg.textContent = '';
+    $('prof-medal-note').textContent = t('prof.medalNote', { a: mine.length, b: MEDAL_MAX });
+    ACHIEVEMENTS.forEach(function (A) {
+      if (save.ach.indexOf(A.id) < 0) return;
+      var on = mine.indexOf(A.id) >= 0;
+      var el = document.createElement('button');
+      el.className = 'medal-tile' + (on ? ' on' : '') + (!on && mine.length >= MEDAL_MAX ? ' full' : '');
+      el.setAttribute('data-medal', A.id);
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
+      var mc = document.createElement('canvas');
+      if (typeof drawMedal === 'function') drawMedal(mc, 52, A.id);
+      el.appendChild(mc);
+      var nm = document.createElement('span'); nm.className = 'look-name'; nm.textContent = t('ach.' + A.id + '.name'); el.appendChild(nm);
+      if (on) { var w = document.createElement('span'); w.className = 'medal-num'; w.textContent = String(mine.indexOf(A.id) + 1); el.appendChild(w); }
+      mg.appendChild(el);
+    });
+    if (!mg.children.length) {
+      var em = document.createElement('p'); em.className = 'shop-note'; em.textContent = t('prof.medalNone'); mg.appendChild(em);
+    }
   }
+  /* The title's My profile button: the player's avatar in the frame they
+     wear, round, no words (the owner, 20 Nov 2026: minimal, no snow) */
+  function profileBtn() {
+    var b = $('btn-profile');
+    if (!b) return;
+    var c = myCard();
+    b.className = 'prof-orb pf-' + (c.frame || 'ice');
+    b.setAttribute('aria-label', t('btn.profile'));
+    b.textContent = '';
+    var cv = document.createElement('canvas');
+    if (typeof drawPortrait === 'function') drawPortrait(cv, 36, c.skin, c.alt || '');
+    b.appendChild(cv);
+  }
+  /* The free gift beside the Market (the owner, 20 Nov 2026): every
+     twelve hours a little gift, the same ones as on the hill; a tap opens
+     it (fish, a golden fish or a life), and it is gone until the next. */
+  var GIFT_EVERY = 12 * 3600 * 1000;
+  function giftReady() { return Date.now() - (save.gift || 0) >= GIFT_EVERY; }
+  var giftLook = -1;
+  function giftBtn() {
+    var b = $('btn-gift');
+    if (!b) return;
+    var on = canSave && giftReady();
+    b.classList.toggle('hidden', !on);
+    if (on && giftLook < 0) {
+      giftLook = Math.floor(Math.random() * 6);     // a colour, and which way it faces; always the box
+      if (Game.drawGift) Game.drawGift(b.querySelector('canvas'), 64, giftLook % 3, giftLook >= 3, 0);
+    }
+  }
+  /* it comes back while the title is up, too */
+  setInterval(function () { if (currentScreen === 'title') giftBtn(); }, 30000);
+  function giftRoll() {
+    var r = Math.random();
+    if (r < 0.15) return { kind: 'gold', n: 1 };
+    if (r < 0.40 && (save.lives || 0) < LIFE_CAP) return { kind: 'life', n: 1 };
+    return { kind: 'fish', n: 50 + 10 * Math.floor(Math.random() * 8) };   // 50 to 120
+  }
+  function openGift() {
+    if (!giftReady()) { giftBtn(); return; }
+    var p = giftRoll(), msg;
+    if (p.kind === 'gold') { save.gold += p.n; msg = t('find.gold', { n: p.n }); }
+    else if (p.kind === 'life') { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
+    else { save.fish += p.n; msg = t('find.fish', { n: p.n }); }
+    save.gift = Date.now();
+    store();
+    var b = $('btn-gift');
+    Sfx.click(); buzz(15);
+    $('gift-prize').textContent = msg;
+    $('gift-prize').className = 'gift-prize gp-' + p.kind;
+    b.classList.add('hidden');
+    var sh = $('sheet-gift');
+    sh.classList.remove('gift-done');
+    sh.classList.remove('hidden');
+    giftStage(p.kind, Math.max(0, giftLook));
+    giftLook = -1;
+  }
+  /* The gift opened as a little scene (the owner, 20 Nov 2026: more to
+     it): the box shakes harder and harder and sparkles, a flash, the lid
+     flies off, and the prize jumps out over turning rays in its colour,
+     with confetti; then the words and the button. Without motion, the end
+     at once. */
+  var GIFT_RAYS = { fish: ['#bfe8ff', '#4fb0ea'], gold: ['#fff1a8', '#f0b020'], life: ['#ffd0dc', '#ff5a8a'] };
+  var giftRaf = null;
+  function giftStage(kind, look) {
+    var cv = $('gift-art'), S = 220;
+    if (!cv.getContext) return;
+    var k = Math.min(window.devicePixelRatio || 1, 2.5);
+    cv.width = Math.round(S * k); cv.height = Math.round(S * k);
+    cv.style.width = S + 'px'; cv.style.height = S + 'px';
+    var c = cv.getContext('2d');
+    /* the gift and the prize, painted once */
+    var G = document.createElement('canvas'), GS = 150;
+    if (Game.drawGift) Game.drawGift(G, GS, look % 3, look >= 3, 0);
+    var P = document.createElement('canvas');
+    if (Game.drawHint) Game.drawHint(P, kind === 'life' ? 'heart' : kind, 96);
+    /* the golden fish's own glow runs to the icon's edges: faded out in a
+       circle, so no square shows round it */
+    if (P.width) {
+      var pc = P.getContext('2d'), pw = P.width;
+      pc.setTransform(1, 0, 0, 1, 0, 0); pc.globalCompositeOperation = 'destination-in';
+      var pm = pc.createRadialGradient(pw / 2, pw / 2, pw * 0.3, pw / 2, pw / 2, pw * 0.5);
+      pm.addColorStop(0, '#000'); pm.addColorStop(1, 'rgba(0,0,0,0)');
+      pc.fillStyle = pm; pc.fillRect(0, 0, pw, pw); pc.globalCompositeOperation = 'source-over';
+    }
+    /* where the lid ends, as paintGift draws it: a cut along its lower edge */
+    var s = GS * 0.3, w = s * 1.32, h = s * 0.96, sd = s * 0.42, top = s * 0.72, lo = s * 0.08, lh = s * 0.2;
+    var x0 = GS / 2 - w / 2 - sd * 0.25, y0 = GS * 0.54 - h / 2 + top * 0.3, x1 = x0 + w, cut = y0 + lh * 0.35;
+    function lidPath(g) { g.beginPath(); g.moveTo(-5, -5); g.lineTo(GS + 5, -5); g.lineTo(GS + 5, cut - top * 0.7); g.lineTo(x1 + lo + sd, cut - top * 0.7); g.lineTo(x1 + lo, cut); g.lineTo(-5, cut); g.closePath(); }
+    var col = GIFT_RAYS[kind] || GIFT_RAYS.fish;
+    var sparks = [], t0 = performance.now(), popped = false, still = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var OPEN = 1150;
+    function spark(x, y, sp, life, big) {
+      var a = Math.random() * 6.283;
+      sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - sp * 0.3, life: life, t: life, r: big ? 3 + Math.random() * 3 : 1.5 + Math.random() * 2,
+                    col: Math.random() < 0.5 ? '#ffffff' : col[0] });
+    }
+    function star(x, y, r, a) {
+      c.beginPath();
+      for (var q = 0; q < 8; q++) { var rr = q % 2 ? r * 0.35 : r, an = a + q * Math.PI / 4; c.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); }
+      c.closePath(); c.fill();
+    }
+    function ease(x) { return 1 - Math.pow(1 - x, 3); }
+    function elastic(x) { return x >= 1 ? 1 : 1 - Math.pow(2, -9 * x) * Math.cos(x * 9.5); }
+    if (giftRaf) cancelAnimationFrame(giftRaf);
+    function frame(now) {
+      var sh = $('sheet-gift');
+      if (sh.classList.contains('hidden')) { giftRaf = null; return; }
+      var tt = still ? OPEN + 2000 : now - t0, cx = S / 2, cy = S / 2;
+      c.setTransform(k, 0, 0, k, 0, 0); c.clearRect(0, 0, S, S);
+      /* behind: the rays, once open, turning */
+      if (tt > OPEN) {
+        var ra = Math.min(1, (tt - OPEN) / 350);
+        c.save(); c.translate(cx, cy); c.rotate(tt * 0.0004);
+        /* rays in the prize's own deeper colour, fading out to the edge */
+        var gr = c.createRadialGradient(0, 0, 14, 0, 0, S * 0.47);
+        gr.addColorStop(0, col[1]); gr.addColorStop(.55, col[0]); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        c.globalAlpha = 0.55 * ra; c.fillStyle = gr;
+        for (var q = 0; q < 12; q++) { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, S * 0.47, q * Math.PI / 6, q * Math.PI / 6 + Math.PI / 12); c.closePath(); c.fill(); }
+        /* and a second, finer set turning the other way */
+        c.rotate(-tt * 0.0009); c.globalAlpha = 0.3 * ra;
+        for (var q2 = 0; q2 < 18; q2++) { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, S * 0.44, q2 * Math.PI / 9, q2 * Math.PI / 9 + Math.PI / 40); c.closePath(); c.fill(); }
+        c.globalAlpha = ra;
+        var gl = c.createRadialGradient(0, 0, 0, 0, 0, S * 0.3);
+        gl.addColorStop(0, 'rgba(255,255,255,.95)'); gl.addColorStop(.5, col[0]); gl.addColorStop(1, 'rgba(255,255,255,0)');
+        c.fillStyle = gl; c.beginPath(); c.arc(0, 0, S * 0.3, 0, 7); c.fill();
+        c.restore(); c.globalAlpha = 1;
+      }
+      if (tt < OPEN) {
+        /* the shake: harder as it goes, with a hop near the end */
+        var f = tt / OPEN, amp = 0.03 + 0.2 * f * f, ang = Math.sin(tt * (0.025 + f * 0.03)) * amp;
+        var hop = f > 0.7 ? -Math.abs(Math.sin((f - 0.7) * 30)) * 8 * f : 0, sc = 1 + 0.06 * f + 0.03 * Math.sin(tt * 0.04);
+        c.save(); c.translate(cx, cy + 30 + hop); c.rotate(ang); c.scale(sc, sc);
+        c.drawImage(G, -GS / 2, -GS * 0.75, GS, GS);
+        c.restore();
+        if (Math.random() < 0.15 + f * 0.6) spark(cx + (Math.random() - 0.5) * 90, cy + 10 + (Math.random() - 0.5) * 60, 0.6 + f * 1.4, 500, false);
+      } else {
+        var o = tt - OPEN;
+        if (!popped) {
+          popped = true;
+          for (var n = 0; n < 40; n++) spark(cx, cy + 10, 2 + Math.random() * 4, 900 + Math.random() * 500, true);
+          var r = cv.getBoundingClientRect();
+          if (!still) screenBurst(kind, r.left + r.width / 2, r.top + r.height / 2);
+          if (Sfx.boom) Sfx.boom();
+          Sfx.gold(); buzz(kind === 'fish' ? [40, 30, 60] : [60, 30, 100]);
+          setTimeout(function () { sh.classList.add('gift-done'); }, still ? 0 : 450);
+        }
+        /* the box: drops a little and fades; the lid: flies up, turning */
+        if (o < 650) {
+          var fa = 1 - o / 650;
+          c.save(); c.globalAlpha = fa;
+          c.translate(cx, cy + 30 + ease(o / 650) * 22);
+          c.save(); c.translate(-GS / 2, -GS * 0.75); c.beginPath(); c.rect(-5, -5, GS + 10, GS + 10); lidPath(c); c.clip('evenodd'); c.drawImage(G, 0, 0, GS, GS); c.restore();
+          c.restore();
+          c.save(); c.globalAlpha = fa;
+          c.translate(cx - ease(o / 650) * 50, cy + 30 - ease(o / 650) * 110); c.rotate(-ease(o / 650) * 1.1);
+          c.translate(-GS / 2, -GS * 0.75); lidPath(c); c.clip(); c.drawImage(G, 0, 0, GS, GS);
+          c.restore();
+        }
+        /* the prize, out of the box and up into the middle, with a bounce */
+        var pe = elastic(Math.min(1, o / 700)), py = cy + 26 - 26 * ease(Math.min(1, o / 500)), bob = Math.sin(o * 0.004) * 3;
+        c.save(); c.translate(cx, py + bob); c.scale(pe * 1.75, pe * 1.75); c.rotate(Math.sin(o * 0.003) * 0.06);
+        c.drawImage(P, -48, -48, 96, 96); c.restore();
+        /* the flash */
+        if (o < 380) { c.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - o / 380)) + ')'; c.beginPath(); c.arc(cx, cy, S * 0.5, 0, 7); c.fill(); }
+        /* now and then a twinkle round the prize */
+        if (Math.random() < 0.12) spark(cx + (Math.random() - 0.5) * 120, cy + (Math.random() - 0.5) * 110, 0.3, 700, false);
+      }
+      /* the sparks */
+      var dt = 16;
+      for (var i = sparks.length - 1; i >= 0; i--) {
+        var p = sparks[i]; p.t -= dt;
+        if (p.t <= 0) { sparks.splice(i, 1); continue; }
+        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.vx *= 0.98;
+        c.globalAlpha = Math.min(1, p.t / p.life * 1.6); c.fillStyle = p.col;
+        star(p.x, p.y, p.r * 1.6, tt * 0.004 + i);
+      }
+      c.globalAlpha = 1;
+      giftRaf = still ? null : requestAnimationFrame(frame);
+    }
+    giftRaf = requestAnimationFrame(frame);
+  }
+  /* My profile's three tabs: Avatar, Frames, Titles (1.3.3) */
+  var profTab = 'av';
+  function profTabTo(id) {
+    profTab = id;
+    Array.prototype.forEach.call(document.querySelectorAll('#screen-profile .prof-tab'), function (b) {
+      var on = b.getAttribute('data-ptab') === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#screen-profile .prof-pane'), function (p) {
+      p.classList.toggle('hidden', p.getAttribute('data-pane') !== id);
+    });
+  }
+  document.querySelector('#screen-profile .prof-tabs').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-ptab]') : null;
+    if (!b || b.getAttribute('data-ptab') === profTab) return;
+    Sfx.click(); profTabTo(b.getAttribute('data-ptab'));
+  });
   $('prof-avatars').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-av]') : null;
     if (!b) return;
@@ -1817,14 +2231,23 @@
   $('prof-frames').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-frame]') : null;
     if (!b) return;
-    var id = b.getAttribute('data-frame'), PF = FRAMES[idxOf(FRAMES, id)];
+    var id = b.getAttribute('data-frame');
+    if (save.prof.own.indexOf(id) < 0) return;
     Sfx.click();
-    if (PF && PF.currency === 'event' && save.prof.own.indexOf(id) < 0) { show('event'); return; }   // won there, not bought
-    if (save.prof.own.indexOf(id) >= 0) { framePick = ''; save.prof.frame = id; store(); }
-    else framePick = framePick === id ? '' : id;
+    save.prof.frame = id; store();
     buildProfile();
   });
-  $('prof-buy-btn').addEventListener('click', function () {
+  /* the Market's frames: a tap on one not had offers it, Buy pays and puts it on */
+  $('shop-frames').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-frame]') : null;
+    if (!b) return;
+    var id = b.getAttribute('data-frame');
+    if (save.prof.own.indexOf(id) >= 0) return;
+    Sfx.click();
+    framePick = framePick === id ? '' : id;
+    buildShopFrames();
+  });
+  $('shop-frame-btn').addEventListener('click', function () {
     var F = FRAMES[idxOf(FRAMES, framePick)];
     if (!F || save.prof.own.indexOf(F.id) >= 0 || !pay(F)) return;
     save.prof.own.push(F.id); save.prof.frame = F.id; framePick = '';
@@ -1833,6 +2256,15 @@
     screenBurst('gold', r.left + r.width / 2, r.top + r.height / 2);
     store();
     buildShop();
+  });
+  $('prof-medals').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-medal]') : null;
+    if (!b) return;
+    var id = b.getAttribute('data-medal'), m = save.prof.medals, i = m.indexOf(id);
+    if (i >= 0) m.splice(i, 1);
+    else if (m.length >= MEDAL_MAX || save.ach.indexOf(id) < 0) { Sfx.click(); buzz(12); return; }
+    else m.push(id);
+    Sfx.click(); store(); buildProfile();
   });
   $('prof-titles').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-title]') : null;
@@ -2238,10 +2670,53 @@
   function closeSheet() {
     var open = false;
     Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
+      if (sh.classList.contains('upd-must') && !sh.classList.contains('hidden')) { open = true; return; }   // too old to play on: it stays
       if (!sh.classList.contains('hidden')) { open = true; sh.classList.add('hidden'); }
     });
     sheetSkin = null;
     return open;
+  }
+
+  /* A newer version in the store (the apps only, native.js; asked for by
+     the owner, 20 Nov 2026). Asked once a start, a moment after it; shown
+     on the title only, never over a run or another sheet, and once a
+     version (Later puts it away until the next one). A version older than
+     the store's "min" gets it every start, with no way to put it away. */
+  var UPD_SEEN = 'icedash-update-seen', updInfo = null, updTries = 0;
+  function updShow() {
+    if (!updInfo) return;
+    if (currentScreen !== 'title' || document.querySelector('.sheet:not(.hidden)') || Game.isRunning()) {
+      if (++updTries < 60) setTimeout(updShow, 2000);   // wait for the title, for two minutes at most
+      return;
+    }
+    var I = updInfo, sh = $('sheet-update');
+    updInfo = null;
+    sh.classList.toggle('upd-must', I.force);
+    $('sheet-update-must').classList.toggle('hidden', !I.force);
+    $('sheet-update-ver').textContent = t('upd.ver', { v: I.version });
+    var lines = I.notes[getLang()] || I.notes.en || [], ul = $('sheet-update-notes');
+    ul.textContent = '';
+    (Array.isArray(lines) ? lines : [String(lines)]).slice(0, 8).forEach(function (l) {
+      var li = document.createElement('li'); li.textContent = String(l).replace(/^[•\-\s]+/, ''); ul.appendChild(li);
+    });
+    ul.parentNode.querySelector('.upd-head').classList.toggle('hidden', !ul.children.length);
+    sh.classList.remove('hidden');
+    if (!I.force) { try { localStorage.setItem(UPD_SEEN, I.version); } catch (e) {} }
+  }
+  if (PLAT.updateCheck) {
+    setTimeout(function () {
+      PLAT.updateCheck().then(function (I) {
+        if (!I) return;
+        var seen = '';
+        try { seen = localStorage.getItem(UPD_SEEN) || ''; } catch (e) {}
+        if (!I.force && seen === I.version) return;
+        updInfo = I; updShow();
+      }, function () {});
+    }, 2500);
+    $('sheet-update-go').addEventListener('click', function () {
+      Sfx.click();
+      if (PLAT.updateGo) PLAT.updateGo();
+    });
   }
 
   $('shop-grid').addEventListener('click', function (e) {

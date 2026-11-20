@@ -373,13 +373,40 @@ function titleWon(save, t) {
    in its own skin, one kept for later, the frame, the title, and how many
    trophies. 42 bits, well inside a double's exact integers. */
 var PROFILE_V = 1;
+/* The medals (1.3.3, the owner, 20 Nov 2026: none to three trophies picked
+   to show): each a trophy's place in ACHIEVEMENTS plus one (0 an empty
+   slot), as one number in base MEDAL_B. Its low six bits go in the field
+   kept for later, the rest above the 42 bits, where a build before 1.3.3
+   never looks: it reads the card as it always did, without the medals.
+   Room for 39 trophies (there are 33); 40^3 / 64 = 1000 above the 42
+   bits keeps it under 2^52, exact in a double, 11 base-36 characters. */
+var MEDAL_B = 40, MEDAL_MAX = 3;
+function medalsCode(list) {
+  var n = 0;
+  if (typeof ACHIEVEMENTS === 'undefined' || !list) return 0;
+  for (var i = Math.min(list.length, MEDAL_MAX) - 1; i >= 0; i--) {
+    var k = idxOf(ACHIEVEMENTS, list[i]);
+    n = n * MEDAL_B + (k >= 0 && k < MEDAL_B - 1 ? k + 1 : 0);
+  }
+  return n;
+}
+function medalsFrom(n) {
+  var out = [];
+  if (typeof ACHIEVEMENTS === 'undefined') return out;
+  for (var i = 0; i < MEDAL_MAX; i++) {
+    var k = n % MEDAL_B; n = Math.floor(n / MEDAL_B);
+    if (k && ACHIEVEMENTS[k - 1] && out.indexOf(ACHIEVEMENTS[k - 1].id) < 0) out.push(ACHIEVEMENTS[k - 1].id);
+  }
+  return out;
+}
 function profileCode(p) {
   var alt = p.alt && ALT_BY_ID[p.alt] && ALT_BY_ID[p.alt].of === p.skin ? 1 : 0;
-  var f = [PROFILE_V, Math.max(0, idxOf(SKINS, p.skin)), alt, 0, Math.max(0, idxOf(FRAMES, p.frame)),
+  var m = medalsCode(p.medals);
+  var f = [PROFILE_V, Math.max(0, idxOf(SKINS, p.skin)), alt, m % 64, Math.max(0, idxOf(FRAMES, p.frame)),
            Math.max(0, idxOf(TITLES, p.title)), Math.min(63, Math.max(0, p.trophies | 0))];
   var n = 0;
   for (var i = 0; i < f.length; i++) n = n * 64 + (f[i] & 63);
-  return n;
+  return n + Math.floor(m / 64) * Math.pow(2, 42);
 }
 function profileTag(p) { return profileCode(p).toString(36); }
 /* The card back from a tag or a context; null for none, a code from a
@@ -392,6 +419,8 @@ function profileFrom(v) {
   for (var i = 0; i < 7; i++) { f.unshift(n % 64); n = Math.floor(n / 64); }
   if (f[0] !== PROFILE_V) return null;
   var sk = (SKINS[f[1]] || SKINS[0]).id;
+  /* what is left above the 42 bits: the medals' high part */
   return { skin: sk, alt: f[2] && ALT_OF[sk] ? ALT_OF[sk].id : '',
-           frame: (FRAMES[f[4]] || FRAMES[0]).id, title: (TITLES[f[5]] || TITLES[0]).id, trophies: f[6] };
+           frame: (FRAMES[f[4]] || FRAMES[0]).id, title: (TITLES[f[5]] || TITLES[0]).id, trophies: f[6],
+           medals: medalsFrom(n * 64 + f[3]) };
 }

@@ -22,14 +22,26 @@ var all = 0, bad = 0;
 SKINS.forEach(function (sk, si) {
   ['', ALT_OF[sk.id] ? ALT_OF[sk.id].id : ''].forEach(function (alt) {
     var p = { skin: sk.id, alt: alt, frame: FRAMES[si % FRAMES.length].id,
-              title: TITLES[si % TITLES.length].id, trophies: (si * 7) % (ACHIEVEMENTS.length + 1) };
+              title: TITLES[si % TITLES.length].id, trophies: (si * 7) % (ACHIEVEMENTS.length + 1),
+              medals: ACHIEVEMENTS.filter(function (A, k) { return (k + si) % 11 === 0; }).slice(0, si % 4).map(function (A) { return A.id; }) };
     var back = profileFrom(profileTag(p)), num = profileFrom(profileCode(p));
     all++;
     if (JSON.stringify(back) !== JSON.stringify(p) || JSON.stringify(num) !== JSON.stringify(p)) bad++;
   });
 });
 ok(bad === 0, 'every creature, in its own coat and in its skin: ' + all + ' cards, ' + bad + ' changed on the way');
-var big = profileCode({ skin: SKINS[SKINS.length - 1].id, alt: ALT_OF[SKINS[SKINS.length - 1].id].id, frame: 'gold', title: 'legend', trophies: 63 });
+var big = profileCode({ skin: SKINS[SKINS.length - 1].id, alt: ALT_OF[SKINS[SKINS.length - 1].id].id, frame: FRAMES[FRAMES.length - 1].id, title: 'legend', trophies: 63,
+                        medals: ACHIEVEMENTS.slice(-3).map(function (A) { return A.id; }) });
+ok(ACHIEVEMENTS.length < MEDAL_B, 'every trophy fits a medal slot (' + ACHIEVEMENTS.length + ' of ' + (MEDAL_B - 1) + ')');
+/* a build before the medals reads only the low 42 bits, the kept field ignored */
+function oldFrom(n) { var f = []; for (var i = 0; i < 7; i++) { f.unshift(n % 64); n = Math.floor(n / 64); } return f; }
+var plain = { skin: 'reindeer', alt: '', frame: 'gold', title: 'liner', trophies: 20 };
+var withM = JSON.parse(JSON.stringify(plain)); withM.medals = ['dist5000', 'stars18', 'first'];
+var o1 = oldFrom(profileCode(plain)), o2 = oldFrom(profileCode(withM));
+ok([0, 1, 2, 4, 5, 6].every(function (i) { return o1[i] === o2[i]; }), 'an older build reads a card with medals as the same card');
+ok(JSON.stringify(profileFrom(profileCode(withM)).medals) === JSON.stringify(withM.medals), 'the medals come back in their order');
+ok(JSON.stringify(profileFrom(profileCode(plain)).medals) === '[]', 'no medals, none shown');
+ok(profileFrom(profileCode({ skin: 'snowcap', medals: ['first', 'first', 'nope', 'dist500'] })).medals.length <= 3, 'never more than three');
 ok(big < Math.pow(2, 53) && /^[0-9a-z]{1,12}$/.test(big.toString(36)),
    'the largest fits a double exactly and a Play Games tag (' + big.toString(36) + ')');
 ok(profileFrom('') === null && profileFrom(0) === null && profileFrom('not a tag!') === null,

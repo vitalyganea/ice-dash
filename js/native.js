@@ -363,6 +363,67 @@
     }, 2500);
   };
 
+  /* ---- a newer version in the store (1.3.3) ----
+     Asked for by the owner, 20 Nov 2026: many players stay several versions
+     behind. version.json, next to the privacy policy on the game's own
+     page, says the newest version on each store, what is new in it in the
+     six languages, and the oldest version still allowed ("min"; older than
+     that, the banner cannot be put away). It is changed only once a
+     version is live in the store, so the banner never sends anyone to a
+     store that does not have it yet. On Android, Play is asked as well:
+     a phone its rollout has not reached hears nothing, and the button
+     puts up Play's own update screen, which downloads, installs and
+     restarts the game. The iPhone cannot update itself: the button opens
+     the App Store's page. Nothing about the player goes anywhere: the page
+     is fetched as any page is, and only the version is compared, here. */
+  var UPD_URL = 'https://vitalyganea.github.io/ice-dash/version.json';
+  var STORE = IOS ? 'https://apps.apple.com/app/id6830137061'
+                  : 'https://play.google.com/store/apps/details?id=com.veetalea.icedash';
+  var Upd = P.AppUpdate, playHas = false;
+  function verCmp(a, b) {               // -1, 0, 1 for "1.3.2"-style versions
+    var x = String(a || '0').split('.'), y = String(b || '0').split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var p = parseInt(x[i], 10) || 0, q = parseInt(y[i], 10) || 0;
+      if (p !== q) return p < q ? -1 : 1;
+    }
+    return 0;
+  }
+  PLAT.verCmp = verCmp;
+  /* { version, notes: { en: [...], ru: [...], ... }, force } or null */
+  PLAT.updateCheck = function () {
+    if (!P.App || !P.App.getInfo || !window.fetch) return Promise.resolve(null);
+    var mine = null;
+    return P.App.getInfo().then(function (info) {
+      mine = info && info.version;
+      if (!mine) return null;
+      var ctl = window.AbortController ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+      return fetch(UPD_URL + '?t=' + Math.floor(Date.now() / 3600000), { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { clearTimeout(timer); return r.ok ? r.json() : null; });
+    }).then(function (j) {
+      var side = j && j[IOS ? 'ios' : 'android'];
+      if (!side || !side.version || verCmp(side.version, mine) <= 0) return null;
+      var out = { version: side.version, notes: j.notes || {}, force: !!(side.min && verCmp(mine, side.min) < 0), mine: mine };
+      if (IOS || !Upd || !Upd.check) return out;
+      /* Play's word: the rollout may not have reached this phone yet */
+      return Upd.check().then(function (p) {
+        playHas = !!(p && (p.available || p.inProgress));
+        return p && p.answered && !p.available && !p.inProgress ? null : out;
+      }, function () { return out; });
+    }).catch(function () { return null; });
+  };
+  /* the button: Play's own update screen, or the store's page */
+  PLAT.updateGo = function () {
+    function page() {
+      var a = document.createElement('a');
+      a.href = STORE; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    if (!IOS && playHas && Upd && Upd.start) {
+      Upd.start().then(function (r) { if (!r || !r.started) page(); }, page);
+    } else page();
+  };
+
   /* ---- full screen ---- */
   /* Capacitor's own SystemBars runs the page edge to edge, the way Android
      15 does it (insetsHandling in capacitor.config.json); the page keeps

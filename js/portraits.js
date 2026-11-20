@@ -1225,3 +1225,220 @@ function drawPortrait(cv, size, id, alt) {
   c.clearRect(0, 0, size, size);
   paintPortrait(c, size, id, alt);
 }
+
+/* ---- Emblems (1.3.3): a title's icon and a trophy's medal ----
+   The owner, 20 Nov 2026: titles get icons, and a player picks up to three
+   of their trophies as medals, shown on their card (in My profile, and on
+   the board when someone opens it). Each is a small glyph drawn in a box
+   from -1 to 1, the same glyph for a title and the trophies of its kind. */
+var EMBLEM_GLYPH = {
+  flake: function (c) {
+    c.lineWidth = .16; c.lineCap = 'round';
+    for (var i = 0; i < 6; i++) {
+      c.save(); c.rotate(i * Math.PI / 3);
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -.82);
+      c.moveTo(0, -.45); c.lineTo(-.22, -.64); c.moveTo(0, -.45); c.lineTo(.22, -.64);
+      c.stroke(); c.restore();
+    }
+  },
+  mountain: function (c) {
+    c.beginPath(); c.moveTo(-.9, .62); c.lineTo(-.28, -.5); c.lineTo(.02, .02); c.lineTo(.3, -.28); c.lineTo(.9, .62); c.closePath(); c.fill();
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    c.beginPath(); c.moveTo(-.28, -.5); c.lineTo(-.48, -.14); c.lineTo(-.34, -.2); c.lineTo(-.24, -.08); c.lineTo(-.12, -.21); c.closePath(); c.fill();
+    c.restore();
+  },
+  fish: function (c) {
+    c.beginPath(); c.moveTo(-.55, 0);
+    c.quadraticCurveTo(-.05, -.6, .5, 0); c.quadraticCurveTo(-.05, .6, -.55, 0); c.fill();
+    c.beginPath(); c.moveTo(-.45, 0); c.lineTo(-.88, -.38); c.lineTo(-.8, 0); c.lineTo(-.88, .38); c.closePath(); c.fill();
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    c.beginPath(); c.arc(.22, -.07, .08, 0, 7); c.fill(); c.restore();
+  },
+  path: function (c) {
+    c.lineWidth = .2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-.6, .75); c.bezierCurveTo(.6, .45, -.7, -.15, .1, -.4); c.stroke();
+    c.beginPath(); c.moveTo(.1, -.85); c.lineTo(.1, -.35); c.lineWidth = .1; c.stroke();
+    c.beginPath(); c.moveTo(.1, -.85); c.lineTo(.62, -.7); c.lineTo(.1, -.55); c.closePath(); c.fill();
+  },
+  star: function (c) {
+    c.beginPath();
+    for (var i = 0; i < 10; i++) { var r = i % 2 ? .38 : .88, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r + .05); }
+    c.closePath(); c.fill();
+  },
+  watch: function (c) {
+    c.lineWidth = .16; c.lineCap = 'round';
+    c.beginPath(); c.arc(0, .1, .62, 0, 7); c.stroke();
+    c.fillRect(-.16, -.86, .32, .18);
+    c.beginPath(); c.moveTo(0, .1); c.lineTo(0, -.28); c.moveTo(0, .1); c.lineTo(.26, .24); c.stroke();
+  },
+  avalanche: function (c) {
+    c.beginPath(); c.moveTo(-.9, .7); c.lineTo(.9, .7); c.lineTo(.9, -.2); c.closePath(); c.fill();
+    [[-.45, -.3, .2], [-.05, -.55, .17], [.35, -.68, .14], [-.62, .1, .15]].forEach(function (b) { c.beginPath(); c.arc(b[0], b[1], b[2], 0, 7); c.fill(); });
+  },
+  calendar: function (c) {
+    c.lineWidth = .14;
+    c.beginPath(); c.rect(-.7, -.55, 1.4, 1.3); c.stroke();
+    c.fillRect(-.7, -.55, 1.4, .34);
+    c.fillRect(-.42, -.85, .14, .4); c.fillRect(.28, -.85, .14, .4);
+    c.beginPath(); c.moveTo(-.32, .26); c.lineTo(-.06, .5); c.lineTo(.36, .02); c.lineWidth = .16; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke();
+  },
+  paw: function (c) {
+    c.beginPath(); c.ellipse(0, .32, .4, .34, 0, 0, 7); c.fill();
+    [[-.55, -.12, .17], [-.22, -.48, .18], [.22, -.48, .18], [.55, -.12, .17]].forEach(function (b) { c.beginPath(); c.ellipse(b[0], b[1], b[2] * .85, b[2] * 1.1, b[0] * .5, 0, 7); c.fill(); });
+  },
+  crown: function (c) {
+    c.beginPath(); c.moveTo(-.8, .5); c.lineTo(-.85, -.4); c.lineTo(-.4, .02); c.lineTo(0, -.62); c.lineTo(.4, .02); c.lineTo(.85, -.4); c.lineTo(.8, .5); c.closePath(); c.fill();
+    c.fillRect(-.8, .58, 1.6, .2);
+    [[-.85, -.48], [0, -.72], [.85, -.48]].forEach(function (b) { c.beginPath(); c.arc(b[0], b[1], .12, 0, 7); c.fill(); });
+  },
+  flag: function (c) {
+    c.fillRect(-.55, -.8, .13, 1.6);
+    c.beginPath(); c.moveTo(-.45, -.78); c.quadraticCurveTo(0, -.95, .25, -.7); c.quadraticCurveTo(.5, -.5, .75, -.62); c.lineTo(.75, .02); c.quadraticCurveTo(.5, .12, .25, -.04); c.quadraticCurveTo(0, -.25, -.45, -.1); c.closePath(); c.fill();
+  },
+  coin: function (c) {
+    c.beginPath(); c.arc(0, 0, .78, 0, 7); c.fill();
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    c.lineWidth = .1; c.beginPath(); c.arc(0, 0, .58, 0, 7); c.stroke();
+    c.beginPath(); for (var i = 0; i < 10; i++) { var r = i % 2 ? .16 : .38, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r + .03); } c.closePath(); c.fill();
+    c.restore();
+  },
+  ring: function (c) {
+    c.lineWidth = .2;
+    c.beginPath(); c.ellipse(0, 0, .5, .78, 0, 0, 7); c.stroke();
+    c.lineWidth = .08; c.beginPath(); c.moveTo(-.9, .55); c.quadraticCurveTo(0, .1, .9, -.55); c.stroke();
+  },
+  jump: function (c) {
+    c.beginPath(); c.moveTo(-.9, .72); c.lineTo(.1, .72); c.lineTo(.1, .3); c.closePath(); c.fill();
+    c.lineWidth = .14; c.lineCap = 'round'; c.setLineDash([.18, .14]);
+    c.beginPath(); c.moveTo(.1, .2); c.quadraticCurveTo(.4, -.7, .8, -.2); c.stroke(); c.setLineDash([]);
+    c.beginPath(); c.arc(.5, -.5, .16, 0, 7); c.fill();
+  },
+  shield: function (c) {
+    c.beginPath(); c.moveTo(0, -.85); c.lineTo(.7, -.58); c.quadraticCurveTo(.7, .45, 0, .88); c.quadraticCurveTo(-.7, .45, -.7, -.58); c.closePath(); c.fill();
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    c.lineWidth = .15; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(-.28, 0); c.lineTo(-.04, .25); c.lineTo(.32, -.22); c.stroke(); c.restore();
+  },
+  gem: function (c) {
+    c.beginPath(); c.moveTo(-.75, -.25); c.lineTo(-.4, -.68); c.lineTo(.4, -.68); c.lineTo(.75, -.25); c.lineTo(0, .82); c.closePath(); c.fill();
+    c.save(); c.globalCompositeOperation = 'destination-out'; c.lineWidth = .07;
+    c.beginPath(); c.moveTo(-.75, -.25); c.lineTo(.75, -.25); c.moveTo(-.2, -.68); c.lineTo(-.3, -.25); c.lineTo(0, .7); c.moveTo(.2, -.68); c.lineTo(.3, -.25); c.stroke(); c.restore();
+  },
+  bolt: function (c) {
+    c.beginPath(); c.moveTo(.2, -.9); c.lineTo(-.55, .12); c.lineTo(-.05, .12); c.lineTo(-.22, .9); c.lineTo(.58, -.18); c.lineTo(.06, -.18); c.closePath(); c.fill();
+  },
+  burst: function (c) {
+    c.beginPath();
+    for (var i = 0; i < 16; i++) { var r = i % 2 ? .38 : (i % 4 ? .7 : .9), a = i * Math.PI / 8; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+  },
+  heart: function (c) {
+    c.beginPath(); c.moveTo(0, .78);
+    c.bezierCurveTo(-.95, .1, -.75, -.85, 0, -.38); c.bezierCurveTo(.75, -.85, .95, .1, 0, .78); c.fill();
+  },
+  fork: function (c) {
+    c.lineWidth = .2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, .85); c.lineTo(0, .05); c.quadraticCurveTo(0, -.25, -.5, -.55); c.moveTo(0, .05); c.quadraticCurveTo(0, -.25, .5, -.55); c.stroke();
+    c.beginPath(); c.moveTo(-.72, -.76); c.lineTo(-.32, -.74); c.lineTo(-.62, -.4); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(.72, -.76); c.lineTo(.32, -.74); c.lineTo(.62, -.4); c.closePath(); c.fill();
+  }
+};
+/* a title's glyph and its colours (top, bottom) */
+var TITLE_ICON = {
+  rookie: ['flake', '#8fd6ff', '#2f86d6'], far: ['mountain', '#9ad7ff', '#3069b8'], fisher: ['fish', '#ffb08a', '#e0563a'],
+  liner: ['path', '#a6e88a', '#2f9a52'], stars: ['star', '#ffe27a', '#e09a12'], clock: ['watch', '#ffd08a', '#e0702a'],
+  storm: ['avalanche', '#c8e4ff', '#5470c8'], daily: ['calendar', '#ffa6c8', '#d0457e'], keeper: ['paw', '#e0b48a', '#8a5a32'],
+  legend: ['crown', '#fff0a0', '#d08a00']
+};
+/* a trophy's glyph */
+var ACH_GLYPH = {
+  first: 'flag', dist500: 'mountain', dist2000: 'mountain', dist5000: 'mountain', runfish30: 'fish', fish500: 'fish', fish3000: 'fish',
+  gold1: 'coin', gold25: 'coin', gates100: 'ring', jump1: 'jump', jump50: 'jump', saves10: 'shield', wear3: 'paw', wearAll: 'paw',
+  find1: 'gem', find10: 'gem', rush5: 'bolt', smash50: 'burst', revive1: 'heart', forks10: 'fork', lines1: 'path', linesAll: 'path',
+  stars18: 'star', rush500: 'watch', rush2000: 'watch', clocks50: 'watch', daily1: 'calendar', streak3: 'calendar', streak7: 'calendar',
+  av500: 'avalanche', av1500: 'avalanche', avrings50: 'ring'
+};
+/* a medal's metal from what the trophy pays */
+var MEDAL_METAL = {
+  bronze: ['#ffd2a6', '#d08850', '#8a4e22', '#6a3612', '#c0563a'],
+  silver: ['#ffffff', '#c6d4e0', '#7d93a8', '#45596c', '#3a7ad6'],
+  gold:   ['#fff6c0', '#ffcf3a', '#d08a00', '#7a4a00', '#d83a3a']
+};
+function medalMetal(a) { var r = a ? a.reward : 0; return r >= 200 ? 'gold' : r >= 75 ? 'silver' : 'bronze'; }
+function emblemCanvas(cv, size) {
+  var k = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.width = Math.round(size * k); cv.height = Math.round(size * k);
+  cv.style.width = size + 'px'; cv.style.height = size + 'px';
+  var c = cv.getContext('2d');
+  c.setTransform(k, 0, 0, k, 0, 0); c.clearRect(0, 0, size, size);
+  return c;
+}
+function paintGlyph(c, g, cx, cy, r, col) {
+  if (!EMBLEM_GLYPH[g]) return;
+  c.save(); c.translate(cx, cy); c.scale(r, r);
+  c.fillStyle = col; c.strokeStyle = col;
+  EMBLEM_GLYPH[g](c);
+  c.restore();
+}
+/* plain: the glyph alone, in one colour (on the card's ribbon) */
+function drawTitleIcon(cv, size, id, plain) {
+  if (!cv || !cv.getContext) return;
+  var T = TITLE_ICON[id] || TITLE_ICON.rookie, c = emblemCanvas(cv, size), m = size / 2;
+  if (plain) {
+    /* drawn on a layer of its own, so its cut-outs go through to the ribbon */
+    paintGlyph(c, T[0], m, m, m * .92, typeof plain === 'string' ? plain : '#fff');
+    return;
+  }
+  var g = c.createLinearGradient(0, 0, 0, size);
+  g.addColorStop(0, T[1]); g.addColorStop(1, T[2]);
+  c.fillStyle = 'rgba(0,30,70,.25)'; c.beginPath(); c.arc(m, m + size * .04, m * .94, 0, 7); c.fill();
+  c.fillStyle = g; c.beginPath(); c.arc(m, m, m * .92, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = Math.max(1, size * .05);
+  c.beginPath(); c.arc(m, m, m * .8, 0, 7); c.stroke();
+  /* the glyph cut on its own layer, then laid on with a soft shadow */
+  var L = document.createElement('canvas'); L.width = cv.width; L.height = cv.height;
+  var lc = L.getContext('2d'), k = cv.width / size; lc.setTransform(k, 0, 0, k, 0, 0);
+  paintGlyph(lc, T[0], m, m, m * .56, '#fff');
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+  c.shadowColor = 'rgba(0,30,60,.4)'; c.shadowOffsetY = size * k * .03; c.shadowBlur = size * k * .03;
+  c.drawImage(L, 0, 0); c.restore();
+}
+/* a trophy as a medal: a ribbon, a disc of bronze, silver or gold by what
+   it pays, and the trophy's glyph struck into it */
+function drawMedal(cv, size, achId) {
+  if (!cv || !cv.getContext) return;
+  var a = null;
+  if (typeof ACHIEVEMENTS !== 'undefined') for (var i = 0; i < ACHIEVEMENTS.length; i++) if (ACHIEVEMENTS[i].id === achId) a = ACHIEVEMENTS[i];
+  var M = MEDAL_METAL[medalMetal(a)], c = emblemCanvas(cv, size), s = size;
+  var cx = s / 2, cy = s * .6, r = s * .36;
+  /* the ribbon: two strips crossing behind the disc */
+  [[-1, M[4]], [1, '#ffffff']].forEach(function (q, n) {
+    c.fillStyle = n ? M[4] : M[4]; c.globalAlpha = n ? .85 : 1;
+    c.beginPath(); c.moveTo(cx + q[0] * s * .3, 0); c.lineTo(cx + q[0] * s * .08, 0); c.lineTo(cx - q[0] * s * .14, cy - r * .5); c.lineTo(cx - q[0] * s * .34, cy - r * .7); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.45)';
+    c.beginPath(); c.moveTo(cx + q[0] * s * .22, 0); c.lineTo(cx + q[0] * s * .17, 0); c.lineTo(cx - q[0] * s * .23, cy - r * .58); c.lineTo(cx - q[0] * s * .26, cy - r * .62); c.closePath(); c.fill();
+  });
+  c.globalAlpha = 1;
+  /* the disc */
+  c.fillStyle = 'rgba(0,20,50,.28)'; c.beginPath(); c.arc(cx, cy + s * .03, r, 0, 7); c.fill();
+  var g = c.createRadialGradient(cx - r * .35, cy - r * .4, r * .1, cx, cy, r * 1.05);
+  g.addColorStop(0, M[0]); g.addColorStop(.45, M[1]); g.addColorStop(1, M[2]);
+  c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill();
+  c.strokeStyle = M[3]; c.globalAlpha = .55; c.lineWidth = Math.max(1, s * .025);
+  c.beginPath(); c.arc(cx, cy, r * .8, 0, 7); c.stroke(); c.globalAlpha = 1;
+  /* little notches round the rim */
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  for (var j = 0; j < 16; j++) { var an = j * Math.PI / 8; c.beginPath(); c.arc(cx + Math.cos(an) * r * .9, cy + Math.sin(an) * r * .9, s * .012, 0, 7); c.fill(); }
+  /* the glyph, struck: a light edge under, the dark metal on top */
+  var gl = ACH_GLYPH[achId] || 'star';
+  var L = document.createElement('canvas'); L.width = cv.width; L.height = cv.height;
+  var lc = L.getContext('2d'), k = cv.width / s; lc.setTransform(k, 0, 0, k, 0, 0);
+  paintGlyph(lc, gl, cx, cy, r * .56, M[3]);
+  var H = document.createElement('canvas'); H.width = cv.width; H.height = cv.height;
+  var hc = H.getContext('2d'); hc.setTransform(k, 0, 0, k, 0, 0);
+  paintGlyph(hc, gl, cx, cy + s * .015, r * .56, 'rgba(255,255,255,.75)');
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(H, 0, 0); c.globalAlpha = .9; c.drawImage(L, 0, 0); c.restore();
+  /* a shine across the top */
+  c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.clip();
+  c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.ellipse(cx - r * .3, cy - r * .55, r * .55, r * .22, -.5, 0, 7); c.fill(); c.restore();
+}

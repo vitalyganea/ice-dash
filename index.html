@@ -113,6 +113,11 @@
          text at the very bottom, off the screen on a laptop. -->
     <!-- In the Android app it is also the way to the board: a tap opens it,
          and once Google has said, the player's own place is on it too. -->
+    <!-- My profile beside the best: the player's avatar in its frame, round
+         and small, no words, no snow, between the logo and Freeride (the
+         owner, 20 Nov 2026); its name is for a screen reader -->
+    <div class="title-me">
+    <button class="prof-orb" id="btn-profile" data-action="profile" data-i18n-aria="btn.profile" aria-label="My profile"></button>
     <div id="title-best" class="best-plaque hidden" role="status">
       <span class="bp-star" aria-hidden="true"></span>
       <span class="bp-text"><span class="bp-lab" id="bp-lab">Best</span><b class="bp-num" id="bp-num">0</b></span>
@@ -121,6 +126,7 @@
         <b class="bp-num" id="bp-rank-num"></b><span class="bp-lab" id="bp-rank-lab">Leaderboard</span>
         <span class="bp-go"></span>
       </span>
+    </div>
     </div>
     </div>
     <div class="title-menu">
@@ -150,14 +156,18 @@
       </button>
     </div>
     <div class="btn-row">
+      <!-- the free gift, every twelve hours, hangs off the Market's left
+           side so the Market stays in the middle (1.3.3) -->
+      <span class="market-wrap">
       <button class="btn btn-gold market-btn" data-action="shop"><span data-i18n="btn.market">Market</span><span id="market-badge" class="badge hidden" aria-hidden="true">!</span></button>
+      <button class="gift-btn hidden" id="btn-gift" data-action="gift" data-i18n-aria="gift.aria" aria-label="A free gift"><canvas></canvas></button>
+      </span>
     </div>
     <button id="title-tasks" class="tasks-chip hidden" data-action="trophies"></button>
     <div class="btn-row row-three">
       <button class="btn btn-ghost" data-action="help" data-i18n="btn.help">How to play</button>
       <button class="btn btn-ghost market-btn" data-action="trophies"><span data-i18n="btn.trophies">Trophies</span><span id="ach-badge" class="badge hidden" aria-hidden="true">!</span></button>
       <button class="btn btn-ghost" data-action="settings" data-i18n="btn.settings">Settings</button>
-      <button class="btn btn-ghost" data-action="profile" data-i18n="btn.profile">My profile</button>
     </div>
     </div>
   </div>
@@ -312,6 +322,11 @@
       <div id="shop-supply" class="shop-supply"></div>
       <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
       <div id="shop-grid" class="shop-grid"></div>
+      <!-- the frames for the player's card, bought here (1.3.3: My profile
+           shows only what the player has) -->
+      <h3 class="set-head shop-frames-head" data-i18n="prof.frames">Frames</h3>
+      <div id="shop-frames" class="look-grid"></div>
+      <div id="shop-frame-buy" class="look-buy hidden"><span id="shop-frame-name" class="look-buy-name"></span><button id="shop-frame-btn" class="btn"></button></div>
     </div>
   </div>
 </section>
@@ -475,16 +490,32 @@
        owned, or one of their skins, as a portrait), the frames and the titles -->
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="prof.title">My profile</h2>
+    <!-- the player's card, big, in its frame's colours (1.3.3); what is
+         picked below shows on it at once -->
     <div id="prof-preview" class="prof-preview"></div>
-    <p class="shop-note" data-i18n="prof.note">Your card goes on the leaderboard with your next best.</p>
-    <h3 class="set-head" data-i18n="prof.avatar">Avatar</h3>
-    <p class="shop-note" data-i18n="prof.avNote">Any creature you own, or one of their skins.</p>
-    <div id="prof-avatars" class="av-grid"></div>
-    <div id="prof-buy" class="look-buy hidden"><span id="prof-buy-name" class="look-buy-name"></span><button id="prof-buy-btn" class="btn"></button></div>
-    <h3 class="set-head" data-i18n="prof.frames">Frames</h3>
-    <div id="prof-frames" class="look-grid"></div>
-    <h3 class="set-head" data-i18n="prof.titles">Titles</h3>
-    <div id="prof-titles" class="title-list"></div>
+    <p class="shop-note" data-i18n="prof.note">Your card shows on the leaderboard as soon as you change it.</p>
+    <!-- three tabs rather than one long list (the owner, 20 Nov 2026) -->
+    <div class="prof-tabs" role="tablist">
+      <button class="prof-tab on" data-ptab="av" role="tab" data-i18n="prof.avatar">Avatar</button>
+      <button class="prof-tab" data-ptab="fr" role="tab" data-i18n="prof.frames">Frames</button>
+      <button class="prof-tab" data-ptab="ti" role="tab" data-i18n="prof.titles">Titles</button>
+      <button class="prof-tab" data-ptab="me" role="tab" data-i18n="prof.medals">Medals</button>
+    </div>
+    <div class="prof-pane" data-pane="av">
+      <p class="shop-note" data-i18n="prof.avNote">Any creature you own, or one of their skins.</p>
+      <div id="prof-avatars" class="av-grid"></div>
+    </div>
+    <div class="prof-pane hidden" data-pane="fr">
+      <div id="prof-frames" class="look-grid"></div>
+    </div>
+    <div class="prof-pane hidden" data-pane="ti">
+      <div id="prof-titles" class="title-list"></div>
+    </div>
+    <!-- up to three trophies on the card, as medals (1.3.3) -->
+    <div class="prof-pane hidden" data-pane="me">
+      <p class="shop-note" id="prof-medal-note"></p>
+      <div id="prof-medals" class="medal-grid"></div>
+    </div>
   </div>
 </section>
 
@@ -515,12 +546,41 @@
   </div>
 </div>
 
+<!-- A newer version in the store (native.js PLAT.updateCheck; the apps
+     only, 1.3.3): what is new, and the way to it. With "upd-must" (a
+     version older than version.json's min) it cannot be put away. -->
+<div id="sheet-update" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sheet-update-title">
+  <div class="panel sheet-card upd-card">
+    <button class="sheet-x" data-action="close-sheet" data-i18n-aria="btn.close" aria-label="Close"></button>
+    <h3 id="sheet-update-title" class="sheet-name" data-i18n="upd.title">A new Ice Dasher is out</h3>
+    <p id="sheet-update-ver" class="upd-ver"></p>
+    <p id="sheet-update-must" class="upd-must hidden" data-i18n="upd.must">This version is too old to keep playing. Update to carry on — your progress stays.</p>
+    <p class="upd-head" data-i18n="upd.new">What is new</p>
+    <ul id="sheet-update-notes" class="upd-notes"></ul>
+    <div class="btn-row upd-row">
+      <button class="btn btn-big btn-green" id="sheet-update-go" data-i18n="upd.go">Update</button>
+    </div>
+    <button class="btn btn-ghost btn-sm upd-later" data-action="close-sheet" data-i18n="upd.later">Later</button>
+  </div>
+</div>
+
 <!-- A player's card, from a tap on their row on the board (1.3.0) -->
 <div id="sheet-prof" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Profile">
   <div class="panel sheet-card">
     <button class="sheet-x" data-action="close-sheet" data-i18n-aria="btn.close" aria-label="Close"></button>
     <div id="sheet-prof-card" class="prof-preview"></div>
     <p id="sheet-prof-note" class="shop-note"></p>
+  </div>
+</div>
+
+<!-- what the free gift held (1.3.3) -->
+<div id="sheet-gift" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="gift-title">
+  <div class="panel sheet-card gift-card">
+    <h2 class="panel-title-text" id="gift-title" data-i18n="gift.title">A gift for you!</h2>
+    <canvas id="gift-art" class="gift-art" aria-hidden="true" width="220" height="220"></canvas>
+    <p id="gift-prize" class="gift-prize" role="status"></p>
+    <p class="shop-note" data-i18n="gift.next">The next one comes in 12 hours.</p>
+    <div class="btn-row"><button class="btn btn-green" data-action="close-sheet" data-i18n="gift.ok">Great!</button></div>
   </div>
 </div>
 

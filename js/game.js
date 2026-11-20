@@ -838,7 +838,8 @@ var Game = (function () {
       var gh = hh(d, 3), gside = hh(d, 5) < 0.5 ? -1 : 1, gfd = d + 30;
       W.objects.push({ t: 'gift', x: place(gap + gside * Math.min(gapW / 2 - 22, 26 + gh * 46), gfd), d: gfd,
                        r: 18, got: false, ph: hh(d, 7) * 6.28, v: Math.floor(hh(d, 9) * 3),
-                       flip: hh(d, 13) < 0.5 });   // some face the other way (the owner, 20 Nov 2026)
+                       flip: hh(d, 13) < 0.5,       // some face the other way (the owner, 20 Nov 2026)
+                       k: Math.floor(hh(d, 15) * 3) });  // and three kinds: a box, a round box, a cracker (1.3.3)
       W.nextGiftD = d + GIFT_EVERY * (0.8 + hh(d, 11) * 0.4);
     }
     var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
@@ -3965,7 +3966,141 @@ var Game = (function () {
     { box: '#2c9e57', dark: '#17653a', lite: '#73d896', rib: '#ef4148', ribD: '#9c1f25', ribL: '#ff9a9a', pat: 'flake', ink: 'rgba(255,255,255,.6)' },
     { box: '#3a7fe0', dark: '#1e4e9e', lite: '#87bbff', rib: '#f6f8fc', ribD: '#aebbd0', ribL: '#ffffff', pat: 'star',  ink: 'rgba(255,224,120,.75)' }
   ];
-  function paintGift(c, cx, cy, s, v, flip) {
+  /* The gift's paper pattern over whatever is clipped (dots, snowflakes or
+     stars, by its colour), and a bow of two folded loops with tails: shared
+     by the round box and the cracker (1.3.3, the owner: three kinds of
+     gift, not one turned about). */
+  function giftPattern(c, C, s, x0, y0, w, h) {
+    c.fillStyle = C.ink; c.strokeStyle = C.ink; c.lineWidth = Math.max(0.6, s * 0.035); c.lineCap = 'round';
+    for (var yy = -1; yy * s * 0.28 < h + s * 0.3; yy++) for (var xx = -1; xx * s * 0.3 < w + s * 0.3; xx++) {
+      var px = x0 + xx * s * 0.3 + (yy % 2) * s * 0.15, py = y0 + yy * s * 0.28;
+      if (C.pat === 'dots') { c.beginPath(); c.arc(px, py, s * 0.05, 0, 6.2832); c.fill(); }
+      else if (C.pat === 'star') {
+        c.beginPath();
+        for (var a = 0; a < 10; a++) { var rr = a % 2 ? s * 0.03 : s * 0.075, an = a * Math.PI / 5 - Math.PI / 2;
+          if (a) c.lineTo(px + Math.cos(an) * rr, py + Math.sin(an) * rr); else c.moveTo(px + Math.cos(an) * rr, py + Math.sin(an) * rr); }
+        c.closePath(); c.fill();
+      } else {
+        c.beginPath();
+        for (var b = 0; b < 3; b++) { var ba = b * Math.PI / 3; c.moveTo(px - Math.cos(ba) * s * 0.07, py - Math.sin(ba) * s * 0.07); c.lineTo(px + Math.cos(ba) * s * 0.07, py + Math.sin(ba) * s * 0.07); }
+        c.stroke();
+      }
+    }
+  }
+  function giftBow(c, C, bx, by, s, k) {
+    k = k || 1;
+    [-1, 1].forEach(function (d) {                                   // two tails, curling
+      c.fillStyle = C.ribD;
+      c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + d * s * 0.2 * k, by + s * 0.25 * k, bx + d * s * 0.34 * k, by + s * 0.34 * k);
+      c.lineTo(bx + d * s * 0.24 * k, by + s * 0.38 * k); c.quadraticCurveTo(bx + d * s * 0.12 * k, by + s * 0.22 * k, bx - d * s * 0.04 * k, by + s * 0.04 * k); c.closePath(); c.fill();
+    });
+    [-1, 1].forEach(function (d) {                                   // two loops, folded
+      var lx = bx + d * s * 0.3 * k, ly = by - s * 0.14 * k;
+      var g = c.createRadialGradient(lx - d * s * 0.06 * k, ly - s * 0.08 * k, 0, lx, ly, s * 0.34 * k);
+      g.addColorStop(0, C.ribL); g.addColorStop(0.5, C.rib); g.addColorStop(1, C.ribD);
+      c.fillStyle = g;
+      c.beginPath(); c.moveTo(bx, by - s * 0.05 * k);
+      c.bezierCurveTo(bx + d * s * 0.18 * k, by - s * 0.5 * k, bx + d * s * 0.6 * k, by - s * 0.32 * k, bx + d * s * 0.5 * k, by - s * 0.06 * k);
+      c.bezierCurveTo(bx + d * s * 0.42 * k, by + s * 0.1 * k, bx + d * s * 0.16 * k, by + s * 0.04 * k, bx, by - s * 0.02 * k); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.22)';
+      c.beginPath(); c.moveTo(bx + d * s * 0.06 * k, by - s * 0.06 * k);
+      c.quadraticCurveTo(bx + d * s * 0.3 * k, by - s * 0.26 * k, bx + d * s * 0.4 * k, by - s * 0.1 * k);
+      c.quadraticCurveTo(bx + d * s * 0.26 * k, by - s * 0.06 * k, bx + d * s * 0.06 * k, by - s * 0.03 * k); c.closePath(); c.fill();
+    });
+    var kg = c.createRadialGradient(bx - s * 0.04 * k, by - s * 0.08 * k, 0, bx, by - s * 0.04 * k, s * 0.13 * k);
+    kg.addColorStop(0, C.ribL); kg.addColorStop(1, C.ribD);
+    c.fillStyle = kg; c.beginPath(); c.ellipse(bx, by - s * 0.04 * k, s * 0.12 * k, s * 0.1 * k, 0, 0, 6.2832); c.fill();
+  }
+  function giftGlint(c, x, y, gs) {
+    c.fillStyle = 'rgba(255,255,255,.9)';
+    c.beginPath(); c.moveTo(x, y - gs); c.quadraticCurveTo(x, y, x + gs, y); c.quadraticCurveTo(x, y, x, y + gs);
+    c.quadraticCurveTo(x, y, x - gs, y); c.quadraticCurveTo(x, y, x, y - gs); c.fill();
+  }
+  /* A round hatbox: a drum of patterned paper, lit from the left, its lid a
+     little wider with a band, a ribbon down its front and over the lid,
+     the bow on top and a pinch of snow on the lid's rim. */
+  function giftRound(c, C, cx, cy, s) {
+    var rx = s * 0.78, ry = s * 0.3, bodyT = cy - s * 0.32, bodyB = cy + s * 0.52, lidH = s * 0.2, lo = s * 0.07;
+    function drum(t, b, r) { c.beginPath(); c.moveTo(cx - r, t); c.lineTo(cx - r, b); c.ellipse(cx, b, r, ry, 0, Math.PI, 0, true); c.lineTo(cx + r, t); c.ellipse(cx, t, r, ry, 0, 0, Math.PI, false); c.closePath(); }
+    var g = c.createLinearGradient(cx - rx, 0, cx + rx, 0);         // the drum, lit from the left
+    g.addColorStop(0, C.lite); g.addColorStop(0.35, C.box); g.addColorStop(1, C.dark);
+    drum(bodyT, bodyB, rx); c.fillStyle = g; c.fill();
+    c.save(); drum(bodyT, bodyB, rx); c.clip(); giftPattern(c, C, s, cx - rx, bodyT - ry, rx * 2, bodyB - bodyT + ry * 2);
+    var sh = c.createLinearGradient(cx - rx, 0, cx + rx, 0);         // the curve's shade over the pattern
+    sh.addColorStop(0, 'rgba(255,255,255,.18)'); sh.addColorStop(0.5, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.28)');
+    c.fillStyle = sh; c.fillRect(cx - rx, bodyT - ry, rx * 2, bodyB - bodyT + ry * 2);
+    c.restore();
+    var rw = s * 0.2;                                                // the ribbon down the front
+    var rg = c.createLinearGradient(cx - rw / 2, 0, cx + rw / 2, 0);
+    rg.addColorStop(0, C.ribD); rg.addColorStop(0.4, C.rib); rg.addColorStop(0.6, C.ribL); rg.addColorStop(1, C.ribD);
+    c.fillStyle = rg; c.beginPath(); c.moveTo(cx - rw / 2, bodyT); c.lineTo(cx - rw / 2, bodyB + ry * 0.98); c.lineTo(cx + rw / 2, bodyB + ry * 0.98); c.lineTo(cx + rw / 2, bodyT); c.closePath(); c.fill();
+    var lt = bodyT - lidH, lr = rx + lo;                             // the lid: a band, then its top
+    var lg = c.createLinearGradient(cx - lr, 0, cx + lr, 0);
+    lg.addColorStop(0, C.lite); lg.addColorStop(0.4, C.box); lg.addColorStop(1, C.dark);
+    drum(lt, bodyT + s * 0.04, lr); c.fillStyle = lg; c.fill();
+    c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(cx, bodyT + s * 0.05, lr, ry, 0, 0, Math.PI); c.lineTo(cx - lr, bodyT + s * 0.05); c.fill();
+    c.fillStyle = rg; c.fillRect(cx - rw / 2, lt, rw, bodyT + s * 0.04 - lt + ry * 0.95);
+    var tg = c.createRadialGradient(cx - lr * 0.35, lt - ry * 0.3, 0, cx, lt, lr);
+    tg.addColorStop(0, C.lite); tg.addColorStop(1, C.box);
+    c.beginPath(); c.ellipse(cx, lt, lr, ry, 0, 0, 6.2832); c.fillStyle = tg; c.fill();
+    c.save(); c.beginPath(); c.ellipse(cx, lt, lr, ry, 0, 0, 6.2832); c.clip(); giftPattern(c, C, s, cx - lr, lt - ry, lr * 2, ry * 2);
+    c.fillStyle = C.rib; c.fillRect(cx - rw / 2, lt - ry, rw, ry * 2); c.fillRect(cx - lr, lt - rw * 0.3, lr * 2, rw * 0.6);
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,.65)'; c.lineWidth = Math.max(0.6, s * 0.04);
+    c.beginPath(); c.ellipse(cx, lt, lr, ry, 0, Math.PI * 0.95, Math.PI * 1.6); c.stroke();
+    giftBow(c, C, cx + s * 0.02, lt - s * 0.04, s, 0.95);
+    c.fillStyle = 'rgba(255,255,255,.95)';                           // snow on the lid's far rim
+    c.beginPath(); c.ellipse(cx + lr * 0.55, lt - ry * 0.7, s * 0.2, s * 0.07, 0.25, 0, 6.2832); c.fill();
+    giftGlint(c, cx - rx * 0.6, cy + s * 0.05, s * 0.09);
+  }
+  /* A Christmas cracker: a tube of patterned paper lying across the hill,
+     pinched at both ends with gold bands, its ends opened out and fringed,
+     a small bow at one pinch, lit from the top left. */
+  function giftCracker(c, C, cx, cy, s) {
+    var L = s * 0.66, R = s * 0.4, nk = s * 0.17, eL = s * 0.52, eR = s * 0.5, y = cy + s * 0.06;
+    function tubeGrad(r) {
+      var g = c.createLinearGradient(0, y - r, 0, y + r);
+      g.addColorStop(0, C.lite); g.addColorStop(0.45, C.box); g.addColorStop(1, C.dark); return g;
+    }
+    [-1, 1].forEach(function (d) {                                   // the opened ends, fringed
+      var x0 = cx + d * (L + nk), x1 = x0 + d * eL;
+      c.beginPath(); c.moveTo(x0, y - R * 0.38);
+      c.lineTo(x1, y - eR);
+      for (var f = 0; f <= 6; f++) { var fy = y - eR + (2 * eR) * f / 6; c.lineTo(x1 + d * (f % 2 ? -s * 0.08 : 0), fy); }
+      c.lineTo(x0, y + R * 0.38); c.closePath();
+      c.fillStyle = tubeGrad(eR); c.fill();
+      c.save(); c.clip(); giftPattern(c, C, s, Math.min(x0, x1), y - eR, eL, eR * 2);
+      c.fillStyle = 'rgba(0,0,0,' + (d > 0 ? 0.22 : 0.08) + ')'; c.fillRect(Math.min(x0, x1), y - eR, eL, eR * 2);
+      c.restore();
+      c.beginPath(); c.ellipse(x1 - d * s * 0.02, y, s * 0.06, eR * 0.92, 0, 0, 6.2832); c.fillStyle = 'rgba(0,0,0,.25)'; c.fill();
+    });
+    [-1, 1].forEach(function (d) {                                   // the pinched necks, gold bands
+      var x0 = cx + d * L, x1 = x0 + d * nk;
+      c.beginPath(); c.moveTo(x0, y - R); c.quadraticCurveTo((x0 + x1) / 2, y - R * 0.3, x1, y - R * 0.4);
+      c.lineTo(x1, y + R * 0.4); c.quadraticCurveTo((x0 + x1) / 2, y + R * 0.3, x0, y + R); c.closePath();
+      c.fillStyle = tubeGrad(R); c.fill();
+      var gg = c.createLinearGradient(0, y - R * 0.5, 0, y + R * 0.5);
+      gg.addColorStop(0, '#fff2b0'); gg.addColorStop(0.5, '#f0c43c'); gg.addColorStop(1, '#a87410');
+      c.fillStyle = gg; c.fillRect(Math.min(x0, x1) + nk * 0.3, y - R * 0.42, nk * 0.4, R * 0.84);
+    });
+    c.beginPath(); c.moveTo(cx - L, y - R); c.lineTo(cx + L, y - R);  // the body
+    c.ellipse(cx + L, y, R * 0.35, R, 0, -Math.PI / 2, Math.PI / 2); c.lineTo(cx - L, y + R);
+    c.ellipse(cx - L, y, R * 0.35, R, 0, Math.PI / 2, Math.PI * 1.5); c.closePath();
+    c.fillStyle = tubeGrad(R); c.fill();
+    c.save(); c.clip(); giftPattern(c, C, s, cx - L - R, y - R, (L + R) * 2, R * 2);
+    var sh = c.createLinearGradient(0, y - R, 0, y + R);
+    sh.addColorStop(0, 'rgba(255,255,255,.3)'); sh.addColorStop(0.3, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
+    c.fillStyle = sh; c.fillRect(cx - L - R, y - R, (L + R) * 2, R * 2);
+    c.fillStyle = C.rib; c.fillRect(cx - s * 0.08, y - R, s * 0.16, R * 2);   // a band round its middle
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = Math.max(0.6, s * 0.035);
+    c.beginPath(); c.moveTo(cx - L * 0.8, y - R * 0.72); c.lineTo(cx + L * 0.6, y - R * 0.72); c.stroke();
+    giftBow(c, C, cx + L + nk * 0.5, y - R * 0.3, s, 0.6);
+    c.fillStyle = 'rgba(255,255,255,.95)';                           // snow along its top
+    c.beginPath(); c.ellipse(cx - L * 0.25, y - R * 0.95, s * 0.24, s * 0.07, 0, 0, 6.2832); c.fill();
+    giftGlint(c, cx - L * 0.55, y - R * 0.2, s * 0.08);
+  }
+  function paintGift(c, cx, cy, s, v, flip, shape) {
     var C = GIFT_COL[v % GIFT_COL.length], k;
     var w = s * 1.32, h = s * 0.96, sd = s * 0.42, top = s * 0.72;  // front, side, how deep the lid reads
     var x0 = cx - w / 2 - sd * 0.25, y0 = cy - h / 2 + top * 0.3, x1 = x0 + w;
@@ -3982,6 +4117,7 @@ var Game = (function () {
       c.beginPath(); c.ellipse(cx + s * 0.28, cy + h * 0.6, w * (0.55 + k * 0.09), s * (0.2 + k * 0.05), 0, 0, 6.2832); c.fill();
     }
     if (flip) { c.translate(cx + s * 0.2, 0); c.scale(-1, 1); c.translate(-cx - s * 0.2, 0); }   // turned the other way; its shadow still falls to the right
+    if (shape === 1 || shape === 2) { (shape === 1 ? giftRound : giftCracker)(c, C, cx, cy, s); c.restore(); return; }
     function paper(face, g0, g1) {                                   // a face of the box, with its pattern
       quad(face);
       var g = c.createLinearGradient(face[0], face[1], face[4], face[5]);
@@ -4066,21 +4202,21 @@ var Game = (function () {
     c.restore();
   }
   var GIFT_PICS = {};
-  function giftPic(v, flip) {
-    var key = v + (flip ? 'f' : '');
+  function giftPic(v, flip, shape) {
+    var key = v + (flip ? 'f' : '') + (shape || 0);
     if (GIFT_PICS[key] !== undefined) return GIFT_PICS[key];
     var P = null;
     if (typeof document !== 'undefined' && document.createElement) {
       var cv = document.createElement('canvas'), g = cv && cv.getContext ? cv.getContext('2d') : null;
-      if (g && g.ellipse) { cv.width = cv.height = 192; paintGift(g, 96, 100, 60, v, flip); P = cv; }
+      if (g && g.ellipse) { cv.width = cv.height = 192; paintGift(g, 96, 100, 60, v, flip, shape); P = cv; }
     }
     return (GIFT_PICS[key] = P);
   }
   function drawGift(x, y, o) {
-    var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0, o.flip);
+    var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0, o.flip, o.k);
     glowAt(ctx, x, y + bob, o.r * 2.1, [[0, '255,236,170', 0.42], [1, '255,236,170', 0]], 1);
     if (P && ctx.drawImage) { var k = s / 60; ctx.drawImage(P, x - 96 * k, y + bob - 100 * k, 192 * k, 192 * k); }
-    else paintGift(ctx, x, y + bob, s, o.v || 0, o.flip);
+    else paintGift(ctx, x, y + bob, s, o.v || 0, o.flip, o.k);
   }
 
 
@@ -12619,13 +12755,13 @@ var Game = (function () {
                                     reach: reachBetweenRows() }; },
     _wallAt: function (d, side) { return wallAt(d, side); },
     /* an event's gift on a canvas of its own (the event page, the HUD's) */
-    drawGift: function (canvas, size, v, flip) {
+    drawGift: function (canvas, size, v, flip, shape) {
       var dpr = Math.min(3, window.devicePixelRatio || 1);
       canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
       canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
       var g = canvas.getContext('2d'); if (!g) return;
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, size, size);
-      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0, flip);
+      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0, flip, shape || 0);
     }
   };
 })();

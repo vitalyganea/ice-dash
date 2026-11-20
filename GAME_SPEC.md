@@ -138,6 +138,20 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
 - **Trophies** for the new modes, the new lines and the streak.
 - **Languages** — English, Russian, Romanian, Spanish, Portuguese (Brazil) and German,
   picked from a window of flags in Settings; a device in any of them starts in it.
+- **My profile** (1.3.3) — the player's card, big, in the colours of its
+  frame: the avatar, a title with its icon, and up to three trophies worn
+  as medals (bronze, silver or gold by what the trophy pays). Only what the
+  player has is listed; frames are bought in the Market. The card goes up
+  to the board with every change (the medals in bits an older build never
+  reads), and a tap on a player there opens the same big card.
+- **A free gift** (1.3.3) — beside the Market every twelve hours: fish
+  (50–120), a golden fish or a life (fish when the lives are full), opened
+  with a little scene. A round avatar between the logo and Freeride is the
+  way into My profile.
+- **A newer version** (1.3.3) — the apps read `version.json` (GitHub Pages)
+  and say what is new, with a button to the store; a version marked `min`
+  cannot be played on until updated. Published there only once a version
+  is live in both stores.
 
 ## Explicit non-goals
 
