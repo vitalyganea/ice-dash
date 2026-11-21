@@ -86,3 +86,42 @@ only.
     calls.
   - App Store Connect: up to 100 achievements, 1000 points in all, 100 at
     most each.
+
+## Make the avatars more real (second pass)
+
+Asked for by the owner, 21 Nov 2026, after the first pass of 1.3.4 (eyes,
+fur and feathers, a head shape of its own for each kind, real flippers and
+paws, the narwhal turned three-quarters). Everything is in `js/portraits.js`.
+Check each one afterwards as the narwhal was checked: big (600 px), one part
+at a time (eyes, head, muzzle or bill, ears, limbs, body, the kind's own
+marks), against the real animal. The musk ox stays as it was in 1.3.3 (the
+owner did not like the new horns).
+
+First, the shared painting (it changes every avatar at once, ~1–1.5 h):
+
+1. **Light and shadow.** One light from the side for all of them: shadow
+   under the brows, the muzzle and the chin; a warm shadow where the head
+   meets the body; cool light bounced up from the snow under the face.
+2. **Fur in layers.** Short on the face, longer on the cheeks and neck,
+   long on the shoulders; strands laid the way they grow (from the nose
+   back to the ears, then down the neck); the outline of a furred head made
+   of strands breaking its edge, not a smooth line.
+3. **Livelier eyes.** The sky or a window reflected in them, a wet corner,
+   and the dark rim of the lid on the mammals.
+
+Then each kind (~2–3 h):
+
+4. **Noses:** the grain of wet nose leather (cats, hare), nostrils with depth.
+5. **Whiskers from their roots:** seal, leopard, otter and hare — rows of
+   whisker pads, each whisker thinning to its tip.
+6. **Inside the ears:** hare, leopard, reindeer, lemming — thin skin, fine
+   veins on the hare's, hairs coming out of the ear.
+7. **Penguins' feathers by zone:** small on the face, larger on the chest;
+   on the emperor and the king, the orange fading to yellow down the neck.
+
+Optional (~45 min):
+
+8. **A soft background with depth** (out-of-focus snow or sky), so the
+   avatar looks photographed, not cut out.
+9. **Colour in the fur:** lighter at the tips, darker at the roots, subtle
+   patches, not one gradient a zone.

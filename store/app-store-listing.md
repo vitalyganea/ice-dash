@@ -32,6 +32,78 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.4 (21 Nov 2026)
+
+The Dragon's egg and the Sakura Garden, upgrades for the timed pickups, the
+Market in tabs, smooth on 90/120 Hz, lifelike avatars, a dearer Market. Under
+500 characters each (Google Play's limit).
+
+en:
+```
+• The Dragon's egg: feed it koi on the new Sakura Garden line for 10 days and a Dragon hatches — he flies over everything every 1000 m
+• A new Sakura Garden with its own music, and the Dragon's comic
+• Upgrades in the Market: make timed pickups last up to twice as long
+• The Market in tabs: friends, frames, upgrades
+• Smoother on 90 and 120 Hz screens
+• More lifelike avatars; ice nodules break open in style
+• A fuller Market and tougher trophies
+```
+
+ro:
+```
+• Oul de dragon: hrănește-l cu pești koi pe noua linie Grădina de sakura 10 zile și iese un Dragon care zboară peste tot la fiecare 1000 m
+• O nouă Grădină de sakura cu muzica ei și povestea Dragonului
+• Îmbunătățiri în Piață: bonusurile cu timp țin până la de două ori mai mult
+• Piața pe tab-uri: creaturi, rame, îmbunătățiri
+• Mai fluid pe ecranele de 90 și 120 Hz
+• Avatare mai realiste; cuburile de gheață se sparg spectaculos
+• O Piață mai bogată și trofee mai grele
+```
+
+ru:
+```
+• Яйцо дракона: корми его карпами кои на новой линии «Сад сакуры» 10 дней — и вылупится Дракон, который каждые 1000 м пролетает над всем
+• Новый Сад сакуры со своей музыкой и история Дракона
+• Улучшения на Рынке: бонусы со временем длятся до двух раз дольше
+• Рынок по вкладкам: друзья, рамки, улучшения
+• Плавнее на экранах 90 и 120 Гц
+• Более живые аватары; ледяные находки раскалываются эффектно
+• Богаче Рынок, сложнее трофеи
+```
+
+es (Spain and Mexico):
+```
+• El huevo del Dragón: aliméntalo con koi en la nueva línea Jardín de sakura durante 10 días y nacerá un Dragón que vuela sobre todo cada 1000 m
+• Un nuevo Jardín de sakura con su propia música y la historia del Dragón
+• Mejoras en el Mercado: los bonus con tiempo duran hasta el doble
+• El Mercado en pestañas: criaturas, marcos, mejoras
+• Más fluido en pantallas de 90 y 120 Hz
+• Avatares más realistas; los bloques de hielo se rompen con estilo
+• Un Mercado más completo y trofeos más difíciles
+```
+
+pt-BR:
+```
+• O ovo do Dragão: alimente-o com koi na nova linha Jardim de sakura por 10 dias e nasce um Dragão que voa sobre tudo a cada 1000 m
+• Um novo Jardim de sakura com música própria e a história do Dragão
+• Melhorias no Mercado: os bônus com tempo duram até o dobro
+• O Mercado em abas: criaturas, molduras, melhorias
+• Mais fluido em telas de 90 e 120 Hz
+• Avatares mais realistas; os blocos de gelo se quebram com estilo
+• Um Mercado mais completo e troféus mais difíceis
+```
+
+de:
+```
+• Das Drachenei: Füttere es 10 Tage mit Koi auf der neuen Linie Kirschblütengarten, und ein Drache schlüpft — er fliegt alle 1000 m über alles hinweg
+• Ein neuer Kirschblütengarten mit eigener Musik und die Geschichte des Drachen
+• Verbesserungen im Markt: Zeit-Boni halten bis zu doppelt so lange
+• Der Markt in Tabs: Tiere, Rahmen, Verbesserungen
+• Flüssiger auf 90- und 120-Hz-Bildschirmen
+• Lebendigere Avatare; Eisfunde zerspringen spektakulär
+• Ein vollerer Markt und schwerere Trophäen
+```
+
 ## What's New in 1.3.3 (20 Nov 2026)
 
 A free gift every 12 hours, medals on your card, My profile made over, a

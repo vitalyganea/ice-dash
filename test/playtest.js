@@ -416,8 +416,11 @@ async function walk(cdp, sid, P) {
        (at a third the hill shimmered on the owner's iPhone 13) */
     var dens = await ev("(function(){var c=document.getElementById('game'),r=[];" +
       "Game.quality({res:2,fx:0});window.dispatchEvent(new Event('resize'));" +
-      "return new Promise(function(res){setTimeout(function(){r.push(c.width/innerWidth);Game.quality({res:'auto',fx:'auto'});" +
+      "return new Promise(function(res){setTimeout(function(){r.push(c.width/innerWidth);Game.quality({res:'auto',fx:'auto'},0);" +
       "window.dispatchEvent(new Event('resize'));setTimeout(function(){r.push(c.width/innerWidth);res(r);},300);},300);});})()");
+    /* (the tier set back to the top first: a headless Chrome drawing a
+       screen of three without a graphics chip is slow enough that the
+       game rightly stepped itself down during the rides before this) */
     ok(dens[0] >= 1.49 && dens[1] >= 1.99, 'Low sharpness keeps half the screen\'s density, Auto all of it (' + dens.map(function (d) { return d.toFixed(2); }).join(', ') + ' canvas pixels to a CSS pixel)');
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }
@@ -1471,12 +1474,12 @@ async function walk(cdp, sid, P) {
     await clickFor('#shop-grid [data-pick="snowcap"]', '#sheet-skin');
     ok(await ev("document.querySelectorAll('#sheet-alts .look-tile').length") === 2,
        'a creature\'s window shows its skins: its own coat and its skin');
-    var f0l = (await readSave()).fish;
+    var f0l = (await readSave()).fish, ALT_PRICE_ZOMBIE = await ev("ALT_SKINS.filter(function(A){return A.id==='zombie';})[0].price");
     await click('#sheet-alts [data-alt="zombie"]');
     ok(await visible('#sheet-alt-buy') && (await readSave()).fish === f0l, 'its skin not bought is tried on, with its price, and nothing is paid');
     await click('#sheet-alt-btn');
     var svl = await readSave();
-    ok(svl.fish === f0l - 800 && svl.alts.own.indexOf('zombie') >= 0 && svl.alts.on.snowcap === 'zombie',
+    ok(svl.fish === f0l - ALT_PRICE_ZOMBIE && svl.alts.own.indexOf('zombie') >= 0 && svl.alts.on.snowcap === 'zombie',
        'Buy pays for it and the creature wears it (' + f0l + ' fish -> ' + svl.fish + ', ' + JSON.stringify(svl.alts) + ')');
     /* a creature not yet bought: its skin can be neither tried on nor bought */
     await ev("document.querySelector('#sheet-skin [data-action=close-sheet]').click();1");
@@ -1510,7 +1513,7 @@ async function walk(cdp, sid, P) {
        in the Market */
     ok(await ev("(function(){var s=JSON.parse(localStorage.getItem('icedash-save-v1'));return !!document.querySelector('#prof-preview .pcard.hero') && document.querySelectorAll('#prof-frames .look-tile').length === s.prof.own.length && document.querySelectorAll('#prof-titles .title-row').length === TITLES.filter(function(T){return titleWon(s,T);}).length && !document.querySelector('#screen-profile .tag-price, #screen-profile .tag-event, #screen-profile .title-row.locked, #screen-profile .look-buy') && !!document.querySelector('#prof-avatars [data-av=\"snowcap:zombie\"]');})()"),
        'My profile: the big card, the avatars (the zombie among them), only the frames owned and the titles won, nothing to buy');
-    ok(await ev("document.querySelectorAll('#shop-frames .look-tile').length === FRAMES.filter(function(F){return F.currency!=='event';}).length"),
+    ok(await ev("document.querySelectorAll('#screen-shop [data-stab=\"fr\"]').length === 1 && document.querySelectorAll('#shop-frames .look-tile').length === FRAMES.filter(function(F){return F.currency!=='event';}).length"),
        'and the Market has the frames to buy');
     /* the medals (1.3.3): none to three of the trophies earned */
     await click('#screen-profile [data-ptab="me"]');
@@ -1565,7 +1568,8 @@ async function walk(cdp, sid, P) {
   var tunes = await ev("(async function(){Sfx.unlock&&Sfx.unlock();Sfx.music(true);var n=0;" +
     "for(var i=0;i<BIOMES.length;i++){Sfx.mood(BIOMES[i].mood||'base');n++;await new Promise(function(r){setTimeout(r,250);});}" +
     "Sfx.music(false);return n;})()");
-  ok(tunes === 14, 'every stretch\'s tune plays in the browser (' + tunes + ' of 14)');
+  var stretches = await ev('BIOMES.length');
+  ok(tunes === stretches, 'every stretch\'s tune plays in the browser (' + tunes + ' of ' + stretches + ')');
 
   ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   ok(retries <= 3, 'the interface answers the first tap (' + retries +

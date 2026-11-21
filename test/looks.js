@@ -30,7 +30,9 @@ SKINS.forEach(function (sk, si) {
   });
 });
 ok(bad === 0, 'every creature, in its own coat and in its skin: ' + all + ' cards, ' + bad + ' changed on the way');
-var big = profileCode({ skin: SKINS[SKINS.length - 1].id, alt: ALT_OF[SKINS[SKINS.length - 1].id].id, frame: FRAMES[FRAMES.length - 1].id, title: 'legend', trophies: 63,
+/* the last creature with a skin of its own (the dragon, newest, has none) */
+var LASTALT = SKINS.filter(function (sk) { return ALT_OF[sk.id]; }).pop();
+var big = profileCode({ skin: LASTALT.id, alt: ALT_OF[LASTALT.id].id, frame: FRAMES[FRAMES.length - 1].id, title: 'legend', trophies: 63,
                         medals: ACHIEVEMENTS.slice(-3).map(function (A) { return A.id; }) });
 ok(ACHIEVEMENTS.length < MEDAL_B, 'every trophy fits a medal slot (' + ACHIEVEMENTS.length + ' of ' + (MEDAL_B - 1) + ')');
 /* a build before the medals reads only the low 42 bits, the kept field ignored */
@@ -63,7 +65,8 @@ ok(langs.length >= 6 && missing.length === 0, 'looks, frames and titles named in
 var ids = ACHIEVEMENTS.map(function (a) { return a.id; });
 var lost = TITLES.filter(function (T) { return T.ach && T.ach !== '*' && ids.indexOf(T.ach) < 0; });
 ok(lost.length === 0, 'every title is won by a trophy that exists');
-ok(SKINS.every(function (sk) { return ALT_SKINS.filter(function (A) { return A.of === sk.id; }).length === 1; }) &&
+/* (an event's creature, the dragon, is won, not bought, and has none yet) */
+ok(SKINS.every(function (sk) { return ALT_SKINS.filter(function (A) { return A.of === sk.id; }).length === (sk.currency === 'event' ? 0 : 1); }) &&
    ALT_SKINS.every(function (A) { return !!SKIN_BY_ID[A.of]; }),
    'every creature has exactly one skin of its own (' + ALT_SKINS.length + ')');
 ok(ALT_SKINS.every(function (L) { return L.price > 0 && (L.currency === 'fish' || L.currency === 'gold'); }) &&

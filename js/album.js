@@ -32,7 +32,8 @@ var ALBUM_FEAT = {
   reindeer: { stat: 'lines',   n: 3 },
   emperor:  { stat: 'combo',   n: 60 },
   orca:     { stat: 'jumps',   n: 10 },
-  aurora:   { stat: 'dist',    n: 5000 }
+  aurora:   { stat: 'dist',    n: 5000 },
+  dragon:   { stat: 'dist',    n: 10000 }   // ten flights, one a kilometre
 };
 
 function albumGoals(id) {

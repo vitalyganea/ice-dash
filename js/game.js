@@ -105,6 +105,8 @@ var Game = (function () {
      forty runs. Laid off the row's own hash, not Math.random, so a seed
      gives the same hill with gifts or without. */
   var GIFT_EVERY = 360, GIFT_FROM = 800;
+  /* the dragon's flight (1.3.4): every kilometre, three seconds over it all */
+  var SOAR_EVERY = 8000, SOAR_FRAMES = 180;
   var RAMP_LEAD = 52;                   // how far the ramp sits before it
   var AIR_DIST  = 340;                  // hill covered while airborne
   var HARD_OVER = 30000;                // world units to reach full difficulty
@@ -120,7 +122,7 @@ var Game = (function () {
   /* Moments worth feeling in the hand: the UI turns these into a buzz on
      a phone, if the player has it on. The engine only says what happened. */
   function fx(e) { if (hooks.fx) { try { hooks.fx(e); } catch (x) {} } }
-  var pendingMode = null, pendingGifts = false;   // gifts: an event is on (events.js), Freeride only
+  var pendingMode = null, pendingGifts = false, pendingKoi = false;   // gifts: an event is on (events.js), Freeride only
   var drawK = 1;
 
   /* The canvas draws its own words. i18n.js may not be there — the engine
@@ -161,7 +163,13 @@ var Game = (function () {
      hundred times a frame: worked out once for each distance */
   var hereD = NaN, hereC = 0;
   function chuteHere() { if (W.dist !== hereD) { hereD = W.dist; hereC = chuteAt(hereD); } return hereC; }
-  function biome() { return BIOMES[W.biome % BIOMES.length]; }
+  /* Which stretch the zone'th one is: the plain round. (1.3.4 had the
+     Sakura Garden first in Freeride while the dragon's event ran; the owner
+     chose a Freeride as it always was, the garden and its koi on a marked
+     line of their own.) */
+  function zoneB(i) { return ((i % BIOMES.length) + BIOMES.length) % BIOMES.length; }
+  function zoneAtD(d) { return W.biome + Math.floor((W.biomeT + Math.max(0, d - W.dist)) / zoneLen()); }
+  function biome() { return BIOMES[zoneB(W.biome)]; }
 
   /* BIOME_LEN is in metres and eight world units make a metre. This used to
      read BIOME_LEN * 3, so every stretch was a third of its stated length
@@ -215,7 +223,7 @@ var Game = (function () {
     var cur = biome();
     if (W.course) return cur;        // a marked run stays in its own weather
     if (W.biome === 0 || W.biomeT >= FADE) return cur;      // nothing to fade
-    var prev = BIOMES[(W.biome - 1) % BIOMES.length];
+    var prev = BIOMES[zoneB(W.biome - 1)];
     var t = W.biomeT / FADE;
     var out = { name: cur.name, grip: cur.grip };
     for (var i = 0; i < TINTS.length; i++)
@@ -269,7 +277,7 @@ var Game = (function () {
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], spray: [], squash: 0, impact: 0, streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
-      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0,
+      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0, soarNext: SOAR_EVERY, soarT: 0, soars: 0,
       roofTo: -1e9, forkTo: -1e9, forceGap: null, forceGapW: 0, forks: 0,
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
@@ -278,13 +286,13 @@ var Game = (function () {
       lastTapT: -999, tapPrev: -999, tapX: 0, tapD: -1e9, tapDir: 0, perfects: 0, perfT: 0, perfX: 0, perfD: 0,
       perfChain: 0, perfChainBest: 0, lastPerfT: -1e9,
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
-      lives: 0, revives: 0, finds: 0, gifts: 0, giftsOn: false, nextGiftD: 0
+      lives: 0, revives: 0, finds: 0, gifts: 0, giftsOn: false, nextGiftD: 0, kois: 0, koiOn: false
     };
     W = w;
     if (pendingCourse) {
       w.course = { id: pendingCourse.id, step: pendingCourse.step, i: 0,
                    rows: parseCourse(pendingCourse, CHUTE),
-                   tut: !!pendingCourse.tutorial,
+                   tut: !!pendingCourse.tutorial, koi: !!pendingCourse.koi,
                    lessons: pendingCourse.lessons || null };
       w.biome = pendingCourse.biome;
       w.clearUntil = 0;
@@ -301,6 +309,8 @@ var Game = (function () {
     /* An event's gifts: only on the open hill in Freeride, never in the
        demo behind the menu (the owner, 19 Nov 2026) */
     w.giftsOn = pendingGifts && !w.course && w.mode === 'free';
+    /* the dragon's event (1.3.4): the Sakura Garden second, and koi in it */
+    w.koiOn = pendingKoi && w.mode === 'free' && !!w.course && !!w.course.koi;   // the Sakura line only
     w.nextGiftD = GIFT_FROM;
     /* The name of the stretch you are on, once as the run begins. Not in
        the tutorial, whose own words sit in that same place. */
@@ -363,7 +373,7 @@ var Game = (function () {
   function gripAt(d) {
     var ahead = Math.max(0, d - W.dist);
     var i = W.biome + Math.floor((W.biomeT + ahead) / zoneLen());
-    return BIOMES[i % BIOMES.length].grip;
+    return BIOMES[zoneB(i)].grip;
   }
 
   /* How far sideways the penguin can actually get while covering `step` of
@@ -621,6 +631,13 @@ var Game = (function () {
 
     function place(rel, dd) { return chuteAt(dd) + rel; }
 
+    /* the Sakura line's koi, one in every opening while the event runs */
+    if (W.koiOn && C.koi && !cr.crevasse) {
+      var cks = hh(d, 19) < 0.5 ? -1 : 1, ckd = d + 40;
+      W.objects.push({ t: 'koi', x: place(cr.gap + cks * Math.min(cr.gapW / 2 - 22, 20 + hh(d, 21) * 46), ckd), d: ckd,
+                       r: 17, got: false, ph: hh(d, 23) * 6.28, v: Math.floor(hh(d, 25) * 3) });
+    }
+
     if (cr.crevasse) {
       W.crevs++;
       W.objects.push({ t: 'ramp', x: place(cr.gap, d - RAMP_LEAD), d: d - RAMP_LEAD,
@@ -776,6 +793,7 @@ var Game = (function () {
        free score: the line that gets you through the row alive is the
        middle, and a gate on the middle is taken without deciding anything.
        Shifted over, it costs you the safest line to collect it. */
+    var gateSide = 0;
     if (Math.random() < 0.15 && at > 900) {
       /* The walrus reads the blue ice, so for him the tongue of it is
          broader — he does not have to leave the safe line as far to be on
@@ -787,6 +805,7 @@ var Game = (function () {
       var off = (Math.random() < 0.5 ? -1 : 1) * (gapW - gw) * GATE_OFF;
       W.objects.push({ t: 'gate', x: place(gap + off, d), d: d,
                        w: gw, passed: false });
+      gateSide = off < 0 ? -1 : 1;
     }
 
     if (!clearLane) for (var x = -CHUTE + 26; x <= CHUTE - 26; x += rnd(62, 96)) {
@@ -872,10 +891,10 @@ var Game = (function () {
     }
     /* A patch of deep soft snow. Never on the racing line's centre — it is
        a cost, not a wall, and it should be something you choose to clip. */
-    if (Math.random() < 0.038 && at > 900) {
+    if (Math.random() < 0.065 && at > 900) {
       var bd2 = d + rnd(-40, 60);
       W.objects.push({ t: 'drift',
-                       x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(55, 150),
+                       x: place(clamp(gap + (Math.random() < 0.5 ? -1 : 1) * rnd(25, 130),
                                       -CHUTE + 40, CHUTE - 40), bd2),
                        d: bd2, r: rnd(40, 72), ph: rnd(0, 6.28) });
     }
@@ -883,11 +902,14 @@ var Game = (function () {
     /* A meltwater geyser, standing off to one side of the opening. */
     if (Math.random() < 0.040 && at > 2600) {
       var side2 = Math.random() < 0.5 ? -1 : 1;
+      /* a ring on this row is off to one side: the geyser goes to the
+         other, or its spout stood in the ring's arc */
+      if (gateSide) side2 = -gateSide;
       var gx2 = gap + geyserOff(gapW, side2);
       /* If that side has run out of chute, try the other one, and if
          neither fits, let the row go without a geyser rather than crowd
          the opening. */
-      if (Math.abs(gx2) > CHUTE - 30) gx2 = gap + geyserOff(gapW, -side2);
+      if (Math.abs(gx2) > CHUTE - 30 && !gateSide) gx2 = gap + geyserOff(gapW, -side2);
       if (Math.abs(gx2) <= CHUTE - 30)
         W.objects.push({ t: 'geyser', x: place(gx2, d), d: d,
                          r: GEYSER_R, ph: 0 });
@@ -1177,6 +1199,12 @@ var Game = (function () {
     for (i = 0; i < 12; i++)
       W.spray.push({ x: W.px - W.dir * 6, d: W.dist - 4, vx: -W.dir * frnd(1.2, 4.2), vd: -frnd(0.5, 3.4),
                      life: 26, max: 26, s: frnd(1.6, 3.4) });
+    /* The reindeer's hooves bite where everyone else skids: on slippery
+       ice each turn throws a spray of ice chips, so the grip is seen. */
+    if (perk().grip && biome().grip < 1)
+      for (i = 0; i < 10; i++)
+        W.puffs.push({ x: W.px - W.dir * frnd(4, 14), d: W.dist - frnd(0, 10), life: 20, max: 20,
+                       s: frnd(3, 7), tint: '#e8fbff' });
   }
 
   /* ---------------------------- step -------------------------- */
@@ -1257,22 +1285,7 @@ var Game = (function () {
         readFor('tut.oops');
         return;
       }
-      if (W.endT === 46 && hooks.over)
-        hooks.over({ score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
-                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts,
-                     coins: W.coins, jumps: W.jumps,
-                     finished: W.state === 'finish',
-                     mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
-                     course: W.course ? W.course.id : null,
-                     fishTotal: W.fishTotal,
-                     finds: W.finds, revives: W.revives,
-                     rushes: W.rushes, smashed: W.smashed, forks: W.forks,
-                     /* Only a crash, the clock or the snow can be walked
-                        back, and only while a life is in hand. Crossing
-                        the line is final. */
-                     canRevive: rescuable() && W.lives > 0,
-                     rescuable: rescuable(),
-                     crashed: W.state === 'crash' });
+      if (W.endT === 46 && hooks.over) hooks.over(runResult());
       return;
     }
 
@@ -1283,6 +1296,24 @@ var Game = (function () {
               * slowmo() * bogged() * tutPace();
     if (W.bog > 0) W.bog--;
     W.dist += W.speed;
+    /* The dragon opens his wings every kilometre and flies over everything
+       for three seconds. He comes down in a moment's grace, as after a life,
+       so nothing he lands on or beside can catch him. */
+    if (perk().soar && W.state === 'run') {
+      if (W.dist >= W.soarNext) {
+        W.soarNext = W.dist + SOAR_EVERY;
+        if (!airborne() && !rushing()) {
+          W.airSpan = W.speed * SOAR_FRAMES; W.airTo = W.dist + W.airSpan;
+          W.soarT = SOAR_FRAMES; W.soars++;
+          W.grace = Math.max(W.grace, SOAR_FRAMES + 50);
+          W.shake = Math.max(W.shake, 6); W.tapFlash = 12;
+          Sfx.jump();
+          for (var sw = 0; sw < 22; sw++)
+            W.puffs.push({ x: W.px + frnd(-30, 30), d: W.dist - frnd(0, 20), life: 28, max: 28, s: frnd(5, 12), tint: '#ffd0a0' });
+        }
+      }
+      if (W.soarT > 0) W.soarT--;
+    }
     W.score += W.speed * 0.25;
 
     var target = W.dir * DRIFT * W.speed;
@@ -1334,7 +1365,7 @@ var Game = (function () {
       var grab = (o.r + PR) * (perk().reach || 1);
       if ((o.t === 'fish' || o.t === 'gold' || o.t === 'bubble' || o.t === 'find' ||
            o.t === 'rush' || o.t === 'chill' || o.t === 'twin' || o.t === 'call' ||
-           o.t === 'clock' || o.t === 'gift') && !o.got &&
+           o.t === 'clock' || o.t === 'gift' || o.t === 'koi') && !o.got &&
           Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
@@ -1350,22 +1381,23 @@ var Game = (function () {
           fx('gold');
         }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
+        else if (o.t === 'koi') { W.kois++; W.score += 25 * comboMult(); Sfx.gold(); tone = '#ff9a5a'; W.tapFlash = 8; }
         else if (o.t === 'gift') { W.gifts++; if (Sfx.gift) Sfx.gift(); else Sfx.berry(); tone = '#ffb3b3'; W.tapFlash = 8; fx('gift'); }   // the event's only: no points, no fish
         else if (o.t === 'clock') {
           W.timeT += clockGain(); W.clocks++; Sfx.gold(); tone = '#d8ffb0'; W.tapFlash = 10; fx('clock');
         }
         else if (o.t === 'chill') {
-          W.chillT = CHILL_FRAMES; Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
+          W.chillT = lasts('chill', CHILL_FRAMES); Sfx.bubble(); tone = '#bfe4ff'; W.tapFlash = 14;
         }
         else if (o.t === 'twin') {
-          W.twinT = TWIN_FRAMES; Sfx.gold(); tone = '#ffe08a'; W.tapFlash = 14;
+          W.twinT = lasts('twin', TWIN_FRAMES); Sfx.gold(); tone = '#ffe08a'; W.tapFlash = 14;
         }
         else if (o.t === 'call') {
-          W.callT = CALL_FRAMES; Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
+          W.callT = lasts('call', CALL_FRAMES); Sfx.berry(); tone = '#9fe8ff'; W.tapFlash = 14;
         }
         else if (o.t === 'rush') {
           if (W.rushT <= 0) { W.rollFrom = W.t; snowBurst(16, 1); }
-          W.rushT = RUSH_FRAMES; W.rushes++; fx('rush');
+          W.rushT = lasts('rush', RUSH_FRAMES); W.rushes++; fx('rush');
           Sfx.excite(true);
           Sfx.bubble(); tone = '#ffffff'; W.tapFlash = 18; W.shake = Math.max(W.shake, 10);
         }
@@ -1441,7 +1473,13 @@ var Game = (function () {
         var bdx = o.x - W.px, bdd = o.d - W.dist;
         if (bdx * bdx + bdd * bdd < (o.r + PR * 0.6) * (o.r + PR * 0.6)) {
           W.bog = 8;
-          if (W.t % 5 === 0)
+          /* the musk ox ploughs: a bow wave of snow thrown both ways, every
+             frame, where anyone else only wades */
+          if (perk().bogImmune) {
+            for (var pw = 0; pw < 2; pw++)
+              W.puffs.push({ x: W.px + (pw ? 1 : -1) * frnd(10, 26), d: W.dist + frnd(0, 14),
+                             life: 24, max: 24, s: frnd(6, 13), tint: '#ffffff' });
+          } else if (W.t % 5 === 0)
             W.puffs.push({ x: W.px + frnd(-14, 14), d: W.dist - 10,
                            life: 22, max: 22, s: frnd(4, 9) });
         }
@@ -1546,7 +1584,15 @@ var Game = (function () {
       /* a fish that went by uncaught breaks the run of catches */
       if (o.t === 'fish' && !o.got && !o.missed && !o.bonus && dy < -30) {   // (a thrown one does not count against him)
         o.missed = true;
-        if (W.comboKeep > 0) W.comboKeep = 0;        // the puffin shrugs one off
+        /* (only a run of catches is worth keeping: with none, the shrug
+           waited for one, rather than being spent on nothing) */
+        if (W.comboKeep > 0 && W.combo > 0) {         // the puffin shrugs one off,
+          W.comboKeep = 0; W.keepT = 40;              // and the combo pill shows it
+          Sfx.bubble();
+          for (var kp = 0; kp < 12; kp++)
+            W.puffs.push({ x: W.px + frnd(-20, 20), d: W.dist + frnd(-10, 16), life: 24, max: 24,
+                           s: frnd(4, 9), tint: '#ffd36b' });
+        }
         else W.combo = 0;
       }
       if (solid(o) && W.invuln <= 0 && !rushing() && !airborne() &&
@@ -1614,6 +1660,7 @@ var Game = (function () {
     W.zoom += (zt - W.zoom) * ((W.closeT > 0 || W.perfT > 30) ? 0.12 : 0.025);
     if (W.penT > 0) W.penT--;
     if (W.closeT > 0) W.closeT--;
+    if (W.keepT > 0) W.keepT--;
     if (W.perfT > 0) W.perfT--;
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
@@ -1750,6 +1797,7 @@ var Game = (function () {
     ctx.lineWidth = 6; ctx.strokeStyle = '#062a78';
     var tx = scrX(W.px), ty = PLAYER_Y - 62 - rise;
     var word = tr('hud.close', 'CLOSE!');
+    if ((perk().closeBonus || 1) > 1) word += ' \u00d7' + perk().closeBonus;   // the leopard's double, said
     ctx.strokeText(word, tx, ty);
     ctx.fillStyle = '#ffe066';
     ctx.fillText(word, tx, ty);
@@ -1823,12 +1871,37 @@ var Game = (function () {
       Sfx.excite(false); Sfx.crash(); fx('caught');
     }
   }
-  function clockGain() { return Math.round(CLOCK_GAIN * (perk().clockGain || 1)); }
+  function clockGain() { return Math.round(CLOCK_GAIN * (perk().clockGain || 1) * boost('clock')); }
+  /* The Market's upgrades (1.3.4): each level a timed pickup's 10% longer,
+     ten levels at most. Set by the UI from the save; empty, nothing changes. */
+  var BOOST = {};
+  function boost(k) { return 1 + 0.1 * Math.max(0, Math.min(10, BOOST[k] || 0)); }
+  function lasts(k, F) { return Math.round(F * boost(k)); }
   function comboMult() { return 1 + Math.min(2, Math.floor(W.combo / 10)); }
   /* How close a boulder has to be before it counts. `slim` tucks the
      creature in; it touches this and nothing else, so it cannot double as
      a reach perk and cannot let him ride inside the bank. */
   function hitR(o) { return o.r * 0.82 + PR * 0.78 * (perk().slim || 1); }
+  /* What a run comes to, as the results take it: at its end, and when the
+     player gives one up from the pause screen (1.3.4: giving up lost the
+     best and the fish). */
+  function runResult() {
+    return { score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
+                     fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts, kois: W.kois,
+                     coins: W.coins, jumps: W.jumps,
+                     finished: W.state === 'finish',
+                     mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
+                     course: W.course ? W.course.id : null,
+                     fishTotal: W.fishTotal,
+                     finds: W.finds, revives: W.revives,
+                     rushes: W.rushes, smashed: W.smashed, forks: W.forks,
+                     /* Only a crash, the clock or the snow can be walked
+                        back, and only while a life is in hand. Crossing
+                        the line is final. */
+                     canRevive: rescuable() && W.lives > 0,
+                     rescuable: rescuable(),
+                     crashed: W.state === 'crash' };
+  }
   function airborne() { return W.airTo > W.dist; }
   function rushing() { return W.rushT > 0; }
   /* Slower is always safe: every row was proved against the hill's own
@@ -2336,6 +2409,7 @@ var Game = (function () {
       else if (o.t === 'bubble') { if (!o.got) drawBubble(x, y, o); }
       else if (o.t === 'find')   { if (!o.got) drawFind(x, y, o); }
       else if (o.t === 'gift')   { if (!o.got) drawGift(x, y, o); }
+      else if (o.t === 'koi')    { if (!o.got) drawKoi(ctx, x, y, o.r, (W ? W.t : 0) * 0.08 + o.ph, o.v); }
       else if (o.t === 'clock')  { if (!o.got) drawClock(x, y, o); }
       else if (o.t === 'rush')   { if (!o.got) drawRushBall(x, y, o); }
       else if (o.t === 'chill' || o.t === 'twin' || o.t === 'call') {
@@ -4100,6 +4174,108 @@ var Game = (function () {
     c.beginPath(); c.ellipse(cx - L * 0.25, y - R * 0.95, s * 0.24, s * 0.07, 0, 0, 6.2832); c.fill();
     giftGlint(c, cx - L * 0.55, y - R * 0.2, s * 0.08);
   }
+  /* The gift as an icon (the title's button and its opening): straight on
+     and a little from above, the way a present is drawn on a card. The
+     hill's gifts keep their own slanted look, made for the hill seen from
+     above; on the title that slant read as a box tipping over. Fits a
+     square of side S; returns where the lid ends, for the opening. */
+  function paintGiftIcon(c, S, v, flip) {
+    var C = GIFT_COL[v % GIFT_COL.length], u = S / 100, k;
+    var bx0 = 24 * u, bx1 = 76 * u, by0 = 50 * u, by1 = 88 * u;          // the box
+    var lx0 = 19 * u, lx1 = 81 * u, ly0 = 38 * u, ly1 = 52 * u;          // the lid's band
+    var tIn = 7 * u, tTop = 30 * u;                                       // the lid's top, seen from above
+    var rw = 9 * u, cx = 50 * u;                                          // the ribbon
+    c.save();
+    if (flip) { c.translate(S, 0); c.scale(-1, 1); }
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    /* its shadow on the snow */
+    for (k = 0; k < 3; k++) {
+      c.fillStyle = 'rgba(12,30,60,' + (0.12 - k * 0.035).toFixed(3) + ')';
+      c.beginPath(); c.ellipse(cx, by1 + 1 * u, (30 + k * 5) * u, (4 + k * 1.6) * u, 0, 0, 6.2832); c.fill();
+    }
+    /* the box: lit from the upper left, its paper and pattern */
+    var g = c.createLinearGradient(bx0, 0, bx1, 0);
+    g.addColorStop(0, C.lite); g.addColorStop(0.35, C.box); g.addColorStop(1, C.dark);
+    c.fillStyle = g; rr(c, bx0, by0 - 4 * u, bx1 - bx0, by1 - by0 + 4 * u, 4 * u); c.fill();
+    c.save(); rr(c, bx0, by0 - 4 * u, bx1 - bx0, by1 - by0 + 4 * u, 4 * u); c.clip();
+    giftPattern(c, C, 20 * u, bx0, by0, bx1 - bx0, by1 - by0);
+    var sh = c.createLinearGradient(0, by0, 0, by1);                     // the lid's shadow on it, the floor's light
+    sh.addColorStop(0, 'rgba(0,0,0,.28)'); sh.addColorStop(0.25, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)');
+    c.fillStyle = sh; c.fillRect(bx0, by0 - 4 * u, bx1 - bx0, by1 - by0 + 4 * u);
+    c.restore();
+    c.strokeStyle = C.dark; c.lineWidth = 1.2 * u; rr(c, bx0, by0 - 4 * u, bx1 - bx0, by1 - by0 + 4 * u, 4 * u); c.stroke();
+    /* the ribbon down the front of the box */
+    function ribbon(x0, y0, x1, y1) {
+      var rg = c.createLinearGradient(x0, 0, x1, 0);
+      rg.addColorStop(0, C.ribD); rg.addColorStop(0.3, C.ribL); rg.addColorStop(0.6, C.rib); rg.addColorStop(1, C.ribD);
+      c.fillStyle = rg; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+    ribbon(cx - rw / 2, by0, cx + rw / 2, by1);
+    /* the lid's top, a band of it seen from above: lighter, the sun on it */
+    var top = [[lx0 + tIn, tTop], [lx1 - tIn, tTop], [lx1, ly0], [lx0, ly0]];
+    var tg = c.createLinearGradient(0, tTop, 0, ly0);
+    tg.addColorStop(0, C.lite); tg.addColorStop(1, C.box);
+    c.fillStyle = tg; polyPath(c, top); c.fill();
+    c.save(); polyPath(c, top); c.clip();
+    /* the ribbon's cross on the lid, in perspective */
+    c.fillStyle = C.rib;
+    c.beginPath(); c.moveTo(cx - rw * 0.38, tTop); c.lineTo(cx + rw * 0.38, tTop); c.lineTo(cx + rw / 2, ly0); c.lineTo(cx - rw / 2, ly0); c.closePath(); c.fill();
+    var my = (tTop + ly0) / 2;
+    c.fillRect(lx0, my - 1.6 * u, lx1 - lx0, 3.2 * u);
+    c.fillStyle = C.ribL; c.fillRect(lx0, my - 1.6 * u, lx1 - lx0, 1 * u);
+    c.restore();
+    c.strokeStyle = C.dark; c.lineWidth = 1.2 * u; polyPath(c, top); c.stroke();
+    /* the lid's front band, overhanging the box */
+    var lg = c.createLinearGradient(lx0, 0, lx1, 0);
+    lg.addColorStop(0, C.lite); lg.addColorStop(0.3, C.box); lg.addColorStop(1, C.dark);
+    c.fillStyle = lg; rr(c, lx0, ly0, lx1 - lx0, ly1 - ly0, 2.5 * u); c.fill();
+    c.save(); rr(c, lx0, ly0, lx1 - lx0, ly1 - ly0, 2.5 * u); c.clip();
+    giftPattern(c, C, 20 * u, lx0, ly0, lx1 - lx0, ly1 - ly0);
+    ribbon(cx - rw / 2, ly0, cx + rw / 2, ly1);
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(lx0, ly0, lx1 - lx0, 1.4 * u);   // its lit top edge
+    c.restore();
+    c.strokeStyle = C.dark; c.lineWidth = 1.2 * u; rr(c, lx0, ly0, lx1 - lx0, ly1 - ly0, 2.5 * u); c.stroke();
+    /* a little snow settled on the lid, at the back */
+    c.fillStyle = '#ffffff';
+    c.beginPath(); c.moveTo(lx0 + tIn + 2 * u, tTop + 1 * u);
+    c.quadraticCurveTo(lx0 + tIn + 6 * u, tTop - 3 * u, lx0 + tIn + 12 * u, tTop - 0.5 * u);
+    c.quadraticCurveTo(lx0 + tIn + 16 * u, tTop - 2.5 * u, lx0 + tIn + 20 * u, tTop + 1 * u);
+    c.quadraticCurveTo(lx0 + tIn + 11 * u, tTop + 4 * u, lx0 + tIn + 2 * u, tTop + 1 * u); c.fill();
+    /* the bow: two loops, two tails, and the knot */
+    var ky = tTop + 4 * u;
+    function loop(dir) {
+      c.save(); c.translate(cx, ky); c.scale(dir, 1);
+      var bg2 = c.createLinearGradient(0, -14 * u, 0, 4 * u);
+      bg2.addColorStop(0, C.ribL); bg2.addColorStop(0.5, C.rib); bg2.addColorStop(1, C.ribD);
+      c.fillStyle = bg2;
+      c.beginPath(); c.moveTo(0, 0);
+      c.bezierCurveTo(4 * u, -16 * u, 22 * u, -16 * u, 19 * u, -4 * u);
+      c.bezierCurveTo(17 * u, 2 * u, 8 * u, 3 * u, 0, 0); c.closePath(); c.fill();
+      c.strokeStyle = C.ribD; c.lineWidth = 1 * u; c.stroke();
+      c.fillStyle = 'rgba(0,0,0,.18)';                                     // the fold inside the loop
+      c.beginPath(); c.moveTo(3 * u, -2 * u); c.bezierCurveTo(6 * u, -9 * u, 14 * u, -10 * u, 15 * u, -5 * u);
+      c.bezierCurveTo(12 * u, -4 * u, 7 * u, -2 * u, 3 * u, -2 * u); c.fill();
+      c.restore();
+    }
+    function tail(dir) {
+      c.save(); c.translate(cx, ky); c.scale(dir, 1);
+      c.fillStyle = C.rib; c.strokeStyle = C.ribD; c.lineWidth = 1 * u;
+      c.beginPath(); c.moveTo(-1 * u, 1 * u); c.quadraticCurveTo(5 * u, 8 * u, 7 * u, 17 * u);
+      c.lineTo(10 * u, 14 * u); c.lineTo(12 * u, 18 * u); c.quadraticCurveTo(9 * u, 7 * u, 3 * u, 0); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+    }
+    tail(-1); tail(1); loop(-1); loop(1);
+    var kg = c.createRadialGradient(cx - 1 * u, ky - 2 * u, 0, cx, ky, 5 * u);
+    kg.addColorStop(0, C.ribL); kg.addColorStop(1, C.rib);
+    c.fillStyle = kg; c.beginPath(); c.ellipse(cx, ky - 0.5 * u, 4.5 * u, 4 * u, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = C.ribD; c.lineWidth = 1 * u; c.stroke();
+    /* a glint on the box's lit corner */
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.6 * u;
+    c.beginPath(); c.moveTo(bx0 + 3 * u, by0 + 6 * u); c.lineTo(bx0 + 3 * u, by1 - 6 * u); c.stroke();
+    c.restore();
+    return { lidBottom: ly1 / S };
+  }
+
   function paintGift(c, cx, cy, s, v, flip, shape) {
     var C = GIFT_COL[v % GIFT_COL.length], k;
     var w = s * 1.32, h = s * 0.96, sd = s * 0.42, top = s * 0.72;  // front, side, how deep the lid reads
@@ -4211,6 +4387,131 @@ var Game = (function () {
       if (g && g.ellipse) { cv.width = cv.height = 192; paintGift(g, 96, 100, 60, v, flip, shape); P = cv; }
     }
     return (GIFT_PICS[key] = P);
+  }
+  /* A koi in a hole in the ice (1.3.4): dark water in a rim of broken ice,
+     rings spreading on it, and in it the fish, seen from above: a long
+     body lit along the back, its scales catching the light, the patches of
+     its kind (kohaku red on white, ogon all gold, showa black and red on
+     white), fins like veils and a tail that sways. `bare` leaves the pool
+     out (the HUD, the comic). */
+  /* Painted once and kept (1.3.4: a koi painted fresh every frame cost the
+     Sakura line a fifth of its frames on a slow phone): the pool and the fish
+     at rest, by kind and size; each frame only the rings on the water are
+     drawn, and the fish turned a little as it swims. */
+  var KOI_PIC = {};
+  function drawKoi(c, x, y, r, t, v, bare) {
+    v = (v || 0) % 3;
+    if (typeof document === 'undefined' || !document.createElement) { koiRaw(c, x, y, r, t, v, bare); return; }
+    var key = v + (bare ? 'b' : 'p') + Math.round(r * 2), K = 3, P = KOI_PIC[key];
+    var half = Math.ceil(r * 1.75 + 2);
+    if (!P) {
+      P = KOI_PIC[key] = { pool: null, fish: document.createElement('canvas') };
+      P.fish.width = P.fish.height = half * 2 * K;
+      var fc = P.fish.getContext('2d'); if (!fc) { delete KOI_PIC[key]; koiRaw(c, x, y, r, t, v, bare); return; }
+      fc.scale(K, K); koiRaw(fc, half, half, r, 0, v, true, true);
+      if (!bare) {
+        P.pool = document.createElement('canvas'); P.pool.width = P.pool.height = half * 2 * K;
+        var pc = P.pool.getContext('2d'); pc.scale(K, K); koiRaw(pc, half, half, r, 0, v, false, true, true);
+      }
+    }
+    if (P.pool) c.drawImage(P.pool, x - half, y - half, half * 2, half * 2);
+    if (!bare) {                                                  // the rings on the water, the only thing alive
+      c.save(); c.strokeStyle = 'rgba(200,240,255,.35)'; c.lineWidth = 0.8;
+      for (var k = 0; k < 2; k++) { var q = ((t * 0.12 + k * 0.5) % 1); c.globalAlpha = 1 - q; c.beginPath(); c.ellipse(x, y - r * 0.6 * (1 - q), r * 1.3 * q, r * 1.05 * q, 0, 0, 6.2832); c.stroke(); }
+      c.restore();
+    }
+    c.save(); c.translate(x, y); c.rotate(Math.sin(t) * 0.12);
+    c.drawImage(P.fish, -half, -half, half * 2, half * 2);
+    c.restore();
+  }
+  /* the koi painted for real: `still` at rest (the tail straight, no rings),
+     `poolOnly` the water and rim without the fish */
+  function koiRaw(c, x, y, r, t, v, bare, still, poolOnly) {
+    v = (v || 0) % 3;
+    c.save(); c.translate(x, y);
+    if (!bare) {
+      var R = r * 1.45;
+      c.fillStyle = 'rgba(20,50,80,.22)'; c.beginPath(); c.ellipse(2, 3, R * 1.08, R * 0.98, 0, 0, 6.2832); c.fill();
+      var rim = c.createLinearGradient(-R, -R, R, R); rim.addColorStop(0, '#ffffff'); rim.addColorStop(1, '#a9cbe2');
+      c.fillStyle = rim; c.beginPath();
+      for (var a = 0; a < 6.2832; a += 0.42) { var rr = R * (1.06 + 0.07 * Math.sin(a * 5 + 1.3)); c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * 0.94); }
+      c.closePath(); c.fill();
+      var wg = c.createRadialGradient(-R * 0.2, -R * 0.25, R * 0.1, 0, 0, R);
+      wg.addColorStop(0, '#3f9cc0'); wg.addColorStop(0.7, '#1d6688'); wg.addColorStop(1, '#0d3a55');
+      c.fillStyle = wg; c.beginPath(); c.ellipse(0, 0, R * 0.92, R * 0.86, 0, 0, 6.2832); c.fill();
+      c.save(); c.beginPath(); c.ellipse(0, 0, R * 0.92, R * 0.86, 0, 0, 6.2832); c.clip();
+      c.strokeStyle = 'rgba(200,240,255,.35)'; c.lineWidth = 0.8;            // rings on the water
+      if (!still) for (var k = 0; k < 2; k++) { var q = ((t * 0.12 + k * 0.5) % 1); c.globalAlpha = 1 - q; c.beginPath(); c.ellipse(0, -r * 0.6, R * q, R * q * 0.8, 0, 0, 6.2832); c.stroke(); }
+      c.globalAlpha = 1;
+      c.fillStyle = 'rgba(0,20,40,.35)'; c.beginPath(); c.ellipse(r * 0.18, r * 0.22, r * 0.36, r * 0.95, 0, 0, 6.2832); c.fill();   // its shadow on the bottom
+      c.restore();                                                          // (the water's clip: everything after the koi was drawn inside its pool)
+    }
+    if (poolOnly) { c.restore(); return; }
+    var L = r * 1.0, sw = still ? 0 : Math.sin(t) * 0.5;
+    var base = v === 1 ? ['#fff1b0', '#f0b72a', '#b97c08'] : ['#ffffff', '#f6f0ea', '#d8cfc6'];
+    function bodyPath() {
+      var tx = sw * r * 0.22;
+      c.beginPath(); c.moveTo(0, -L);
+      c.bezierCurveTo(r * 0.32, -L, r * 0.44, -L * 0.45, r * 0.4, -L * 0.1);
+      c.bezierCurveTo(r * 0.34, L * 0.35, r * 0.14 + tx * 0.5, L * 0.62, r * 0.1 + tx, L * 0.78);
+      c.lineTo(-r * 0.1 + tx, L * 0.78);
+      c.bezierCurveTo(-r * 0.14 + tx * 0.5, L * 0.62, -r * 0.34, L * 0.35, -r * 0.4, -L * 0.1);
+      c.bezierCurveTo(-r * 0.44, -L * 0.45, -r * 0.32, -L, 0, -L); c.closePath();
+    }
+    /* the tail: a veil in two lobes, rayed, swaying behind */
+    c.save(); c.translate(sw * r * 0.22, L * 0.76); c.rotate(sw * 0.45);
+    var tg = c.createLinearGradient(0, 0, 0, r * 0.9);
+    tg.addColorStop(0, v === 2 ? 'rgba(40,30,30,.75)' : v === 1 ? 'rgba(250,200,70,.85)' : 'rgba(230,90,60,.7)'); tg.addColorStop(1, 'rgba(255,255,255,.25)');
+    c.fillStyle = tg;
+    c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-r * 0.3, r * 0.2, -r * 0.6, r * 0.6, -r * 0.42, r * 0.95);
+    c.quadraticCurveTo(-r * 0.1, r * 0.55, 0, r * 0.62); c.quadraticCurveTo(r * 0.1, r * 0.55, r * 0.42, r * 0.95);
+    c.bezierCurveTo(r * 0.6, r * 0.6, r * 0.3, r * 0.2, 0, 0); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 0.5;
+    for (var ry = -3; ry <= 3; ry++) { c.beginPath(); c.moveTo(0, r * 0.05); c.lineTo(ry * r * 0.12, r * 0.85); c.stroke(); }
+    c.restore();
+    /* the pectoral fins, spread like fans */
+    [-1, 1].forEach(function (sd) {
+      c.save(); c.translate(sd * r * 0.32, -L * 0.42); c.rotate(sd * (0.9 + Math.sin(t * 1.3 + sd) * 0.2));
+      c.fillStyle = 'rgba(255,255,255,.6)';
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(sd * r * 0.1, r * 0.35, 0, r * 0.5); c.quadraticCurveTo(-sd * r * 0.18, r * 0.25, 0, 0); c.fill();
+      c.restore();
+    });
+    /* the body, lit along its back */
+    var bg = c.createLinearGradient(-r * 0.42, 0, r * 0.42, 0);
+    bg.addColorStop(0, base[2]); bg.addColorStop(0.45, base[0]); bg.addColorStop(1, base[1]);
+    c.fillStyle = bg; bodyPath(); c.fill();
+    c.save(); bodyPath(); c.clip();
+    /* its kind's patches */
+    if (v !== 1) {
+      c.fillStyle = '#e2401e';
+      c.beginPath(); c.ellipse(-r * 0.05, -L * 0.62, r * 0.3, r * 0.26, 0.4, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(r * 0.12, -L * 0.05, r * 0.28, r * 0.36, -0.3, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(-r * 0.14, L * 0.42, r * 0.18, r * 0.2, 0.2, 0, 6.2832); c.fill();
+    }
+    if (v === 2) {
+      c.fillStyle = '#16141a';
+      c.beginPath(); c.ellipse(r * 0.2, -L * 0.38, r * 0.14, r * 0.3, 0.5, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(-r * 0.22, L * 0.12, r * 0.12, r * 0.26, -0.4, 0, 6.2832); c.fill();
+      c.beginPath(); c.ellipse(r * 0.05, L * 0.6, r * 0.1, r * 0.14, 0, 0, 6.2832); c.fill();
+    }
+    /* scales catching the light, and the sheen down the spine */
+    c.strokeStyle = 'rgba(255,255,255,.38)'; c.lineWidth = Math.max(0.3, r * 0.025);
+    for (var sy = -L * 0.55; sy < L * 0.7; sy += r * 0.13) for (var sx = -r * 0.36; sx <= r * 0.36; sx += r * 0.13) {
+      c.beginPath(); c.arc(sx + ((Math.round(sy / (r * 0.13)) & 1) ? r * 0.065 : 0), sy, r * 0.07, 0.3, Math.PI - 0.3); c.stroke();
+    }
+    var sh = c.createLinearGradient(-r * 0.2, 0, r * 0.2, 0);
+    sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,.45)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = sh; c.fillRect(-r * 0.2, -L, r * 0.4, L * 1.7);
+    c.restore();
+    c.strokeStyle = 'rgba(90,40,20,.4)'; c.lineWidth = Math.max(0.5, r * 0.04); bodyPath(); c.stroke();
+    /* the head: eyes on the sides, two little barbels by the mouth */
+    c.fillStyle = '#141014';
+    [-1, 1].forEach(function (sd) { c.beginPath(); c.arc(sd * r * 0.25, -L * 0.72, r * 0.06, 0, 6.2832); c.fill(); });
+    c.fillStyle = 'rgba(255,255,255,.8)';
+    [-1, 1].forEach(function (sd) { c.beginPath(); c.arc(sd * r * 0.25 - r * 0.02, -L * 0.74, r * 0.022, 0, 6.2832); c.fill(); });
+    c.strokeStyle = 'rgba(120,60,40,.6)'; c.lineWidth = Math.max(0.4, r * 0.03);
+    [-1, 1].forEach(function (sd) { c.beginPath(); c.moveTo(sd * r * 0.1, -L * 0.96); c.quadraticCurveTo(sd * r * 0.2, -L * 1.06, sd * r * 0.24, -L * 0.98); c.stroke(); });
+    c.restore();
   }
   function drawGift(x, y, o) {
     var bob = Math.sin((W ? W.t : 0) * 0.08 + (o.ph || 0)) * 2.2, s = o.r * 0.95, P = giftPic(o.v || 0, o.flip, o.k);
@@ -4645,11 +4946,11 @@ var Game = (function () {
   var FADING = null, NEXT = null;   // set by render(): { from, to, t } through a fade; the stretch about to come
   function fadeOf() {
     if (!W || W.course || W.biome === 0 || W.biomeT >= FADE) return null;
-    return { from: BIOMES[(W.biome - 1) % BIOMES.length], to: biome(), t: W.biomeT / FADE };
+    return { from: BIOMES[zoneB(W.biome - 1)], to: biome(), t: W.biomeT / FADE };
   }
   function nextOf() {
     if (!W || W.course || W.biomeT < zoneLen() - W.speed * 90) return null;
-    return BIOMES[(W.biome + 1) % BIOMES.length];
+    return BIOMES[zoneB(W.biome + 1)];
   }
   /* o's picture under key, made now by make() if the frame can afford it.
      A thing holds one picture; through a fade, and the run-up to one, two. */
@@ -7851,7 +8152,8 @@ var Game = (function () {
     c.beginPath(); c.arc(t2[0], t2[1], 4.4, 0, 6.2832); c.fill();
     c.restore();
     var LEGS = [];
-    [-1, 1].forEach(function (k) {
+    /* the dragon has none: he slides on his belly like a serpent (1.3.4) */
+    if (!S.noLegs) [-1, 1].forEach(function (k) {
       var ef = o.still ? 0 : lift > 0.05 ? 1 : Math.cos(g + (k > 0 ? 0.4 : 0));
       var eh = o.still ? 0 : lift > 0.05 ? 1 : Math.cos(g + (k > 0 ? 0.55 : 0.15));
       LEGS.push(runLegSpec(k, k * 7.5, ys(-14), k * 9.5, -22 - 17 * ef, 5, 3.2, 0, true));
@@ -8112,8 +8414,157 @@ var Game = (function () {
   }
 
 
+
+  /* ---- the dragon (1.3.4) -------------------------------------------
+     A dragon, seen from above, and meant to look like one: a deep chest
+     and a strong neck, a long head shaped like a wedge with bone horns
+     swept back, brows drawn down over burning eyes, smoke from the
+     nostrils, a ridge of black spines down the back, bat wings folded
+     along his sides (spread when he flies), and a heavy tail ending in a
+     barb. No legs: he slides on his belly, wings in. */
+  function bodyDragon(c, S, ang, wag, o) {
+    var ph = o.still ? 0.5 : (o.gait || 0) * 0.8, t = W ? W.t : 0;
+    var red = S.body, ridge = '#2a0806', bone = ['#f4ead2', '#cdb98e', '#7d6240'];
+    var line = S.outline || 'rgba(30,4,2,.85)';
+    /* the tail: thick at the root, swinging, a barb at its tip */
+    var TP = [];
+    for (var i = 0; i <= 10; i++) {
+      var f = i / 10;
+      TP.push({ x: Math.sin(f * 3.2 - ph) * 9 * f + ang * 12 * f, y: 12 + f * 34, w: 7.5 * (1 - f) + 1.2 });
+    }
+    var tip = TP[10], pre = TP[9], ta = Math.atan2(tip.y - pre.y, tip.x - pre.x);
+    c.save(); c.translate(tip.x, tip.y); c.rotate(ta - Math.PI / 2);
+    c.fillStyle = ridge; c.strokeStyle = line; c.lineWidth = 0.8;
+    c.beginPath(); c.moveTo(0, 9); c.lineTo(-6, -1); c.quadraticCurveTo(0, 1.5, 6, -1); c.closePath(); c.fill(); c.stroke();
+    c.restore();
+    var k;
+    for (k = 10; k >= 0; k--) { c.fillStyle = line; c.beginPath(); c.arc(TP[k].x, TP[k].y, TP[k].w + 1, 0, 6.2832); c.fill(); }
+    for (k = 10; k >= 0; k--) {
+      var tq = TP[k], tg = c.createRadialGradient(tq.x - tq.w * 0.4, tq.y, 0.3, tq.x, tq.y, tq.w);
+      tg.addColorStop(0, red[0]); tg.addColorStop(0.6, red[1]); tg.addColorStop(1, red[2]);
+      c.fillStyle = tg; c.beginPath(); c.arc(tq.x, tq.y, tq.w, 0, 6.2832); c.fill();
+    }
+    /* the wings, folded along his sides */
+    dragonWings(c, S, o);
+    /* the body: a deep chest narrowing to the hips */
+    function torso(cc) {
+      cc.beginPath(); cc.moveTo(0, -17);
+      cc.bezierCurveTo(9, -17, 13.5, -9, 13, -1); cc.bezierCurveTo(12.5, 7, 9, 13, 6.5, 16);
+      cc.lineTo(-6.5, 16); cc.bezierCurveTo(-9, 13, -12.5, 7, -13, -1); cc.bezierCurveTo(-13.5, -9, -9, -17, 0, -17); cc.closePath();
+    }
+    c.strokeStyle = line; c.lineWidth = 2; torso(c); c.stroke();
+    var bg = c.createLinearGradient(-13, -10, 13, 10);
+    bg.addColorStop(0, red[0]); bg.addColorStop(0.5, red[1]); bg.addColorStop(1, red[2]);
+    c.fillStyle = bg; torso(c); c.fill();
+    c.save(); torso(c); c.clip();
+    c.strokeStyle = 'rgba(255,150,120,.28)'; c.lineWidth = 0.6;         // scales over the back
+    for (var sy = -15; sy < 17; sy += 3.2) for (var sx = -12; sx <= 12; sx += 3.6) {
+      c.beginPath(); c.arc(sx + ((Math.round(sy / 3.2) & 1) ? 1.8 : 0), sy, 1.9, 0.35, Math.PI - 0.35); c.stroke();
+    }
+    var rg = c.createLinearGradient(-5, 0, 5, 0);                       // the dark stripe down the spine
+    rg.addColorStop(0, 'rgba(42,8,6,0)'); rg.addColorStop(0.5, 'rgba(42,8,6,.7)'); rg.addColorStop(1, 'rgba(42,8,6,0)');
+    c.fillStyle = rg; c.fillRect(-5, -18, 10, 36);
+    c.restore();
+    /* the neck */
+    var nx = Math.sin(ph * 0.7) * 1.2;
+    c.fillStyle = line; c.beginPath(); c.ellipse(nx * 0.5, -21, 7.4, 7.6, 0, 0, 6.2832); c.fill();
+    var ng = c.createLinearGradient(-7, -21, 7, -21); ng.addColorStop(0, red[0]); ng.addColorStop(0.5, red[1]); ng.addColorStop(1, red[2]);
+    c.fillStyle = ng; c.beginPath(); c.ellipse(nx * 0.5, -21, 6.4, 6.8, 0, 0, 6.2832); c.fill();
+    /* the spines: black, raked back, biggest over the shoulders */
+    function spine(x, y, h, a) {
+      c.save(); c.translate(x, y); c.rotate(a);
+      var g2 = c.createLinearGradient(0, -h, 0, h); g2.addColorStop(0, '#5a1a14'); g2.addColorStop(1, '#120202');
+      c.fillStyle = g2; c.strokeStyle = 'rgba(255,120,80,.35)'; c.lineWidth = 0.5;
+      c.beginPath(); c.moveTo(-h * 0.45, -h * 0.5); c.lineTo(0, h * 1.3); c.lineTo(h * 0.45, -h * 0.5); c.quadraticCurveTo(0, -h * 0.2, -h * 0.45, -h * 0.5); c.fill(); c.stroke();
+      c.restore();
+    }
+    [[-24, 2.2], [-19, 2.8], [-13, 3.6], [-7, 4], [-1, 3.8], [5, 3.4], [10.5, 3]].forEach(function (sp) { spine(sp[0] < -16 ? nx * 0.5 : 0, sp[0], sp[1], 0); });
+    for (k = 1; k < 9; k += 2) spine(TP[k].x, TP[k].y, Math.max(1.4, 2.8 - k * 0.2), Math.atan2(TP[k + 1].y - TP[k].y, TP[k + 1].x - TP[k].x) - Math.PI / 2);
+    /* the head: a wedge, broad behind, the snout narrow and long */
+    var hx = nx, hy = -26;
+    /* the horns first, under the skull's edge: bone, ridged, swept back */
+    [-1, 1].forEach(function (sd) {
+      var hg2 = c.createLinearGradient(hx + sd * 4, hy - 4, hx + sd * 13, hy + 12);
+      hg2.addColorStop(0, bone[2]); hg2.addColorStop(0.35, bone[1]); hg2.addColorStop(1, bone[0]);
+      c.fillStyle = hg2; c.strokeStyle = line; c.lineWidth = 0.7;
+      c.beginPath(); c.moveTo(hx + sd * 3.5, hy - 5); c.quadraticCurveTo(hx + sd * 12, hy - 4, hx + sd * 14, hy + 11);
+      c.quadraticCurveTo(hx + sd * 9.5, hy + 1, hx + sd * 5.5, hy - 1.2); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = 'rgba(90,60,30,.5)'; c.lineWidth = 0.5;
+      for (var r2 = 0; r2 < 3; r2++) { c.beginPath(); c.moveTo(hx + sd * (7 + r2 * 2), hy - 4 + r2 * 3); c.lineTo(hx + sd * (8.5 + r2 * 2), hy - 1.5 + r2 * 3); c.stroke(); }
+      /* frills of spikes along the jaw */
+      c.fillStyle = '#3a0a06';
+      for (var fz = 0; fz < 3; fz++) { c.beginPath(); c.moveTo(hx + sd * 6, hy - 9 - fz * 3); c.lineTo(hx + sd * (10.5 - fz), hy - 8 - fz * 3.2); c.lineTo(hx + sd * 6, hy - 6.5 - fz * 3); c.closePath(); c.fill(); }
+    });
+    function skull(cc) {
+      cc.beginPath(); cc.moveTo(hx, hy - 22);
+      cc.lineTo(hx + 3.2, hy - 21); cc.lineTo(hx + 4.4, hy - 14); cc.lineTo(hx + 7.4, hy - 8);
+      cc.quadraticCurveTo(hx + 8, hy - 2, hx + 4, hy + 1); cc.lineTo(hx - 4, hy + 1);
+      cc.quadraticCurveTo(hx - 8, hy - 2, hx - 7.4, hy - 8); cc.lineTo(hx - 4.4, hy - 14); cc.lineTo(hx - 3.2, hy - 21); cc.closePath();
+    }
+    c.strokeStyle = line; c.lineWidth = 2; skull(c); c.stroke();
+    var sg2 = c.createLinearGradient(hx - 7, hy - 12, hx + 7, hy - 6);
+    sg2.addColorStop(0, red[0]); sg2.addColorStop(0.5, red[1]); sg2.addColorStop(1, red[2]);
+    c.fillStyle = sg2; skull(c); c.fill();
+    c.fillStyle = 'rgba(42,8,6,.55)'; c.beginPath(); c.ellipse(hx, hy - 8, 1.6, 7, 0, 0, 6.2832); c.fill();   // the ridge down the snout
+    /* fangs showing at the sides of the jaw */
+    c.fillStyle = '#fbf6e8';
+    [-1, 1].forEach(function (sd) { c.beginPath(); c.moveTo(hx + sd * 3.6, hy - 18); c.lineTo(hx + sd * 5, hy - 16.6); c.lineTo(hx + sd * 3.9, hy - 15.6); c.closePath(); c.fill(); });
+    /* nostrils, and the smoke out of them */
+    c.fillStyle = '#120202';
+    [-1, 1].forEach(function (sd) { c.beginPath(); c.ellipse(hx + sd * 1.7, hy - 20, 0.7, 1.3, sd * 0.5, 0, 6.2832); c.fill(); });
+    if (!o.still) for (var sm = 0; sm < 3; sm++) {
+      var sp2 = ((t * 0.03 + sm / 3) % 1);
+      c.fillStyle = 'rgba(80,80,90,' + (0.35 * (1 - sp2)).toFixed(3) + ')';
+      c.beginPath(); c.arc(hx + Math.sin(sm * 2 + t * 0.05) * 2, hy - 20 + sp2 * 14, 1.2 + sp2 * 2.6, 0, 6.2832); c.fill();
+    }
+    /* the brows, drawn down hard over the eyes, and the eyes burning under them */
+    [-1, 1].forEach(function (sd) {
+      var ex = hx + sd * 4.6, ey = hy - 9.5;
+      var eg = c.createRadialGradient(ex, ey, 0, ex, ey, 3.2);
+      eg.addColorStop(0, 'rgba(255,200,60,.55)'); eg.addColorStop(1, 'rgba(255,120,0,0)');
+      c.fillStyle = eg; c.beginPath(); c.arc(ex, ey, 3.2, 0, 6.2832); c.fill();
+      c.fillStyle = '#ffd23a';
+      c.beginPath(); c.moveTo(ex - sd * 2, ey + 0.6); c.quadraticCurveTo(ex, ey - 1.6, ex + sd * 2.2, ey - 0.4); c.quadraticCurveTo(ex, ey + 1.4, ex - sd * 2, ey + 0.6); c.fill();
+      c.fillStyle = '#140200'; c.beginPath(); c.ellipse(ex + sd * 0.2, ey, 0.35, 1, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#1a0404';
+      c.beginPath(); c.moveTo(hx + sd * 1.4, hy - 10.8); c.lineTo(ex + sd * 3, ey - 3.4); c.lineTo(ex + sd * 2.6, ey - 1.6); c.lineTo(hx + sd * 1.8, hy - 9.4); c.closePath(); c.fill();
+    });
+  }
+  /* bat wings: folded close along his sides, or spread wide while he flies,
+     the membrane dark between long finger bones, a hooked claw at the wrist */
+  function dragonWings(c, S, o) {
+    /* small while he slides; in the air (his own flight, or off a ramp or a
+       geyser) they open far wider and beat */
+    var soar = (W && !W.demo && W.soarT > 0 && !o.still) ? Math.min(1, W.soarT / 20, (SOAR_FRAMES - W.soarT + 1) / 14) : 0;
+    var fly = Math.max(soar, o.still ? 0 : Math.min(1, (o.lift || 0) * 3));
+    var flap = fly ? Math.sin(((W && W.t) || 0) * 0.3) * 0.18 * fly : 0;
+    var big = 0.72 + 0.88 * fly;
+    var line = S.outline || 'rgba(30,4,2,.85)';
+    [-1, 1].forEach(function (sd) {
+      c.save(); c.scale(sd, 1); c.translate(8, -12); c.rotate(-flap); c.scale(big, big);
+      /* the wrist and the fingers: folded they lie back along the body,
+         spread they fan out sideways */
+      var wx = 11 + 15 * fly, wy = -4 - 6 * fly;
+      var tips = [[wx + 6 + 18 * fly, wy + 7 - 3 * fly], [wx + 4 + 15 * fly, wy + 15 + 9 * fly], [wx + 7 * fly, wy + 21 + 13 * fly], [3, 20]];
+      var mg = c.createLinearGradient(0, 0, wx + 20, 30);
+      mg.addColorStop(0, '#5a0e0a'); mg.addColorStop(1, '#a8261c');
+      c.fillStyle = mg; c.strokeStyle = line; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(wx, wy); c.lineTo(tips[0][0], tips[0][1]);
+      for (var q = 1; q < tips.length; q++) {
+        var a = tips[q - 1], b = tips[q];
+        c.quadraticCurveTo((a[0] + b[0]) / 2 - 3, (a[1] + b[1]) / 2 - 2, b[0], b[1]);
+      }
+      c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = '#2a0806'; c.lineWidth = 1.3;
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(wx, wy);
+      tips.slice(0, 3).forEach(function (tp) { c.moveTo(wx, wy); c.lineTo(tp[0], tp[1]); });
+      c.stroke();
+      c.fillStyle = '#e8dcc0'; c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx + 1.5, wy - 3.5); c.lineTo(wx + 2, wy); c.closePath(); c.fill();
+      c.restore();
+    });
+  }
   var BODIES = { penguin: bodyPenguin, walrus: bodyWalrus, seal: bodySeal,
-                 reindeer: bodyReindeer, orca: bodyOrca,
+                 reindeer: bodyReindeer, orca: bodyOrca, dragon: bodyDragon,
                  hare: bodyHare, lemming: bodyLemming, leopard: bodyLeopard, owl: bodyOwl };
 
   /* The dispatch behind drawHint. Everything is drawn at the size it has
@@ -8396,7 +8847,8 @@ var Game = (function () {
     leopard: { hy: -33, hr: 10, ey: -31,   es: 4.6 },
     owl:     { hy: -13, hr: 9,  ey: -16,   es: 4.2 },
     walrus:  { hy: -26, hr: 12, ey: -26,   es: 11 },
-    orca:    { hy: -33, hr: 12, ey: -35,   es: 8.2 }
+    orca:    { hy: -33, hr: 12, ey: -35,   es: 8.2 },
+    dragon:  { hy: -42, hr: 8,  ey: -40,   es: 5.2 }
   };
   function wearAt(S) { return (S.shape === 'reindeer' && S.horns) ? WEAR_AT.ox : (WEAR_AT[S.shape] || WEAR_AT.penguin); }
   function shade(col, t) { return t >= 0 ? mixHex(col, '#ffffff', t) : mixHex(col, '#000000', -t); }
@@ -11746,6 +12198,13 @@ var Game = (function () {
     /* the run of catches, as a multiplier on points */
     if (mult > 1) {
       var mx = after;
+      /* the puffin's shrug: the pill flashes white, kept */
+      if (W.keepT > 0) {
+        ctx.save(); ctx.globalAlpha = Math.min(1, W.keepT / 15) * (0.5 + 0.5 * Math.abs(Math.sin(W.t * 0.4)));
+        ctx.fillStyle = '#ffffff';
+        rr(ctx, mx - u * 0.3, y1 - u * 1.55, u * 2.7, u * 1.9, u * 0.95); ctx.fill();
+        ctx.restore();
+      }
       ctx.fillStyle = '#ffcd3a';
       rr(ctx, mx, y1 - u * 1.25, u * 2.1, u * 1.3, u * 0.65); ctx.fill();
       ctx.strokeStyle = '#062a78'; ctx.lineWidth = Math.max(2, u * 0.14);
@@ -11817,6 +12276,16 @@ var Game = (function () {
       ctx.fillText(gTxt, gx + pp + ic * 1.08, tY);
       w = gx + wG + pp * 2 - x0;
     }
+    /* the koi this run, while the dragon's event runs */
+    if (W.koiOn) {
+      var kTxt = String(W.kois), wK = ic * 1.08 + measureAt(tab(kTxt), fM), kx = x0 + w + u * 0.35;
+      pill(kx, py, wK + pp * 2, ph);
+      drawKoi(ctx, kx + pp + ic * 0.48, py + ph / 2, ph * 0.4, 0.6, 0, true);
+      ctx.font = '800 ' + fM + FONT;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(kTxt, kx + pp + ic * 1.08, tY);
+      w = kx + wK + pp * 2 - x0;
+    }
     hudLayout = { w: Math.round(w), fx: Math.round(fx), digits: score.length + '|' + distTxt.length + '|' + fishTxt.length };
 
     /* and the best, small, in gold underneath */
@@ -11848,7 +12317,7 @@ var Game = (function () {
       rr(ctx, px2, rY, pw, ph2, ph2 / 2); ctx.stroke();
       /* the bar, emptying along the bottom */
       var bw = (pw - ph2) * Math.max(0, left / max);
-      ctx.fillStyle = kind === 'call' ? '#e2453c' : kind === 'twin' ? '#f0b429' : kind === 'chill' ? '#55b8f0' : '#3f93cc';
+      ctx.fillStyle = kind === 'call' ? '#e2453c' : kind === 'twin' ? '#f0b429' : kind === 'chill' ? '#55b8f0' : kind === 'soar' ? '#c42a1e' : '#3f93cc';
       rr(ctx, px2 + ph2 / 2, rY + ph2 - u * 0.42, bw, u * 0.22, u * 0.11); ctx.fill();
       /* its picture */
       var ix = px2 + u * 0.95, iy = rY + ph2 * 0.46, ir = u * 0.48;
@@ -11873,6 +12342,18 @@ var Game = (function () {
           realFish(ctx, ir * 0.95, ir * 0.38, 0.6, sg > 0, 0.4);
           ctx.restore();
         });
+      } else if (kind === 'soar') {                  // the dragon's flight: a bat wing, spread
+        ctx.fillStyle = '#c42a1e'; ctx.strokeStyle = '#3a0806'; ctx.lineWidth = Math.max(1, ir * 0.12);
+        ctx.beginPath(); ctx.moveTo(ix - ir * 0.95, iy + ir * 0.35);
+        ctx.quadraticCurveTo(ix - ir * 0.2, iy - ir * 1.05, ix + ir * 0.95, iy - ir * 0.75);
+        ctx.quadraticCurveTo(ix + ir * 0.7, iy - ir * 0.1, ix + ir * 0.8, iy + ir * 0.2);
+        ctx.quadraticCurveTo(ix + ir * 0.35, iy - ir * 0.05, ix + ir * 0.3, iy + ir * 0.5);
+        ctx.quadraticCurveTo(ix - ir * 0.1, iy + ir * 0.1, ix - ir * 0.25, iy + ir * 0.65);
+        ctx.quadraticCurveTo(ix - ir * 0.55, iy + ir * 0.25, ix - ir * 0.95, iy + ir * 0.35);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ix - ir * 0.95, iy + ir * 0.35); ctx.lineTo(ix + ir * 0.95, iy - ir * 0.75);
+        ctx.moveTo(ix - ir * 0.2, iy - ir * 0.3); ctx.lineTo(ix + ir * 0.3, iy + ir * 0.5);
+        ctx.moveTo(ix + ir * 0.35, iy - ir * 0.5); ctx.lineTo(ix + ir * 0.8, iy + ir * 0.2); ctx.stroke();
       } else {                                       // the rush: a ball of packed powder
         var bgr = ctx.createRadialGradient(ix - ir * 0.3, iy - ir * 0.3, 1, ix, iy, ir);
         bgr.addColorStop(0, '#ffffff'); bgr.addColorStop(1, '#a9d8f2');
@@ -11886,10 +12367,11 @@ var Game = (function () {
       ctx.restore();
       rY += ph2 + u * 0.45;
     }
-    if (W.rushT > 0)  timerPill(W.rushT, RUSH_FRAMES, 'rush');
-    if (W.callT > 0)  timerPill(W.callT, CALL_FRAMES, 'call');
-    if (W.chillT > 0) timerPill(W.chillT, CHILL_FRAMES, 'chill');
-    if (W.twinT > 0)  timerPill(W.twinT, TWIN_FRAMES, 'twin');
+    if (W.rushT > 0)  timerPill(W.rushT, lasts('rush', RUSH_FRAMES), 'rush');
+    if (W.callT > 0)  timerPill(W.callT, lasts('call', CALL_FRAMES), 'call');
+    if (W.chillT > 0) timerPill(W.chillT, lasts('chill', CHILL_FRAMES), 'chill');
+    if (W.twinT > 0)  timerPill(W.twinT, lasts('twin', TWIN_FRAMES), 'twin');
+    if (W.soarT > 0)  timerPill(W.soarT, SOAR_FRAMES, 'soar');      // the dragon in flight (1.3.4)
 
     if (W.shield > 0) {
       ctx.save();
@@ -11913,7 +12395,7 @@ var Game = (function () {
       ctx.textAlign = 'center';
       ctx.font = '800 ' + Math.round(u * 1.5) + 'px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
       ctx.lineWidth = u * 0.34; ctx.strokeStyle = 'rgba(255,255,255,.92)';
-      var zone = tr('biome.' + (W.biome % BIOMES.length), biome().name);
+      var zone = tr('biome.' + zoneB(W.biome), biome().name);
       ctx.strokeText(zone, CSS_W / 2, CSS_H * 0.2);
       ctx.fillStyle = '#12496f';
       ctx.fillText(zone, CSS_W / 2, CSS_H * 0.2);
@@ -12209,7 +12691,11 @@ var Game = (function () {
        came in a hair short of a step: it moved nothing, the next moved two,
        and on the iPhone the whole hill trembled. No time is lost or gained
        this way, as it would be by rounding the frame's length. */
-    while (W && accT >= STEP_MS - STEP_EARLY && n < 5) { step(); accT -= STEP_MS; n++; }
+    while (W && accT >= STEP_MS - STEP_EARLY && n < 5) {
+      var sd0 = W.dist, sx0 = W.px;
+      step(); accT -= STEP_MS; n++;
+      if (W) { W.stepDD = W.dist - sd0; W.stepDX = W.px - sx0; }
+    }
     if (accT > 400) accT = 0;
     /* The picture is the world's alone, and the world moves only in step():
        a frame that ran no step would paint what the canvas already shows.
@@ -12217,8 +12703,29 @@ var Game = (function () {
        picture was painted twice, or one in three twice — and after a few
        minutes of that a phone grew hot, slowed itself down, and the game
        stuttered with it. A new world is painted at once. */
-    if (W && (n || W !== drawnW)) { render(); drawnW = W; }
+    /* Smooth on fast screens (1.3.4: an iPhone at 120 Hz looked choppy).
+       The world steps at 60 a second whatever the screen does, so on 90 or
+       120 Hz, or a ProMotion screen changing its rate, some pictures stayed
+       up twice as long as others: up to a third out, measured (test/hz.js).
+       Now the picture is painted at the moment it is shown, the hill and
+       the animal carried on by the part of a step that has passed; and
+       above 100 Hz on every other refresh, so still sixty pictures a
+       second, evenly spaced, and no hotter a phone than before. */
+    hzEma = hzEma ? hzEma * 0.9 + dt * 0.1 : dt;
+    frameN++;
+    var smooth = W && W.state === 'run' && !W.demo && !W.hold;
+    var due = hzEma < 10.5 ? (frameN & 1) === 0 : true;
+    if (W && ((smooth && due) || (!smooth && n) || W !== drawnW)) {
+      var fr = smooth ? clamp(accT / STEP_MS, 0, 1) : 0;
+      if (fr > 0 && W.stepDD !== undefined) {
+        var kd = W.dist, kx = W.px;
+        W.dist += W.stepDD * fr; W.px += W.stepDX * fr;
+        try { render(); } finally { W.dist = kd; W.px = kx; }
+      } else render();
+      drawnW = W; renders++; drawnD = W.dist + (fr > 0 && W.stepDD !== undefined ? W.stepDD * fr : 0);
+    }
   }
+  var hzEma = 0, frameN = 0, renders = 0, drawnD = 0;
 
   if (typeof document !== 'undefined' && document.getElementById('game')) setup();
 
@@ -12235,6 +12742,7 @@ var Game = (function () {
       hooks.fx = cbs.fx || null;
       pendingMode = (opts && opts.mode) || null;
       pendingGifts = !!(opts && opts.gifts);
+      pendingKoi = !!(opts && opts.koi);
       newRun();
       if (W.hold) lesson({ key: 'tut.start', wait: true });
       if (Sfx.mood) Sfx.mood(biome().mood || 'base');   // the stretch it starts in
@@ -12294,7 +12802,15 @@ var Game = (function () {
     },
     resume: function () { paused = false; lastT = 0; },
     isPaused:  function () { return paused; },
-    isRunning: function () { return !!W && W.state === 'run' && !W.demo; },
+    /* a real run given up: its result, as if it had ended there, with no
+       revive to offer; null when there is none */
+    giveUp: function () {
+      if (!W || W.demo || W.state !== 'run' || W.given) return null;
+      var r = runResult(); r.canRevive = false; r.rescuable = false; r.gaveUp = true;
+      W.given = true;                                // banked once, never twice
+      return r;
+    },
+    isRunning: function () { return !!W && W.state === 'run' && !W.demo && !W.given; },
     isDemo: function () { return !!W && !!W.demo; },
     hasRun:    function () { return !!W; },
     suspend: function () { suspended = true; if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; } },
@@ -12536,9 +13052,9 @@ var Game = (function () {
         } else {                                      /* it gives */
           if (!broke) {
             broke = true; if (onBreak) onBreak();
-            spawn(14, 'chip', cx, cy, S * 1.4, 3.4, 300);
-            spawn(6, 'lump', cx, cy - S * 0.6, S * 1.2, 2.8, 400);
-            spawn(34, 'snow', cx, cy - S * 0.3, S * 1.8, 3.6, 500);
+            spawn(22, 'chip', cx, cy, S * 1.6, 4.2, 300);
+            spawn(8, 'lump', cx, cy - S * 0.6, S * 1.2, 3.2, 400);
+            spawn(56, 'snow', cx, cy - S * 0.3, S * 2.2, 4.4, 500);
             for (i = 0; i < 7; i++) puffs.push({ x: cx + (hh(i, 600) - 0.5) * S * 1.4, y: cy + (hh(i, 601) - 0.3) * S, r: S * 0.3, vr: 0.9 + hh(i, 602) * 0.8 });
           }
           var q2 = (t - BREAK) / (1 - BREAK);
@@ -12546,6 +13062,17 @@ var Game = (function () {
           if (q2 < 0.12) {
             c.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - q2 / 0.12)).toFixed(3) + ')';
             c.fillRect(0, 0, size, size);
+          }
+          /* two rings of light running out from it, the second behind the
+             first (1.3.4: more to the moment it gives) */
+          for (var wv = 0; wv < 2; wv++) {
+            var wq = q2 * 2.2 - wv * 0.18;
+            if (wq <= 0 || wq >= 1) continue;
+            c.strokeStyle = 'rgba(' + tone[2] + ',' + (0.85 * (1 - wq)).toFixed(3) + ')';
+            c.lineWidth = 1 + 5 * (1 - wq);
+            c.beginPath(); c.arc(cx, cy, R * (0.5 + wq * 2.4), 0, 6.2832); c.stroke();
+            c.strokeStyle = 'rgba(255,255,255,' + (0.6 * (1 - wq)).toFixed(3) + ')'; c.lineWidth = 1;
+            c.beginPath(); c.arc(cx, cy, R * (0.45 + wq * 2.4), 0, 6.2832); c.stroke();
           }
           /* rays turning behind it, softer now: the light let out */
           c.save(); c.translate(cx, cy); c.rotate(T * 0.02);
@@ -12583,6 +13110,16 @@ var Game = (function () {
           /* and what was inside, rising in its own light and settling with a
              bounce: the fish itself, gold or silver, or a heart */
           var pop = Math.min(1, q2 * 2.4);
+          if (pop >= 1) {                                /* and stars winking round it */
+            for (var tw = 0; tw < 7; tw++) {
+              var ta = T * 0.025 + tw * 0.9, td = R * (1.05 + 0.18 * Math.sin(T * 0.05 + tw));
+              var tsz = R * 0.12 * (0.4 + 0.6 * Math.abs(Math.sin(T * 0.11 + tw * 1.7)));
+              var tx2 = cx + Math.cos(ta) * td, ty2 = cy + Math.sin(ta) * td * 0.85;
+              c.fillStyle = tw % 2 ? '#ffffff' : 'rgba(' + tone[2] + ',1)';
+              c.beginPath(); c.moveTo(tx2, ty2 - tsz); c.quadraticCurveTo(tx2, ty2, tx2 + tsz, ty2); c.quadraticCurveTo(tx2, ty2, tx2, ty2 + tsz);
+              c.quadraticCurveTo(tx2, ty2, tx2 - tsz, ty2); c.quadraticCurveTo(tx2, ty2, tx2, ty2 - tsz); c.fill();
+            }
+          }
           var ease = 1 + 0.25 * Math.sin(pop * Math.PI) * (1 - pop) - Math.pow(1 - pop, 3);
           var pr = R * (0.2 + 0.72 * Math.max(0, ease));
           c.save();
@@ -12673,6 +13210,9 @@ var Game = (function () {
     },
     /* what the player's animal wears: { color, wear } or null (looks) */
     /* the skin the player's animal is in ('' its own coat) */
+    setBoosts: function (o) { BOOST = o || {}; },
+    _drawn: function () { return { n: renders, d: drawnD }; },
+    drawKoi: function (c, x, y, r, t, v, bare) { drawKoi(c, x, y, r, t, v, bare); },
     setLook: function (alt) { PLAYER_ALT = ALT_PAINT[alt] ? alt : ''; },
     altIds: function () { return Object.keys(ALT_PAINT); },
     drawSkinPreview: function (cv, skinId, size, alt) {
@@ -12761,7 +13301,7 @@ var Game = (function () {
       canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
       var g = canvas.getContext('2d'); if (!g) return;
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, size, size);
-      paintGift(g, size / 2, size * 0.54, size * 0.3, v || 0, flip, shape || 0);
+      return paintGiftIcon(g, size, v || 0, flip);
     }
   };
 })();

@@ -24,37 +24,74 @@ function ptRound(c, x, y, rx, ry, cols, lx, ly) {
   return g;
 }
 function ptEll(c, x, y, rx, ry, rot) { c.beginPath(); c.ellipse(x, y, rx, ry, rot || 0, 0, 6.2832); }
-/* the eyes, big and bright as they are on the hill: a white ring if the
-   creature has one, the white, the iris, the pupil and two glints */
+/* a fixed scatter, so every painting of a portrait is the same */
+function ptH(i) { var x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+/* the eyes, as an animal's are (1.3.4, the owner: more real): set in a
+   socket, almost all iris, no white showing; the iris coloured in depth
+   and darker at its rim, a round pupil, the upper lid's shadow across the
+   top, a wet line along the lower lid, and one sharp glint with a soft
+   one. `o.iris` the colour, `o.ring` a ring of bare skin round it (the
+   puffin's, the owl's lid), `o.dead` the zombie's milky eye. */
 function ptEyes(c, cx, cy, gap, r, o) {
   o = o || {};
+  r = r * (o.big ? 1 : 0.8);
   [-1, 1].forEach(function (s) {
     var ex = cx + s * gap, ey = cy;
-    c.fillStyle = 'rgba(0,0,0,.22)'; ptEll(c, ex + 0.5, ey + 1.4, r * 1.22, r * 1.25); c.fill();
-    if (o.ring) { c.fillStyle = o.ring; ptEll(c, ex, ey, r * 1.27, r * 1.3); c.fill(); }
+    var sk = c.createRadialGradient(ex, ey, r * 0.9, ex, ey, r * (o.small ? 1.15 : 1.7));   // the socket's shadow
+    sk.addColorStop(0, 'rgba(0,0,0,.28)'); sk.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sk; ptEll(c, ex, ey, r * (o.small ? 1.15 : 1.7), r * (o.small ? 1.1 : 1.55)); c.fill();
+    if (o.ring) { c.fillStyle = o.ring; ptEll(c, ex, ey, r * 1.3, r * 1.24); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 0.4; c.stroke(); }
+    c.fillStyle = '#120d0a'; ptEll(c, ex, ey, r * 1.06, r * 1.0); c.fill();     // the lid's dark rim
     if (o.dead && s < 0) {                          // a dead eye, milky, and the scratch across it
       var dg = c.createRadialGradient(ex - r * 0.3, ey - r * 0.3, 0.5, ex, ey, r);
       dg.addColorStop(0, '#f2f4ea'); dg.addColorStop(1, '#b8bfae');
-      c.fillStyle = dg; ptEll(c, ex, ey, r, r * 1.03); c.fill();
-      c.fillStyle = 'rgba(150,160,140,.6)'; ptEll(c, ex - s * 0.6, ey + 0.6, r * 0.55, r * 0.55); c.fill();
+      c.fillStyle = dg; ptEll(c, ex, ey, r * 0.92, r * 0.88); c.fill();
+      c.fillStyle = 'rgba(150,160,140,.6)'; ptEll(c, ex - s * 0.6, ey + 0.6, r * 0.5, r * 0.5); c.fill();
       return;
     }
-    c.fillStyle = o.white || '#ffffff'; ptEll(c, ex, ey, r, r * 1.03); c.fill();
-    c.strokeStyle = 'rgba(20,24,32,.45)'; c.lineWidth = 0.6; c.stroke();
-    var px = ex - s * r * 0.12 + (o.lx || 0), py = ey + r * 0.09;
-    c.fillStyle = o.iris || '#1c2230'; ptEll(c, px, py, r * 0.66, r * 0.66); c.fill();
-    c.fillStyle = '#0b0d12'; ptEll(c, px, py, r * 0.4, r * 0.4); c.fill();
+    var iris = o.iris || '#3a2a1e';
+    var ig = c.createRadialGradient(ex - r * 0.15, ey + r * 0.1, r * 0.1, ex, ey, r * 0.92);
+    ig.addColorStop(0, ptLit(iris, 0.35)); ig.addColorStop(0.6, iris); ig.addColorStop(1, ptLit(iris, -0.55));
+    c.fillStyle = ig; ptEll(c, ex, ey, r * 0.92, r * 0.88); c.fill();
+    c.strokeStyle = ptLit(iris, 0.25); c.globalAlpha = 0.35; c.lineWidth = 0.3;  // the fibres of the iris
+    c.beginPath(); for (var a = 0; a < 6.28; a += 0.5) { c.moveTo(ex + Math.cos(a) * r * 0.38, ey + Math.sin(a) * r * 0.38); c.lineTo(ex + Math.cos(a) * r * 0.8, ey + Math.sin(a) * r * 0.8); } c.stroke();
+    c.globalAlpha = 1;
+    c.fillStyle = '#050403'; ptEll(c, ex + (o.lx || 0), ey + r * 0.04, o.slit ? r * 0.16 : r * 0.42, o.slit ? r * 0.7 : r * 0.42); c.fill();
     if (o.veins && s > 0) {
       c.strokeStyle = 'rgba(200,40,40,.55)'; c.lineWidth = 0.35; c.beginPath();
-      [0.3, 1.4, 2.6, 3.7, 5].forEach(function (a) { c.moveTo(ex + Math.cos(a) * r * 0.95, ey + Math.sin(a) * r * 0.95); c.lineTo(ex + Math.cos(a + 0.2) * r * 0.62, ey + Math.sin(a + 0.2) * r * 0.62); });
+      [0.3, 1.4, 2.6, 3.7, 5].forEach(function (a2) { c.moveTo(ex + Math.cos(a2) * r * 0.9, ey + Math.sin(a2) * r * 0.9); c.lineTo(ex + Math.cos(a2 + 0.2) * r * 0.6, ey + Math.sin(a2 + 0.2) * r * 0.6); });
       c.stroke();
     }
-    c.fillStyle = '#ffffff'; ptEll(c, px - r * 0.26, py - r * 0.27, r * 0.24, r * 0.24); c.fill();
-    ptEll(c, px + r * 0.21, py + r * 0.21, r * 0.11, r * 0.11); c.fill();
+    var lid = c.createLinearGradient(0, ey - r, 0, ey);                          // the upper lid's shadow
+    lid.addColorStop(0, 'rgba(0,0,0,.55)'); lid.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = lid; ptEll(c, ex, ey - r * 0.25, r * 0.95, r * 0.7); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 0.4;                  // the wet line of the lower lid
+    c.beginPath(); c.ellipse(ex, ey, r * 0.98, r * 0.94, 0, 0.35, Math.PI - 0.35); c.stroke();
+    c.fillStyle = '#ffffff'; ptEll(c, ex - r * 0.32, ey - r * 0.34, r * 0.2, r * 0.17); c.fill();   // the glints
+    c.fillStyle = 'rgba(255,255,255,.4)'; ptEll(c, ex + r * 0.3, ey + r * 0.32, r * 0.12, r * 0.08); c.fill();
   });
 }
+/* fur: short strands over a shape, lit ones and shadowed ones, lying
+   outward from `ox, oy` and downward; clipped by the caller */
+function ptFur(c, x, y, rx, ry, col, n, len, seed) {
+  n = n || 220; len = len || 2.6; seed = seed || 1;
+  c.lineCap = 'round';
+  for (var k = 0; k < 2; k++) {
+    c.strokeStyle = k ? 'rgba(255,255,255,.16)' : ptLit(col, -0.3); c.globalAlpha = k ? 1 : 0.35; c.lineWidth = k ? 0.35 : 0.5;
+    c.beginPath();
+    for (var i = 0; i < n; i++) {
+      var a = ptH(i * 3.1 + seed + k * 7) * 6.2832, rr = Math.sqrt(ptH(i * 5.7 + seed + k)), px = x + Math.cos(a) * rx * rr, py = y + Math.sin(a) * ry * rr;
+      var dx = px - x, dy = py - y, dl = Math.hypot(dx, dy) || 1, l = len * (0.6 + ptH(i + seed) * 0.8);
+      var ux = dx / dl * 0.6, uy = dy / dl * 0.6 + 0.8, ul = Math.hypot(ux, uy) || 1;
+      c.moveTo(px, py); c.lineTo(px + ux / ul * l + (k ? -0.3 : 0.3), py + uy / ul * l + (k ? -0.3 : 0.3));
+    }
+    c.stroke();
+  }
+  c.globalAlpha = 1;
+}
 function ptCheeks(c, cx, cy, gap, col) {
-  c.fillStyle = col || 'rgba(255,130,150,.38)';
+  if (!col) return;                                 // (no cartoon blush: 1.3.4, more real)
+  c.fillStyle = col;
   [-1, 1].forEach(function (s) { ptEll(c, cx + s * gap, cy, 5, 3); c.fill(); });
 }
 function ptShade(c, x, y, rx, ry, a) {
@@ -78,18 +115,84 @@ function ptDisc(c, a, b) {
 }
 function ptClip(c) { c.beginPath(); c.arc(50, 50, 50, 0, 6.2832); c.clip(); }
 
+/* ---- limbs (1.3.4: more real) ----
+   A flipper in its own frame: the root at the shoulder (y = -9), the tip
+   down at y = 21, the outer edge toward +x (the caller mirrors it). A
+   penguin's is flat and tapering, its inner edge pale and its face scaled
+   with tiny feathers; a seal's short and broad, five fingers showing
+   through it and a dark claw on each; a whale's a long glossy paddle. */
+function ptFlipper(c, kind, cols, side) {
+  var w = kind === 'whale' ? 15 : kind === 'seal' ? 12.5 : 12.5, L = kind === 'seal' ? 18 : 22;
+  function path(dx, dy) {
+    c.beginPath(); c.moveTo(-w * 0.55 + dx, -9 + dy);
+    c.bezierCurveTo(-w * 0.78 + dx, 2 + dy, -w * 0.62 + dx, L * 0.62 + dy, -w * 0.12 + dx, L + dy);
+    c.quadraticCurveTo(w * 0.05 + dx, L + 2.2 + dy, w * 0.24 + dx, L - 1 + dy);
+    c.bezierCurveTo(w * 0.62 + dx, L * 0.5 + dy, w * 0.72 + dx, 0 + dy, w * 0.5 + dx, -9 + dy);
+    c.closePath();
+  }
+  c.save(); c.scale(side, 1);
+  c.fillStyle = 'rgba(10,15,30,.28)'; path(-1.6, 2.2); c.fill();                       // its shadow on the body
+  var g = c.createLinearGradient(-w * 0.6, 0, w * 0.6, 0);
+  g.addColorStop(0, cols[2]); g.addColorStop(0.55, cols[1]); g.addColorStop(1, cols[0]);
+  c.fillStyle = g; path(0, 0); c.fill();
+  c.save(); path(0, 0); c.clip();
+  var gl = c.createLinearGradient(0, -9, 0, L);                                        // darker toward the root, where the body shades it
+  gl.addColorStop(0, 'rgba(0,0,0,.35)'); gl.addColorStop(0.35, 'rgba(0,0,0,0)'); gl.addColorStop(1, 'rgba(0,0,0,.12)');
+  c.fillStyle = gl; c.fillRect(-w, -10, w * 2, L + 14);
+  if (kind === 'penguin') {
+    c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 0.45;                        // the tiny feathers, like scales
+    for (var y = -6; y < L; y += 1.9) for (var x = -w * 0.7; x < w * 0.7; x += 2.2) {
+      c.beginPath(); c.arc(x + ((Math.round(y / 1.9) & 1) ? 1.1 : 0), y, 0.95, 0.3, Math.PI - 0.3); c.stroke();
+    }
+    c.strokeStyle = 'rgba(245,248,252,.75)'; c.lineWidth = 2;                           // the pale inner edge
+    c.beginPath(); c.moveTo(-w * 0.6, -4); c.bezierCurveTo(-w * 0.78, 4, -w * 0.62, L * 0.62, -w * 0.12, L); c.stroke();
+  } else if (kind === 'seal') {
+    c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 0.6;                               // the fingers inside it
+    for (var f = -2; f <= 2; f++) { c.beginPath(); c.moveTo(f * 1.6, -2); c.quadraticCurveTo(f * 2.4, L * 0.5, f * 2.2, L - 2.6); c.stroke(); }
+    c.fillStyle = 'rgba(30,36,44,.28)';
+    [[-3, 2, 1.4], [3, 6, 1.1], [-1, 10, 1.2], [4, 13, 0.9]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2] * 0.8); c.fill(); });
+  } else {
+    c.fillStyle = 'rgba(255,255,255,.28)';                                               // a wet gleam down its length
+    ptEll(c, w * 0.22, 4, 1.6, 10, -0.15); c.fill();
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 0.7;                            // light along the outer edge
+  c.beginPath(); c.moveTo(w * 0.5, -8); c.bezierCurveTo(w * 0.72, 0, w * 0.62, L * 0.5, w * 0.24, L - 1); c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 0.5; path(0, 0); c.stroke();
+  if (kind === 'seal') {                                                                  // a claw at each fingertip
+    c.fillStyle = '#2a2622';
+    for (var k = -2; k <= 2; k++) { ptEll(c, k * 2.2, L - 2.2 + Math.abs(k) * -0.6, 0.55, 1.1, k * 0.12); c.fill(); }
+  }
+  c.restore();
+}
+/* an otter's paw from the front: a broad pad, four short toes curled over
+   what it holds, a small claw on each, and its dense fur */
+function ptPaw(c, x, y, side, col) {
+  c.save(); c.translate(x, y); c.rotate(side * 0.35);
+  c.fillStyle = 'rgba(10,15,30,.3)'; ptEll(c, 0.8, 1.6, 5.2, 4.4); c.fill();
+  var g = c.createRadialGradient(-1.4, -1.6, 0.4, 0, 0, 5.4); g.addColorStop(0, ptLit(col, 0.3)); g.addColorStop(1, ptLit(col, -0.3));
+  c.fillStyle = g; ptEll(c, 0, 0, 5, 4.2); c.fill();
+  c.save(); ptEll(c, 0, 0, 5, 4.2); c.clip(); ptFur(c, 0, 0, 5, 4.2, col, 50, 1.2, x); c.restore();
+  for (var t = -1.5; t <= 1.5; t++) {                                                      // the toes over the top, and their claws
+    var tx = t * 2.4, ty = -3.4 + Math.abs(t) * 0.6;
+    c.fillStyle = ptLit(col, 0.12); ptEll(c, tx, ty, 1.5, 1.3); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = 0.35; c.stroke();
+    c.fillStyle = '#e8dccb'; ptEll(c, tx, ty - 1.3, 0.45, 0.6); c.fill();
+  }
+  c.restore();
+}
 /* ---- penguins ----
    Shoulders and a white front up to the throat, two flippers, a big round
    head; what tells one kind from another is on the head (the white of the
    face, a cap, a patch, a ring round the eyes) and the beak. */
 var PT_PENGUIN = {
-  snowcap: { face: 'adelie', beak: '#2c2e34', bill: 'short' },
-  mitten:  { face: 'chinstrap', beak: '#26282e', bill: 'short', scarf: '#e0483c' },
-  puffin:  { face: 'puffin', beak: '#e4521c', bill: 'puffin', collar: true },
-  bubbles: { face: 'little', beak: '#3a3f48', bill: 'short', bubble: '#9fe8ff', iris: '#8f9aa6' },
-  compass: { face: 'gentoo', beak: '#f0541c', bill: 'long', compass: '#f0b429' },
-  emperor: { face: 'emperor', beak: '#1f2126', bill: 'long', patch: ['#ffe9a6', '#f5a524'], stripe: '#ff8a3d', blaze: '#f5b82e' },
-  aurora:  { face: 'king', beak: '#1f2126', bill: 'long', patch: ['#e9fdff', '#5fd8ee'], stripe: '#8ff3ff', crown: '#c9f6ff' }
+  snowcap: { hw: 27, hh: 27, crest: 1, face: 'adelie', beak: '#2c2e34', bill: 'short' },
+  mitten:  { hw: 29, hh: 27, face: 'chinstrap', beak: '#26282e', bill: 'short', scarf: '#e0483c' },
+  puffin:  { hw: 27, hh: 25, face: 'puffin', beak: '#e4521c', bill: 'puffin', collar: true },
+  bubbles: { hw: 25, hh: 23, face: 'little', beak: '#3a3f48', bill: 'short', bubble: '#9fe8ff', iris: '#8f9aa6' },
+  compass: { hw: 31, hh: 25, face: 'gentoo', beak: '#f0541c', bill: 'long', compass: '#f0b429' },
+  emperor: { hw: 25.5, hh: 28.5, face: 'emperor', beak: '#1f2126', bill: 'long', patch: ['#ffe9a6', '#f5a524'], stripe: '#ff8a3d', blaze: '#f5b82e' },
+  aurora:  { hw: 25.5, hh: 28.5, face: 'king', beak: '#1f2126', bill: 'long', patch: ['#e9fdff', '#5fd8ee'], stripe: '#8ff3ff', crown: '#c9f6ff' }
 };
 function ptPenguin(c, S, P, o) {
   o = o || {};
@@ -97,9 +200,8 @@ function ptPenguin(c, S, P, o) {
   c.save(); ptClip(c);
   ptShade(c, 56, 104, 44, 30, 0.18);
   [-1, 1].forEach(function (s) {
-    c.save(); c.translate(50 + s * 31, 86); c.rotate(s * 0.32);
-    var fg = c.createLinearGradient(-6, -10, 8, 18); fg.addColorStop(0, fl[0]); fg.addColorStop(1, fl[2]);
-    c.fillStyle = fg; ptEll(c, 0, 6, 7, 17); c.fill();
+    c.save(); c.translate(50 + s * 35, 87); c.rotate(s * 0.12);
+    ptFlipper(c, 'penguin', fl, s);
     c.restore();
   });
   c.fillStyle = ptRound(c, 52, 92, 36, 32, body, 0.38, 0.6); ptEll(c, 50, 100, 36, 32); c.fill();
@@ -117,11 +219,19 @@ function ptPenguin(c, S, P, o) {
   if (P.collar) {                                  // a puffin's black collar under its face, the white below it
     c.fillStyle = body[1]; c.beginPath(); c.moveTo(26, 70); c.quadraticCurveTo(50, 66, 74, 70); c.lineTo(73, 80); c.quadraticCurveTo(50, 86, 27, 80); c.closePath(); c.fill();
   }
+  c.save(); c.beginPath(); c.moveTo(50, 70); c.bezierCurveTo(64, 70, 74, 84, 72, 100); c.lineTo(28, 100); c.bezierCurveTo(26, 84, 36, 70, 50, 70); c.clip();
+  c.globalAlpha = 0.45; ptFur(c, 50, 86, 22, 16, '#c3ccd6', 220, 1, 3); c.globalAlpha = 1;   // the white front's feathers, close
+  c.restore();
   if (o.chest) o.chest(c);
   ptShade(c, 53, 70, 24, 8, 0.28);
   c.restore();
-  /* the head */
-  c.fillStyle = ptRound(c, 50, 44, 29, 27, [ptLit(body[0], 0.12), body[1], body[2]]); ptEll(c, 50, 45, 29, 27); c.fill();
+  /* the head: its size and shape the kind's own (1.3.4) */
+  var HW = P.hw || 29, HH = P.hh || 27;
+  c.fillStyle = ptRound(c, 50, 44, HW, HH, [ptLit(body[0], 0.12), body[1], body[2]]); ptEll(c, 50, 45, HW, HH); c.fill();
+  if (P.crest) {                                 // an Adelie's short crest, raised at the back of the crown
+    c.fillStyle = body[1];
+    for (var cq = -1; cq <= 1; cq++) { c.beginPath(); c.moveTo(50 + cq * 3.4 - 3, 45 - HH + 2.4); c.quadraticCurveTo(50 + cq * 3.8, 45 - HH - 1.6 - (1 - Math.abs(cq)) * 0.8, 50 + cq * 3.4 + 3, 45 - HH + 2.4); c.fill(); }
+  }
   var f = P.face;
   if (f === 'chinstrap' || f === 'puffin') {
     /* a white face under a dark cap; the chinstrap's thin dark band under it */
@@ -132,12 +242,12 @@ function ptPenguin(c, S, P, o) {
     c.closePath(); c.fill();
     /* the chinstrap's thin band, low, along the bottom of his face from
        ear to ear (higher up it read as a grin) */
-    if (f === 'chinstrap') { c.strokeStyle = ptLit(body[1], 0.05); c.lineWidth = 1.1; c.beginPath(); c.moveTo(24.6, 57); c.quadraticCurveTo(50, 81, 75.4, 57); c.stroke(); }
+    if (f === 'chinstrap') { c.strokeStyle = ptLit(body[1], 0.05); c.lineWidth = 0.8; c.beginPath(); c.moveTo(25.6, 60.6); c.quadraticCurveTo(50, 86, 74.4, 60.6); c.stroke(); }
   }
   if (f === 'little') {
     /* a little blue penguin's white comes up its throat to its lower cheeks,
        fading into the blue (a sharp white crescent there read as a grin) */
-    c.save(); ptEll(c, 50, 45, 29, 27); c.clip();
+    c.save(); ptEll(c, 50, 45, HW, HH); c.clip();
     var lg = c.createLinearGradient(0, 50, 0, 72); lg.addColorStop(0, 'rgba(240,246,250,0)'); lg.addColorStop(0.55, 'rgba(240,246,250,.7)'); lg.addColorStop(1, 'rgba(250,252,255,1)');
     c.fillStyle = lg; ptEll(c, 50, 70, 25, 18); c.fill();
     c.restore();
@@ -154,11 +264,18 @@ function ptPenguin(c, S, P, o) {
          were a pair of earmuffs) */
       var pg = c.createLinearGradient(0, 42, 0, 68);
       pg.addColorStop(0, P.patch[1]); pg.addColorStop(1, P.patch[0]);
-      c.fillStyle = pg; c.beginPath(); c.moveTo(50 + s * 17, 41); c.quadraticCurveTo(50 + s * 27, 44, 50 + s * 25.6, 56); c.quadraticCurveTo(50 + s * 24, 66, 50 + s * 18.6, 70); c.quadraticCurveTo(50 + s * 19.6, 58, 50 + s * 17, 41); c.closePath(); c.fill();
+      var k = (HW - 1.5) / 29; c.fillStyle = pg; c.beginPath(); c.moveTo(50 + s * 17 * k, 41); c.quadraticCurveTo(50 + s * 27 * k, 44, 50 + s * 25.6 * k, 56); c.quadraticCurveTo(50 + s * 24 * k, 66, 50 + s * 18.6 * k, 70); c.quadraticCurveTo(50 + s * 19.6 * k, 58, 50 + s * 17 * k, 41); c.closePath(); c.fill();
     });
   }
+  /* feathers: short, close and glossy, over the whole head and its markings */
+  c.save(); ptEll(c, 50, 45, HW, HH); c.clip();
+  c.globalAlpha = 0.4; ptFur(c, 50, 44, HW, HH, '#7a8492', 300, 0.9, 7); c.globalAlpha = 1;   // close and sleek, not a coat
+  var hr = c.createLinearGradient(21, 0, 79, 0);
+  hr.addColorStop(0, 'rgba(200,235,255,.2)'); hr.addColorStop(0.25, 'rgba(255,255,255,0)'); hr.addColorStop(0.8, 'rgba(0,0,0,0)'); hr.addColorStop(1, 'rgba(0,0,0,.25)');
+  c.fillStyle = hr; c.fillRect(20, 16, 60, 58);
+  c.restore();
   c.fillStyle = 'rgba(255,255,255,.14)'; ptEll(c, 39, 30, 10, 5, -0.5); c.fill();
-  c.strokeStyle = 'rgba(120,150,200,.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(50, 45, 28.4, 26.4, 0, 3.3, 4.7); c.stroke();
+  c.strokeStyle = 'rgba(120,150,200,.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(50, 45, HW - 0.6, HH - 0.6, 0, 3.3, 4.7); c.stroke();
   if (!o.noCheeks) ptCheeks(c, 50, 55, 18, o.cheek);
   ptEyes(c, 50, 43, 11, 6.6, { ring: o.ring !== undefined ? o.ring : (f === 'adelie' ? '#f6f9fc' : f === 'puffin' ? '#e8553a' : null), dead: o.dead, veins: o.veins, iris: o.iris || P.iris });
   if (f === 'puffin') {                            // the little dark marks fore and aft of a puffin's eye
@@ -171,6 +288,7 @@ function ptPenguin(c, S, P, o) {
 function ptBeak(c, P, o) {
   var bk = o.beak || P.beak;
   if (P.bill === 'puffin') {
+    c.save(); c.translate(50, 52); c.scale(1.32, 1.32); c.translate(-50, -52);   // a puffin's bill is as deep as its face
     c.fillStyle = 'rgba(0,0,0,.3)'; ptEll(c, 51.4, 63, 8, 4); c.fill();
     var pb = function () { c.beginPath(); c.moveTo(42.6, 51.6); c.quadraticCurveTo(50, 47.6, 57.4, 51.6); c.quadraticCurveTo(57, 59, 50, 65); c.quadraticCurveTo(43, 59, 42.6, 51.6); c.closePath(); };
     c.fillStyle = '#e4521c'; pb(); c.fill();
@@ -181,9 +299,11 @@ function ptBeak(c, P, o) {
     c.fillStyle = 'rgba(255,255,255,.3)'; ptEll(c, 46.6, 55, 1.6, 3, 0.2); c.fill();
     c.restore();
     c.strokeStyle = 'rgba(80,20,0,.5)'; c.lineWidth = 0.5; pb(); c.stroke();
+    c.fillStyle = '#f4c43a'; [-1, 1].forEach(function (s2) { ptEll(c, 50 + s2 * 7.6, 52.2, 1.4, 0.9); c.fill(); });   // the yellow rosettes at the gape
+    c.restore();
     return;
   }
-  var long = P.bill === 'long', tip = long ? 63 : 60.4, w = long ? 4.8 : 5.6;
+  var long = P.bill === 'long', tip = long ? 67 : 61.6, w = long ? 3.4 : 4.2;
   c.fillStyle = 'rgba(0,0,0,.3)'; ptEll(c, 51.2, tip - 1.8, w, 3); c.fill();
   var bkg = c.createLinearGradient(45, 50, 55, tip); bkg.addColorStop(0, ptLit(bk, 0.32)); bkg.addColorStop(1, ptLit(bk, -0.45));
   c.fillStyle = bkg; c.beginPath(); c.moveTo(50 - w, 53.2); c.quadraticCurveTo(50, 50.4, 50 + w, 53.2); c.quadraticCurveTo(50 + w * 0.6, tip - 1.6, 50, tip); c.quadraticCurveTo(50 - w * 0.6, tip - 1.6, 50 - w, 53.2); c.closePath(); c.fill();
@@ -194,7 +314,12 @@ function ptBeak(c, P, o) {
     c.fillStyle = P.stripe; [-1, 1].forEach(function (s) { ptEll(c, 50 + s * w * 0.62, 55.4, w * 0.36, 2.6, s * -0.5); c.fill(); });
     c.restore();
   }
-  c.fillStyle = 'rgba(255,255,255,.35)'; ptEll(c, 48, 53, 2, 0.8, -0.2); c.fill();
+  /* the line where the two halves of the bill meet, and the nostrils */
+  c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.5; c.beginPath();
+  c.moveTo(50 - w * 0.85, 54.4); c.quadraticCurveTo(50 - w * 0.25, tip - 3.4, 50, tip - 0.6);
+  c.moveTo(50 + w * 0.85, 54.4); c.quadraticCurveTo(50 + w * 0.25, tip - 3.4, 50, tip - 0.6); c.stroke();
+  c.fillStyle = 'rgba(0,0,0,.55)'; [-1, 1].forEach(function (s) { ptEll(c, 50 + s * w * 0.42, 53.2, 0.7, 0.35, s * 0.4); c.fill(); });
+  c.strokeStyle = 'rgba(255,255,255,.38)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(50, 51.8); c.lineTo(50, tip - 1.4); c.stroke();   // the ridge of the bill
 }
 /* Mitten's red scarf, knotted, a tail hanging over his chest */
 function ptScarf(c, col) {
@@ -301,6 +426,12 @@ function ptBust(c, body, o) {
     for (x = 15.7; x < 88; x += 3.4) { var y1 = 78 + Math.abs(x - 50) * 0.18; c.moveTo(x, y1); c.quadraticCurveTo(x + 1, y1 + 8, x - 0.5, y1 + 18); }
     c.stroke();
   }
+  if (!o.skin) {                                  // fur over shoulders and front (1.3.4: more real)
+    ptFur(c, 50, 96, o.w || 38, 26, body[1], 360, 2.4, 11);
+    if (o.front) ptFur(c, 50, 96, (o.fw || 20) * 0.9, 22, ptLit(o.front, -0.2), 160, 2, 13);
+  } else {                                        // a hide: the sheen of wet skin
+    c.fillStyle = 'rgba(255,255,255,.1)'; ptEll(c, 34, 82, 12, 5, -0.4); c.fill();
+  }
   if (o.chest) o.chest(c);
   ptShade(c, 53, 71, o.sw || 24, 8, 0.28);
   c.restore();
@@ -316,9 +447,42 @@ function ptNose(c, x, y, w, col) {
   c.fillStyle = g; c.beginPath(); c.moveTo(x - w, y - w * 0.4); c.quadraticCurveTo(x, y - w * 0.9, x + w, y - w * 0.4); c.quadraticCurveTo(x + w * 0.5, y + w * 0.7, x, y + w * 0.7); c.quadraticCurveTo(x - w * 0.5, y + w * 0.7, x - w, y - w * 0.4); c.closePath(); c.fill();
   c.fillStyle = 'rgba(255,255,255,.4)'; ptEll(c, x - w * 0.35, y - w * 0.35, w * 0.3, w * 0.16, -0.3); c.fill();
 }
-function ptHead(c, x, y, rx, ry, body) {
-  c.fillStyle = ptRound(c, x, y, rx, ry, [ptLit(body[0], 0.12), body[1], body[2]]); ptEll(c, x, y, rx, ry); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.14)'; ptEll(c, x - rx * 0.38, y - ry * 0.55, rx * 0.34, ry * 0.18, -0.5); c.fill();
+/* Heads are not all balls (the owner, 1.3.4): each kind its own outline,
+   seen from the front, as half-widths down from the crown (-1) to the chin
+   (1); the other half is the mirror of it. */
+var PT_HEADS = {
+  cat:    [[-1, 0], [-0.93, 0.5], [-0.62, 0.86], [-0.15, 0.97], [0.28, 1.07], [0.6, 0.82], [0.88, 0.42], [1, 0]],
+  hare:   [[-1, 0], [-0.92, 0.42], [-0.6, 0.76], [-0.12, 0.86], [0.34, 0.74], [0.7, 0.5], [0.94, 0.24], [1, 0]],
+  deer:   [[-1, 0], [-0.94, 0.56], [-0.66, 0.92], [-0.3, 0.9], [0.1, 0.64], [0.5, 0.45], [0.86, 0.38], [1, 0]],
+  otter:  [[-1, 0], [-0.94, 0.64], [-0.6, 0.97], [0, 1.02], [0.45, 0.94], [0.78, 0.66], [0.96, 0.3], [1, 0]],
+  owl:    [[-1, 0], [-0.96, 0.56], [-0.72, 0.92], [-0.25, 1.06], [0.3, 1.0], [0.7, 0.72], [0.94, 0.34], [1, 0]],
+  walrus: [[-1, 0], [-0.95, 0.52], [-0.62, 0.8], [-0.12, 0.92], [0.28, 1.08], [0.64, 1.06], [0.9, 0.62], [1, 0]],
+  dome:   [[-1, 0], [-0.96, 0.46], [-0.7, 0.82], [-0.25, 0.98], [0.25, 1], [0.62, 0.86], [0.88, 0.54], [1, 0]]
+};
+function ptHeadPath(c, shape, x, y, rx, ry) {
+  var P = PT_HEADS[shape];
+  if (!P) { ptEll(c, x, y, rx, ry); return; }
+  var pts = [], i;
+  for (i = 0; i < P.length; i++) pts.push([x + P[i][1] * rx, y + P[i][0] * ry]);
+  for (i = P.length - 2; i > 0; i--) pts.push([x - P[i][1] * rx, y + P[i][0] * ry]);
+  var n = pts.length, m = function (a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
+  c.beginPath(); var s0 = m(pts[n - 1], pts[0]); c.moveTo(s0[0], s0[1]);
+  for (i = 0; i < n; i++) { var q = pts[i], e = m(q, pts[(i + 1) % n]); c.quadraticCurveTo(q[0], q[1], e[0], e[1]); }
+  c.closePath();
+}
+function ptHead(c, x, y, rx, ry, body, fur, shape) {
+  c.fillStyle = ptRound(c, x, y, rx, ry, [ptLit(body[0], 0.12), body[1], body[2]]); ptHeadPath(c, shape, x, y, rx, ry); c.fill();
+  c.save(); ptHeadPath(c, shape, x, y, rx, ry); c.clip();
+  if (fur) ptFur(c, x, y - ry * 0.1, rx, ry, body[1], 260, fur === true ? 2.4 : fur, rx);
+  else {                                            // skin, or close fur: a fine grain and a sheen
+    c.fillStyle = 'rgba(0,0,0,.06)';
+    for (var i = 0; i < 90; i++) { var a = ptH(i + rx) * 6.28, rr = Math.sqrt(ptH(i * 2.3 + ry)); ptEll(c, x + Math.cos(a) * rx * rr, y + Math.sin(a) * ry * rr, 0.6, 0.6); c.fill(); }
+  }
+  var rim = c.createLinearGradient(x - rx, y, x + rx, y);                         // the edge in shade, the sky's light along the left
+  rim.addColorStop(0, 'rgba(200,235,255,.22)'); rim.addColorStop(0.2, 'rgba(255,255,255,0)'); rim.addColorStop(0.8, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(0,0,0,.22)');
+  c.fillStyle = rim; c.fillRect(x - rx, y - ry, rx * 2, ry * 2);
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,.12)'; ptEll(c, x - rx * 0.38, y - ry * 0.55, rx * 0.34, ry * 0.18, -0.5); c.fill();
 }
 function ptMuzzle(c, x, y, rx, ry, col) {
   var g = c.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 0.5, x, y, Math.max(rx, ry));
@@ -337,8 +501,8 @@ PORTRAIT.seal = function (c, S) {
   var b = S.body;
   ptBust(c, b, {});
   /* her front flippers, held up at the sides */
-  [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 29, 88); c.rotate(s * 0.5); c.fillStyle = ptRound(c, 0, 4, 7, 15, S.flipper); ptEll(c, 0, 6, 6.5, 15); c.fill(); c.restore(); });
-  ptHead(c, 50, 46, 27, 25, b);
+  [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 30, 84); c.rotate(s * 0.4); c.scale(0.7, 0.7); ptFlipper(c, 'seal', S.flipper, s); c.restore(); });
+  ptHead(c, 50, 46, 27, 25, b, 0, 'dome');
   c.fillStyle = 'rgba(40,50,60,.22)';
   [[33, 32, 3.4], [64, 30, 2.8], [70, 48, 2.4], [28, 50, 2.6], [56, 24, 2]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2] * 0.75, 0.4); c.fill(); });
   ptMuzzle(c, 50, 58, 13, 8.6, S.mark);
@@ -350,7 +514,7 @@ PORTRAIT.seal = function (c, S) {
     c.strokeStyle = S.nose; c.lineWidth = 1.3; c.beginPath(); c.moveTo(50 + s * 1.2, 51.6); c.quadraticCurveTo(50 + s * 3.4, 52.4, 50 + s * 3.6, 55.2); c.stroke();
   });
   c.fillStyle = 'rgba(60,70,80,.55)'; [-1, 1].forEach(function (s) { [[5, 58], [8, 60], [6, 62.4]].forEach(function (d) { ptEll(c, 50 + s * d[0], d[1], 0.6, 0.6); c.fill(); }); });
-  c.strokeStyle = 'rgba(60,70,80,.55)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(50, 56.6); c.lineTo(50, 60); c.moveTo(46, 61.4); c.quadraticCurveTo(50, 63.6, 54, 61.4); c.stroke();
+  c.strokeStyle = 'rgba(60,70,80,.55)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(50, 56.6); c.lineTo(50, 60); c.moveTo(48, 61.4); c.quadraticCurveTo(50, 62.2, 52, 61.4); c.stroke();
   ptWhiskers(c, 50, 59, 'rgba(255,255,255,.8)', 15);
 };
 PORTRAIT.otter = function (c, S) {
@@ -361,12 +525,12 @@ PORTRAIT.otter = function (c, S) {
   var cg = c.createRadialGradient(47, 84, 0.5, 50, 87, 8); cg.addColorStop(0, '#ffffff'); cg.addColorStop(1, '#cfc2a8');
   c.fillStyle = cg; c.beginPath(); c.moveTo(42, 88); c.quadraticCurveTo(50, 78, 58, 88); c.quadraticCurveTo(50, 92, 42, 88); c.closePath(); c.fill();
   c.strokeStyle = 'rgba(120,100,80,.55)'; c.lineWidth = 0.5; c.beginPath(); [-4, -2, 0, 2, 4].forEach(function (d) { c.moveTo(50 + d * 1.6, 89.6); c.lineTo(50 + d * 0.5, 82); }); c.stroke();
-  [-1, 1].forEach(function (s) { c.fillStyle = S.paws; ptEll(c, 50 + s * 9, 88, 4.6, 3.8, s * 0.4); c.fill(); c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.4; c.beginPath(); [-1, 0, 1].forEach(function (d) { c.moveTo(50 + s * 7.4, 86.4 + d * 1.2); c.lineTo(50 + s * 5.4, 86.6 + d * 1.3); }); c.stroke(); });
+  [-1, 1].forEach(function (s) { ptPaw(c, 50 + s * 9, 88, s, S.paws); });
   /* a sea otter's head is pale, grizzled cream all over, broad and flat,
      her ears small and low at its sides, her nose broad, flat and dark
      (a brown hood round a pale face, round ears on top, made her a bear) */
   [-1, 1].forEach(function (s) { c.fillStyle = ptLit(S.mark, -0.35); ptEll(c, 50 + s * 26.4, 42, 2.6, 2.2); c.fill(); c.fillStyle = 'rgba(120,90,60,.6)'; ptEll(c, 50 + s * 26.6, 42.2, 1.2, 1); c.fill(); });
-  ptHead(c, 50, 47, 27, 23, [ptLit(S.mark, 0.35), S.mark, ptLit(S.mark, -0.3)]);
+  ptHead(c, 50, 47, 27, 23, [ptLit(S.mark, 0.35), S.mark, ptLit(S.mark, -0.3)], true, 'otter');
   c.strokeStyle = 'rgba(150,120,90,.25)'; c.lineWidth = 0.6; c.beginPath();
   for (var gq = 0; gq < 16; gq++) { var ga = 3.4 + gq * 0.19; c.moveTo(50 + Math.cos(ga) * 20, 47 + Math.sin(ga) * 17); c.lineTo(50 + Math.cos(ga) * 25.4, 47 + Math.sin(ga) * 21.6); }
   c.stroke();
@@ -385,7 +549,7 @@ PORTRAIT.lemming = function (c, S) {
   var b = S.body;
   ptBust(c, b, { front: S.mark, fw: 17 });
   ptRoundEars(c, 50, 31, 22, 2.8, ptLit(b[2], -0.1), 'rgba(250,200,180,.6)');   // small, nearly lost in the fur, as a lemming's are
-  ptHead(c, 50, 47, 27, 25, b);
+  ptHead(c, 50, 47, 27, 25, b, true);
   /* the dark cap from his brow back over his head */
   var sg = c.createLinearGradient(50, 22, 50, 40); sg.addColorStop(0, S.stripe); sg.addColorStop(1, 'rgba(74,42,20,0)');
   c.fillStyle = sg; c.beginPath(); c.moveTo(30, 34); c.quadraticCurveTo(50, 14, 70, 34); c.quadraticCurveTo(50, 40, 30, 34); c.closePath(); c.fill();
@@ -394,7 +558,7 @@ PORTRAIT.lemming = function (c, S) {
   c.stroke();
   ptCheeks(c, 50, 57, 17);
   ptMuzzle(c, 50, 58, 11.4, 8, S.mark);
-  ptEyes(c, 50, 45, 11, 6.4, { iris: '#1a120c' });
+  ptEyes(c, 50, 45, 11, 4.2, { iris: '#1a120c', small: true });   // a lemming's eyes are small beads in its fur
   ptNose(c, 50, 54.6, 2.8, '#c26a5a');
   /* two front teeth */
   c.fillStyle = '#ffffff'; c.fillRect(48.1, 60.6, 1.7, 2.6); c.fillRect(50.2, 60.6, 1.7, 2.6);
@@ -513,7 +677,8 @@ PORTRAIT.reindeer = function (c, S, o) {
   c.fillStyle = 'rgba(255,255,255,.14)'; ptEll(c, 42, 30, 6, 3.2, -0.5); c.fill();
   var rm = c.createLinearGradient(0, 54, 0, 74); rm.addColorStop(0, ptLit(S.mark, -0.15)); rm.addColorStop(1, ptLit(S.mark, 0.2));
   c.fillStyle = rm; c.beginPath(); c.moveTo(39, 58); c.quadraticCurveTo(50, 53, 61, 58); c.quadraticCurveTo(63, 68, 58, 73); c.quadraticCurveTo(50, 77, 42, 73); c.quadraticCurveTo(37, 68, 39, 58); c.closePath(); c.fill();
-  ptCheeks(c, 50, 54, 15, 'rgba(255,140,150,.26)');
+  c.save(); c.beginPath(); c.moveTo(50, 22); c.bezierCurveTo(66, 22, 72, 36, 69, 48); c.bezierCurveTo(66, 60, 62, 70, 50, 74); c.bezierCurveTo(38, 70, 34, 60, 31, 48); c.bezierCurveTo(28, 36, 34, 22, 50, 22); c.clip();
+  ptFur(c, 50, 44, 20, 26, b[1], 300, 2, 21); c.restore();
   ptEyes(c, 50, 43, 12, 5.6, { iris: '#20160f' });
   if (o.nose) o.nose(c);
   else ptNose(c, 50, 64, 5, S.nose);
@@ -533,7 +698,7 @@ PORTRAIT.hare = function (c, S, o) {
     c.save(); ear(); c.clip(); c.fillStyle = o.earTip || S.nose; ptEll(c, 0, -30, 8, 7); c.fill(); c.restore();
     c.restore();
   });
-  ptHead(c, 50, 48, 24, 23, b);
+  ptHead(c, 50, 48, 24, 23, b, true, 'hare');
   ptCheeks(c, 50, 57, 15);
   ptMuzzle(c, 50, 59, 11, 8, S.mark);
   ptEyes(c, 50, 45, 10.4, 6.2, { iris: '#2a2018' });
@@ -551,9 +716,16 @@ PORTRAIT.leopard = function (c, S, o) {
     if (o.chest) o.chest(cc);
   } });
   ptRoundEars(c, 50, 27, 19, 5.4, ptLit(b[2], -0.2), '#e6e8ec');
-  ptHead(c, 50, 47, 26, 24, b);
+  ptHead(c, 50, 47, 26, 24, b, 2.8, 'cat');
+  /* small solid spots on the face, rosettes further back: broken dark
+     rings round a warmer middle, as a snow leopard's are */
   c.fillStyle = spot;
-  [[37, 30, 1.4], [44, 27, 1.2], [56, 27, 1.2], [63, 30, 1.4], [50, 25, 1.1], [31, 40, 1.3], [69, 40, 1.3], [40, 34, 1], [60, 34, 1]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2]); c.fill(); });
+  [[44, 33, 0.9], [56, 33, 0.9], [50, 30, 0.8], [40, 37, 0.8], [60, 37, 0.8], [47, 36, 0.6], [53, 36, 0.6]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2]); c.fill(); });
+  [[36, 28, 2.6], [64, 28, 2.6], [50, 24.5, 2.3], [29, 38, 2.4], [71, 38, 2.4], [27, 50, 2.2], [73, 50, 2.2]].forEach(function (d) {
+    c.fillStyle = 'rgba(190,175,150,.55)'; ptEll(c, d[0], d[1], d[2] * 0.7, d[2] * 0.6); c.fill();
+    c.fillStyle = spot;
+    for (var q = 0; q < 4; q++) { var a = q * 1.57 + d[0] * 0.1; ptEll(c, d[0] + Math.cos(a) * d[2], d[1] + Math.sin(a) * d[2] * 0.85, d[2] * 0.42, d[2] * 0.26, a + 1.57); c.fill(); }
+  });
   ptMuzzle(c, 50, 58, 12, 9, S.mark);
   ptEyes(c, 50, 44, 10.6, 6.2, { iris: '#9fb3a0' });
   ptNose(c, 50, 54.4, 3.4, '#8a6666');
@@ -572,7 +744,7 @@ PORTRAIT.owl = function (c, S, o) {
     [[34, 84], [44, 90], [56, 86], [66, 92], [40, 97], [60, 98], [28, 94], [72, 84]].forEach(function (d) { cc.beginPath(); cc.moveTo(d[0] - 2, d[1]); cc.quadraticCurveTo(d[0], d[1] - 1.4, d[0] + 2, d[1]); cc.quadraticCurveTo(d[0], d[1] + 0.6, d[0] - 2, d[1]); cc.fill(); });
     if (o.chest) o.chest(cc);
   } });
-  ptHead(c, 50, 47, 28, 25, b);
+  ptHead(c, 50, 47, 28, 25, b, 2.2, 'owl');
   /* the flat round face, two discs about the eyes */
   [-1, 1].forEach(function (s) { var g = c.createRadialGradient(50 + s * 11, 45, 1, 50 + s * 11, 46, 13); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#dbe5ef'); c.fillStyle = g; ptEll(c, 50 + s * 11, 46, 12.4, 12); c.fill(); });
   c.fillStyle = S.mark; [[36, 30], [44, 27], [56, 27], [64, 30], [30, 38], [70, 38], [50, 26]].forEach(function (d) { c.beginPath(); c.moveTo(d[0] - 1.6, d[1]); c.quadraticCurveTo(d[0], d[1] - 1.1, d[0] + 1.6, d[1]); c.quadraticCurveTo(d[0], d[1] + 0.5, d[0] - 1.6, d[1]); c.fill(); });
@@ -585,11 +757,11 @@ PORTRAIT.owl = function (c, S, o) {
 PORTRAIT.walrus = function (c, S, o) {
   o = o || {};
   var b = S.body;
-  ptBust(c, b, { w: 42, chest: o.chest });
+  ptBust(c, b, { w: 42, chest: o.chest, skin: true });
   /* wrinkles across his shoulders */
   c.save(); ptClip(c); c.strokeStyle = 'rgba(60,30,20,.3)'; c.lineWidth = 0.8; c.beginPath();
   [80, 86, 92].forEach(function (y) { c.moveTo(18, y + 4); c.quadraticCurveTo(50, y - 4, 82, y + 4); }); c.stroke(); c.restore();
-  ptHead(c, 50, 45, 30, 25, b);
+  ptHead(c, 50, 45, 30, 25, b, 0, 'walrus');
   c.strokeStyle = 'rgba(60,30,20,.3)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(36, 30); c.quadraticCurveTo(50, 26, 64, 30); c.moveTo(38, 34); c.quadraticCurveTo(50, 31, 62, 34); c.stroke();
   ptEyes(c, 50, 38, 13, 5, { iris: '#2a1810' });
   /* the tusks, long and ivory, down from under his lip */
@@ -610,11 +782,154 @@ PORTRAIT.walrus = function (c, S, o) {
   c.stroke();
   ptNose(c, 50, 44.6, 3.4, S.nose);
 };
+/* the dragon (1.3.4): a dragon of Japan, face on. A coil of his scaled
+   body under the chin, a flame of mane round the head, branching gold
+   horns, heavy brows over amber eyes with slit pupils, a long snout with
+   curled nostrils, two fangs, a beard, and whiskers that sweep out. */
+PORTRAIT.dragon = function (c, S, o) {
+  var red = S.body, gold = S.accent;
+  c.save(); ptClip(c);
+  /* the coil of body behind, its belly plates gold */
+  var cg = c.createLinearGradient(10, 70, 90, 100); cg.addColorStop(0, red[0]); cg.addColorStop(1, red[2]);
+  c.fillStyle = cg; c.beginPath(); c.moveTo(4, 104); c.bezierCurveTo(10, 72, 40, 70, 50, 82); c.bezierCurveTo(62, 94, 88, 84, 98, 104); c.closePath(); c.fill();
+  c.fillStyle = S.mark;
+  for (var b = 0; b < 6; b++) { c.beginPath(); c.ellipse(38 + b * 5, 86 + Math.sin(b) * 2, 3, 5, 0.4, 0, 6.2832); c.fill(); }
+  c.restore();
+  /* the neck: thick and muscled, coming up from below into the head,
+     scaled at its sides, the gold plates of the throat down its middle,
+     a shadow under the jaw and spines along the nape behind */
+  c.save(); ptClip(c);
+  [-1, 1].forEach(function (sd) {                                          // spines on the nape, either side
+    c.fillStyle = '#2a0806';
+    for (var k = 0; k < 3; k++) { var y0 = 64 + k * 11; c.beginPath(); c.moveTo(50 + sd * 17, y0); c.lineTo(50 + sd * (29 + k * 2), y0 + 3); c.lineTo(50 + sd * 18.5, y0 + 7); c.closePath(); c.fill(); }
+  });
+  function neck(cc) { cc.beginPath(); cc.moveTo(34, 58); cc.bezierCurveTo(33, 78, 26, 92, 22, 104); cc.lineTo(78, 104); cc.bezierCurveTo(74, 92, 67, 78, 66, 58); cc.closePath(); }
+  var ng = c.createLinearGradient(22, 0, 78, 0); ng.addColorStop(0, red[2]); ng.addColorStop(0.3, red[1]); ng.addColorStop(0.55, red[0]); ng.addColorStop(1, red[2]);
+  c.fillStyle = ng; neck(c); c.fill();
+  c.strokeStyle = 'rgba(30,4,2,.8)'; c.lineWidth = 1; neck(c); c.stroke();
+  c.save(); neck(c); c.clip();
+  c.strokeStyle = 'rgba(255,150,120,.3)'; c.lineWidth = 0.7;               // scales down its sides
+  for (var ny = 62; ny < 104; ny += 4.2) for (var nx = 24; nx < 78; nx += 4.6) {
+    if (Math.abs(nx - 50) < 9) continue;
+    c.beginPath(); c.arc(nx + ((Math.round(ny / 4.2) & 1) ? 2.3 : 0), ny, 2.2, 0.3, Math.PI - 0.3); c.stroke();
+  }
+  for (var pl = 0; pl < 7; pl++) {                                          // the throat's plates, gold and ridged
+    var py = 74 + pl * 4.6, pw = 8 + pl * 0.9;
+    var pg = c.createLinearGradient(0, py - 2, 0, py + 2.4); pg.addColorStop(0, ptLit(S.mark, 0.2)); pg.addColorStop(1, ptLit(S.mark, -0.35));
+    c.fillStyle = pg; c.beginPath(); c.ellipse(50, py, pw, 2.4, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(90,40,0,.55)'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(50, py, pw, 2.4, 0, 0.2, Math.PI - 0.2); c.stroke();
+  }
+  var sh = c.createLinearGradient(0, 62, 0, 80); sh.addColorStop(0, 'rgba(20,0,0,.55)'); sh.addColorStop(1, 'rgba(20,0,0,0)');
+  c.fillStyle = sh; c.fillRect(20, 60, 60, 20);                             // the shadow under the jaw
+  c.restore();
+  c.restore();
+  /* the frill: dark spikes round the head */
+  for (var q = 0; q < 14; q++) {
+    var a = -Math.PI * 1.05 + q / 13 * Math.PI * 1.1 + Math.PI * 0.02, r0 = 22, r1 = 36 + (q % 2) * 6;
+    var mx = 50 + Math.cos(a) * r1, my = 46 + Math.sin(a) * r1 * 0.95;
+    var mg = c.createLinearGradient(50, 46, mx, my); mg.addColorStop(0, '#1a0302'); mg.addColorStop(0.7, '#6e120c'); mg.addColorStop(1, 'rgba(160,30,20,.25)');
+    c.fillStyle = mg;
+    c.beginPath(); c.moveTo(50 + Math.cos(a - 0.2) * r0, 46 + Math.sin(a - 0.2) * r0);
+    c.quadraticCurveTo(50 + Math.cos(a - 0.12) * r1 * 0.8, 46 + Math.sin(a - 0.12) * r1 * 0.8, mx, my);
+    c.quadraticCurveTo(50 + Math.cos(a + 0.18) * r1 * 0.7, 46 + Math.sin(a + 0.18) * r1 * 0.7, 50 + Math.cos(a + 0.22) * r0, 46 + Math.sin(a + 0.22) * r0);
+    c.closePath(); c.fill();
+  }
+  /* the horns: a pair of great ones, dark at the root and paling to ivory
+     at the tips, twisted, ringed with ridges all the way up and a tine
+     branching off halfway; and a small pair beside them, by the ears */
+  function bez(p0, p1, p2, p3, t) {
+    var u = 1 - t;
+    return [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+            u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]];
+  }
+  function horn(P, w0, n) {
+    var L = [], R = [], i, t, a, b, d, nx, ny, w;
+    for (i = 0; i <= n; i++) {
+      t = i / n; a = bez(P[0], P[1], P[2], P[3], t); b = bez(P[0], P[1], P[2], P[3], Math.min(1, t + 0.01));
+      d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; nx = -(b[1] - a[1]) / d; ny = (b[0] - a[0]) / d;
+      w = w0 * Math.pow(1 - t, 0.8) + 0.3;
+      L.push([a[0] + nx * w, a[1] + ny * w]); R.push([a[0] - nx * w, a[1] - ny * w]);
+    }
+    c.beginPath(); c.moveTo(L[0][0], L[0][1]);
+    for (i = 1; i <= n; i++) c.lineTo(L[i][0], L[i][1]);
+    for (i = n; i >= 0; i--) c.lineTo(R[i][0], R[i][1]);
+    c.closePath();
+    var g = c.createLinearGradient(P[0][0], P[0][1], P[3][0], P[3][1]);
+    g.addColorStop(0, '#3a2412'); g.addColorStop(0.35, '#8a6a42'); g.addColorStop(0.75, '#e6d6b0'); g.addColorStop(1, '#fffaf0');
+    c.fillStyle = g; c.fill();
+    c.strokeStyle = 'rgba(25,10,0,.8)'; c.lineWidth = 0.8; c.stroke();
+    /* the twist: rings of ridge across it, dark in their groove and lit on their edge */
+    for (i = 2; i < n - 1; i += 2) {
+      c.strokeStyle = 'rgba(40,20,5,.55)'; c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(L[i][0], L[i][1]); c.quadraticCurveTo((L[i][0] + R[i][0]) / 2 + (R[i + 1][0] - R[i][0]) * 0.6, (L[i][1] + R[i][1]) / 2 + (R[i + 1][1] - R[i][1]) * 0.6, R[i + 1][0], R[i + 1][1]); c.stroke();
+      c.strokeStyle = 'rgba(255,245,220,.45)'; c.lineWidth = 0.5;
+      c.beginPath(); c.moveTo(L[i + 1][0], L[i + 1][1]); c.lineTo((L[i + 1][0] + R[i + 1][0]) / 2, (L[i + 1][1] + R[i + 1][1]) / 2); c.stroke();
+    }
+    /* a gleam down its length */
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.8; c.beginPath();
+    for (i = 1; i < n; i++) { var m = [(L[i][0] * 0.7 + R[i][0] * 0.3), (L[i][1] * 0.7 + R[i][1] * 0.3)]; if (i === 1) c.moveTo(m[0], m[1]); else c.lineTo(m[0], m[1]); }
+    c.stroke();
+  }
+  [-1, 1].forEach(function (sd) {
+    var X = function (x) { return 50 + sd * x; };
+    horn([[X(24), 40], [X(34), 40], [X(40), 30], [X(47), 26]], 2.4, 10);           // a small pair, by the ears, out to the sides
+    horn([[X(9), 30], [X(13), 14], [X(26), 8], [X(40), 5]], 4.6, 16);              // the great horn, swept out and back
+    horn([[X(19), 13], [X(19), 6], [X(21), 3], [X(22), 1]], 1.7, 7);               // the tine standing up off it
+  });
+  /* the head: broad brow, cheeks, and the snout coming forward and down */
+  function head(cc) {
+    cc.beginPath(); cc.moveTo(50, 24);
+    cc.bezierCurveTo(66, 24, 74, 34, 72, 46); cc.bezierCurveTo(71, 54, 64, 58, 62, 64);
+    cc.bezierCurveTo(61, 72, 57, 77, 50, 77); cc.bezierCurveTo(43, 77, 39, 72, 38, 64);
+    cc.bezierCurveTo(36, 58, 29, 54, 28, 46); cc.bezierCurveTo(26, 34, 34, 24, 50, 24); cc.closePath();
+  }
+  var hg = c.createRadialGradient(44, 36, 3, 50, 50, 34); hg.addColorStop(0, red[0]); hg.addColorStop(0.6, red[1]); hg.addColorStop(1, red[2]);
+  c.fillStyle = hg; head(c); c.fill();
+  c.save(); head(c); c.clip();
+  c.strokeStyle = 'rgba(255,190,150,.35)'; c.lineWidth = 0.7;              // scales on the brow and cheeks
+  for (var sy = 26; sy < 56; sy += 4.5) for (var sx = 30; sx < 72; sx += 5) {
+    if (Math.abs(sx - 50) < 6 && sy > 40) continue;
+    c.beginPath(); c.arc(sx + ((sy / 4.5) & 1 ? 2.5 : 0), sy, 2.4, 0.3, Math.PI - 0.3); c.stroke();
+  }
+  var sn = c.createLinearGradient(50, 48, 50, 77); sn.addColorStop(0, red[1]); sn.addColorStop(1, red[2]);
+  c.fillStyle = sn; c.beginPath(); c.ellipse(50, 66, 10, 11, 0, 0, 6.2832); c.fill();     // the snout, darker
+  c.restore();
+  c.strokeStyle = 'rgba(30,4,2,.85)'; c.lineWidth = 1.2; head(c); c.stroke();
+  /* nostrils: slits, a wisp of smoke out of each */
+  [-1, 1].forEach(function (sd) {
+    c.fillStyle = '#140202'; c.beginPath(); c.ellipse(50 + sd * 4.4, 68, 1.2, 2.6, sd * 0.5, 0, 6.2832); c.fill();
+    c.fillStyle = 'rgba(90,90,100,.35)'; c.beginPath(); c.arc(50 + sd * 7, 62, 2.4, 0, 6.2832); c.arc(50 + sd * 9, 56, 3.2, 0, 6.2832); c.fill();
+  });
+  /* the jaw: a hard line, fangs down over the lip, spikes under the chin */
+  c.strokeStyle = '#1a0202'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(40, 73); c.lineTo(50, 76); c.lineTo(60, 73); c.stroke();
+  c.fillStyle = '#fbf6e8'; [-1, 1].forEach(function (sd) { c.beginPath(); c.moveTo(50 + sd * 7, 74); c.lineTo(50 + sd * 6, 81); c.lineTo(50 + sd * 4.6, 75); c.closePath(); c.fill(); });
+  c.fillStyle = '#2a0806'; [-6, 0, 6].forEach(function (dx) { c.beginPath(); c.moveTo(50 + dx - 3, 77); c.lineTo(50 + dx, 86 - Math.abs(dx) * 0.4); c.lineTo(50 + dx + 3, 77); c.closePath(); c.fill(); });
+  /* the brows: heavy, drawn down towards the middle */
+  [-1, 1].forEach(function (sd) {
+    c.fillStyle = '#2a0806'; c.beginPath(); c.moveTo(50 + sd * 3, 44); c.lineTo(50 + sd * 21, 34); c.lineTo(50 + sd * 20, 39); c.lineTo(50 + sd * 5, 47); c.closePath(); c.fill();
+  });
+  /* the eyes: narrow, burning amber, a black slit, glowing round */
+  [-1, 1].forEach(function (sd) {
+    var ex = 50 + sd * 12, ey = 46;
+    var gl = c.createRadialGradient(ex, ey, 0, ex, ey, 8); gl.addColorStop(0, 'rgba(255,190,40,.6)'); gl.addColorStop(1, 'rgba(255,120,0,0)');
+    c.fillStyle = gl; c.beginPath(); c.arc(ex, ey, 8, 0, 6.2832); c.fill();
+    c.fillStyle = '#ffd23a';
+    c.beginPath(); c.moveTo(ex - sd * 6, ey + 1.6); c.quadraticCurveTo(ex, ey - 3.6, ex + sd * 6, ey - 1); c.quadraticCurveTo(ex, ey + 3, ex - sd * 6, ey + 1.6); c.fill();
+    c.fillStyle = '#100200'; c.beginPath(); c.ellipse(ex + sd * 0.5, ey, 0.9, 2.6, 0, 0, 6.2832); c.fill();
+  });
+  /* the whiskers, sweeping out and down from the snout */
+  [-1, 1].forEach(function (sd) {
+    [[2.2, 'rgba(110,50,0,.5)'], [1.2, gold]].forEach(function (L) {
+      c.strokeStyle = L[1]; c.lineWidth = L[0]; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(50 + sd * 8, 66); c.bezierCurveTo(50 + sd * 22, 62, 50 + sd * 30, 78, 50 + sd * 44, 74); c.stroke();
+    });
+  });
+};
 PORTRAIT.orca = function (c, S, o) {
   o = o || {};
   var b = o.body || S.body, mark = o.mark || S.mark;
-  ptBust(c, b, { front: mark, fw: 22, chest: o.chest });
-  [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 30, 88); c.rotate(s * 0.55); c.fillStyle = ptRound(c, 0, 4, 8, 15, S.flipper); ptEll(c, 0, 6, 7.6, 15.6); c.fill(); c.restore(); });
+  ptBust(c, b, { front: mark, fw: 22, chest: o.chest, skin: true });
+  [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 31, 82); c.rotate(s * 0.5); c.scale(0.78, 0.78); ptFlipper(c, 'whale', S.flipper, s); c.restore(); });
   ptHead(c, 50, 46, 28, 26, b);
   if (!o.noPatches) {
     /* the white patches behind her eyes and the white of her chin */
@@ -631,32 +946,96 @@ PORTRAIT.orca = function (c, S, o) {
   c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(38, 56.4); c.quadraticCurveTo(50, 60, 62, 56.4); c.stroke();
 };
 PORTRAIT.narwhal = function (c, S, o) {
+  /* Turned three-quarters, her snout to the left (1.3.4): a narwhal's tooth
+     grows straight ahead out of her upper lip, so from the front it could
+     only ever look stuck on her face. A whale has no neck: head and body are
+     one, grey and mottled all over, the belly only a little paler; a small
+     eye low behind the corner of the mouth; small round flippers low on her
+     sides. The far eye is round the curve of her head, out of sight. */
   o = o || {};
-  var b = o.body || S.body;
-  PORTRAIT.orca(c, S, { body: b, mark: o.mark || S.mark, noPatches: true, noEyes: true, chest: o.chest });
-  c.fillStyle = o.mottle || 'rgba(70,86,104,.32)';
-  [[34, 34, 3], [46, 28, 2.4], [60, 31, 2.8], [68, 44, 2.4], [30, 48, 2.6], [56, 22, 2], [40, 54, 2], [62, 56, 2.2]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2] * 0.7, 0.5); c.fill(); });
-  ptEyes(c, 50, 46, 11, 5.6, { iris: '#1a2028' });
+  var b = o.body || S.body, mark = o.mark || S.mark;
+  c.save(); ptClip(c);
+  function whale(cc) {
+    cc.beginPath(); cc.moveTo(60, 22);
+    cc.bezierCurveTo(78, 22, 86, 40, 88, 60); cc.bezierCurveTo(90, 80, 92, 96, 94, 108);
+    cc.lineTo(16, 108); cc.bezierCurveTo(20, 92, 26, 80, 28, 70);
+    cc.bezierCurveTo(22, 66, 19, 60, 20, 55); cc.bezierCurveTo(21, 49, 27, 45, 33, 43);
+    cc.bezierCurveTo(37, 30, 46, 22, 60, 22); cc.closePath();
+  }
+  /* the tooth first: it grows from the left of her upper lip, the far side
+     from us as she is turned, so its root is behind her snout */
   if (!o.noTusk) ptTusk(c, o.tusk);
+  var hg = c.createRadialGradient(48, 34, 4, 58, 56, 52);
+  hg.addColorStop(0, ptLit(b[0], 0.15)); hg.addColorStop(0.5, b[1]); hg.addColorStop(1, b[2]);
+  c.fillStyle = hg; whale(c); c.fill();
+  c.save(); whale(c); c.clip();
+  var bl = c.createRadialGradient(34, 86, 2, 34, 86, 30);                             // the paler throat and belly, fading out
+  bl.addColorStop(0, 'rgba(240,246,250,.55)'); bl.addColorStop(1, 'rgba(240,246,250,0)');
+  c.fillStyle = bl; c.fillRect(0, 50, 80, 60);
+  /* the mottling: many small dark spots, densest on her back, fewer toward her belly */
+  for (var k = 0; k < 120; k++) {
+    var px = 22 + ptH(k * 1.7) * 70, py = 22 + ptH(k * 2.9 + 5) * 84;
+    var back = Math.max(0, Math.min(1, (px - 36) / 44 + (60 - py) / 120));
+    if (ptH(k * 4.1) > back * 0.9 + 0.12) continue;
+    c.fillStyle = o.mottle || 'rgba(55,70,88,' + (0.25 + back * 0.25).toFixed(2) + ')';
+    ptEll(c, px, py, 0.8 + ptH(k * 7.3) * 1.6, 0.6 + ptH(k * 5.9) * 1.1, ptH(k) * 3); c.fill();
+  }
+  var sh = c.createLinearGradient(18, 0, 92, 0);                                      // light on the near side, shade round the far
+  sh.addColorStop(0, 'rgba(255,255,255,.16)'); sh.addColorStop(0.45, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
+  c.fillStyle = sh; c.fillRect(14, 18, 82, 92);
+  c.fillStyle = 'rgba(255,255,255,.2)'; ptEll(c, 52, 30, 10, 4, -0.3); c.fill();      // the shine on her melon
+  c.restore();
+  c.strokeStyle = 'rgba(30,40,55,.22)'; c.lineWidth = 0.5; whale(c); c.stroke();
+  /* a small rounded flipper, low on her near side */
+  /* the near flipper, from under the jaw and swept back along her side, its
+     skin running on into the body's (the far one is behind her) */
+  c.save(); whale(c); c.clip();
+  var fg = c.createLinearGradient(38, 74, 58, 96); fg.addColorStop(0, b[1]); fg.addColorStop(1, b[2]);
+  c.fillStyle = 'rgba(20,30,45,.18)'; c.beginPath(); c.moveTo(37, 75); c.quadraticCurveTo(52, 80, 60, 98); c.quadraticCurveTo(48, 95, 39, 84); c.closePath(); c.fill();
+  c.fillStyle = fg; c.beginPath(); c.moveTo(36, 73); c.quadraticCurveTo(51, 77, 58, 95); c.quadraticCurveTo(46, 93, 37.5, 82); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(37, 73.6); c.quadraticCurveTo(51, 77.6, 57.4, 94); c.stroke();
+  c.restore();
+  /* the blowhole on the crown, and the mouth, curving up at its end */
+  c.fillStyle = 'rgba(30,40,55,.5)'; c.beginPath(); c.ellipse(62, 24.6, 3, 1, 0.15, 0, Math.PI); c.fill();
+  c.strokeStyle = 'rgba(30,40,55,.55)'; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(22, 57); c.quadraticCurveTo(30, 61.6, 38, 60.4); c.quadraticCurveTo(40.5, 60, 41.5, 58.6); c.stroke();
+  /* the eye, small and low behind the corner of the mouth */
+  c.fillStyle = 'rgba(40,52,68,.35)'; ptEll(c, 45, 54, 3.6, 2.9); c.fill();                // a fold of lid round it
+  ptEyes(c, 45, 54, 0, 2.4, { iris: '#1a2028', big: true, small: true });
+  c.restore();
 };
 /* the narwhal's tooth: out of the middle of her face where a nose would
    be, up between her eyes and past her head, with its left-handed spiral */
 function ptTusk(c, rainbow) {
-  c.save(); c.translate(50, 53); c.rotate(-0.3);   // where a nose would be, up between her eyes (out of her mouth it read wrong, the owner said)
-  var tk = function (dx, dy) { c.beginPath(); c.moveTo(-2.2 + dx, dy); c.lineTo(-0.3 + dx, -54 + dy); c.lineTo(0.3 + dx, -54 + dy); c.lineTo(2.2 + dx, dy); c.closePath(); };
-  c.fillStyle = 'rgba(15,22,40,.28)'; tk(1.6, 1.2); c.fill();
-  var g = c.createLinearGradient(-2.2, 0, 2.2, 0); g.addColorStop(0, '#fffaf0'); g.addColorStop(0.5, '#f0e6d2'); g.addColorStop(1, '#bdae90');
-  c.fillStyle = g; tk(0, 0); c.fill();
-  c.save(); tk(0, 0); c.clip();
-  if (rainbow) {
-    var RC = ['#ff5a6a', '#ffb43a', '#ffe24a', '#5ad87a', '#4aa8ff', '#a86af0'];
-    for (var q = 0; q < 14; q++) { c.strokeStyle = RC[q % 6]; c.lineWidth = 2; c.beginPath(); c.moveTo(-3, -q * 3.6 + 1); c.lineTo(3, -q * 3.6 - 2.6); c.stroke(); }
-  } else {
-    c.strokeStyle = 'rgba(140,120,90,.55)'; c.lineWidth = 0.6; c.beginPath();
-    for (q = 0; q < 14; q++) { c.moveTo(-3, -q * 3.6 + 1); c.lineTo(3, -q * 3.6 - 2.6); }
-    c.stroke();
+  /* Straight ahead out of the far side of her upper lip, its root hidden
+     behind her snout (the head is painted over it); stained a yellowish
+     brown near the root, ivory and polished toward the tip, the spiral
+     curving round it all the way. */
+  var x0 = 27, y0 = 53.5, L = 32, ang = -1.25, w0 = 2.6;
+  c.save(); c.translate(x0, y0); c.rotate(ang);
+  var tk = function () {
+    c.beginPath(); c.moveTo(-w0, 0);
+    c.quadraticCurveTo(-w0 * 0.55, -L * 0.55, -0.2, -L);
+    c.quadraticCurveTo(0, -L - 0.5, 0.2, -L);
+    c.quadraticCurveTo(w0 * 0.55, -L * 0.55, w0, 0); c.closePath();
+  };
+  var g = c.createLinearGradient(-w0, 0, w0, 0);
+  g.addColorStop(0, '#fffdf6'); g.addColorStop(0.45, '#efe4cc'); g.addColorStop(1, '#a8977a');
+  c.fillStyle = g; tk(); c.fill();
+  c.save(); tk(); c.clip();
+  var ln = c.createLinearGradient(0, 0, 0, -L);                                       // stained at the root, polished at the tip
+  ln.addColorStop(0, 'rgba(150,120,60,.45)'); ln.addColorStop(0.45, 'rgba(200,175,120,.15)'); ln.addColorStop(1, 'rgba(255,255,255,.25)');
+  c.fillStyle = ln; c.fillRect(-w0 - 1, -L - 1, w0 * 2 + 2, L + 2);
+  var RC = ['#ff5a6a', '#ffb43a', '#ffe24a', '#5ad87a', '#4aa8ff', '#a86af0'];
+  for (var q = 0; q * 2.8 < L; q++) {
+    var y = -q * 2.8, ww = w0 * (1 - q * 2.8 / L) + 0.3;
+    c.strokeStyle = rainbow ? RC[q % 6] : 'rgba(120,98,66,.55)'; c.lineWidth = rainbow ? 1.6 : 0.5;
+    c.beginPath(); c.moveTo(-ww, y + 0.9); c.quadraticCurveTo(0, y - 0.9, ww, y - 1.3); c.stroke();
   }
+  c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 0.5;                        // the polish catching the light
+  c.beginPath(); c.moveTo(-w0 * 0.45, -2); c.quadraticCurveTo(-w0 * 0.3, -L * 0.55, -0.1, -L + 1); c.stroke();
   c.restore();
+  c.strokeStyle = 'rgba(90,75,50,.45)'; c.lineWidth = 0.4; tk(); c.stroke();
   c.restore();
 }
 

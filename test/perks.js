@@ -209,6 +209,19 @@ var au = shielded('aurora');
 ok(au.start === 1 && au.alive && au.saved === 1, 'the run opens with her in a bubble, and it takes a boulder');
 ok(grab('aurora', 1.6) === 1 && grab('snowcap', 1.6) === 0, 'a fish 1.6x out of reach: hers, not Snowcap\'s');
 
+skin('dragon', 'every 1000 m he spreads his wings and flies over everything for three seconds');
+function soarAt(id) {
+  var W = clean(id); W.dist = 7990; W.soarNext = 8000;
+  W.invuln = 0; W.grace = 0;
+  W.objects.push({ t: 'rock', x: W.px, d: W.dist + 120, r: 30, rot: 0, pts: [1, 1, 1, 1, 1, 1, 1, 1, 1] });
+  hold(4); var w = G.debug(), up = w.airTo > w.dist, soarT = w.soarT;
+  hold(60); var alive = G.debug().state === 'run';
+  G.stop(); return { up: up, soarT: soarT, alive: alive };
+}
+var sd = soarAt('dragon'), ss = soarAt('snowcap');
+ok(sd.up && sd.soarT > 150 && !ss.up, 'at 1000 m he takes off for three seconds; Snowcap stays on the ice');
+ok(sd.alive && !ss.alive, 'and flies over a boulder that stops Snowcap');
+
 /* ---- the rule for new creatures ----
    Every creature brings something of its own. A new one must carry at
    least one perk key no other creature has — a new mechanic, not a reused
@@ -217,7 +230,7 @@ ok(grab('aurora', 1.6) === 1 && grab('snowcap', 1.6) === 0, 'a fish 1.6x out of 
    (Aurora is two proved perks together, on purpose); add a new creature's
    id here only once its new perk is in game.js, skinsafe.js and above. */
 var FOUNDING = ['snowcap', 'mitten', 'puffin', 'seal', 'lemming', 'muskox', 'bubbles', 'otter', 'hare',
-                'leopard', 'compass', 'owl', 'walrus', 'narwhal', 'reindeer', 'emperor', 'orca', 'aurora'];
+                'leopard', 'compass', 'owl', 'walrus', 'narwhal', 'reindeer', 'emperor', 'orca', 'aurora', 'dragon'];
 console.log('\nthe rule for new creatures');
 var sets = {}, keyOwners = {};
 SKINS.forEach(function (sk) {

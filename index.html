@@ -264,8 +264,9 @@
     <!-- Nodules picked up on the hill, cracked open here. -->
     <div id="over-finds" class="finds-box hidden">
       <canvas id="find-art" class="find-art" width="140" height="140" aria-hidden="true"></canvas>
-      <p id="find-count" class="find-count"></p>
       <p id="find-prize" class="find-prize hidden"></p>
+      <p id="find-count" class="find-count"></p>
+      <button id="find-sell" class="btn btn-gold btn-sm hidden" data-action="sell-life"></button>
       <button class="btn btn-green" data-action="open-find" data-i18n="find.open">Crack it open</button>
     </div>
     <!-- A line finished: the next one, by name (ui.js) -->
@@ -318,13 +319,23 @@
   <div class="panel panel-wide">
     <h2 class="panel-title-text" data-i18n="shop.title">Fish Market</h2>
     <p class="wallet purse"><span id="wallet-fish" class="purse-pill">0</span><span id="wallet-gold" class="purse-pill gold">0</span></p>
-    <div id="shop-pane-creatures">
+    <div class="prof-tabs shop-tabs" role="tablist">
+      <button class="prof-tab on" data-stab="cr" role="tab" aria-selected="true" data-i18n="prof.creatures">Creatures</button>
+      <button class="prof-tab" data-stab="fr" role="tab" aria-selected="false" data-i18n="prof.frames">Frames</button>
+      <button class="prof-tab" data-stab="up" role="tab" aria-selected="false" data-i18n="up.tab">Upgrades</button>
+    </div>
+    <div id="shop-pane-creatures" class="shop-pane" data-spane="cr">
       <div id="shop-supply" class="shop-supply"></div>
       <p id="shop-note" class="shop-note" data-i18n="shop.note">Tap a creature to see what it does.</p>
       <div id="shop-grid" class="shop-grid"></div>
-      <!-- the frames for the player's card, bought here (1.3.3: My profile
-           shows only what the player has) -->
-      <h3 class="set-head shop-frames-head" data-i18n="prof.frames">Frames</h3>
+    </div>
+    <!-- the frames for the player's card, bought here (1.3.3: My profile
+         shows only what the player has), on a tab of their own -->
+    <div id="shop-pane-up" class="shop-pane hidden" data-spane="up">
+      <p class="shop-note" data-i18n="up.note">Each level makes it last 10% longer.</p>
+      <div id="shop-ups" class="up-list"></div>
+    </div>
+    <div id="shop-pane-frames" class="shop-pane hidden" data-spane="fr">
       <div id="shop-frames" class="look-grid"></div>
       <div id="shop-frame-buy" class="look-buy hidden"><span id="shop-frame-name" class="look-buy-name"></span><button id="shop-frame-btn" class="btn"></button></div>
     </div>
@@ -341,6 +352,12 @@
         <b id="event-name">New Year Event</b>
         <small id="event-sub"></small>
         <span id="event-badge" class="badge hidden" aria-hidden="true">!</span>
+      </button>
+      <!-- the dragon's egg (1.3.4), beside the New Year -->
+      <button class="btn btn-big btn-sakura mode-btn mode-event hidden" id="btn-dragon" data-action="dragon">
+        <b data-i18n="egg.name">Dragon egg</b>
+        <small id="dragon-sub"></small>
+        <span id="dragon-badge" class="badge hidden" aria-hidden="true">!</span>
       </button>
       <button class="btn btn-big btn-purple mode-btn" id="btn-daily" data-action="daily">
         <b data-i18n="mode.daily">Daily Line</b>
@@ -363,6 +380,26 @@
 
 <!-- An event's page (events.js): its picture, what to gather and by when,
      how many so far, and its steps, each prize claimed with a button -->
+<!-- The dragon's egg (1.3.4): fed with koi from the Sakura Garden, twenty a
+     day for ten days, and then it hatches -->
+<section id="screen-dragon" class="screen hidden">
+  <div class="panel panel-wide egg-panel">
+    <h2 class="panel-title-text" data-i18n="egg.name">Dragon egg</h2>
+    <p class="ev-left" id="egg-left"></p>
+    <canvas id="egg-art" class="egg-art" width="200" height="200" aria-hidden="true"></canvas>
+    <p class="egg-day" id="egg-day"></p>
+    <div class="egg-pips" id="egg-pips" aria-hidden="true"></div>
+    <p class="egg-today" id="egg-today"></p>
+    <p class="shop-note" id="egg-how" data-i18n="egg.how"></p>
+    <div class="btn-row">
+      <button class="btn btn-big btn-gold hidden" id="egg-hatch" data-action="hatch" data-i18n="egg.hatch">Hatch it!</button>
+      <button class="btn btn-big btn-green hidden" id="egg-ride" data-action="egg-ride" data-i18n="egg.ride">Ride with him</button>
+      <button class="btn btn-blue hidden" id="egg-story" data-action="egg-story" data-i18n="egg.story">His story</button>
+      <button class="btn btn-big btn-sakura" id="egg-play" data-action="egg-go" data-i18n="egg.go">Go to the Sakura Garden</button>
+    </div>
+  </div>
+</section>
+
 <section id="screen-event" class="screen ev-screen hidden">
   <!-- The event's painting over the whole screen, one upright and one on its
        side (the owner's, made with Gemini, 19 Nov 2026). The table is in a
@@ -579,6 +616,7 @@
     <h2 class="panel-title-text" id="gift-title" data-i18n="gift.title">A gift for you!</h2>
     <canvas id="gift-art" class="gift-art" aria-hidden="true" width="220" height="220"></canvas>
     <p id="gift-prize" class="gift-prize" role="status"></p>
+    <div class="btn-row"><button id="gift-sell" class="btn btn-gold hidden" data-action="sell-life"></button></div>
     <p class="shop-note" data-i18n="gift.next">The next one comes in 12 hours.</p>
     <div class="btn-row"><button class="btn btn-green" data-action="close-sheet" data-i18n="gift.ok">Great!</button></div>
   </div>

@@ -251,5 +251,25 @@ var BIOMES = [
     fog:   0.18, fogRGB: '255,60,180',
     air:   { rgb: '255,150,235', a: 0.8, r: 1.5, rise: 0, drift: 0.5, n: 0.5 },
     neon:  1                  // the sun in the ice, the scanlines
+  },
+  {
+    /* The Sakura Garden (1.3.4, the dragon's event, asked for by the owner):
+       cherry trees in bloom along the banks, the petals coming down with
+       the snow, a pale pink sky. While the event runs, the koi swim on
+       its marked line (courses.js, 'sakura'). In Freeride it is the last
+       stretch of the round, like any other. */
+    name: 'Sakura Garden',
+    mood:  'sakura',           // its own tune (audio.js)
+    jp:    1,
+    sky:   ['#ffc9dc', '#fff1f6'],
+    hazeRGB: '255,232,240',
+    snowA: '#fff6fa', iceTop: '#dcecf8', iceBot: '#b6d3ea', bankEdge: '#ffffff', bankShade: '#e7c6d4',
+    far:   '#e9b9cc', edge: '#c98aa6',
+    tree:  '#f5a3c4', treeDark: '#d9739f', trunk: '#5a3328',
+    rock:  '#8e8a94', rockDark: '#5f5b66',
+    grip:  1,
+    fog:   0.08, fogRGB: '255,226,238',
+    air:   { rgb: '255,182,210', a: 0.9, r: 2.3, rise: 0, drift: 1.8, n: 0.75 },
+    snowyTrees: 0.15
   }
 ];

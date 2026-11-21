@@ -286,6 +286,14 @@ var Sfx = (function () {
     /* Neon: synthpop out of the eighties — A minor round Am-F-C-G, a
        square-wave lead running arpeggios, a sawtooth bass pumping eighths
        when it rushes, quicker than anything but Emberflow */
+    /* the Sakura Garden: the in scale on D (D Eb G A Bb), plucked and
+       unhurried, a koto over a soft drone */
+    sakura: {
+      chords: bars('D3 A3 D4 | D#3 A#3 D#4 | G3 D4 G4 | D3 A3 D4'),
+      bass:   bars('D2 A2 D3 | D#2 A#2 D#3 | G2 D3 G3 | D2 A2 D3'),
+      mel: line('D5 - D#5 - G5 - - A5   A#5 - A5 G5 - - D#5 -   D5 - - G4 A4 - A#4 -   A4 - G4 - D4 - - -'),
+      hot: line('D5 D#5 G5 A5 A#5 A5 G5 D#5   D5 G4 A4 A#4 D5 A#4 A4 G4   D5 D#5 G5 A#5 D6 A#5 G5 D#5   D5 A4 G4 D#4 D4 - D4 -'),
+      lead: 'triangle', dur: 0.2, vol: 0.075, tempo: 1.12, pad: 'sine' },
     neon: {
       chords: bars('A3 C4 E4 | F3 A3 C4 | C4 E4 G4 | G3 B3 D4'),
       bass:   bars('A2 E3 A3 | F2 C3 F3 | C3 G3 C4 | G2 D3 G3'),

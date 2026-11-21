@@ -27,7 +27,9 @@ var ALLOWED = { reach: 'up', shoal: 'up', startShield: 'flag',
                 /* the ramp is GENTLER, so smaller is the generous way */
                 slowRamp: 'down',
                 /* shrinks his hitbox, so smaller is the generous way */
-                slim: 'down' };
+                slim: 'down',
+                /* the dragon's flight: over everything, and down in grace */
+                soar: 'flag' };
 
 console.log('A. every perk is declared and points the generous way');
 SKINS.forEach(function (sk) {

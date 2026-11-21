@@ -2383,6 +2383,175 @@ COMICS.aurora = [
   ]
 ];
 
+/* ---- the dragon (1.3.4): an egg lost in a storm, and the girl who saved it ---- */
+/* the egg: an egg's own shape, narrower at the top, covered in scales
+   that overlap like a carp's, each lit on its upper edge, gold at the
+   rims; light from the upper left, the snow's blue on its shadowed side.
+   Cracked as far as `k` (0 to 1), the cracks glowing from inside. */
+function cmEggPath(c, x, y, s) {
+  c.beginPath(); c.moveTo(x, y - s * 0.95);
+  c.bezierCurveTo(x + s * 0.6, y - s * 0.95, x + s * 0.76, y + s * 0.15, x + s * 0.62, y + s * 0.52);
+  c.bezierCurveTo(x + s * 0.46, y + s * 0.92, x - s * 0.46, y + s * 0.92, x - s * 0.62, y + s * 0.52);
+  c.bezierCurveTo(x - s * 0.76, y + s * 0.15, x - s * 0.6, y - s * 0.95, x, y - s * 0.95); c.closePath();
+}
+function cmDragonEgg(c, x, y, s, k, tt) {
+  c.save();
+  var g = c.createRadialGradient(x - s * 0.28, y - s * 0.4, s * 0.05, x, y, s * 1.05);
+  g.addColorStop(0, '#ff9b78'); g.addColorStop(0.45, '#d8392b'); g.addColorStop(1, '#5e0c06');
+  c.fillStyle = g; cmEggPath(c, x, y, s); c.fill();
+  c.save(); cmEggPath(c, x, y, s); c.clip();
+  /* the scales, row by row from the top, smaller where the egg curves away */
+  var rows = 9;
+  for (var r = 0; r < rows; r++) {
+    var v = -0.85 + r * 0.2, yy = y + v * s, half = s * 0.7 * Math.sqrt(Math.max(0.05, 1 - Math.pow((v + 0.1) / 1.05, 2)));
+    var n = 7, sc = s * 0.17;
+    for (var q = 0; q < n; q++) {
+      var u = -1 + (q + (r & 1 ? 0.5 : 0)) / (n - 1) * 2;
+      if (u > 1.05) continue;
+      var sx = x + Math.sin(u * Math.PI / 2) * half, w = sc * Math.max(0.35, Math.cos(u * Math.PI / 2)), h = sc * 0.95;
+      var lit = 0.5 - u * 0.3 - v * 0.25;
+      var sg = c.createLinearGradient(sx, yy - h * 0.2, sx, yy + h);
+      sg.addColorStop(0, 'rgba(255,170,130,' + Math.max(0, Math.min(0.55, lit)).toFixed(2) + ')'); sg.addColorStop(0.7, 'rgba(200,40,25,0)'); sg.addColorStop(1, 'rgba(90,10,5,.18)');
+      c.fillStyle = sg;
+      c.beginPath(); c.moveTo(sx - w, yy); c.quadraticCurveTo(sx - w, yy + h, sx, yy + h * 1.05); c.quadraticCurveTo(sx + w, yy + h, sx + w, yy); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,205,90,' + (0.35 + Math.max(0, lit) * 0.4).toFixed(2) + ')'; c.lineWidth = Math.max(0.6, s * 0.012);
+      c.beginPath(); c.moveTo(sx - w, yy); c.quadraticCurveTo(sx - w, yy + h, sx, yy + h * 1.05); c.quadraticCurveTo(sx + w, yy + h, sx + w, yy); c.stroke();
+    }
+  }
+  /* the snow's light on the shadow side, and the dark where it sits */
+  var rl = c.createLinearGradient(x + s * 0.3, y, x + s * 0.75, y);
+  rl.addColorStop(0, 'rgba(170,220,255,0)'); rl.addColorStop(1, 'rgba(170,220,255,.38)');
+  c.fillStyle = rl; c.fillRect(x, y - s, s, s * 2);
+  var ao = c.createLinearGradient(0, y + s * 0.3, 0, y + s * 0.95);
+  ao.addColorStop(0, 'rgba(40,0,0,0)'); ao.addColorStop(1, 'rgba(40,0,0,.5)');
+  c.fillStyle = ao; c.fillRect(x - s, y, s * 2, s);
+  /* the gloss: a soft window of light, and a sharp one in it */
+  var gl = c.createRadialGradient(x - s * 0.3, y - s * 0.48, 0, x - s * 0.3, y - s * 0.48, s * 0.32);
+  gl.addColorStop(0, 'rgba(255,255,255,.65)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = gl; c.beginPath(); c.ellipse(x - s * 0.3, y - s * 0.48, s * 0.2, s * 0.32, -0.45, 0, 6.2832); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.ellipse(x - s * 0.34, y - s * 0.56, s * 0.045, s * 0.09, -0.45, 0, 6.2832); c.fill();
+  c.restore();
+  c.strokeStyle = 'rgba(70,8,4,.8)'; c.lineWidth = Math.max(1, s * 0.022); cmEggPath(c, x, y, s); c.stroke();
+  /* the cracks, glowing from inside */
+  if (k > 0) {
+    var pts = [[-0.5, -0.1], [-0.36, -0.28], [-0.2, -0.05], [-0.02, -0.34], [0.16, -0.1], [0.32, -0.32], [0.5, -0.12], [0.6, -0.22]];
+    var m = Math.max(2, Math.round(pts.length * k));
+    cmGlow(c, x, y - s * 0.2, s * (0.5 + 0.6 * k), 0.45 * k);
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    [[Math.max(2, s * 0.07), 'rgba(255,150,40,.45)'], [Math.max(1.2, s * 0.03), '#ffe9a0']].forEach(function (L) {
+      c.strokeStyle = L[1]; c.lineWidth = L[0];
+      c.beginPath(); for (var i = 0; i < m; i++) { var p = pts[i]; if (i) c.lineTo(x + p[0] * s, y + p[1] * s); else c.moveTo(x + p[0] * s, y + p[1] * s); }
+      if (k > 0.6) { c.moveTo(x - s * 0.2, y - s * 0.05); c.lineTo(x - s * 0.26, y + s * 0.18); c.moveTo(x + s * 0.16, y - s * 0.1); c.lineTo(x + s * 0.24, y + s * 0.12); }
+      c.stroke();
+    });
+  }
+  c.restore();
+}
+/* the snow it sits in: a hollow behind and a drift in front, banked up
+   round its foot, blue in the shade, with a glitter on top */
+function cmEggNest(c, x, y, s, front) {
+  c.save();
+  var base = y + s * 0.72;
+  if (!front) {
+    c.fillStyle = 'rgba(40,70,110,.22)'; c.beginPath(); c.ellipse(x + s * 0.1, base + s * 0.08, s * 1.0, s * 0.22, 0, 0, 6.2832); c.fill();
+    var bg = c.createLinearGradient(0, base - s * 0.3, 0, base + s * 0.2);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#cfe2f2');
+    c.fillStyle = bg; c.beginPath(); c.ellipse(x, base - s * 0.02, s * 0.95, s * 0.2, 0, Math.PI, 0); c.fill();
+  } else {
+    var fg = c.createLinearGradient(0, base - s * 0.2, 0, base + s * 0.25);
+    fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.6, '#eef5fb'); fg.addColorStop(1, '#b9d3e8');
+    c.fillStyle = fg;
+    c.beginPath(); c.moveTo(x - s * 1.0, base + s * 0.12);
+    c.bezierCurveTo(x - s * 0.8, base - s * 0.12, x - s * 0.5, base - s * 0.02, x - s * 0.3, base - s * 0.14);
+    c.bezierCurveTo(x - s * 0.1, base - s * 0.24, x + s * 0.2, base - s * 0.04, x + s * 0.42, base - s * 0.16);
+    c.bezierCurveTo(x + s * 0.65, base - s * 0.26, x + s * 0.85, base - s * 0.02, x + s * 1.0, base + s * 0.1);
+    c.bezierCurveTo(x + s * 0.6, base + s * 0.28, x - s * 0.6, base + s * 0.3, x - s * 1.0, base + s * 0.12); c.fill();
+    c.strokeStyle = 'rgba(120,160,200,.35)'; c.lineWidth = Math.max(1, s * 0.02); c.stroke();
+    c.fillStyle = 'rgba(150,190,225,.35)';                           // its shade under the lip
+    c.beginPath(); c.ellipse(x + s * 0.25, base + s * 0.08, s * 0.5, s * 0.06, 0, 0, 6.2832); c.fill();
+    c.fillStyle = '#ffffff';                                          // glitter
+    [[-0.6, -0.02], [-0.2, -0.12], [0.3, -0.08], [0.7, 0.0], [0.05, 0.05]].forEach(function (p) {
+      c.beginPath(); c.arc(x + p[0] * s, base + p[1] * s, Math.max(0.8, s * 0.018), 0, 6.2832); c.fill();
+    });
+  }
+  c.restore();
+}
+/* footprints in the snow, someone's, coming to the egg: whoever saved it
+   is never shown (the owner: a person, not said who) */
+function cmSteps(c, x0, y0, x1, y1, n, tt) {
+  var shown = Math.min(n, Math.floor((tt || 0) / 6) + 1);
+  for (var i = 0; i < shown; i++) {
+    var f = i / (n - 1), x = x0 + (x1 - x0) * f + (i & 1 ? 5 : -5), y = y0 + (y1 - y0) * f;
+    c.fillStyle = 'rgba(110,150,190,.45)';
+    c.beginPath(); c.ellipse(x, y, 3.4, 5.4, Math.atan2(x1 - x0, y0 - y1), 0, 6.2832); c.fill();
+  }
+}
+/* a koi, from above: the game's own fish */
+function cmKoi(c, x, y, s, a, tt) {
+  if (typeof Game === 'undefined' || !Game.drawKoi) return;
+  c.save(); c.translate(x, y); c.rotate(a); Game.drawKoi(c, 0, 0, s, tt * 0.2, 0, true); c.restore();
+}
+/* inside the house: a wooden wall, paper screens, and the fire's light */
+function cmHouse(c, tt) {
+  var g = c.createLinearGradient(0, 0, 0, COMIC_H); g.addColorStop(0, '#6a4630'); g.addColorStop(1, '#3a2418');
+  c.fillStyle = g; c.fillRect(0, 0, COMIC_W, COMIC_H);
+  c.fillStyle = '#f4e6c8';
+  for (var i = 0; i < 4; i++) c.fillRect(14 + i * 76, 18, 64, 92);
+  c.strokeStyle = '#5a3a24'; c.lineWidth = 3;
+  for (var j = 0; j < 4; j++) { c.strokeRect(14 + j * 76, 18, 64, 92); c.beginPath(); c.moveTo(46 + j * 76, 18); c.lineTo(46 + j * 76, 110); c.moveTo(14 + j * 76, 64); c.lineTo(78 + j * 76, 64); c.stroke(); }
+  c.fillStyle = '#8a6a48'; c.fillRect(0, 140, COMIC_W, 60);
+  var f = 0.85 + 0.15 * Math.sin(tt * 0.3);
+  cmGlow(c, 160, 160, 120 * f, 0.55);
+}
+/* the sky in a storm, dark and torn */
+function cmStorm(c, tt) {
+  var g = c.createLinearGradient(0, 0, 0, COMIC_H); g.addColorStop(0, '#2a2f45'); g.addColorStop(1, '#5a6480');
+  c.fillStyle = g; c.fillRect(0, 0, COMIC_W, COMIC_H);
+  c.fillStyle = 'rgba(20,24,38,.55)';
+  for (var i = 0; i < 6; i++) { c.beginPath(); c.ellipse((i * 70 + tt * 0.8) % (COMIC_W + 80) - 40, 30 + (i % 3) * 14, 60, 18, 0, 0, 6.2832); c.fill(); }
+}
+COMICS.dragon = [
+  [
+    cmDeep({ cap: 'comic.dragon.1.1',
+      back: function (c, tt) { cmStorm(c, tt); cmFlakes(c, tt, 40, 1.4); },
+      mid: function (c, tt) {
+        var y = Math.min(130, 20 + tt * 1.4);
+        cmDragonEgg(c, 160 + Math.sin(tt * 0.1) * 20, y, 26, 0, tt);
+      } }),
+    cmDeep({ cap: 'comic.dragon.1.2',
+      back: function (c, tt) { cmSnow(c); cmFlakes(c, tt, 18, 0.8); },
+      mid: function (c, tt) { cmEggNest(c, 160, 128, 30, false); cmDragonEgg(c, 160, 128, 30, 0, tt); cmEggNest(c, 160, 128, 30, true); } }),
+    cmDeep({ cap: 'comic.dragon.1.3',
+      back: function (c, tt) { cmNight(c, tt, 150); cmNightSnow(c, 150); },
+      mid: function (c, tt) { cmDragonEgg(c, 160, 150, 22, 0, tt); c.fillStyle = 'rgba(200,220,255,.35)'; c.beginPath(); c.ellipse(160, 168, 34, 8, 0, 0, 6.2832); c.fill(); } })
+  ],
+  [
+    cmDeep({ cap: 'comic.dragon.2.1', who: true,
+      back: function (c, tt) { cmSnow(c); },
+      mid: function (c, tt) { cmEggNest(c, 220, 150, 22, false); cmDragonEgg(c, 220, 150, 22, 0, tt); cmEggNest(c, 220, 150, 22, true); cmSteps(c, 40, 40, 196, 160, 12, tt); } }),
+    cmDeep({ cap: 'comic.dragon.2.2', who: true,
+      back: function (c, tt) { cmHouse(c, tt); },
+      mid: function (c, tt) { cmGlow(c, 160, 140, 70, 0.45); cmDragonEgg(c, 160, 140, 30, 0, tt); } }),
+    cmDeep({ cap: 'comic.dragon.2.3', who: true,
+      back: function (c, tt) { cmHouse(c, tt); },
+      mid: function (c, tt) {
+        cmDragonEgg(c, 200, 140, 26, 0, tt);
+        for (var i = 0; i < 3; i++) cmKoi(c, 90 + i * 30, 170 - ((tt * 0.8 + i * 20) % 30), 10, 0.4 + i * 0.3, tt);
+      } })
+  ],
+  [
+    cmDeep({ cap: 'comic.dragon.3.1',
+      back: function (c, tt) { cmHouse(c, tt); },
+      mid: function (c, tt) { cmDragonEgg(c, 160 + Math.sin(tt * 0.9) * 3, 120, 40, Math.min(1, tt / 60), tt); } }),
+    cmDeep({ cap: 'comic.dragon.3.2',
+      back: function (c, tt) { cmSnow(c); cmFlakes(c, tt, 14, 0.6); },
+      mid: function (c, tt) { cmGlow(c, 160, 110, 90, 0.35); cmCreature(c, 160, 110, 150, { skin: 'dragon', gait: tt * 0.3 }); } }),
+    cmDeep({ cap: 'comic.dragon.3.3', who: true,
+      back: function (c, tt) { cmSnow(c); },
+      mid: function (c, tt) { cmSteps(c, 20, 190, 120, 120, 9, 99); cmCreature(c, 200, 100, 130, { skin: 'dragon', gait: tt * 0.3 }); } })
+  ]
+];
+
 function comicFor(id) { return COMICS[id] || null; }
 
 /* every comic is deep (cmDeep, cmPaint) */

@@ -167,7 +167,10 @@ ok(table['first-timer'].bubbles.dist > table['first-timer'].snowcap.dist,
   console.log('\nFirst half of the Market (' + half + ' fish) for a casual player, everything counted:');
   console.log('  ' + trophies + ' from early trophies, ' + tasks + ' from a day\'s tasks, ' + finds +
               ' from finds, the rest at ' + Math.round(perRun) + ' a run: ' + runs + ' runs of ~' + Math.round(secs) + ' s');
-  ok(minutes >= 25 && minutes <= 60, 'it takes about ' + minutes + ' minutes of play, not ten');
+  /* the owner made the Market dearer in 1.3.4 (a friend playing an hour a
+     day had bought everything): half of it is now an evening or two of
+     play, not one sitting */
+  ok(minutes >= 90 && minutes <= 180, 'it takes about ' + minutes + ' minutes of play: an evening or two, not one sitting');
 })();
 
 /* The two "a dearer skin must be a better skin" checks used to sit here and

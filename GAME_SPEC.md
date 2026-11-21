@@ -152,6 +152,19 @@ in `PLAYTEST.md`, and the upload package is rebuilt and correct.
   and say what is new, with a button to the store; a version marked `min`
   cannot be played on until updated. Published there only once a version
   is live in both stores.
+- **The Dragon's egg** (1.3.4, until 31 Jan 2027) — feed it koi on the
+  Sakura Garden line (Known Lines, open to all): the first 15 caught each
+  day feed it, ten days and it hatches the **Dragon**, who spreads his wings
+  every 1000 m and flies over everything for three seconds. His comic tells
+  of an egg lost in a storm and saved by the player (their board name, or
+  "you"). The Sakura Garden is also a stretch of its own, with its tune.
+- **Upgrades** (1.3.4) — a third Market tab: each timed pickup (snowball,
+  cold draught, twin fish, magnet, time bubble) lasts 10% longer a level,
+  ten levels, 1 to 10 golden fish each.
+- **A dearer Market** (1.3.4) — fish prices ×2.5, gold ×2 (lives stay 250),
+  harder trophies; a spare life with all five carried is offered for sale.
+- **Smooth at any refresh rate** (1.3.4) — the picture is painted at the
+  moment it is shown, sixty even pictures a second above 100 Hz.
 
 ## Explicit non-goals
 

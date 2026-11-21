@@ -93,6 +93,15 @@ var COURSES = [
     id: 'neonnights', biome: 13, step: 230, gapW: [198, 154],
     script: '5 5* 6 7 7| 6 5 4* 3 3! 4 5 6* 7 7C 6 5 4 3*& 3 4 5| 6 7! 7 ' +
             '6* 5 4 3 3C 4 5* 6 7 7+ 6 5 4* 4 5 5'
+  },
+  {
+    /* The Sakura Garden (1.3.4, the dragon's event): a gentle line under
+       the cherry trees, open to everyone from the start (`event`), with a
+       koi in every opening while the event runs (`koi`): the easy way to
+       feed the dragon's egg. */
+    id: 'sakura', biome: 14, step: 276, gapW: [246, 220], event: true, koi: true,
+    script: '5 5* 5 4 4* 5 6 6* 5 5| 4 4* 3 3 4 5* 6 7 7* 6 5 5+ 4 4* ' +
+            '5 6 6 5* 5| 4 4 5* 6 6 5 5* 4 4 5 5'
   }
 ];
 

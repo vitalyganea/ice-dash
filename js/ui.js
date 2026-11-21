@@ -16,6 +16,11 @@
   /* -------------------------- saving ------------------------- */
   /* Declared above adopt(), which clamps a loaded save against the cap. */
   var LIFE_PRICE = 250, LIFE_CAP = 5;
+  /* the timed pickups the Market upgrades (1.3.4), their seconds at level 0,
+     and what each next level costs in golden fish */
+  var UPGRADES = [{ id: 'rush', base: 6 }, { id: 'chill', base: 3 }, { id: 'twin', base: 8 },
+                  { id: 'call', base: 5 }, { id: 'clock', base: 3 }];
+  var UP_MAX = 10, UP_COST = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   /* What comes out of a frozen find, by weight. Fish most of the time; the
      spare life is the thing worth chasing, and it is rare enough that it
      never becomes the way you stock up — the market is. */
@@ -30,7 +35,7 @@
 
   function defaults() {
     return { best: 0, boardBest: 0, cardSent: 0, runs: 0, sfx: true, music: true,
-             fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap',
+             fish: 0, gold: 0, owned: ['snowcap'], equipped: 'snowcap', up: {},
              lang: detectLang(),
              /* Trophy progress is kept as running totals rather than being
                 worked out from history, so a goal can show how far along you
@@ -119,6 +124,12 @@
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
       save.lives = Math.max(0, Math.min(LIFE_CAP, parseInt(o.lives, 10) || 0));
+      /* the Market's upgrades (1.3.4): a level 0-10 for each timed pickup */
+      save.up = {};
+      UPGRADES.forEach(function (U) {
+        var lv = o.up && typeof o.up === 'object' ? parseInt(o.up[U.id], 10) || 0 : 0;
+        if (lv > 0) save.up[U.id] = Math.min(UP_MAX, lv);
+      });
       save.tutDone = o.tutDone === true;
       save.dailyLast = typeof o.dailyLast === 'string' ? o.dailyLast : '';
       save.marketSeen = Object.prototype.toString.call(o.marketSeen) === '[object Array]'
@@ -161,6 +172,11 @@
           }
       }
       /* the events: a count and the steps claimed, for events this build knows */
+      /* the dragon's egg (1.3.4) */
+      var eg = o.egg && typeof o.egg === 'object' ? o.egg : {};
+      save.egg = { day: typeof eg.day === 'string' ? eg.day : '', today: Math.max(0, Math.min(DRAGON.perDay, parseInt(eg.today, 10) || 0)),
+                   fed: Math.max(0, Math.min(10, parseInt(eg.fed, 10) || 0)), hatched: eg.hatched === true };
+      save.boardName = typeof o.boardName === 'string' ? o.boardName.slice(0, 24) : '';
       save.ev = {};
       if (o.ev && typeof o.ev === 'object' && typeof eventById === 'function')
         for (var evid in o.ev) {
@@ -320,15 +336,44 @@
                   shop: $('screen-shop'), settings: $('screen-settings'),
                   ach: $('screen-ach'), runs: $('screen-runs'), modes: $('screen-modes'), comic: $('screen-comic'),
                   revive: $('screen-revive'), tutdone: $('screen-tutdone'), board: $('screen-board'),
-                  event: $('screen-event') };
+                  event: $('screen-event'), dragon: $('screen-dragon') };
   var hud = $('hud');
   var currentScreen = 'title';
 
   /* The screens that carry the always-visible back arrow. Every one of
      them already has a Back button; on the long ones it is a scroll away. */
-  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1, profile: 1, event: 1 };
+  var BACKABLE = { help: 1, shop: 1, runs: 1, ach: 1, settings: 1, modes: 1, board: 1, profile: 1, event: 1, dragon: 1 };
   var justOpened = false;
+  /* A spare life with all five already carried (1.3.4): offered for
+     LIFE_PRICE fish, and sold anyway if the window goes without an answer,
+     so it is never simply lost. */
+  var lifeSale = '';
+  function sellButton(id) {
+    var b = $(id);
+    if (!b) return;
+    var on = lifeSale && id.indexOf(lifeSale) === 0;
+    b.classList.toggle('hidden', !on);
+    if (on) { b.disabled = false; b.textContent = t('life.sell', { n: LIFE_PRICE }); }
+  }
+  function settleLifeSale() {
+    if (!lifeSale) return false;
+    lifeSale = '';
+    save.fish += LIFE_PRICE; store();
+    ['find-sell', 'gift-sell'].forEach(function (id) { var b = $(id); if (b) b.classList.add('hidden'); });
+    return true;
+  }
+  function sellLife(btn) {
+    var where = lifeSale;
+    if (!settleLifeSale()) return;
+    Sfx.gold(); buzz(20);
+    var msgEl = $(where === 'find' ? 'find-prize' : 'gift-prize');
+    if (msgEl) msgEl.textContent = t('life.sold', { n: LIFE_PRICE });
+    var r = btn.getBoundingClientRect();
+    screenBurst('fish', r.left + r.width / 2, r.top + r.height / 2);
+    if (typeof wallet === 'function') wallet();
+  }
   function show(name) {
+    settleLifeSale();
     closeSheet();
     currentScreen = name;
     for (var k in screens) screens[k].classList.toggle('hidden', k !== name);
@@ -349,8 +394,9 @@
     if (name === 'help') buildHints();
     if (name === 'profile') buildProfile();
     if (name === 'event') buildEvent();
+    if (name === 'dragon') buildEgg();
     if (evTimer && name !== 'event') { clearInterval(evTimer); evTimer = null; }
-    if (name === 'shop') { buildShop(); seeMarket(); }
+    if (name === 'shop') { shopTabTo('cr'); buildShop(); seeMarket(); }
     if (name === 'settings') buildSettings();
     if (name === 'ach') { buildTasks(); buildAch(); }
     if (name === 'runs') buildRuns();
@@ -457,6 +503,10 @@
   /* --------------------------- game -------------------------- */
   var lastCourse = null, lastMode = null, rideEv = null;
   function ride(courseId, mode) {
+    /* a run left paused behind the menu is banked, quietly, before another
+       one replaces it */
+    var left = (Game.isPaused && Game.isPaused() && Game.giveUp) ? Game.giveUp() : null;
+    if (left && left.course !== 'tutorial') commitRun(left, true);
     pendingRes = null;
     adLifeUsed = false;
     if (tickT) { clearInterval(tickT); tickT = null; }
@@ -468,9 +518,11 @@
     /* Each mode is measured against its own best: Time Rush in metres. */
     /* an event's gifts are on the Freeride hill only (events.js) */
     rideEv = (!lastCourse && !lastMode && typeof liveEvent === 'function') ? liveEvent() : null;
+    rideKoi = !lastMode && !!lastCourse && !!(courseById(lastCourse) || {}).koi && typeof dragonOn === 'function' && dragonOn();
+    if (Game.setBoosts) Game.setBoosts(save.up);
     Game.start(lastMode === 'rush' ? save.bestRush : lastMode === 'avalanche' ? save.bestAv : save.best,
                { hud: function () {}, over: onOver, lesson: onLesson, fx: onFx },
-               save.equipped, lastCourse, save.lives || 0, { mode: lastMode, gifts: !!rideEv });
+               save.equipped, lastCourse, save.lives || 0, { mode: lastMode, gifts: !!rideEv, koi: rideKoi });
     tutChrome();
   }
 
@@ -967,6 +1019,8 @@
       if (ask !== boardAsk || currentScreen !== 'board') return;
       list.innerHTML = '';
       var rows = (r && r.rows) || [], me = r && r.me;
+      /* the player's own name on the board, kept for the dragon's comic */
+      if (me && me.name && String(me.name).slice(0, 24) !== save.boardName) { save.boardName = String(me.name).slice(0, 24); store(); }
       noteCards(boardSpan, rows);
       var mine = null;
       rows.forEach(function (x) { var el = boardRow(x); if (x.me) mine = el; list.appendChild(el); });
@@ -997,7 +1051,7 @@
     });
   });
 
-  function commitRun(res) {
+  function commitRun(res, quiet) {
     var wasOpen = freeUnlocked();
     save.runs++;
     /* A marked run has its own scoreboard: stars, not distance. The freeride
@@ -1048,6 +1102,7 @@
     save.gold += res.gold || 0;
     /* the event's gifts, counted in even if it ended while he rode */
     if (res.gifts > 0 && rideEv) eventState(save, rideEv).g += res.gifts;
+    var koiFed = (res.kois > 0 && rideKoi) ? dragonFeed(save, res.kois) : null;
     save.totFish  += res.fish  || 0;
     save.totGold  += res.gold  || 0;
     save.totGates += res.gates || 0;
@@ -1117,6 +1172,8 @@
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
     if (rideEv && !cd && !mRun) bits.push(t('unit.gifts') + ': ' + (res.gifts || 0));
+    if (rideKoi && !mRun) bits.push(t('unit.koi') + ': ' + (res.kois || 0));
+    if (koiFed && koiFed.dayDone) bits.push(t('egg.fed', { n: dragonState(save).fed, m: DRAGON.days }));
     if (rushRun) bits[0] = t('unit.clocks') + ': ' + (res.clocks || 0);
     if (avRun) bits[0] = t('unit.avrings') + ': ' + (res.gates || 0);
     if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
@@ -1129,6 +1186,7 @@
     $('over-unlock').classList.toggle('hidden', !opened);
     if (opened) { $('over-unlock').textContent = t('over.unlocked.modes'); justOpened = true; }
     buildGoals(res, cd, stars, beat, mRun, avRun ? save.bestAv : rushRun ? save.bestRush : save.best);
+    if (quiet) return;                 // banked on the way to another run: no results
     if (beat) setTimeout(function () {
       celebrateBest($('over-score'), mRun ? res.dist : res.score, mRun ? t('unit.m') : null);
     }, 350);
@@ -1274,7 +1332,7 @@
   /* ------------------------ frozen finds --------------------- */
   function buildFinds(reset) {
     var box = $('over-finds'), n = save.finds || 0, prize = $('find-prize');
-    if (reset) prize.classList.add('hidden');
+    if (reset) { prize.classList.add('hidden'); findBroken = false; }
     /* Opening the last find empties the stock, and the box used to go with
        it — on the very frame the prize was written into it, so the player
        saw the ice break and never learned what was inside. It stays while
@@ -1292,12 +1350,25 @@
        could never be opened. */
     btn.disabled = opening;
     /* with none left, the broken one stays as it fell */
-    if (n > 0 && Game.drawFindPreview) Game.drawFindPreview($('find-art'), 200);
+    /* and while one lies broken with its prize, the next waits off stage
+       (1.3.4: drawn at once in its place, the prize seemed to come out of
+       the next one); it drops in when it is asked for */
+    if (n > 0 && Game.drawFindPreview && !findBroken) Game.drawFindPreview($('find-art'), 200);
   }
 
-  var opening = false;
+  var opening = false, findBroken = false;
   function openFind() {
     if ((save.finds || 0) <= 0 || opening) return;
+    if (findBroken) {                                 // the next one drops into the place of the broken one first
+      findBroken = false; opening = true;
+      var art = $('find-art');
+      $('find-prize').classList.add('hidden'); sellButton('find-sell');
+      if (Game.drawFindPreview) Game.drawFindPreview(art, 200);
+      art.classList.remove('find-drop'); void art.offsetWidth; art.classList.add('find-drop');
+      Sfx.click();
+      setTimeout(function () { opening = false; openFind(); }, 460);
+      return;
+    }
     save.finds--;
     /* Counted when it is cracked open, not when it is picked up: the
        trophy is for opening them. */
@@ -1313,9 +1384,9 @@
     if (pick.kind === 'fish') { save.fish += pick.n; msg = t('find.fish', { n: pick.n }); }
     else if (pick.kind === 'gold') { save.gold += pick.n; msg = t('find.gold', { n: pick.n }); }
     else {
-      /* A life you cannot carry would just vanish, so it is paid out. */
+      /* A life you cannot carry is offered for sale (1.3.4, the owner) */
       if ((save.lives || 0) < LIFE_CAP) { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
-      else { save.fish += LIFE_PRICE; msg = t('find.lifefull', { n: LIFE_PRICE }); }
+      else { lifeSale = 'find'; msg = t('life.full', { m: LIFE_CAP }); }
     }
     /* The prize is decided here and banked here; the engine only plays the
        opening. Hold the words back until the shell actually breaks — the
@@ -1336,15 +1407,17 @@
       buzz(kind === 'life' ? [60, 40, 60, 40, 120] : kind === 'gold' ? [50, 30, 90] : [40, 30, 50]);
       var r = $('find-art').getBoundingClientRect();
       screenBurst(kind, r.left + r.width / 2, r.top + r.height / 2);
+      var fb = $('over-finds'); fb.classList.remove('find-shake'); void fb.offsetWidth; fb.classList.add('find-shake');
     }
     if (Game.playFindOpen) {
       Game.playFindOpen($('find-art'), 200, kind, function () { finish(); }, onBreak);
     } else { onBreak(); finish(); }
 
     function finish() {
-      opening = false;
+      opening = false; findBroken = true;
       p.textContent = msg;
       p.classList.remove('hidden');
+      sellButton('find-sell');
       /* restart the reveal even when the same prize comes up twice */
       p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
       buildFinds(false);
@@ -1355,7 +1428,7 @@
   }
 
   /* -------------------------- actions ------------------------ */
-  function act(name) {
+  function act(name, el) {
     switch (name) {
       case 'play':
         /* "Give up and start over" from the pause screen starts over the
@@ -1363,8 +1436,12 @@
            on First Light dropped you onto a different hill — and in the
            tutorial, with Freeride still shut, into the Known Lines list
            with the lesson left hanging behind it. */
-        if (currentScreen === 'pause' && (lastCourse || lastMode)) {
-          Sfx.click(); ride(lastCourse, lastMode); break;
+        /* given up: the run is banked and its results shown, as an end
+           (1.3.4: it used to be thrown away, the best with it) */
+        if (currentScreen === 'pause') {
+          var gu = Game.giveUp ? Game.giveUp() : null;
+          if (gu && gu.course !== 'tutorial') { Sfx.click(); commitRun(gu); break; }
+          if (lastCourse || lastMode) { Sfx.click(); ride(lastCourse, lastMode); break; }
         }
         if (!freeUnlocked()) { Sfx.click(); show('runs'); break; }
         Sfx.click(); ride(null); break;
@@ -1398,10 +1475,16 @@
       case 'runs':       Sfx.click(); shopBack = currentScreen; show('runs'); break;
       case 'modes':      Sfx.click(); show('modes'); break;
       case 'event':      Sfx.click(); show('event'); break;
+      case 'dragon':     Sfx.click(); show('dragon'); break;
+      case 'hatch':      hatchEgg(); break;
+      case 'egg-ride':   Sfx.click(); save.equipped = 'dragon'; applyLook(); store(); ride(null); break;
+      case 'egg-go':     Sfx.click(); ride('sakura'); break;
+      case 'egg-story':  Sfx.click(); openComic('dragon', function () { show('dragon'); }); break;
       case 'retry':      Sfx.click(); ride(lastCourse, lastMode); break;
       case 'next-line':  Sfx.click(); ride($('over-next').getAttribute('data-run')); break;
       case 'close-sheet': Sfx.click(); closeSheet(); break;
       case 'gift':       openGift(); break;
+      case 'sell-life':  if (el) sellLife(el); break;
       case 'lang':       Sfx.click(); buildLangs(); $('sheet-lang').classList.remove('hidden'); break;
       case 'back-title':
         Sfx.click();
@@ -1409,7 +1492,7 @@
         /* The back arrow and Esc close an open window before they leave
            the screen under it. */
         if (closeSheet()) break;
-        if (currentScreen === 'event') { show('modes'); break; }   // an event is opened from the modes
+        if (currentScreen === 'event' || currentScreen === 'dragon') { show('modes'); break; }   // an event is opened from the modes
         /* Leaving the market puts you back where you opened it from, so
            browsing between runs does not throw away the end card. */
         if ((currentScreen === 'shop' || currentScreen === 'settings' ||
@@ -1437,7 +1520,7 @@
   }
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-action]') : null;
-    if (t) act(t.getAttribute('data-action'));
+    if (t) act(t.getAttribute('data-action'), t);
   });
   $('btn-menu').addEventListener('click', function (e) {
     e.stopPropagation();
@@ -1766,7 +1849,58 @@
     wallet();
     buildCreatures();
     buildShopFrames();
+    buildUps();
   }
+  /* The upgrades (1.3.4): every pickup that lasts a while lasts 10% longer
+     a level, up to ten, for golden fish. */
+  function upSecs(n) {
+    var s = (Math.round(n * 10) / 10).toFixed(1);
+    return LANG === 'en' ? s : s.replace('.', ',');
+  }
+  function buildUps() {
+    var box = $('shop-ups');
+    if (!box) return;
+    box.textContent = '';
+    UPGRADES.forEach(function (U) {
+      var lv = save.up[U.id] || 0, row = document.createElement('div');
+      row.className = 'up-row' + (lv >= UP_MAX ? ' maxed' : '');
+      var cv = document.createElement('canvas'); cv.className = 'up-ico'; cv.setAttribute('aria-hidden', 'true');
+      if (Game.drawHint) Game.drawHint(cv, U.id, 46);
+      row.appendChild(cv);
+      var mid = document.createElement('div'); mid.className = 'up-mid';
+      var nm = document.createElement('div'); nm.className = 'up-name'; nm.textContent = t('up.' + U.id);
+      var sc = document.createElement('div'); sc.className = 'up-secs';
+      sc.textContent = lv >= UP_MAX ? upSecs(U.base * 2) + '\u00a0' + t('up.s')
+        : t('up.from', { a: upSecs(U.base * (1 + lv / 10)), b: upSecs(U.base * (1 + (lv + 1) / 10)) });
+      var pips = document.createElement('div'); pips.className = 'up-pips';
+      pips.setAttribute('aria-label', t('up.level', { n: lv, m: UP_MAX }));
+      for (var i = 0; i < UP_MAX; i++) { var d = document.createElement('i'); if (i < lv) d.className = 'on'; pips.appendChild(d); }
+      mid.appendChild(nm); mid.appendChild(sc); mid.appendChild(pips);
+      row.appendChild(mid);
+      if (lv >= UP_MAX) {
+        var mx = document.createElement('span'); mx.className = 'up-max'; mx.textContent = t('up.max'); row.appendChild(mx);
+      } else {
+        var b = document.createElement('button'); b.setAttribute('data-up', U.id);
+        buyButton(b, { currency: 'gold', price: UP_COST[lv] });
+        b.removeChild(b.firstChild);                 // just the coin and the price: the row says what it buys
+        b.classList.add('up-buy');
+        b.setAttribute('aria-label', t('shop.buy') + ' ' + t('up.' + U.id) + ', ' + UP_COST[lv]);
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('#shop-ups [data-up]') : null;
+    if (!b || b.disabled) return;
+    var id = b.getAttribute('data-up'), lv = save.up[id] || 0;
+    if (lv >= UP_MAX || !pay({ currency: 'gold', price: UP_COST[lv] })) return;
+    save.up[id] = lv + 1;
+    if (Game.setBoosts) Game.setBoosts(save.up);
+    Sfx.gold(); store(); wallet(); buildUps();
+    var r0 = b.getBoundingClientRect();
+    screenBurst('gold', r0.left + r0.width / 2, r0.top + r0.height / 2);
+  });
   /* The frames for the card, in the Market (1.3.3): bought here, worn from
      My profile, which shows only what the player has. The event's frame is
      won, not bought, and is not here. */
@@ -1938,7 +2072,7 @@
        profile): the place is a pill of its own, in place of the creatures,
        which the board does not know for anyone else */
     if (o.rank && !o.hero) { var rk = document.createElement('span'); rk.textContent = t('title.rank.num', { n: o.rank }); st.appendChild(rk); }
-    if (o.rank && o.hero) stat(t('prof.place'), '#' + o.rank);
+    if (o.rank && o.hero) stat(t('prof.place'), t('title.rank.num', { n: o.rank }));
     stat(t('prof.best'), num(o.best || 0));
     stat(t('prof.trophies'), o.hero && typeof ACHIEVEMENTS !== 'undefined' ? (p.trophies || 0) + '/' + ACHIEVEMENTS.length : String(p.trophies || 0));
     if (o.hero && o.mine) stat(t('prof.creatures'), save.owned.length + '/' + SKINS.length);
@@ -2048,7 +2182,7 @@
     b.classList.toggle('hidden', !on);
     if (on && giftLook < 0) {
       giftLook = Math.floor(Math.random() * 6);     // a colour, and which way it faces; always the box
-      if (Game.drawGift) Game.drawGift(b.querySelector('canvas'), 64, giftLook % 3, giftLook >= 3, 0);
+      if (Game.drawGift) Game.drawGift(b.querySelector('canvas'), 52, giftLook % 3, giftLook >= 3, 0);
     }
   }
   /* it comes back while the title is up, too */
@@ -2056,14 +2190,15 @@
   function giftRoll() {
     var r = Math.random();
     if (r < 0.15) return { kind: 'gold', n: 1 };
-    if (r < 0.40 && (save.lives || 0) < LIFE_CAP) return { kind: 'life', n: 1 };
+    if (r < 0.40) return { kind: 'life', n: 1 };     // with all five, offered for sale
     return { kind: 'fish', n: 50 + 10 * Math.floor(Math.random() * 8) };   // 50 to 120
   }
   function openGift() {
     if (!giftReady()) { giftBtn(); return; }
     var p = giftRoll(), msg;
     if (p.kind === 'gold') { save.gold += p.n; msg = t('find.gold', { n: p.n }); }
-    else if (p.kind === 'life') { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
+    else if (p.kind === 'life' && (save.lives || 0) < LIFE_CAP) { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
+    else if (p.kind === 'life') { lifeSale = 'gift'; msg = t('life.full', { m: LIFE_CAP }); }
     else { save.fish += p.n; msg = t('find.fish', { n: p.n }); }
     save.gift = Date.now();
     store();
@@ -2071,6 +2206,7 @@
     Sfx.click(); buzz(15);
     $('gift-prize').textContent = msg;
     $('gift-prize').className = 'gift-prize gp-' + p.kind;
+    sellButton('gift-sell');
     b.classList.add('hidden');
     var sh = $('sheet-gift');
     sh.classList.remove('gift-done');
@@ -2094,7 +2230,7 @@
     var c = cv.getContext('2d');
     /* the gift and the prize, painted once */
     var G = document.createElement('canvas'), GS = 150;
-    if (Game.drawGift) Game.drawGift(G, GS, look % 3, look >= 3, 0);
+    var gi = Game.drawGift ? Game.drawGift(G, GS, look % 3, look >= 3, 0) : null;
     var P = document.createElement('canvas');
     if (Game.drawHint) Game.drawHint(P, kind === 'life' ? 'heart' : kind, 96);
     /* the golden fish's own glow runs to the icon's edges: faded out in a
@@ -2106,10 +2242,9 @@
       pm.addColorStop(0, '#000'); pm.addColorStop(1, 'rgba(0,0,0,0)');
       pc.fillStyle = pm; pc.fillRect(0, 0, pw, pw); pc.globalCompositeOperation = 'source-over';
     }
-    /* where the lid ends, as paintGift draws it: a cut along its lower edge */
-    var s = GS * 0.3, w = s * 1.32, h = s * 0.96, sd = s * 0.42, top = s * 0.72, lo = s * 0.08, lh = s * 0.2;
-    var x0 = GS / 2 - w / 2 - sd * 0.25, y0 = GS * 0.54 - h / 2 + top * 0.3, x1 = x0 + w, cut = y0 + lh * 0.35;
-    function lidPath(g) { g.beginPath(); g.moveTo(-5, -5); g.lineTo(GS + 5, -5); g.lineTo(GS + 5, cut - top * 0.7); g.lineTo(x1 + lo + sd, cut - top * 0.7); g.lineTo(x1 + lo, cut); g.lineTo(-5, cut); g.closePath(); }
+    /* where the lid ends, as the icon draws it: all above is the lid */
+    var cut = GS * ((gi && gi.lidBottom) || 0.52);
+    function lidPath(g) { g.beginPath(); g.rect(-5, -5, GS + 10, cut + 5); }
     var col = GIFT_RAYS[kind] || GIFT_RAYS.fish;
     var sparks = [], t0 = performance.now(), popped = false, still = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     var OPEN = 1150;
@@ -2203,6 +2338,20 @@
     }
     giftRaf = requestAnimationFrame(frame);
   }
+  /* The Market's two tabs: the creatures, and the frames for the card */
+  function shopTabTo(id) {
+    Array.prototype.forEach.call(document.querySelectorAll('#screen-shop [data-stab]'), function (b) {
+      var on = b.getAttribute('data-stab') === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#screen-shop .shop-pane'), function (p) {
+      p.classList.toggle('hidden', p.getAttribute('data-spane') !== id);
+    });
+  }
+  document.querySelector('#screen-shop .shop-tabs').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-stab]') : null;
+    if (!b || b.classList.contains('on')) return;
+    Sfx.click(); shopTabTo(b.getAttribute('data-stab'));
+  });
   /* My profile's three tabs: Avatar, Frames, Titles (1.3.3) */
   var profTab = 'av';
   function profTabTo(id) {
@@ -2314,6 +2463,10 @@
       var w = document.createElement('span');
       w.className = 'skin-tag tag-worn'; w.textContent = '✓';
       el.appendChild(w);
+    } else if (!owns(sk.id) && sk.currency === 'event') {
+      var ep = document.createElement('span');
+      ep.className = 'skin-tag tag-trophy'; ep.textContent = t('egg.tag');
+      el.appendChild(ep);
     } else if (!owns(sk.id) && sk.currency === 'trophy') {
       /* the trophy creature: how many trophies there are to go */
       var tp = document.createElement('span'), open = trophySkinOpen(save);
@@ -2367,6 +2520,8 @@
       tag.textContent = t('shop.wearing');
     } else if (owns(sk.id)) {
       b.textContent = t('shop.wear'); b.className += ' btn-green';
+    } else if (sk.currency === 'event') {
+      b.textContent = t('egg.name') + '  ›'; b.className += ' btn-blue'; b.setAttribute('data-go', 'dragon');
     } else if (sk.currency === 'trophy') {
       if (trophySkinOpen(save)) { b.textContent = t('shop.trophytake'); b.className += ' btn-gold'; }
       else {
@@ -2395,7 +2550,27 @@
      as they come in, so they are drawn on an animation frame of their own
      while the comic is open. */
   var comic = null;
+  /* The dragon's comic names the player who saved him: their name on the
+     board (Play Games, Game Center), kept once known so it is there offline
+     too; fetched once, quietly, if it is not known yet and the board can be
+     asked. Without one, the captions speak to "you". */
+  function heroName() { return save.boardName || ''; }
+  function withHeroName(cb) {
+    if (save.boardName || !PLAT.boardTop || (typeof navigator !== 'undefined' && navigator.onLine === false)) { cb(); return; }
+    var fin = false, go = function () { if (!fin) { fin = true; cb(); } };
+    setTimeout(go, 1500);
+    try {
+      PLAT.boardTop('all').then(function (r) { if (r && r.me && r.me.name) { save.boardName = String(r.me.name).slice(0, 24); store(); } go(); },
+                               function () { go(); });
+    } catch (e) { go(); }
+  }
+  function capText(p) {
+    if (!p.who) return t(p.cap);
+    var nm = heroName();
+    return nm ? t(p.cap, { name: nm }) : t(p.cap + '.you');
+  }
   function openComic(id, done) {
+    if (id === 'dragon' && !openComic.named) { openComic.named = true; withHeroName(function () { openComic(id, done); openComic.named = false; }); return; }
     var pages = comicFor(id);
     if (!pages) { if (done) done(); return; }
     comic = { id: id, pages: pages, page: 0, shown: 0, done: done, raf: null, starts: [],
@@ -2423,7 +2598,7 @@
       cv.className = 'comic-art';
       cell.appendChild(cv);
       var cap = document.createElement('div');
-      cap.className = 'comic-cap'; cap.textContent = t(p.cap);
+      cap.className = 'comic-cap'; cap.textContent = capText(p);
       cell.appendChild(cap);
       box.appendChild(cell);
     });
@@ -2668,6 +2843,7 @@
     }
   }
   function closeSheet() {
+    settleLifeSale();
     var open = false;
     Array.prototype.forEach.call(document.querySelectorAll('.sheet'), function (sh) {
       if (sh.classList.contains('upd-must') && !sh.classList.contains('hidden')) { open = true; return; }   // too old to play on: it stays
@@ -2729,6 +2905,7 @@
   $('sheet-skin-btn').addEventListener('click', function () {
     var sk = SKIN_BY_ID[sheetSkin];
     if (!sk || this.disabled) return;
+    if (this.getAttribute('data-go') === 'dragon') { closeSheet(); show('dragon'); return; }   // the dragon: from the egg
     if (this.getAttribute('data-go') === 'trophies') {   // Aurora, still out of reach
       closeSheet(); act('trophies'); return;
     }
@@ -2782,6 +2959,7 @@
   /* ------------------------ marked runs ---------------------- */
   function runUnlocked(i) {
     if (i === 0) return true;                        // the first is always open
+    if (COURSES[i].event) return true;               // the Sakura Garden, open to all (1.3.4)
     return (save.courses[COURSES[i - 1].id] || 0) > 0;
   }
 
@@ -2835,6 +3013,18 @@
         $('event-new').classList.toggle('hidden', !!eventState(save, evS).seen || !eventOn(evS));
       }
     }
+    /* the dragon's egg, while it can be fed (or hatched) */
+    /* shown to the event's end, hatched or not (hatched, it thanks the player) */
+    var db = $('btn-dragon'), dShown = typeof dragonShown === 'function' && dragonShown(save);
+    if (db) {
+      db.classList.toggle('hidden', !dShown);
+      if (dShown) {
+        var DE = dragonState(save);
+        $('dragon-sub').textContent = DE.hatched ? t('egg.done') : dragonReady(save) ? t('egg.ready')
+          : t('egg.sub', { a: DE.fed, b: DRAGON.days, c: dragonToday(save), d: DRAGON.perDay }) + ' · ' + evLeftText(DRAGON);
+        $('dragon-badge').classList.toggle('hidden', !dragonReady(save));
+      }
+    }
     var today = dailyKey(), dailyOpen = open && save.dailyLast !== today;
     /* A mode not yet ridden wears the same gold dot as an unfinished Daily
        Line: just opened, it is the newest thing on the screen. Ridden once,
@@ -2855,6 +3045,64 @@
      and every step with its prize, claimed with its button once reached
      (the owner, 19 Nov 2026). The time left ticks while the page is open. */
   var evTimer = null;
+  /* ---- the dragon's egg (1.3.4) ---- */
+  var rideKoi = false, eggRaf = null;
+  function eggPaint(k, wob) {
+    var cv = $('egg-art'); if (!cv || !cv.getContext) return;
+    var S = 200, d = Math.min(window.devicePixelRatio || 1, 2.5);
+    if (cv.width !== Math.round(S * d)) { cv.width = Math.round(S * d); cv.height = Math.round(S * d); cv.style.width = S + 'px'; cv.style.height = S + 'px'; }
+    var c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, S, S);
+    if (typeof cmDragonEgg !== 'function') return;
+    cmEggNest(c, 100, 98, 78, false);
+    cmDragonEgg(c, 100 + (wob || 0), 98, 78, k, 0);
+    cmEggNest(c, 100, 98, 78, true);
+  }
+  function buildEgg() {
+    var E = dragonState(save), ready = dragonReady(save), today = dragonToday(save);
+    $('egg-left').textContent = evLeftText(DRAGON);
+    if (E.hatched) {
+      if (Game.drawSkinPreview) Game.drawSkinPreview($('egg-art'), 'dragon', 200);
+      $('egg-day').textContent = t('egg.hatched');
+    } else {
+      eggPaint(Math.min(0.85, E.fed / DRAGON.days * 0.85), 0);
+      $('egg-day').textContent = ready ? t('egg.ready') : t('egg.day', { n: E.fed, m: DRAGON.days });
+    }
+    var pips = $('egg-pips'); pips.textContent = '';
+    for (var i = 0; i < DRAGON.days; i++) { var p = document.createElement('i'); if (i < E.fed) p.className = 'on'; pips.appendChild(p); }
+    $('egg-today').textContent = E.hatched ? t('egg.thanks') : ready ? '' : today >= DRAGON.perDay ? t('egg.doneToday') : t('egg.today', { n: today, m: DRAGON.perDay });
+    $('egg-how').classList.toggle('hidden', E.hatched || ready);
+    $('egg-hatch').classList.toggle('hidden', !ready);
+    $('egg-ride').classList.toggle('hidden', !E.hatched);
+    $('egg-story').classList.toggle('hidden', !E.hatched);
+    $('egg-play').classList.toggle('hidden', E.hatched || ready || !dragonOn());
+  }
+  /* ten days fed: the egg rocks, cracks wider and bursts, and the dragon is
+     the player's, worn at once */
+  function hatchEgg() {
+    if (!dragonReady(save)) return;
+    var E = dragonState(save);
+    E.hatched = true;
+    if (!owns('dragon')) save.owned.push('dragon');
+    achCheck(save); store();
+    $('egg-hatch').classList.add('hidden');
+    var t0 = performance.now(), still = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (Sfx.charge) Sfx.charge(); else Sfx.bubble();
+    if (eggRaf) cancelAnimationFrame(eggRaf);
+    function frame(now) {
+      var f = still ? 1 : Math.min(1, (now - t0) / 1600);
+      if (f < 1) {
+        eggPaint(0.85 + 0.15 * f, Math.sin(now * 0.05) * 6 * f);
+        eggRaf = requestAnimationFrame(frame); return;
+      }
+      eggRaf = null;
+      if (Sfx.boom) Sfx.boom();
+      Sfx.gold(); buzz([60, 40, 120]);
+      var r = $('egg-art').getBoundingClientRect();
+      screenBurst('best', r.left + r.width / 2, r.top + r.height / 2);
+      buildEgg();
+    }
+    eggRaf = requestAnimationFrame(frame);
+  }
   function evLeftText(ev) {
     if (!eventOn(ev)) return t('ev.over');
     var L = eventLeft(ev);

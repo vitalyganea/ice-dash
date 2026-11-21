@@ -31,7 +31,7 @@ var SKINS = [
     eyeRing: true                      // an Adélie: the white ring round each eye
   },
   {
-    id: 'mitten', name: 'Mitten', price: 100, currency: 'fish',
+    id: 'mitten', name: 'Mitten', price: 200, currency: 'fish',
     blurb: 'Someone knitted him a scarf.',
     perkText: 'Hoovers up fish from much further away.',
     perk: { reach: 2.1 },
@@ -44,7 +44,7 @@ var SKINS = [
   {
     /* Black back, white face, a beak far too big for him: the one sea bird
        that reads from straight above at this size. */
-    id: 'puffin', name: 'Puffin', price: 550, currency: 'fish',
+    id: 'puffin', name: 'Puffin', price: 1400, currency: 'fish',
     blurb: 'All beak, and in no hurry to explain it.',
     perkText: 'Shrugs off one missed fish without losing the run of catches.',
     perk: { comboKeep: 1 },
@@ -54,7 +54,7 @@ var SKINS = [
     shape: 'penguin', accent: '#ff5a1f', accessory: 'puffin'
   },
   {
-    id: 'seal', name: 'Seal', price: 600, currency: 'fish',
+    id: 'seal', name: 'Seal', price: 1500, currency: 'fish',
     blurb: 'Spent her whole life under this ice.',
     perkText: 'Sniffs out the golden fish, far more of them.',
     perk: { goldRate: 2.4 },
@@ -68,7 +68,7 @@ var SKINS = [
   {
     /* Small and orange-brown with a dark stripe down the back: the summer
        coat, for the same reason as the hare's. */
-    id: 'lemming', name: 'Lemming', price: 700, currency: 'fish',
+    id: 'lemming', name: 'Lemming', price: 1750, currency: 'fish',
     blurb: 'Comes back every single day, whatever the hill does.',
     perkText: 'Every star on the Daily Line pays 25 fish more.',
     perk: { dailyStar: 25 },
@@ -83,7 +83,7 @@ var SKINS = [
   {
     /* Dark shaggy brown with pale horns, built low and wide: deep snow is
        where a musk ox lives, not something it wades through. */
-    id: 'muskox', name: 'Musk Ox', price: 800, currency: 'fish',
+    id: 'muskox', name: 'Musk Ox', price: 2000, currency: 'fish',
     blurb: 'Deep snow is just the floor to him.',
     perkText: 'Deep snow does not slow him down at all.',
     perk: { bogImmune: 1 },
@@ -98,7 +98,7 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'bubbles', name: 'Bubbles', price: 950, currency: 'fish',
+    id: 'bubbles', name: 'Bubbles', price: 2400, currency: 'fish',
     blurb: 'Never leaves home unwrapped.',
     perkText: 'Starts every run already inside a bubble.',
     perk: { startShield: 1 },
@@ -111,7 +111,7 @@ var SKINS = [
   {
     /* Warm brown with a pale face, flat on her back on the water usually;
        on the ice she simply never wastes a moment. */
-    id: 'otter', name: 'Sea Otter', price: 1100, currency: 'fish',
+    id: 'otter', name: 'Sea Otter', price: 2750, currency: 'fish',
     blurb: 'Always knows exactly how long she has left.',
     perkText: 'Time bubbles give her four seconds instead of three.',
     perk: { clockGain: 1.34 },
@@ -127,7 +127,7 @@ var SKINS = [
     /* A perk nobody else has: it changes the SHAPE of a run rather than one
        interaction in it. The gentler the ramp, the longer the hill stays
        readable — which is exactly what a beginner is short of. */
-    id: 'hare', name: 'Arctic Hare', price: 1250, currency: 'fish',
+    id: 'hare', name: 'Arctic Hare', price: 3100, currency: 'fish',
     blurb: 'Paces herself. The hill never gets away from her.',
     perkText: 'The run speeds up far more gently.',
     perk: { slowRamp: 0.72 },
@@ -145,10 +145,10 @@ var SKINS = [
   {
     /* Grey, not white, with dark rosettes and a tail as long as she is:
        the pale cat on pale ice would have been the fox all over again. */
-    id: 'leopard', name: 'Snow Leopard', price: 1500, currency: 'fish',
+    id: 'leopard', name: 'Snow Leopard', price: 3750, currency: 'fish',
     blurb: 'Lives on the edge of things, and likes it there.',
     perkText: 'Close calls pay double, and count from further away.',
-    perk: { closeBonus: 2, closeWide: 1.6 },
+    perk: { closeBonus: 2, closeWide: 3 },
     shape: 'leopard', cat: true,
     body: ['#c4c8cf', '#8f969f', '#5f6670'],
     flipper: ['#b4b9c1', '#858c96', '#59606a'],
@@ -158,7 +158,7 @@ var SKINS = [
     accent: null, accessory: null
   },
   {
-    id: 'compass', name: 'Compass', price: 1750, currency: 'fish',
+    id: 'compass', name: 'Compass', price: 4400, currency: 'fish',
     blurb: 'Knows where the shoals are.',
     perkText: 'Finds far more shoals, and bigger ones.',
     perk: { shoal: 1.6 },
@@ -169,7 +169,7 @@ var SKINS = [
     accent: '#f0b429', accessory: 'cap'
   },
   {
-    id: 'owl', name: 'Snowy Owl', price: 2300, currency: 'fish',
+    id: 'owl', name: 'Snowy Owl', price: 5750, currency: 'fish',
     blurb: 'Sees the line before the line is there.',
     perkText: 'Always knows where the next opening is.',
     perk: { foresight: 1 },
@@ -185,7 +185,7 @@ var SKINS = [
     accent: '#f2b733', accessory: null
   },
   {
-    id: 'walrus', name: 'Walrus', price: 2700, currency: 'fish',
+    id: 'walrus', name: 'Walrus', price: 6750, currency: 'fish',
     blurb: 'Goes through things, not round them.',
     perkText: 'Reads the crystal rings — they open wider for him, and pay triple.',
     perk: { gateBonus: 3, gateWide: 1.55 },
@@ -199,7 +199,7 @@ var SKINS = [
   {
     /* Same lesson the walrus taught: make the risky thing less risky, not
        just better paid. The ramp over a crevasse is simply wider for him. */
-    id: 'narwhal', name: 'Narwhal', price: 3400, currency: 'fish',
+    id: 'narwhal', name: 'Narwhal', price: 8500, currency: 'fish',
     blurb: 'Knows every hole in this ice, and how to clear it.',
     perkText: 'The ramp over a crevasse runs much wider for him.',
     perk: { rampWide: 1.6 },
@@ -213,7 +213,7 @@ var SKINS = [
     accent: '#f0e6d2', accessory: 'tusk'
   },
   {
-    id: 'reindeer', name: 'Reindeer', price: 3800, currency: 'fish',
+    id: 'reindeer', name: 'Reindeer', price: 9500, currency: 'fish',
     blurb: 'Knows every inch of this hill.',
     perkText: 'Sure-footed — tucks in tight, and the glacier cannot swing him wide.',
     /* The grip alone was worth nothing, and measurably so: the spawner
@@ -222,7 +222,7 @@ var SKINS = [
        ground (-0.8 standard errors over 70 runs held on the glacier).
        `slim` is the part that pays — it is the dearest skin on the fish
        ladder and it has to be worth the climb. */
-    perk: { grip: 1.45, slim: 0.78 },
+    perk: { grip: 1.62, slim: 0.78 },
     shape: 'reindeer',
     body: ['#a07a57', '#6d4e36', '#432f20'],
     flipper: ['#8d6a4a', '#5a402c', '#382718'],
@@ -235,7 +235,7 @@ var SKINS = [
   {
     /* The largest penguin there is, black with a blaze of gold at the neck.
        Gold-priced, like the orca: something for the golden fish to buy. */
-    id: 'emperor', name: 'Emperor Penguin', price: 6, currency: 'gold',
+    id: 'emperor', name: 'Emperor Penguin', price: 12, currency: 'gold',
     blurb: 'Starts every run as if he had already been at it a while.',
     perkText: 'Every run starts with the combo already at x2.',
     perk: { comboStart: 10 },
@@ -246,7 +246,7 @@ var SKINS = [
     accessory: 'collar'
   },
   {
-    id: 'orca', name: 'Orca', price: 8, currency: 'gold',
+    id: 'orca', name: 'Orca', price: 16, currency: 'gold',
     blurb: 'Should not be up here at all, and does not care.',
     perkText: 'Hits a ramp so hard she clears half the hill — and starts shielded.',
     perk: { rampBoost: 1.8, startShield: 1 },
@@ -272,6 +272,23 @@ var SKINS = [
     flipper: ['#3d7fa8', '#24547a', '#122f47'],
     trim: '#8ff3ff', trimEdge: 'rgba(40,140,170,.5)',
     shape: 'penguin', accent: '#c9f6ff', accessory: 'aurora'
+  },
+  {
+    /* The dragon (1.3.4, the owner's Japanese event): not sold. He hatches
+       from the egg a player feeds with koi for ten days (events.js). Red
+       and gold, horns and whiskers, and wings he opens every kilometre to
+       fly over the whole hill for three seconds: a perk nobody else has. */
+    id: 'dragon', name: 'Dragon', price: 0, currency: 'event',
+    blurb: 'Hatched from an egg you fed for ten days.',
+    perkText: 'Every 1000 m he spreads his wings and flies over everything for three seconds.',
+    perk: { soar: 1 },
+    shape: 'dragon',
+    body: ['#d23a2c', '#8e1a12', '#3e0805'],
+    flipper: ['#e04236', '#a82219', '#6a110c'],
+    spot: '#ffc93a',
+    mark: '#e0b070', nose: '#5a1a10', outline: 'rgba(30,4,2,.85)',
+    trim: '#ffcf3a', trimEdge: 'rgba(150,90,10,.5)',
+    accent: '#ffcf3a', accessory: 'dragon'
   }
 ];
 
@@ -315,34 +332,34 @@ function coinsFor(fishCount) {
    a player's card travels with the score as indexes into these lists
    (profileCode). Only ever add at the end. */
 var ALT_SKINS = [
-  { id: 'zombie',    of: 'snowcap',  price: 800,  currency: 'fish' },
-  { id: 'elf',       of: 'mitten',   price: 900,  currency: 'fish' },
-  { id: 'pirate',    of: 'puffin',   price: 1200, currency: 'fish' },
-  { id: 'circus',    of: 'seal',     price: 1200, currency: 'fish' },
-  { id: 'miner',     of: 'lemming',  price: 1300, currency: 'fish' },
-  { id: 'viking',    of: 'muskox',   price: 1500, currency: 'fish' },
-  { id: 'astro',     of: 'bubbles',  price: 1600, currency: 'fish' },
-  { id: 'lifeguard', of: 'otter',    price: 1700, currency: 'fish' },
-  { id: 'magic',     of: 'hare',     price: 1800, currency: 'fish' },
-  { id: 'ninja',     of: 'leopard',  price: 2000, currency: 'fish' },
-  { id: 'captain',   of: 'compass',  price: 2200, currency: 'fish' },
-  { id: 'wizard',    of: 'owl',      price: 2600, currency: 'fish' },
-  { id: 'gent',      of: 'walrus',   price: 3000, currency: 'fish' },
-  { id: 'unicorn',   of: 'narwhal',  price: 3600, currency: 'fish' },
-  { id: 'santa',     of: 'reindeer', price: 6,    currency: 'gold' },
-  { id: 'king',      of: 'emperor',  price: 8,    currency: 'gold' },
-  { id: 'robot',     of: 'orca',     price: 10,   currency: 'gold' },
-  { id: 'galaxy',    of: 'aurora',   price: 12,   currency: 'gold' }
+  { id: 'zombie',    of: 'snowcap',  price: 2000,  currency: 'fish' },
+  { id: 'elf',       of: 'mitten',   price: 2250,  currency: 'fish' },
+  { id: 'pirate',    of: 'puffin',   price: 3000, currency: 'fish' },
+  { id: 'circus',    of: 'seal',     price: 3000, currency: 'fish' },
+  { id: 'miner',     of: 'lemming',  price: 3250, currency: 'fish' },
+  { id: 'viking',    of: 'muskox',   price: 3750, currency: 'fish' },
+  { id: 'astro',     of: 'bubbles',  price: 4000, currency: 'fish' },
+  { id: 'lifeguard', of: 'otter',    price: 4250, currency: 'fish' },
+  { id: 'magic',     of: 'hare',     price: 4500, currency: 'fish' },
+  { id: 'ninja',     of: 'leopard',  price: 5000, currency: 'fish' },
+  { id: 'captain',   of: 'compass',  price: 5500, currency: 'fish' },
+  { id: 'wizard',    of: 'owl',      price: 6500, currency: 'fish' },
+  { id: 'gent',      of: 'walrus',   price: 7500, currency: 'fish' },
+  { id: 'unicorn',   of: 'narwhal',  price: 9000, currency: 'fish' },
+  { id: 'santa',     of: 'reindeer', price: 12,    currency: 'gold' },
+  { id: 'king',      of: 'emperor',  price: 16,    currency: 'gold' },
+  { id: 'robot',     of: 'orca',     price: 20,   currency: 'gold' },
+  { id: 'galaxy',    of: 'aurora',   price: 24,   currency: 'gold' }
 ];
 var ALT_BY_ID = {}, ALT_OF = {};
 for (var _a = 0; _a < ALT_SKINS.length; _a++) { ALT_BY_ID[ALT_SKINS[_a].id] = ALT_SKINS[_a]; ALT_OF[ALT_SKINS[_a].of] = ALT_SKINS[_a]; }
 
 var FRAMES = [
   { id: 'ice',    price: 0,    currency: 'fish' },
-  { id: 'snow',   price: 400,  currency: 'fish' },
-  { id: 'neon',   price: 1200, currency: 'fish' },
-  { id: 'aurora', price: 1800, currency: 'fish' },
-  { id: 'gold',   price: 5,    currency: 'gold' },
+  { id: 'snow',   price: 1000,  currency: 'fish' },
+  { id: 'neon',   price: 3000, currency: 'fish' },
+  { id: 'aurora', price: 4500, currency: 'fish' },
+  { id: 'gold',   price: 10,    currency: 'gold' },
   /* won, not bought: the New Year event's last step (events.js). Last in
      the list, as profileCode wants; an older game reads it as Ice */
   { id: 'wreath', price: 0,    currency: 'event', event: 'ny2027' }

@@ -48,4 +48,6 @@ let T=0;
 module.exports={ setSeed:s=>{seed=s;}, byId, calls,
   frames(n){for(let i=0;i<n;i++){T+=1000/60;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}},
   /* the same, on a screen that refreshes hz times a second */
-  framesAt(hz,n){for(let i=0;i<n;i++){T+=1000/hz;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}} };
+  /* one refresh, `ms` after the last: a screen's own uneven clock (perf, hz.js) */
+  tick(ms){T+=ms;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));return T;},
+    framesAt(hz,n){for(let i=0;i<n;i++){T+=1000/hz;const b=[...raf.values()];raf.clear();b.forEach(f=>f(T));}} };
