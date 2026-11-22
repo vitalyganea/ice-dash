@@ -9,15 +9,16 @@ work always starts at the top.
 1. The close button under a player's card (minutes).
 2. No vibration on a golden fish (minutes, ships with 1).
 3. Crash and error reporting (below).
-4. Text that fits everywhere + every translation checked, together with the
-   contrast part of the brand book.
+4. Visual quality: text that fits, translations, the palette and contrast
+   (the brand book's core) and the avatars evened out, with a visual-QA
+   skill to keep it so.
 5. Review every mode: the bugs part first.
 6. A better performance test, on many devices.
 7. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
 8. Store listings and SEO/ASO in every language (below). Also pause the old
    Play closed-testing track "1.0" (the AD_ID error).
-9. The rest of the brand book.
+9. The rest of the brand book (the written book, store art style).
 10. One leaderboard for Android and iPhone.
 11. Play Games / Game Center achievements.
 12. The transfer code.
@@ -178,11 +179,38 @@ only.
   - App Store Connect: up to 100 achievements, 1000 points in all, 100 at
     most each.
 
-## Text that fits everywhere, and every translation checked
+## Visual quality: text that fits, one palette, even avatars, translations
 
-Asked for by the owner, 22 Nov 2026. Every word shows properly on every
-screen: buttons, tabs, prices, pills, popups, the HUD, the comic captions,
-the market rows.
+Asked for by the owner, 22 Nov 2026. The honest review (graphics 65/100):
+everything is drawn from code, coherent and friendly, but it shows that no
+artist went over it. Three things give it away: the avatars are uneven, about
+246 colours have no shared palette, and texts don't fit. This pass, done
+together with the brand book below, should take graphics to ~75. Every word
+must show properly on every screen: buttons, tabs, prices, pills, popups, the
+HUD, the comic captions, the market rows.
+
+**A skill for it.** Write a project skill once (`.claude/skills/visual-qa/`,
+with the skill-creator), so every later change gets the same check without
+being asked. It would:
+- Screenshot every screen in all 6 languages at 360/390/412 px and wide.
+- Run the text-fit test, the contrast check and the "no colour outside the
+  palette" check.
+- Line the avatars up side by side on one sheet to compare them.
+- Report each problem with its screenshot, the file and line, and a proposed
+  fix.
+
+Before writing it, look for an existing skill or plugin for UI and visual QA
+or accessibility audits, and use or adapt it if one fits.
+
+**Avatars evened out** (the part of the avatar pass that belongs here, ahead
+of the full realism pass, item 13):
+- All portraits on one sheet at the same size.
+- Fix the ones that stand out: line weight, the amount of detail, the light
+  direction, how much of the frame the head fills, and saturation against
+  the palette.
+- The musk ox stays as in 1.3.3.
+
+**Text and translations:**
 
 - Walk every screen in all 6 languages (en, ru, ro, es, pt-BR, de) at phone
   widths (360, 390, 412) and on a wide screen. Look for text cut off, spilling
