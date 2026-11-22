@@ -42,6 +42,19 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
   an album feat in `js/album.js` (`ALBUM_FEAT`, tied to its perk) and its three
   stories in every language — `test/album.js` fails without them.
 
+## TODO.md (standing rule — apply without being asked)
+
+- `TODO.md` starts with an ordered list, "Order for the global launch",
+  most critical first. Whenever an item is added to TODO.md (or one is done
+  or changes), place it in that list at once by how critical it is, renumber,
+  and keep each section's "Release" line in step with its place.
+- How critical: something that blocks or breaks play, or loses progress, or
+  hurts every player first, then stability and performance, then economy
+  changes that must land before many players arrive, then what brings
+  players (store pages, SEO), then polish and new features.
+- "Do what's in the TODO" means: start at item 1 of that list and go down
+  in order. Remove an item (its line and its section) once it has shipped.
+
 ## Checking
 
 ```bash
