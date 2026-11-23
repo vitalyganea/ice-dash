@@ -173,6 +173,28 @@ ok(table['first-timer'].bubbles.dist > table['first-timer'].snowcap.dist,
   ok(minutes >= 90 && minutes <= 180, 'it takes about ' + minutes + ' minutes of play: an evening or two, not one sitting');
 })();
 
+/* ---- the Market's upgrades take weeks, not days (1.3.5) ----
+   The owner, 22 Nov 2026: a player of one week bought every upgrade and had
+   golden fish left over. Golden fish are a third rarer now and the levels
+   dearer (UP_COST in ui.js, read from the file: ui.js is not loaded here).
+   At an hour a day, from what a casual rider's runs bring in, every upgrade
+   to the top must take some weeks, and the first level must still come
+   within the first few minutes. */
+(function () {
+  var src = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'ui.js'), 'utf8');
+  var cost = JSON.parse(/UP_COST = (\[[^\]]*\])/.exec(src)[1]);
+  var lines = (src.match(/\{ id: '[a-z]+', base: \d+ \}/g) || []).length;
+  var all = cost.reduce(function (t, c) { return t + c; }, 0) * lines;
+  var D = table['casual'].snowcap.dist * 8;
+  var secs = Math.log((3 + 0.000155 * D) / 3) / 0.000155 / 60;
+  var perHour = table['casual'].snowcap.gold * 3600 / secs;
+  var weeks = all / (perHour * 7);
+  console.log('\nThe upgrades: ' + lines + ' of them, ' + all + ' golden fish to the top; a casual rider brings in ~' +
+              Math.round(perHour) + ' an hour: ' + weeks.toFixed(1) + ' weeks at an hour a day');
+  ok(lines === 5 && weeks >= 2.5 && weeks <= 7, 'every upgrade to the top takes weeks of play, not days (' + weeks.toFixed(1) + ' weeks)');
+  ok(cost[0] / perHour * 60 <= 8, 'and the first level comes within the first few minutes (' + (cost[0] / perHour * 60).toFixed(1) + ' min)');
+})();
+
 /* The two "a dearer skin must be a better skin" checks used to sit here and
    have moved to ladder.js. They could not be answered on the 12 and 24
    samples this suite can afford: a run's distance has a standard deviation

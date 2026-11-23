@@ -20,7 +20,13 @@
      and what each next level costs in golden fish */
   var UPGRADES = [{ id: 'rush', base: 6 }, { id: 'chill', base: 3 }, { id: 'twin', base: 8 },
                   { id: 'call', base: 5 }, { id: 'clock', base: 3 }];
-  var UP_MAX = 10, UP_COST = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  /* 1.3.5 (the owner, 22 Nov 2026: a player of one week bought every
+     upgrade and had golden fish left over): 260 golden fish for one upgrade
+     to the top, 1300 for all five, where it was 55 and 275. With a third
+     fewer golden fish on the hill, about 45 an hour, that is some four weeks
+     at an hour a day (test/economy.js). The first level stays cheap. Levels
+     already bought are kept. */
+  var UP_MAX = 10, UP_COST = [3, 6, 10, 14, 19, 25, 32, 40, 50, 61];
   /* What comes out of a frozen find, by weight. Fish most of the time; the
      spare life is the thing worth chasing, and it is rare enough that it
      never becomes the way you stock up — the market is. */

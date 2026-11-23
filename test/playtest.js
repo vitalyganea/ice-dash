@@ -1365,7 +1365,10 @@ async function walk(cdp, sid, P) {
   await ev("(function(){var W=Game.debug();W.avGap=140;W.objects.length=0;})();1");
   await sleep(400);
   await shot('18c-avalanche');
-  await ev("(function(){var W=Game.debug();W.avGap=2;})();1");
+  /* on him, not 2 units behind: for the first 1500 m the snow is slower
+     than a clean rider (SYSTEMS row 194), and from 2 units back it fell
+     away again */
+  await ev("(function(){var W=Game.debug();W.avGap=-1;})();1");
   /* with spare lives in hand one is offered to push the snow back (row 170) */
   if (await waitFor('#screen-revive', 4000)) {
     ok(await ev("document.getElementById('revive-sub').getAttribute('data-i18n')") === 'revive.sub.snow',

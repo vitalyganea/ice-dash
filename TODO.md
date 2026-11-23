@@ -28,8 +28,8 @@ work always starts at the top.
    OPPO (internal test 27) and the owner's iPhone (TestFlight build 16); left:
    publishing the Play Games "Game server" credential, the store forms.**
 8. A better performance test, on many devices.
-9. Economy: upgrades cost more, fewer golden fish (before many new players
-   arrive, never after).
+9. Economy: upgrades cost more, fewer golden fish (below). **Done 23 Nov 2026
+   (SYSTEMS row 197), ships in 1.3.5.**
 10. Store listings and SEO/ASO in every language (below). The old mode names in
    the texts go too (Liber, Libre, Livre, Freie Fahrt: now Freeride). Also pause the old
    Play closed-testing track "1.0" (the AD_ID error).
@@ -299,23 +299,15 @@ of the full realism pass, item 13):
 
 ## Economy: upgrades cost more, fewer golden fish on the hill
 
-Asked for by the owner, 22 Nov 2026. A player of one week can buy every
-upgrade and still has golden fish left over.
-
-- **Upgrade prices** (`UP_COST` in `js/ui.js`, now `[1..10]` golden fish a
-  level, 55 for one upgrade to the top). Make it a steeper curve, e.g.
-  `[3, 5, 8, 12, 16, 22, 28, 36, 45, 55]` (230 a line). Pick the numbers from
-  how many golden fish a week of play brings in after the change below.
-  Target: maxing every upgrade takes several weeks, not one.
-- **Golden fish are too dense** on the hill: spawn points in `js/game.js`
-  (`t: 'gold'` around lines 690, 868, 1022, the bonus rows at 1539).
-  Thin them out by roughly a third. Keep them on the risky lines, where they
-  are a reward.
-- Re-check that frames and alt skins priced in gold (gold frame 10,
-  emperor 12, orca 16) still feel reachable with fewer golden fish.
-- Re-run `node test/ladder.js` and `test/economy.js`, then update their
-  bounds. Update the "days to unlock everything" estimate (it was ~4 weeks at
-  1 h a day).
+**Done 23 Nov 2026, ships in 1.3.5 (SYSTEMS row 197).** Asked for by the
+owner, 22 Nov 2026: a player of one week could buy every upgrade and still
+had golden fish left over.
+- Upgrades `[3, 6, 10, 14, 19, 25, 32, 40, 50, 61]`: 260 a line, 1300 for
+  all five (was 55 and 275).
+- Golden fish: a casual rider ~45 an hour (was ~69), a first-timer ~49 (was
+  ~64); the fixed ones on the risky lines kept.
+- Everything unlocked: ~31 hours of play, about 4.5 weeks at an hour a day
+  (the gold side; the fish-priced creatures take ~13 hours of it).
 
 ## The close button hides under a player's card
 

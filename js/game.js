@@ -76,7 +76,7 @@ var Game = (function () {
      leaping ahead to where he can still catch them; a gold one now and then.
      Free runs only: a marked run (and the day's line) holds the same fish
      for everyone, and its stars count the fish laid on it. */
-  var SMASH_FISH = 0.4, SMASH_GOLD = 0.07, SMASH_LEAP = 28;
+  var SMASH_FISH = 0.4, SMASH_GOLD = 0.047, SMASH_LEAP = 28;      // gold a third rarer (1.3.5; was 0.07)
   /* The breathing space after spending a life. Separate from the ordinary
      invulnerability because it has to cover a crevasse too, and ordinary
      invulnerability deliberately does not — a shield save and a landing
@@ -888,7 +888,11 @@ var Game = (function () {
     }
     var goldRoll = Math.random(), goldSide = Math.random() < 0.5 ? -1 : 1;
     var goldOff = rnd(90, 150), goldPh = rnd(0, 6.28);
-    if (goldRoll < Math.min(0.5, 0.13 * (perk().goldRate || 1)) && at > 1200) {
+    /* a third fewer than before 1.3.5 (0.13; the owner: a player of one week
+       bought every upgrade and had golden fish left over); still off the
+       opening, a lean away, where they are a reward. The roll is drawn as
+       before, so the rest of the hill is unchanged. */
+    if (goldRoll < Math.min(0.5, 0.087 * (perk().goldRate || 1)) && at > 1200) {
       var gd = d + 20;
       W.objects.push({ t: 'gold',
                        x: place(clamp(gap + goldSide * goldOff,
