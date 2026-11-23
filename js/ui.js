@@ -849,6 +849,14 @@
     if (!boardReady()) $('over-board').classList.add('hidden');
   }
   window.addEventListener('icedash-board', boardButtons);
+  /* the shared board (1.3.5, native.js) has come through after the panel
+     or the place on the title was shown from the platform's own board:
+     both again, from it */
+  window.addEventListener('icedash-board-fresh', function () {
+    rankAt = 0;
+    if (currentScreen === 'board') buildBoard();
+    else if (currentScreen === 'title') boardRank();
+  });
   boardButtons();
 
   /* The board's own panel. Google keeps the scores and native.js fetches

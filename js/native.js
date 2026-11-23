@@ -444,16 +444,35 @@
                              function () { throw fail(r.status); });
       }, function (e) { clearTimeout(timer); throw e; });
   }
+  /* The first proof comes a few seconds after the start (the platform
+     signs the player in, then Google or Apple is asked). A board opened
+     before it has gone through waits for it, six seconds at most, rather
+     than showing the platform's own board (the owner, 23 Nov 2026: Today
+     and back to All time had to be tapped for the scores to show). Once a
+     try has failed (no client id, not signed in), nothing waits. */
+  var srvTried = 'none', srvWaiters = [];             // 'none', 'busy', 'failed' or 'ok'
+  function srvSettle(how) { srvTried = how; var w = srvWaiters; srvWaiters = []; w.forEach(function (f) { f(); }); }
+  function srvWait(ms) {
+    if (srvUse() || srvTried === 'failed') return Promise.resolve();
+    return new Promise(function (res) {
+      var done = false;
+      function go() { if (!done) { done = true; res(); } }
+      srvWaiters.push(go);
+      setTimeout(go, ms);
+    });
+  }
   function srvLogin(fresh) {
     if (!srvOn) return Promise.reject(new Error('off'));
     if (!fresh && srv.token && Date.now() - (srv.at || 0) < 20 * 86400000) return Promise.resolve(srv);
     if (srvLogging) return srvLogging;
+    srvTried = 'busy';
     srvLogging = PG.serverAuth().then(function (proof) { return srvReq('POST', '/v1/auth', proof); }).then(function (r) {
       srvLogging = null;
       srv.token = r.token; srv.k = r.k; srv.name = r.name || ''; srv.at = Date.now();
       srvKeep();
+      srvSettle('ok');
       return srv;
-    }, function (e) { srvLogging = null; throw e; });
+    }, function (e) { srvLogging = null; srvSettle('failed'); throw e; });
     return srvLogging;
   }
   /* with the token, and once more with a fresh one if it is refused */
@@ -506,25 +525,41 @@
       srvSend();
     };
     PLAT.boardBestIs = function (n) { if (n > srvBest) srvBest = n; if (!srv.imported) srvSend(); };
-    PLAT.boardTop = function (span) {
-      if (!srvUse()) return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board'));
+    /* The rows are fetched at the start, once the player is proven, and
+       kept: the board opens on them at once, and asks again after half a
+       minute, or once the player has sent something since. */
+    var srvTops = {};
+    function srvTop(span) {
+      var c = srvTops[span];
+      if (c && Date.now() - c.at < 30000 && c.at >= (srv.posted || 0)) return Promise.resolve(c.out);
       var mine = srvSend().then(function () { return srvAuthed('GET', '/v1/me'); }).catch(function () { return null; });
       return Promise.all([srvReq('GET', '/v1/top?span=' + encodeURIComponent(span) + srvFresh()), mine]).then(function (a) {
         var out = { rows: srvRows(a[0].rows) }, me = a[1] && a[1][span];
         if (me) out.me = { rank: me.rank, score: me.score, name: srv.name || '', plat: IOS ? 'ios' : 'android' };
+        srvTops[span] = { at: Date.now(), out: out };
         return out;
-      }, function () { return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board')); });
+      });
+    }
+    PLAT.boardTop = function (span) {
+      return srvWait(6000).then(function () {
+        if (!srvUse()) return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board'));
+        return srvTop(span).catch(function () { return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board')); });
+      });
     };
     PLAT.boardMine = function () {
-      if (!srvUse()) return nativeMine ? nativeMine() : Promise.resolve(null);
-      return srvSend().then(function () { return srvAuthed('GET', '/v1/me'); })
-        .then(function (r) { return r && r.all && r.all.rank > 0 ? r.all : null; })
-        .catch(function () { return nativeMine ? nativeMine() : null; });
+      return srvWait(6000).then(function () {
+        if (!srvUse()) return nativeMine ? nativeMine() : null;
+        return srvSend().then(function () { return srvAuthed('GET', '/v1/me'); })
+          .then(function (r) { return r && r.all && r.all.rank > 0 ? r.all : null; })
+          .catch(function () { return nativeMine ? nativeMine() : null; });
+      });
     };
     PLAT.cardTop = function () {
-      if (!srvUse()) return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board'));
-      return srvReq('GET', '/v1/cards?v=1' + srvFresh()).then(function (r) { return { rows: srvRows(r.rows) }; },
-        function () { return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board')); });
+      return srvWait(6000).then(function () {
+        if (!srvUse()) return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board'));
+        return srvReq('GET', '/v1/cards?v=1' + srvFresh()).then(function (r) { return { rows: srvRows(r.rows) }; },
+          function () { return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board')); });
+      });
     };
     PLAT.cardSend = function (code) {
       var p = nativeCardSend ? nativeCardSend(code) : Promise.resolve(false);
@@ -534,7 +569,17 @@
     };
     /* the proof once the platform has signed the player in: at the start,
        and on the iPhone whenever Game Center says so */
-    var srvStart = function () { srvLogin().then(function () { return srvSend(); }, function () {}); };
+    /* ...and the rows fetched then, for the board to open on; a board or
+       a place already shown from the platform's own board is asked again
+       (ui.js, 'icedash-board-fresh') */
+    var srvStart = function () {
+      var was = srvUse();
+      srvLogin().then(function () {
+        return srvSend().then(function () { return srvTop('all').catch(function () {}); }).then(function () {
+          if (!was) { try { window.dispatchEvent(new Event('icedash-board-fresh')); } catch (e) {} }
+        });
+      }, function () {});
+    };
     window.addEventListener('icedash-board', srvStart);
     if (PG.addListener && IOS) PG.addListener('signedIn', srvStart);
   }

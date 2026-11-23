@@ -188,7 +188,8 @@ var FAKE_NATIVE = "(function(){var L={};" +
   " addListener:on}," +
   "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
   " serverAuth:function(){var s=null;try{s=sessionStorage.getItem('srv');}catch(e){}" +
-  "  return s?Promise.resolve({plat:'android',code:'c1'}):Promise.reject(new Error('no server client id'));}," +
+  "  var d=0;try{d=+sessionStorage.getItem('srvDelay')||0;}catch(e){}" +
+  "  return s?new Promise(function(res){setTimeout(function(){res({plat:'android',code:'c1'});},d);}):Promise.reject(new Error('no server client id'));}," +
   " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:true});}__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
   " show:function(){__board.shown++;return Promise.resolve();}," +
   /* the board's rows: a hundred players for all time, the player 345th
@@ -804,6 +805,8 @@ async function walk(cdp, sid, P) {
     var sv = await ev("({srv:__srv,keep:JSON.parse(localStorage.getItem('icedash-srv')||'null'),best:JSON.parse(localStorage.getItem('icedash-save-v1')).best})");
     ok(sv.srv.auths === 1 && sv.srv.proof && sv.srv.proof.code === 'c1' && sv.keep && sv.keep.k === 'kME' && sv.keep.token === 'tok',
        'the shared board: the player proven once at the start with Play Games\' code, the token kept (' + JSON.stringify(sv.keep) + ')');
+    ok(sv.srv.gets.some(function (g) { return /^\/v1\/top\?span=all/.test(g); }),
+       'and the rows fetched at the start, before the board is opened (' + sv.srv.gets.join(' ') + ')');
     ok(sv.srv.scores.length === 1 && sv.srv.scores[0].kind === 'best' && sv.srv.scores[0].score === sv.best && sv.keep.imported,
        'the save\'s best goes up once, as the player\'s start (' + JSON.stringify(sv.srv.scores) + ')');
     await clickFor('#title-best', '#screen-board');
@@ -824,6 +827,19 @@ async function walk(cdp, sid, P) {
     ok(last && last.score === 4321 && last.dist === 1500 && last.secs === 61.5 && !last.kind && /^[0-9a-z]+$/.test(last.card || ''),
        'a run goes up with its metres, its seconds and the card (' + JSON.stringify(last) + ')');
     ok(await ev("__board.submits.indexOf(4321)>=0"), 'and to Play Games as before');
+    /* opened before the first proof has gone through (it takes a moment
+       after the start): the board waits for it, and shows the shared rows
+       with no tap on Today and back (the owner, 23 Nov 2026) */
+    await ev("sessionStorage.setItem('srvDelay','2500');localStorage.removeItem('icedash-srv');1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    for (var w8 = 0; w8 < 40 && !(await visible('#screen-title')); w8++) await sleep(100);
+    await clickFor('#title-best', '#screen-board');
+    await sleep(4500);
+    var early = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row');return {n:r.length,auth:__srv.auths," +
+      "names:Array.prototype.map.call(r,function(x){return x.querySelector('.board-who').textContent;}).join()};})()");
+    ok(early.n === 3 && early.names === 'Ana,Vitalie,Ion' && early.auth === 1,
+       'the board opened before the first proof has gone through waits for it: the shared rows, no tap needed (' + JSON.stringify(early) + ')');
+    await ev("sessionStorage.removeItem('srvDelay');1");
     await ev("sessionStorage.setItem('srvDown','1');1");
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
     await sleep(2500);
