@@ -2980,9 +2980,15 @@ var Game = (function () {
     }
     /* and a glimpse of the way on, far inside: a faint blue glow of
        daylight at the other end */
-    var gl2 = ctx.createRadialGradient(cxF, yIn + FACE * 0.4 + 10, 2, cxF, yIn + FACE * 0.4 + 10, CHUTE * 0.6);
+    var glY = yIn + FACE * 0.4 + 10, glR = CHUTE * 0.6;
+    var gl2 = ctx.createRadialGradient(cxF, glY, 2, cxF, glY, glR);
     gl2.addColorStop(0, 'rgba(120,190,240,.28)'); gl2.addColorStop(1, 'rgba(120,190,240,0)');
-    ctx.fillStyle = gl2; ctx.fillRect(cxF - CHUTE, yIn - 20, CHUTE * 2, FACE + 80);
+    /* the whole round of it, out to where it has faded to nothing. It was
+       laid in a box that stopped FACE + 80 under the arch, where the glow
+       still had a sixth of its light: a straight edge across the dark under
+       every bridge, a paler box that a dark stretch (Ashfall, the night)
+       showed plainly (reported by the owner, 23 Nov 2026) */
+    ctx.fillStyle = gl2; ctx.fillRect(cxF - glR, glY - glR, glR * 2, glR * 2);
     ctx.restore();
     ctx.beginPath();
     for (fq = 0; fq < facePts.length; fq++) ctx.lineTo(facePts[fq][0], facePts[fq][1]);
