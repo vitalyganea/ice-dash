@@ -1528,7 +1528,13 @@
         Sfx.click(); ride(null, 'avalanche'); break;
       case 'tut-skip':   Sfx.click(); skipTutorial(); break;
       case 'tut-first':  Sfx.click(); ride(COURSES[0].id); break;
-      case 'shop':       Sfx.click(); shopBack = currentScreen; show('shop'); break;
+      case 'shop':
+        /* 1.3.6 (the owner): no Market while a run waits behind the title.
+           What was bought there could not reach the run anyway (1.3.5,
+           carryOn), and buying a life that then did not show up looked
+           like a bug; now it says why and stays shut. */
+        if (Game.isRunning() && Game.isPaused()) { Sfx.click(); marketWait(); break; }
+        Sfx.click(); shopBack = currentScreen; show('shop'); break;
       case 'settings':   Sfx.click(); shopBack = currentScreen; show('settings'); break;
       case 'profile':    Sfx.click(); show('profile'); fitScreen(); break;
       case 'trophies':   Sfx.click(); shopBack = currentScreen; show('ach'); break;
@@ -3031,13 +3037,26 @@
      that teaches you what a tap does, and it is passed in a few attempts. */
   function freeUnlocked() { return !!PLAT.freeOpen || (save.courses[COURSES[0].id] || 0) > 0; }
 
+  var marketWaitT = null;
+  function marketWait() {
+    var n = $('market-wait'); if (!n) return;
+    n.classList.remove('hidden');
+    if (marketWaitT) clearTimeout(marketWaitT);
+    marketWaitT = setTimeout(function () { marketWaitT = null; n.classList.add('hidden'); }, 3200);
+  }
   function refreshModes() {
     /* The .hidden class, not the hidden attribute: .btn-row sets
        display:flex, which beats the browser's own [hidden] rule, so the
        attribute did nothing and Continue sat there permanently. Everything
        else in this file hides things the same way. */
     var row = $('resume-row');
-    if (row) row.classList.toggle('hidden', !(Game.isRunning() && Game.isPaused()));
+    var waits = Game.isRunning() && Game.isPaused();
+    if (row) row.classList.toggle('hidden', !waits);
+    Array.prototype.forEach.call(document.querySelectorAll('#screen-title [data-action="shop"]'), function (b) {
+      b.classList.toggle('market-off', waits);
+      b.setAttribute('aria-disabled', waits ? 'true' : 'false');
+    });
+    if (!waits && $('market-wait')) $('market-wait').classList.add('hidden');
     /* Every mode but the marked lines opens with the first of them: one
        line is what teaches you what a tap does. */
     var open = freeUnlocked();
@@ -3684,7 +3703,10 @@
   }
   function goEarn(where) {
     Sfx.click();
-    if (where === 'shop') { shopBack = currentScreen; show('shop'); return; }
+    if (where === 'shop') {
+      if (Game.isRunning() && Game.isPaused()) { shopBack = null; show('title'); marketWait(); return; }   // 1.3.6: not while a run waits
+      shopBack = currentScreen; show('shop'); return;
+    }
     if (where === 'lines' || where === 'stars' || !freeUnlocked()) {
       var id = lineToRide(where === 'stars');
       if (id) ride(id); else { shopBack = currentScreen; show('runs'); }

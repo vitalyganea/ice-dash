@@ -1269,7 +1269,14 @@ var Game = (function () {
                        life: 24, max: 24, s: frnd(1.4, 3) });
     }
   }
-  function demoPost() { W.speed = Math.min(W.speed, 5.2); }
+  /* and what the step just laid is cleared again before the frame is
+     drawn: cleared only in demoPre, a bridge laid at the top of the view
+     was painted for one frame and gone the next, a flash at the top of
+     the title (the owner's recording, 23 Nov 2026, 1.3.6) */
+  function demoPost() {
+    W.speed = Math.min(W.speed, 5.2);
+    W.objects = W.objects.filter(function (o) { return o.t === 'deco'; });
+  }
   function step() {
     if (W && W.demo) {
       var keepS = Sfx; Sfx = silentSfx();

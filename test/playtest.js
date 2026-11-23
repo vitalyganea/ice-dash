@@ -1166,22 +1166,27 @@ async function walk(cdp, sid, P) {
   await clickFor('#screen-pause [data-action="back-title"]', '#screen-title');
   ok(await waitFor('#screen-title'), 'Menu from the pause screen reaches the title');
   ok(await visible('#resume-row'), 'and NOW Continue is offered');
-  await clickFor('[data-action="shop"]', '#screen-shop');
-  /* 1.3.5 (the owner: a way to cheat): a life bought and another creature
-     put on while the run waits are for the next run, not this one */
+  /* 1.3.6 (the owner): no Market while a run waits; 1.3.5 already kept
+     anything bought then out of the run */
   var paused0 = await ev("({lives:Game.debug().lives,skin:Game._skinId(),up:JSON.stringify(Game._boosts())})");
-  await ev("(function(){var b=document.querySelector('#shop-supply [data-buy-life]');if(b)b.click();})();1");
-  await clickFor('#shop-grid [data-pick="mitten"]', '#sheet-skin');
-  await click('#sheet-skin-btn');
-  await sleep(150);
-  var sv0 = await readSave();
-  await clickFor('#btn-back', '#screen-title');
+  ok(await ev("document.querySelector('#screen-title [data-action=\"shop\"]').classList.contains('market-off')"),
+     'with a run waiting the Market button is greyed out');
+  await click('#screen-title [data-action="shop"]');
+  await sleep(300);
+  ok(await visible('#screen-title') && !(await visible('#screen-shop')) && await visible('#market-wait'),
+     'and a tap on it leaves the Market shut and says why (' + (await ev("document.getElementById('market-wait').textContent")) + ')');
+  ok(!(await ev("document.querySelector('#screen-title [data-action=\"trophies\"]').classList.contains('market-off')")),
+     'the Trophies button beside it is not greyed');
+  await clickFor('[data-action="trophies"]', '#screen-ach');
+  var goShop = await ev("(function(){var e=document.querySelector('#screen-ach [data-go=\"shop\"]');if(!e)return false;e.click();return true;})()");
+  await sleep(300);
+  ok(!goShop || (!(await visible('#screen-shop')) && await visible('#screen-title')),
+     'a trophy that leads to the Market does not open it either (' + (goShop ? 'tried' : 'none to try') + ')');
+  if (!(await visible('#screen-title'))) await clickFor('#btn-back', '#screen-title');
   await clickFor('[data-action="continue"]', null);
   await sleep(300);
   var paused1 = await ev("({lives:Game.debug().lives,skin:Game._skinId(),up:JSON.stringify(Game._boosts())})");
-  ok(sv0.lives === paused0.lives + 1 && sv0.equipped === 'mitten',
-     'a life bought and the mitten put on while the run was paused are in the save (' + sv0.lives + ' lives, ' + sv0.equipped + ')');
-  ok(paused1.lives === paused0.lives && paused1.skin === 'seal' && paused1.skin === paused0.skin && paused1.up === paused0.up,
+  ok(paused1.lives === paused0.lives && paused1.skin === 'seal' && paused1.up === paused0.up,
      'and the run carries on with what it set out with (' + JSON.stringify(paused1) + ')');
   var back = await ev("Game.debug() ? Math.round(Game.debug().dist) : -1");
   /* A range, not a point: the run is moving again by the time it can be
