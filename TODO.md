@@ -20,8 +20,9 @@ work always starts at the top.
 6. Review every mode: the bugs part first. **Machine pass done 22 Nov 2026, no
    bugs found; left: the owner's 4 decisions (section below).**
 7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
-   live at board.icedasher.workers.dev, ships in 1.3.5; left: the Google web
-   client for Android, a real-phone check on each, the store forms.**
+   live at board.icedasher.workers.dev, ships in 1.3.5; Android checked on the
+   OPPO (internal test 27); left: the iPhone on a real phone, publishing the
+   Play Games "Game server" credential, the store forms.**
 8. A better performance test, on many devices.
 9. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
@@ -525,14 +526,15 @@ Worker, its schema and `npm test` (40 checks on SQLite). The game sends to
 both the native board and the server, and shows the server's rows (with
 each player's phone) once the player has been proven to it; the server
 out of reach, the native board as before. Left:
-- **Android:** an OAuth "Web application" client in the Play Games Google
-  Cloud project (378437852809), added in Play Console → Play Games Services →
-  Configuration → Credentials as a "Game server"; its id in
-  `play-ids.xml` (`play_server_client_id`) and in `server/wrangler.toml`
-  (`GOOGLE_CLIENT_ID`), its secret by the owner:
-  `cd server && npx wrangler secret put GOOGLE_CLIENT_SECRET`.
-- A real-phone check on each: Game Center's signature on the owner's iPhone
-  (TestFlight), the Play Games code on the OPPO.
+- **Android: done.** Web client "Ice Dasher" in the Play Games Cloud project
+  `ice-dash-512913`, linked in Play Console as a "Game server" credential
+  (still **Draft**: internal testers only until Play Games Services →
+  Publishing, which goes with the 1.3.5 release). Its id is in `play-ids.xml`
+  and `server/wrangler.toml`; its secret is the Worker's
+  `GOOGLE_CLIENT_SECRET` (set by the owner from a real terminal). Checked on
+  the OPPO with internal test 27: the code went through, the old best came
+  in once, a run reached both boards, the panel showed the server's row.
+- The iPhone on a real phone (TestFlight): Game Center's signature.
 - Play Data safety (user IDs, name, gameplay: collected, shared with no
   one, for app functionality) and Apple App Privacy (User ID, Gameplay
   Content: linked to the user, app functionality).
