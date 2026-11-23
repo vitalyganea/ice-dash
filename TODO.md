@@ -11,8 +11,9 @@ work always starts at the top.
 2. No vibration on a golden fish (minutes, ships with 1). **Done 22 Nov 2026, ships in 1.3.5.**
 3. The ×2/×3 that seems to come from nowhere (below). **Done 22 Nov 2026, ships in 1.3.5.**
 4. Crash and error reporting (below). **Done 23 Nov 2026 (Crashlytics on both apps,
-   script errors, privacy page), ships in 1.3.5; left: the iOS build checked on
-   GitHub, and the Play Data safety and Apple App Privacy forms.**
+   script errors, privacy page), ships in 1.3.5; the iOS build passed on GitHub
+   (check 14, TestFlight 16); left: the Play Data safety and Apple App Privacy
+   forms.**
 5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
    skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
@@ -21,8 +22,8 @@ work always starts at the top.
    bugs found; left: the owner's 4 decisions (section below).**
 7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
    live at board.icedasher.workers.dev, ships in 1.3.5; Android checked on the
-   OPPO (internal test 27); left: the iPhone on a real phone, publishing the
-   Play Games "Game server" credential, the store forms.**
+   OPPO (internal test 27) and the owner's iPhone (TestFlight build 16); left:
+   publishing the Play Games "Game server" credential, the store forms.**
 8. A better performance test, on many devices.
 9. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
@@ -68,8 +69,8 @@ player's phone.
 `ice-dasher`, Crashlytics on Android and iOS, script errors from `native.js`
 as non-fatals, `privacy.html` updated, CLAUDE.md exception written. Checked
 on the emulator and the owner's OPPO: a report is written and sent. Left:
-- The iOS build on GitHub (Actions → iOS → Run workflow on `1.3.0`):
-  `import FirebaseCore` in `AppDelegate.swift` and the new build phase.
+- ~~The iOS build on GitHub~~: passed 23 Nov 2026 (iOS check 14, iOS release
+  16 into TestFlight).
 - Play Console → App content → Data safety: crash logs, diagnostics,
   device or other IDs; collected, not shared, not optional, for app
   functionality/analytics, encrypted in transit, not linked to the player.
@@ -534,7 +535,9 @@ out of reach, the native board as before. Left:
   `GOOGLE_CLIENT_SECRET` (set by the owner from a real terminal). Checked on
   the OPPO with internal test 27: the code went through, the old best came
   in once, a run reached both boards, the panel showed the server's row.
-- The iPhone on a real phone (TestFlight): Game Center's signature.
+- **iPhone: done.** TestFlight build 16 (1.3.5) on the owner's iPhone: Game
+  Center's signature went through, the old best came in once, the board showed
+  both phones' players.
 - Play Data safety (user IDs, name, gameplay: collected, shared with no
   one, for app functionality) and Apple App Privacy (User ID, Gameplay
   Content: linked to the user, app functionality).
