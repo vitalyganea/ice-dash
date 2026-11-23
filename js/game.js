@@ -1911,7 +1911,7 @@ var Game = (function () {
      player gives one up from the pause screen (1.3.4: giving up lost the
      best and the fish). */
   function runResult() {
-    return { score: Math.floor(W.score), dist: Math.floor(W.dist / 8),
+    return { score: Math.floor(W.score), dist: Math.floor(W.dist / 8), secs: Math.round(W.t / 6) / 10,   // the run's length (1.3.5: the shared board checks it)
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts, kois: W.kois,
                      coins: W.coins, jumps: W.jumps,
                      finished: W.state === 'finish',

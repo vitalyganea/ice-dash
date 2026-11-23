@@ -93,6 +93,31 @@ public class PlayGamesPlugin extends Plugin {
         });
     }
 
+    /* The shared board (1.3.5, server/): a one-time code for the game's own
+       server, which trades it with Google for the player's id and name, so
+       nobody can post a score in someone else's name. The server's client
+       id (an OAuth web client of the Play Games project, set as its "Game
+       server" credential) is play_server_client_id in play-ids.xml; while it
+       is empty there is no code, and the shared board is not used here.
+       { plat: 'android', code } or rejected (not signed in, no network). */
+    @PluginMethod
+    public void serverAuth(PluginCall call) {
+        int rid = getContext().getResources().getIdentifier("play_server_client_id", "string", getContext().getPackageName());
+        String cid = rid != 0 ? getContext().getString(rid).trim() : "";
+        if (board.isEmpty() || cid.isEmpty()) { call.reject("no server client id"); return; }
+        signIn().requestServerSideAccess(cid, false).addOnCompleteListener(t -> {
+            if (t.isSuccessful() && t.getResult() != null && !t.getResult().isEmpty()) {
+                JSObject r = new JSObject();
+                r.put("plat", "android");
+                r.put("code", t.getResult());
+                call.resolve(r);
+            } else {
+                Log.w(TAG, "server auth code refused: " + (t.getException() != null ? t.getException().getMessage() : "no code"));
+                call.reject("no code");
+            }
+        });
+    }
+
     /* { sent: whether the score went to the board } — not signed in, it
        did not, and native.js sends it again later. */
     @PluginMethod

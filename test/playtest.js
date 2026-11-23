@@ -142,13 +142,33 @@ var FAKE_NATIVE = "(function(){var L={};" +
   /* a newer version in the store (1.3.3): the app's version and version.json
      come from the tab's sessionStorage (appVer, updJson), and Play says it has
      the update unless playHas is '0'; with no appVer nothing is asked */
-  "window.__upd={checks:0,starts:0,fetches:0};var F0=window.fetch;window.fetch=function(u){if(String(u).indexOf('version.json')>=0){__upd.fetches++;" +
+  "window.__upd={checks:0,starts:0,fetches:0};var F0=window.fetch;window.fetch=function(u,o){if(String(u).indexOf('version.json')>=0){__upd.fetches++;" +
   "  var j=null;try{j=sessionStorage.getItem('updJson');}catch(e){}return Promise.resolve({ok:!!j,json:function(){return Promise.resolve(JSON.parse(j));}});}" +
+  "  if(String(u).indexOf('https://board.icedasher.workers.dev/')===0)return __srvFetch(u,o);" +
   "  return F0.apply(this,arguments);};" +
+  /* the shared board's server (1.3.5), only while the tab has 'srv' (else
+     PlayGames.serverAuth refuses, as with no client id); 'srvDown': out of
+     reach. What it was sent is kept in __srv. */
+  "window.__srv={auths:0,scores:[],cards:[],gets:[]};" +
+  "window.__srvFetch=function(u,o){var p=String(u).slice(35),down=null;try{down=sessionStorage.getItem('srvDown');}catch(e){}" +
+  "  if(down)return Promise.reject(new TypeError('Failed to fetch'));" +
+  "  var b=o&&o.body?JSON.parse(o.body):null,res=function(j,s){return Promise.resolve({ok:!s||s<400,status:s||200,json:function(){return Promise.resolve(j);}});};" +
+  "  if(p==='/v1/auth'){__srv.auths++;__srv.proof=b;return res({token:'tok',k:'kME',name:'Vitalie'});}" +
+  "  if(p==='/v1/score'){__srv.scores.push(b);return res({ok:true,taken:true});}" +
+  "  if(p==='/v1/card'){__srv.cards.push(b);return res({ok:true});}" +
+  "  __srv.gets.push(p);" +
+  "  if(p.indexOf('/v1/top')===0)return res({rows:[{rank:1,name:'Ana',score:70000,card:'x21mlmr',plat:'ios',k:'kA'}," +
+  "    {rank:2,name:'Vitalie',score:65000,plat:'android',k:'kME'},{rank:3,name:'Ion',score:1000,plat:'ios',k:'kI'}]});" +
+  "  if(p.indexOf('/v1/me')===0)return res({all:{rank:2,score:65000},day:null,week:null,k:'kME'});" +
+  "  if(p.indexOf('/v1/cards')===0)return res({rows:[{name:'Ana',card:'x21mlmr',plat:'ios',k:'kA'}]});" +
+  "  return res({error:'no'},404);};" +
   "function fire(n,d){(L[n]||[]).slice().forEach(function(f){f(d||{});});}window.__fire=fire;" +
   "function on(n,f){(L[n]=L[n]||[]).push(f);return {remove:function(){" +
   "  L[n]=L[n].filter(function(g){return g!==f;});return Promise.resolve();}};}" +
   "window.Capacitor={isNativePlatform:function(){return true;},Plugins:{" +
+  /* Crashlytics (1.3.5): what native.js reports is kept in __crash */
+  "FirebaseCrashlytics:{recordException:function(o){(window.__crash=window.__crash||{recs:[],keys:{}}).recs.push(o);return Promise.resolve();}," +
+  " setCustomKey:function(o){(window.__crash=window.__crash||{recs:[],keys:{}}).keys[o.key]=o.value;return Promise.resolve();}}," +
   "App:{addListener:on,exitApp:function(){},getInfo:function(){var v=null;try{v=sessionStorage.getItem('appVer');}catch(e){}" +
   "  return v?Promise.resolve({version:v}):Promise.reject(new Error('no version'));}}," +
   "AppUpdate:{check:function(){__upd.checks++;var h=null;try{h=sessionStorage.getItem('playHas');}catch(e){}" +
@@ -167,6 +187,8 @@ var FAKE_NATIVE = "(function(){var L={};" +
   /* as on the phone: the handle itself, not a promise of one */
   " addListener:on}," +
   "PlayGames:{status:function(){return Promise.resolve({available:true,signedIn:true});}," +
+  " serverAuth:function(){var s=null;try{s=sessionStorage.getItem('srv');}catch(e){}" +
+  "  return s?Promise.resolve({plat:'android',code:'c1'}):Promise.reject(new Error('no server client id'));}," +
   " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:true});}__board.submits.push(o.score);return Promise.resolve({sent:true});}," +
   " show:function(){__board.shown++;return Promise.resolve();}," +
   /* the board's rows: a hundred players for all time, the player 345th
@@ -770,6 +792,70 @@ async function walk(cdp, sid, P) {
     await ev("sessionStorage.removeItem('appVer');sessionStorage.removeItem('updJson');sessionStorage.removeItem('playHas');localStorage.removeItem('icedash-update-seen');1");
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
     await sleep(2000);
+
+    /* One board for both phones (1.3.5): once the player is proven to the
+       game's server, the board's rows, the player's place and the cards
+       come from it, with each player's phone; a run goes up with its metres
+       and seconds, the save's best once; the server out of reach, the board
+       is Play Games' as before. */
+    await ev("sessionStorage.setItem('srv','1');localStorage.removeItem('icedash-srv');localStorage.removeItem('icedash-srv-run');1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    await sleep(2500);
+    var sv = await ev("({srv:__srv,keep:JSON.parse(localStorage.getItem('icedash-srv')||'null'),best:JSON.parse(localStorage.getItem('icedash-save-v1')).best})");
+    ok(sv.srv.auths === 1 && sv.srv.proof && sv.srv.proof.code === 'c1' && sv.keep && sv.keep.k === 'kME' && sv.keep.token === 'tok',
+       'the shared board: the player proven once at the start with Play Games\' code, the token kept (' + JSON.stringify(sv.keep) + ')');
+    ok(sv.srv.scores.length === 1 && sv.srv.scores[0].kind === 'best' && sv.srv.scores[0].score === sv.best && sv.keep.imported,
+       'the save\'s best goes up once, as the player\'s start (' + JSON.stringify(sv.srv.scores) + ')');
+    await clickFor('#title-best', '#screen-board');
+    await sleep(1200);
+    var sb = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row');return {n:r.length," +
+      "names:Array.prototype.map.call(r,function(x){return x.querySelector('.board-who').textContent;})," +
+      "plats:Array.prototype.map.call(r,function(x){var p=x.querySelector('.board-plat');return p?p.className.replace('board-plat ',''):'';})," +
+      "me:Array.prototype.map.call(document.querySelectorAll('#board-list .board-row.me .board-who'),function(x){return x.textContent;})," +
+      "hidden:Array.prototype.every.call(document.querySelectorAll('.board-plat'),function(x){return x.getAttribute('aria-hidden')==='true';})};})()");
+    ok(sb.n === 3 && sb.names.join() === 'Ana,Vitalie,Ion' && sb.plats.join() === 'ios,android,ios' && sb.me.join() === 'Vitalie' && sb.hidden,
+       'the rows come from the shared board: both phones on it, each with its phone, the player\'s own row marked (' + JSON.stringify(sb) + ')');
+    await shot('a9-shared-board');
+    var gets = await ev("__srv.gets.slice()");
+    ok(gets.some(function (g) { return /^\/v1\/top\?span=all&t=\d+$/.test(g); }) && gets.indexOf('/v1/me') >= 0 && gets.some(function (g) { return /^\/v1\/cards/.test(g); }),
+       'the top past the cache once the player has sent something, the place and the cards from it too (' + gets.join(' ') + ')');
+    await ev("ICEDASH_PLATFORM.boardScore(4321,{secs:61.5,dist:1500});1");
+    await sleep(400);
+    var last = await ev("__srv.scores[__srv.scores.length-1]");
+    ok(last && last.score === 4321 && last.dist === 1500 && last.secs === 61.5 && !last.kind && /^[0-9a-z]+$/.test(last.card || ''),
+       'a run goes up with its metres, its seconds and the card (' + JSON.stringify(last) + ')');
+    ok(await ev("__board.submits.indexOf(4321)>=0"), 'and to Play Games as before');
+    await ev("sessionStorage.setItem('srvDown','1');1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    await sleep(2500);
+    await clickFor('#title-best', '#screen-board');
+    await sleep(1500);
+    ok(await ev("document.querySelectorAll('#board-list .board-row').length") === 101 && await ev("document.querySelectorAll('.board-plat').length") === 0,
+       'the server out of reach: the board is Play Games\' own, as before');
+    await ev("sessionStorage.removeItem('srv');sessionStorage.removeItem('srvDown');localStorage.removeItem('icedash-srv');localStorage.removeItem('icedash-srv-run');1");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
+    await sleep(2000);
+
+    /* Errors (1.3.5): the whole walk above left none in the phone's error
+       log; one thrown on purpose, three times, is written down once, with
+       where it was, and so is a promise nobody caught. */
+    ok(await ev("JSON.stringify(ICEDASH_PLATFORM.errLog())") === '[]', 'no script error was written down over the whole walk');
+    var errsBefore = errs.length;
+    await ev("(function(){var s=document.createElement('script');" +
+      "s.textContent='for(var i=0;i<3;i++)setTimeout(function(){null.boom;},0);Promise.reject(new Error(\"lost promise\"));';" +
+      "document.head.appendChild(s);})();1");
+    await sleep(500);
+    var el = await ev("ICEDASH_PLATFORM.errLog()");
+    ok(el.length === 2 && el[0].kind === 'error' && /boom/.test(el[0].msg) && /:\d+:\d+$/.test(el[0].src) && /boom/.test(el[0].stack) &&
+       el[0].at === 'screen-title' && el[0].os === 'android' && /x/.test(el[0].scr) && el[0].lang === 'en',
+       'a script error is written down once, with the file and line, the screen, the phone and the language (' + JSON.stringify(el[0]) + ')');
+    ok(el[1] && el[1].kind === 'promise' && el[1].msg === 'lost promise', 'and a promise nobody caught (' + JSON.stringify(el[1]) + ')');
+    var cr = await ev("window.__crash||null");
+    ok(cr && cr.recs.length === 2 && cr.recs[0].message === el[0].msg && cr.recs[0].stacktrace && cr.recs[0].stacktrace[0].lineNumber === 1 &&
+       cr.recs[1].message === 'lost promise' && cr.keys.at === 'screen-title' && cr.keys.lang === 'en' && cr.keys.kind === 'promise',
+       'and both go to Crashlytics, with their stack and the screen as keys (' + JSON.stringify(cr && cr.recs[0]) + ')');
+    errs.splice(errsBefore);
+    await ev("localStorage.removeItem('icedash-errlog');1");
 
     ok(errs.length === 0, 'nothing on the console (' + (errs.length ? errs.join(' | ') : 'clean') + ')');
   }

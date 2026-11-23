@@ -2,27 +2,32 @@
 
 ## Order for the global launch (owner, 22 Nov 2026)
 
-Most critical first. 1.3.5 = items 1–9, then the server items, then the rest.
+Most critical first. 1.3.5 = items 1–10, then the other server items, then the rest.
+(The owner pulled the shared leaderboard forward to 7 on 23 Nov 2026.)
 Every new item gets its place here when it is added (rule in CLAUDE.md);
 work always starts at the top.
 
 1. The close button under a player's card (minutes). **Done 22 Nov 2026, ships in 1.3.5.**
 2. No vibration on a golden fish (minutes, ships with 1). **Done 22 Nov 2026, ships in 1.3.5.**
 3. The ×2/×3 that seems to come from nowhere (below). **Done 22 Nov 2026, ships in 1.3.5.**
-4. Crash and error reporting (below).
+4. Crash and error reporting (below). **Done 23 Nov 2026 (Crashlytics on both apps,
+   script errors, privacy page), ships in 1.3.5; left: the iOS build checked on
+   GitHub, and the Play Data safety and Apple App Privacy forms.**
 5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
    skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
    skill), ships in 1.3.5; left: the translation fixes, waiting for the owner.**
 6. Review every mode: the bugs part first. **Machine pass done 22 Nov 2026, no
    bugs found; left: the owner's 4 decisions (section below).**
-7. A better performance test, on many devices.
-8. Economy: upgrades cost more, fewer golden fish (before many new players
+7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
+   live at board.icedasher.workers.dev, ships in 1.3.5; left: the Google web
+   client for Android, a real-phone check on each, the store forms.**
+8. A better performance test, on many devices.
+9. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
-9. Store listings and SEO/ASO in every language (below). Also pause the old
+10. Store listings and SEO/ASO in every language (below). Also pause the old
    Play closed-testing track "1.0" (the AD_ID error).
-10. The rest of the brand book (the written book, store art style).
-11. One leaderboard for Android and iPhone.
+11. The rest of the brand book (the written book, store art style).
 12. Play Games / Game Center achievements.
 13. The transfer code.
 14. Avatars, second pass.
@@ -57,6 +62,18 @@ other ×-words that may be mistaken for it.
 
 Added 22 Nov 2026. Today nobody learns that the game crashed or threw on a
 player's phone.
+
+**Status (23 Nov 2026):** built (SYSTEMS row 188). Firebase project
+`ice-dasher`, Crashlytics on Android and iOS, script errors from `native.js`
+as non-fatals, `privacy.html` updated, CLAUDE.md exception written. Checked
+on the emulator and the owner's OPPO: a report is written and sent. Left:
+- The iOS build on GitHub (Actions → iOS → Run workflow on `1.3.0`):
+  `import FirebaseCore` in `AppDelegate.swift` and the new build phase.
+- Play Console → App content → Data safety: crash logs, diagnostics,
+  device or other IDs; collected, not shared, not optional, for app
+  functionality/analytics, encrypted in transit, not linked to the player.
+- App Store Connect → App Privacy: Crash data and Other diagnostic data,
+  not linked to the user, not used for tracking.
 
 - **Native crashes:** Firebase Crashlytics on Android and iOS (free).
 - **JS errors:** `window.onerror` and `unhandledrejection` in `native.js`,
@@ -164,8 +181,9 @@ personal data.
   `js/native.js` only (the phone apps; Playables, Yandex and CrazyGames
   never load it), and CLAUDE.md gets that exception written down.
 - **Release:** the version after the global-launch one (1.3.6 or later),
-  in both stores, together with the shared leaderboard and the achievements
-  below, since all three use the same server or release.
+  in both stores, with the achievements below. The server it needs is
+  already up for the shared leaderboard (1.3.5, SYSTEMS row 189): the
+  transfer is two more routes on the same Worker and D1.
 - **Later:** the Godot version can use the same server and save format.
 
 ## Google Play achievements (and Game Center on the iPhone)
@@ -500,6 +518,25 @@ version.
 
 ## One leaderboard for Android and iPhone together
 
+**Status (23 Nov 2026):** built (SYSTEMS row 189). Cloudflare account (the
+owner's), subdomain `icedasher.workers.dev`, Worker `board`, D1
+`icedasher-board` (region EEUR), secret `TOKEN_KEY` set. `server/` has the
+Worker, its schema and `npm test` (40 checks on SQLite). The game sends to
+both the native board and the server, and shows the server's rows (with
+each player's phone) once the player has been proven to it; the server
+out of reach, the native board as before. Left:
+- **Android:** an OAuth "Web application" client in the Play Games Google
+  Cloud project (378437852809), added in Play Console → Play Games Services →
+  Configuration → Credentials as a "Game server"; its id in
+  `play-ids.xml` (`play_server_client_id`) and in `server/wrangler.toml`
+  (`GOOGLE_CLIENT_ID`), its secret by the owner:
+  `cd server && npx wrangler secret put GOOGLE_CLIENT_SECRET`.
+- A real-phone check on each: Game Center's signature on the owner's iPhone
+  (TestFlight), the Play Games code on the OPPO.
+- Play Data safety (user IDs, name, gameplay: collected, shared with no
+  one, for app functionality) and Apple App Privacy (User ID, Gameplay
+  Content: linked to the user, app functionality).
+
 Asked for by the owner, 22 Nov 2026. Today the Freeride board is two boards:
 Play Games on Android, Game Center on the iPhone (`js/native.js`, `PG`).
 Neither service can show the other's players, so a shared board needs a
@@ -544,7 +581,7 @@ rows come from changes. The look stays.
   - CLAUDE.md: the no-external-requests rule gets this exception, `native.js`
     only, as with the transfer code.
 - **Effort:** about 2–3 days with tests.
-- **Release:** 1.3.6 or later, with the transfer code (iOS from
+- **Release:** 1.3.5 (pulled forward by the owner, 23 Nov 2026; iOS from
   GitHub Actions → iOS release).
 - **Owner first:** a free Cloudflare account, then `npx wrangler login`.
 

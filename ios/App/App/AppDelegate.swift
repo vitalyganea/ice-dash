@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import FirebaseCore
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +8,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        /* Firebase, for Crashlytics only (1.3.5): the app's crashes, and the
+           game's own script errors sent by native.js. GoogleService-Info.plist
+           (the project "ice-dasher") is in the app's resources. */
+        FirebaseApp.configure()
         return true
     }
 

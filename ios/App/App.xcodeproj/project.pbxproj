@@ -19,6 +19,7 @@
 		1CE0DA5000000000000000B1 /* GameCenterPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000A1 /* GameCenterPlugin.swift */; };
 		1CE0DA5000000000000000B2 /* IceDashViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000A2 /* IceDashViewController.swift */; };
 		1CE0DA5000000000000000D2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000D1 /* InfoPlist.strings */; };
+		1CE0DA5000000000000000E2 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1CE0DA5000000000000000E1 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		1CE0DA5000000000000000A1 /* GameCenterPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterPlugin.swift; sourceTree = "<group>"; };
 		1CE0DA5000000000000000A2 /* IceDashViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IceDashViewController.swift; sourceTree = "<group>"; };
+		1CE0DA5000000000000000E1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		1CE0DA5000000000000000A3 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		1CE0DA5000000000000000A4 /* ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ids.xcconfig; path = ../ids.xcconfig; sourceTree = SOURCE_ROOT; };
 		1CE0DA5000000000000000C1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				1CE0DA5000000000000000E1 /* GoogleService-Info.plist */,
 				1CE0DA5000000000000000D1 /* InfoPlist.strings */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
@@ -105,6 +108,7 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				1CE0DA5000000000000000E3 /* Crashlytics dSYM upload */,
 			);
 			buildRules = (
 			);
@@ -172,10 +176,38 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				1CE0DA5000000000000000D2 /* InfoPlist.strings in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				1CE0DA5000000000000000E2 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1CE0DA5000000000000000E3 /* Crashlytics dSYM upload */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Crashlytics dSYM upload";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Crashlytics (1.3.5): the symbols of an archive (the build that goes to the\n# App Store) go to Firebase, so its crash reports read as the code does.\n# Any other build, and a failed upload, are let through.\nif [ \"$ACTION\" != \"install\" ] || [ \"$PLATFORM_NAME\" = \"iphonesimulator\" ]; then exit 0; fi\nRUN=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nif [ -x \"$RUN\" ]; then \"$RUN\" || echo \"warning: Crashlytics dSYM upload failed\"; else echo \"warning: Crashlytics run script not found at $RUN\"; fi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {

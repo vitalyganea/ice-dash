@@ -1,0 +1,14 @@
+{
+  "name": "ice-dasher-server",
+  "private": true,
+  "description": "Ice Dasher's own server (Cloudflare Workers + D1): one Freeride board for Android and iPhone. Not part of the game; the game has no dependencies.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node test.cjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  },
+  "type": "module"
+}

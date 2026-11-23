@@ -1,0 +1,29 @@
+# Ice Dasher's board server (1.3.5): one Freeride board for Android and iPhone.
+# Deploy: npx wrangler deploy (from server/). The database: wrangler d1 (schema.sql).
+# Secrets, never in this file (npx wrangler secret put NAME):
+#   TOKEN_KEY             a random key the server signs its tokens with
+#   GOOGLE_CLIENT_SECRET  the secret of the Play Games project's web OAuth client
+name = "board"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+[vars]
+IOS_BUNDLE = "com.veetalea.icedash"
+# the web OAuth client of the Play Games project (play_server_client_id in play-ids.xml)
+GOOGLE_CLIENT_ID = "378437852809-cbr9hvjake0u4mi56ss1teu6c3nncnm0.apps.googleusercontent.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "icedasher-board"
+database_id = "7f27f2e3-93ef-4bf8-87ae-d448844e4f49"
+
+# proofs of who the player is: twenty a minute from one address at most
+[[ratelimits]]
+name = "AUTH_RL"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+[observability]
+enabled = true

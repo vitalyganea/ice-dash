@@ -10,6 +10,15 @@
     "backgroundColor": "#0d3a5c",
     "contentInset": "never"
   },
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageOptions": {
+          "@capacitor-firebase/crashlytics": { "symlink": true }
+        }
+      }
+    }
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 600,

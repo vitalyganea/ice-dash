@@ -10,6 +10,10 @@ and every sound is synthesised with WebAudio. See `README.md` for the layout.
 ## Rules that are easy to break
 
 - No dependencies and no external requests (the font is embedded in `css/font.css`).
+  The phone apps alone (`js/native.js`, never loaded by Playables, Yandex or CrazyGames)
+  have three exceptions: `version.json` from the game's own page (1.3.3), crash and
+  script-error reports to Firebase Crashlytics (1.3.5, SYSTEMS row 188), and the shared
+  board's server `board.icedasher.workers.dev` (1.3.5, `server/`, SYSTEMS row 189).
 - Inside Playables the save goes only through the SDK `saveData`, and only after
   `loadData()` has settled. `localStorage` is the fallback when the SDK is absent.
 - Do not use the Page Visibility API. Pause/resume come only from `onPause`/`onResume`.

@@ -78,6 +78,99 @@
     return !!e && !e.classList.contains('hidden');
   }
 
+  /* ---- errors (1.3.5) ----
+     Asked for by the owner, 22 Nov 2026: nobody learnt when the game threw
+     on a player's phone. A script error does not close the app; the web
+     view goes on, and a panel or a run may simply stop answering. This file
+     comes ahead of every other script, so from here on each uncaught error
+     and each promise nobody caught is written down: what it said, where,
+     the version, the phone, the screen and the mode it happened on. The
+     same error once a session, ten at most (a broken frame would repeat
+     sixty times a second). The last twenty are kept on the phone
+     (localStorage 'icedash-errlog', PLAT.errLog()) and printed to the log
+     (logcat in the debug build, Safari's console on the iPhone), and each
+     goes to Crashlytics (PLAT.errSink, below). */
+  var ERR_KEY = 'icedash-errlog', errSeen = {}, errN = 0, appVer = '';
+  if (P.App && P.App.getInfo) {
+    P.App.getInfo().then(function (i) { if (i && i.version) appVer = i.version + (i.build ? ' (' + i.build + ')' : ''); }, function () {});
+  }
+  function errWhere() {
+    var s = document.querySelector('.screen:not(.hidden)');
+    var at = s && s.id ? s.id : (visible('hud') ? 'run' : '');
+    try {
+      /* the mode only in a run of the player's own, not the demo that
+         slides behind the title */
+      var w = window.Game && Game.isRunning && Game.isRunning() && Game.debug && Game.debug();
+      if (w && w.mode) at += (at ? ' / ' : '') + w.mode + (w.state ? ' ' + w.state : '');
+    } catch (e) {}
+    return at;
+  }
+  function errNote(kind, msg, src, stack) {
+    msg = String(msg || '').slice(0, 300);
+    var key = kind + '|' + msg + '|' + (src || '');
+    if (errSeen[key] || errN >= 10) return;
+    errSeen[key] = 1; errN++;
+    var e = {
+      t: new Date().toISOString(), v: appVer, os: IOS ? 'ios' : 'android',
+      dev: String(navigator.userAgent || '').slice(0, 200),
+      /* the window, or the screen while the page is out of sight (0x0) */
+      scr: (innerWidth || screen.width) + 'x' + (innerHeight || screen.height) + '@' + (window.devicePixelRatio || 1),
+      lang: typeof LANG === 'string' ? LANG : '', at: errWhere(),
+      kind: kind, msg: msg, src: src || '', stack: String(stack || '').slice(0, 1500)
+    };
+    try { console.error('[icedash-err] ' + JSON.stringify(e)); } catch (x) {}
+    try {
+      var a = JSON.parse(localStorage.getItem(ERR_KEY) || '[]');
+      if (!Array.isArray(a)) a = [];
+      a.push(e);
+      localStorage.setItem(ERR_KEY, JSON.stringify(a.slice(-20)));
+    } catch (x) {}
+    if (PLAT.errSink) { try { PLAT.errSink(e); } catch (x) {} }
+  }
+  window.addEventListener('error', function (ev) {
+    /* a script's own error; a picture or a file that failed to load is
+       not one (those come only to a capturing listener anyway) */
+    if (!ev || ev.target !== window || !ev.message) return;
+    errNote('error', ev.message, (ev.filename || '').replace(/^.*\/\/[^/]*/, '') + ':' + (ev.lineno || 0) + ':' + (ev.colno || 0),
+            ev.error && ev.error.stack);
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    errNote('promise', r && r.message ? r.message : String(r), '', r && r.stack);
+  });
+  PLAT.errLog = function () {
+    try { var a = JSON.parse(localStorage.getItem(ERR_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  };
+  /* Crashlytics (the Firebase project "ice-dasher", @capacitor-firebase/
+     crashlytics). The app's own crashes go there by themselves; a script
+     error goes as a report that did not close the app, with its stack
+     (the web view's "at f (url:line:col)" or Safari's "f@url:line:col")
+     and with the screen, the mode, the language and the window as keys.
+     Crashlytics adds the version, the phone and the system itself. */
+  function errFrames(stack, src) {
+    var out = [];
+    String(stack || '').split('\n').forEach(function (l) {
+      var m = /^\s*at (?:(.*?) \()?(.*?):(\d+):\d+\)?\s*$/.exec(l) || /^\s*([^@\s]*)@(.*?):(\d+):\d+\s*$/.exec(l);
+      if (m && out.length < 30) out.push({ functionName: m[1] || '(anonymous)', fileName: m[2].replace(/^.*\/\/[^/]*/, '') || '(page)', lineNumber: +m[3] });
+    });
+    var s = /^(.*):(\d+):\d+$/.exec(src || '');
+    if (!out.length && s) out.push({ functionName: '(top)', fileName: s[1] || '(page)', lineNumber: +s[2] });
+    return out;
+  }
+  var Crash = P.FirebaseCrashlytics;
+  if (Crash && Crash.recordException) {
+    PLAT.errSink = function (e) {
+      function key(k, v) {
+        try { Crash.setCustomKey({ key: k, value: String(v || '-'), type: 'string' }).then(null, function () {}); } catch (x) {}
+      }
+      key('at', e.at); key('lang', e.lang); key('scr', e.scr); key('kind', e.kind);
+      var o = { message: e.msg }, fr = errFrames(e.stack, e.src);
+      if (fr.length) o.stacktrace = fr;
+      try { Crash.recordException(o).then(null, function () {}); } catch (x) {}
+    };
+  }
+
   /* ---- back button ---- */
   if (P.App && P.App.addListener) {
     P.App.addListener('backButton', function () {
@@ -310,6 +403,140 @@
       return Promise.resolve(send()).then(function () { return PG.mine(); })
         .then(function (r) { return r && r.rank > 0 ? r : null; }, function () { return null; });
     };
+  }
+
+  /* ---- one board for both phones (1.3.5) ----
+     Asked for by the owner, 22 Nov 2026: Play Games and Game Center cannot
+     show each other's players, so the Freeride board, the cards and the
+     player's own place come from the game's own server (server/, on
+     Cloudflare). The native boards go on being sent to as before, and are
+     what the panel shows whenever the server cannot be had.
+     Who the player is is proven once with the platform's own proof
+     (PG.serverAuth: a Play Games code, or Game Center's signature); the
+     server's token is kept (localStorage 'icedash-srv') and used until it
+     is refused. Until a first proof has gone through (Android without the
+     server's client id, not signed in), nothing here is used.
+     A run goes up with its metres and seconds, which the server checks; one
+     that cannot go now (no network) waits in 'icedash-srv-run', the highest
+     first. The save's best from before the shared board goes up once. The
+     rows' own key (k) marks the player's row; the top is fetched past the
+     server's half-minute cache once the player has sent something. */
+  var SRV = 'https://board.icedasher.workers.dev', SRV_KEY = 'icedash-srv', SRV_RUN = 'icedash-srv-run';
+  var srv = {}, srvRun = null, srvBest = 0, srvSending = null, srvLogging = null;
+  try { srv = JSON.parse(localStorage.getItem(SRV_KEY) || '{}') || {}; } catch (e) { srv = {}; }
+  try { srvRun = JSON.parse(localStorage.getItem(SRV_RUN) || 'null'); } catch (e) { srvRun = null; }
+  var srvOn = !!(PG && PG.serverAuth && window.fetch);
+  function srvKeep() { try { localStorage.setItem(SRV_KEY, JSON.stringify(srv)); } catch (e) {} }
+  function srvKeepRun() {
+    try { if (srvRun) localStorage.setItem(SRV_RUN, JSON.stringify(srvRun)); else localStorage.removeItem(SRV_RUN); } catch (e) {}
+  }
+  function srvUse() { return srvOn && !!srv.k; }
+  function srvReq(method, path, body, auth) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+    var h = { 'content-type': 'application/json' };
+    if (auth) h.authorization = 'Bearer ' + srv.token;
+    function fail(status, msg) { var e = new Error(msg || String(status)); e.status = status; return e; }
+    return fetch(SRV + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined })
+      .then(function (r) {
+        clearTimeout(timer);
+        return r.json().then(function (j) { if (!r.ok) throw fail(r.status, j && j.error); return j; },
+                             function () { throw fail(r.status); });
+      }, function (e) { clearTimeout(timer); throw e; });
+  }
+  function srvLogin(fresh) {
+    if (!srvOn) return Promise.reject(new Error('off'));
+    if (!fresh && srv.token && Date.now() - (srv.at || 0) < 20 * 86400000) return Promise.resolve(srv);
+    if (srvLogging) return srvLogging;
+    srvLogging = PG.serverAuth().then(function (proof) { return srvReq('POST', '/v1/auth', proof); }).then(function (r) {
+      srvLogging = null;
+      srv.token = r.token; srv.k = r.k; srv.name = r.name || ''; srv.at = Date.now();
+      srvKeep();
+      return srv;
+    }, function (e) { srvLogging = null; throw e; });
+    return srvLogging;
+  }
+  /* with the token, and once more with a fresh one if it is refused */
+  function srvAuthed(method, path, body) {
+    return srvLogin().then(function () { return srvReq(method, path, body, true); }).catch(function (e) {
+      if (e && e.status === 401 && srv.token) return srvLogin(true).then(function () { return srvReq(method, path, body, true); });
+      throw e;
+    });
+  }
+  function srvCard() { var c = PLAT.boardCard ? PLAT.boardCard() : 0; return c > 0 ? c.toString(36) : ''; }
+  function srvSend() {
+    if (!srvOn) return Promise.resolve();
+    if (srvSending) return srvSending;
+    var job = Promise.resolve(), sent = false;
+    if (srvBest > 0 && !srv.imported) {
+      var b = srvBest;
+      job = job.then(function () { return srvAuthed('POST', '/v1/score', { score: b, kind: 'best', card: srvCard() }); })
+        .then(function () { srv.imported = true; sent = true; srvKeep(); });
+    }
+    if (srvRun) {
+      var run = srvRun;
+      job = job.then(function () { return srvAuthed('POST', '/v1/score', { score: run.score, dist: run.dist, secs: run.secs, card: srvCard() }); })
+        .then(function () { sent = true; if (srvRun === run) { srvRun = null; srvKeepRun(); } }, function (e) {
+          /* refused for good (not a run the game could make): let go;
+             no network, or too soon after the last: it waits */
+          if (e && (e.status === 400 || e.status === 422)) { if (srvRun === run) { srvRun = null; srvKeepRun(); } }
+          else throw e;
+        });
+    }
+    srvSending = job.then(function () {
+      srvSending = null;
+      if (sent) { srv.posted = Date.now(); srvKeep(); }
+    }, function () { srvSending = null; });
+    return srvSending;
+  }
+  function srvRows(rows) {
+    return (rows || []).map(function (x) {
+      var r = { rank: x.rank, name: x.name, score: x.score, plat: x.plat, me: !!(srv.k && x.k === srv.k) };
+      if (x.card) r.tag = x.card;
+      return r;
+    });
+  }
+  function srvFresh() { return srv.posted ? '&t=' + srv.posted : ''; }
+  if (srvOn) {
+    var nativeScore = PLAT.boardScore, nativeTop = PLAT.boardTop, nativeMine = PLAT.boardMine,
+        nativeCardTop = PLAT.cardTop, nativeCardSend = PLAT.cardSend;
+    PLAT.boardScore = function (n, res) {
+      if (nativeScore) nativeScore(n);
+      if (res && res.secs > 0 && (!srvRun || n > srvRun.score)) { srvRun = { score: n, dist: res.dist | 0, secs: res.secs }; srvKeepRun(); }
+      srvSend();
+    };
+    PLAT.boardBestIs = function (n) { if (n > srvBest) srvBest = n; if (!srv.imported) srvSend(); };
+    PLAT.boardTop = function (span) {
+      if (!srvUse()) return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board'));
+      var mine = srvSend().then(function () { return srvAuthed('GET', '/v1/me'); }).catch(function () { return null; });
+      return Promise.all([srvReq('GET', '/v1/top?span=' + encodeURIComponent(span) + srvFresh()), mine]).then(function (a) {
+        var out = { rows: srvRows(a[0].rows) }, me = a[1] && a[1][span];
+        if (me) out.me = { rank: me.rank, score: me.score, name: srv.name || '', plat: IOS ? 'ios' : 'android' };
+        return out;
+      }, function () { return nativeTop ? nativeTop(span) : Promise.reject(new Error('no board')); });
+    };
+    PLAT.boardMine = function () {
+      if (!srvUse()) return nativeMine ? nativeMine() : Promise.resolve(null);
+      return srvSend().then(function () { return srvAuthed('GET', '/v1/me'); })
+        .then(function (r) { return r && r.all && r.all.rank > 0 ? r.all : null; })
+        .catch(function () { return nativeMine ? nativeMine() : null; });
+    };
+    PLAT.cardTop = function () {
+      if (!srvUse()) return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board'));
+      return srvReq('GET', '/v1/cards?v=1' + srvFresh()).then(function (r) { return { rows: srvRows(r.rows) }; },
+        function () { return nativeCardTop ? nativeCardTop() : Promise.reject(new Error('no board')); });
+    };
+    PLAT.cardSend = function (code) {
+      var p = nativeCardSend ? nativeCardSend(code) : Promise.resolve(false);
+      /* one that cannot go now goes with the next score, which carries the card */
+      if (code > 0 && srvUse()) srvAuthed('POST', '/v1/card', { card: code.toString(36) }).then(function () { srv.posted = Date.now(); srvKeep(); }, function () {});
+      return p;
+    };
+    /* the proof once the platform has signed the player in: at the start,
+       and on the iPhone whenever Game Center says so */
+    var srvStart = function () { srvLogin().then(function () { return srvSend(); }, function () {}); };
+    window.addEventListener('icedash-board', srvStart);
+    if (PG.addListener && IOS) PG.addListener('signedIn', srvStart);
   }
 
   /* ---- the save in the cloud (Play Games saved games; iCloud on the iPhone) ----

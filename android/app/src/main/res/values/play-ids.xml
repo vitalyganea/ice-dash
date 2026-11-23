@@ -17,4 +17,11 @@
     <!-- leaderboard_cards: Play Games Services → Leaderboards → Cards, each
          player's newest profile card (PlayGamesPlugin.java, `cards`) -->
     <string name="leaderboard_cards" translatable="false">CgkIib2d5YELEAIQAg</string>
+    <!-- play_server_client_id (1.3.5): the shared board's server (server/).
+         Google Cloud project of Play Games → Credentials → OAuth client
+         "Web application", added in Play Console → Play Games Services →
+         Configuration → Credentials as a "Game server". Its id ends in
+         .apps.googleusercontent.com; its secret is the Worker's
+         GOOGLE_CLIENT_SECRET, never here. Empty: no shared board on Android. -->
+    <string name="play_server_client_id" translatable="false">378437852809-cbr9hvjake0u4mi56ss1teu6c3nncnm0.apps.googleusercontent.com</string>
 </resources>

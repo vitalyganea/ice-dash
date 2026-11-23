@@ -33,7 +33,8 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         CAPPluginMethod(name: "mine", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cloudLoad", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "cloudSave", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "cloudSave", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "serverAuth", returnType: CAPPluginReturnPromise)
     ]
     /* the board panel shows places 1 to 100, which Game Center gives at once */
     private static let boardRows = 100
@@ -110,6 +111,29 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         DispatchQueue.main.async {
             call.resolve(["available": !self.board.isEmpty,
                           "signedIn": !self.board.isEmpty && GKLocalPlayer.local.isAuthenticated])
+        }
+    }
+
+    /* The shared board (1.3.5, server/): Game Center's own proof of who the
+       player is, which the game's server checks against Apple's key, so
+       nobody can post a score in someone else's name. The signature is over
+       the team player id, the bundle id, the timestamp and the salt.
+       { plat: 'ios', id, bundle, url, sig, salt, ts, name } or rejected
+       (not signed in, no network). */
+    @objc func serverAuth(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let me = GKLocalPlayer.local
+            guard !self.board.isEmpty, me.isAuthenticated else { call.reject("not signed in"); return }
+            me.fetchItems(forIdentityVerificationSignature: { url, sig, salt, ts, err in
+                guard err == nil, let url = url, let sig = sig, let salt = salt else {
+                    NSLog("IceDashBoard: no identity signature: %@", err?.localizedDescription ?? "nothing")
+                    call.reject("no signature")
+                    return
+                }
+                call.resolve(["plat": "ios", "id": me.teamPlayerID, "bundle": Bundle.main.bundleIdentifier ?? "",
+                              "url": url.absoluteString, "sig": sig.base64EncodedString(),
+                              "salt": salt.base64EncodedString(), "ts": Double(ts), "name": me.alias])
+            })
         }
     }
 

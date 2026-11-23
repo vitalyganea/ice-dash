@@ -75,11 +75,16 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+/* Firebase (1.3.5), for Crashlytics only: crash reports from players'
+   phones, and the game's own script errors (native.js). google-services.json
+   holds the project "ice-dasher" with both apps, the Play one and the debug
+   one (.debug); it is not a secret, every APK carries the same values. */
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
         apply plugin: 'com.google.gms.google-services'
+        apply plugin: 'com.google.firebase.crashlytics'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied: no Crashlytics")
 }

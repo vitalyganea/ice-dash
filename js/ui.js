@@ -322,6 +322,8 @@
        signing in) goes up with a save until it has; one it has taken is not
        sent again, or it lands on the day's and the week's boards as well */
     if (PLAT.boardScore && save.best > (save.boardBest || 0)) PLAT.boardScore(save.best);
+    /* the shared board (1.3.5) takes the save's best once, as its start */
+    if (PLAT.boardBestIs && save.best > 0) PLAT.boardBestIs(save.best);
     if (!IN_YT || !window.ytgame.engagement) return;
     if (save.best === lastSent) return;
     lastSent = save.best;
@@ -910,6 +912,14 @@
       }, function () {});
     });
   }
+  /* an Android head and an iPhone, drawn plain: no maker's logo */
+  var PLAT_SVG = {
+    android: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 12.5a5.5 5.5 0 0 1 11 0z" fill="#2fa86a"/>' +
+             '<path d="M4.6 6.4 3.4 4.4M11.4 6.4l1.2-2" stroke="#2fa86a" stroke-width="1.3" stroke-linecap="round"/>' +
+             '<circle cx="6" cy="10" r=".9" fill="#fff"/><circle cx="10" cy="10" r=".9" fill="#fff"/></svg>',
+    ios: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="4" y="1.5" width="8" height="13" rx="2" fill="none" stroke="#4a5a68" stroke-width="1.4"/>' +
+         '<path d="M6.6 3h2.8" stroke="#4a5a68" stroke-width="1.2" stroke-linecap="round"/></svg>'
+  };
   function boardRow(x) {
     var row = document.createElement('button');
     row.className = 'board-row' + (x.me ? ' me' : '');
@@ -923,6 +933,15 @@
     var who = document.createElement('span');
     who.className = 'board-who';
     who.textContent = x.name || '—';
+    /* the shared board (1.3.5): which phone the player is on, small, before
+       the name; a picture only (the name says who), so nothing to read out */
+    if (x.plat === 'android' || x.plat === 'ios') {
+      var ph = document.createElement('span');
+      ph.className = 'board-plat ' + x.plat;
+      ph.setAttribute('aria-hidden', 'true');
+      ph.innerHTML = PLAT_SVG[x.plat];
+      name.appendChild(ph);
+    }
     name.appendChild(who);
     if (x.me) {
       var you = document.createElement('small');
@@ -1085,7 +1104,7 @@
     if (beat) save.best = res.score;
     /* every Freeride run goes to the board: its day, its week and its best
        are the board's to keep (it was handed the best of all time) */
-    if (!cd && !mRun && res.score > 0 && PLAT.boardScore) PLAT.boardScore(res.score);
+    if (!cd && !mRun && res.score > 0 && PLAT.boardScore) PLAT.boardScore(res.score, res);   // the run itself: the shared board checks its metres and seconds
     /* Time Rush is scored in metres, on a board of its own. */
     if (rushRun) {
       beat = res.dist > (save.bestRush || 0);
