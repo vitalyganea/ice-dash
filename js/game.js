@@ -31,13 +31,22 @@ var Game = (function () {
   /* Avalanche: the lead you start with, how much faster than your clean
      pace the snow comes, what a crystal ring knocks it back by (less as the
      hill hardens, so a run always ends), and the most lead you can bank. */
-  var AV_GAP0 = 800, AV_K = 1.06, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 1000;
+  var AV_GAP0 = 200, AV_K0 = 0.95, AV_K = 1.06, AV_PUSH0 = 180, AV_PUSH1 = 50, AV_CAP = 1000;
   /* A spare life where the run ends other than by a crash (the owner,
      17 Nov 2026: hearts must work in every mode): Time Rush's clock run
      out buys ten more seconds, the avalanche that caught him is pushed
      back to most of its starting lead. */
   var HEART_TIME = 10 * 60, HEART_AVGAP = 600;
-  var AV_EASE = 4000;          // the snow builds to its full pace over the first 500 m
+  /* The snow in sight from the start (the owner, 23 Nov 2026: Avalanche
+     played as Freeride for most of a beginner's run). It used to start
+     100 m back, which a phone shows only from 52 m and a wide screen from
+     19 m: a first-timer saw it after 33-62 of his 60 seconds, a casual
+     rider after 55-82. Now it starts 25 m back (nearer on a wide screen,
+     where less of the hill behind is shown) at 0.95 of a clean rider's
+     pace, so he slides away from it at first and every slip brings it into
+     view; it builds to its full pace over the first 1500 m (was 500 m from
+     1.00), which keeps a clean rider's run as long as before. */
+  var AV_EASE = 12000;
   var DRIFT  = 0.82;           // sideways speed as a fraction of the slide
   var TURN   = 0.16;           // how quickly the tap takes effect
 
@@ -277,7 +286,7 @@ var Game = (function () {
       px: 0, vx: 0, dir: 1, tilt: 0,
       objects: [], rows: [], flakes: [], puffs: [], spray: [], squash: 0, impact: 0, streaks: [],
       lastGap: 0, nextRowD: 320, lastStep: ROW_GAP0,
-      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0, soarNext: SOAR_EVERY, soarT: 0, soars: 0,
+      airTo: -1, airSpan: AIR_DIST, clearUntil: 520, crevs: 0, jumps: 0, spans: 0, soarNext: SOAR_EVERY, soarT: 0, soars: 0,
       roofTo: -1e9, forkTo: -1e9, forceGap: null, forceGapW: 0, forks: 0,
       course: null, finishD: -1, fishTotal: 0, tunnelTo: -1e9,
       biome: 0, biomeT: 0, shake: 0,
@@ -305,7 +314,10 @@ var Game = (function () {
     /* Time Rush is the open hill against a clock. */
     if (pendingMode === 'rush' && !w.course) { w.mode = 'rush'; w.timeT = RUSH_START; }
     /* Avalanche is the open hill with the snow coming down behind you. */
-    if (pendingMode === 'avalanche' && !w.course) { w.mode = 'avalanche'; w.avGap = AV_GAP0; }
+    if (pendingMode === 'avalanche' && !w.course) {
+      w.mode = 'avalanche';
+      w.avGap = Math.max(80, Math.min(AV_GAP0, Math.round((VIEW_H - PLAYER_Y) * 0.8)));   // just inside the bottom of the screen
+    }
     /* An event's gifts: only on the open hill in Freeride, never in the
        demo behind the menu (the owner, 19 Nov 2026) */
     w.giftsOn = pendingGifts && !w.course && w.mode === 'free';
@@ -777,10 +789,20 @@ var Game = (function () {
        they were never given the chance to avoid. */
     if (d > 1500 && d > W.clearUntil && Math.random() < lerp(0.05, 0.17, hard)) {
       W.crevs++;
-      W.objects.push({ t: 'ramp', x: place(gap, d - RAMP_LEAD), d: d - RAMP_LEAD,
-                       w: gapW * (perk().rampWide || 1), used: false });
-      W.objects.push({ t: 'crevasse', x: place(0, d), d: d,
-                       span: CREV_SPAN, passed: false });
+      var crv = { t: 'crevasse', x: place(0, d), d: d, span: CREV_SPAN, passed: false };
+      /* The way over is one of two (1.3.5, the owner: either the span or the
+         ramp, never both): half the crevasses have the ramp in the row's
+         opening, the other half have the two lips joined there instead, a
+         narrow span of ice ridden across without a jump. Either sits in the
+         opening, so it is aimed at like any other gap. Which one is decided
+         off the row's own hash, not the dice, so a seed lays the same hill. */
+      if (hh(Math.round(d), 31) < 0.5) {
+        crv.bx = place(gap, d); crv.bw = Math.max(64, gapW * 0.7);
+      } else {
+        W.objects.push({ t: 'ramp', x: place(gap, d - RAMP_LEAD), d: d - RAMP_LEAD,
+                         w: gapW * (perk().rampWide || 1), used: false });
+      }
+      W.objects.push(crv);
       W.clearUntil = d + CREV_SPAN + 200;
       return;
     }
@@ -1429,6 +1451,8 @@ var Game = (function () {
       }
       if (o.t === 'crevasse' && !o.passed && o.d <= W.dist) {
         o.passed = true;
+        /* over the span of ice: the lips meet there, nothing to fall into */
+        if (o.bw && !airborne() && Math.abs(W.px - o.bx) < o.bw / 2) { W.spans++; continue; }
         /* Nothing on the hill may stop a rush, or catch him in the grace
            after he has just spent a life. A hole that killed him while the
            screen says he cannot be hurt is the nastiest kind of surprise;
@@ -1888,8 +1912,17 @@ var Game = (function () {
        At 10% faster from the first frame, with a 70 m start, a real player
        — who clips the deep snow and crashes now and then — was caught in a
        few hundred metres, and the mode played as a punishment. */
-    var k = 1 + (AV_K - 1) * Math.min(1, W.dist / AV_EASE);
-    W.avGap += mySpeed - clean * k;
+    var k = AV_K0 + (AV_K - AV_K0) * Math.min(1, W.dist / AV_EASE);
+    W.avGap = Math.min(AV_CAP, W.avGap + mySpeed - clean * k);      // slower than him at first: the ceiling holds for that too
+    /* It is heard before it is seen close: a roll of thunder that comes
+       oftener and louder from 40 m in, and the hill shaking under him in
+       the last 12 m (the shake goes at Effects Off with every other one). */
+    var lead = W.avGap / 8;
+    if (mySpeed > 0 && lead < 40) {
+      var near = 1 - lead / 40, every = Math.round(150 - 100 * near);
+      if (W.t % every === 0 && Sfx.rumble) Sfx.rumble(0.4 + 0.6 * near);
+      if (lead < 12) W.shake = Math.max(W.shake, 3.5 * (1 - lead / 12));
+    }
     if (W.avPush > 0) W.avPush--;
     if (W.avGap <= 0) {
       W.avGap = 0; W.state = 'caught'; W.endT = 0; W.rushT = 0; W.shake = 18;
@@ -1913,7 +1946,7 @@ var Game = (function () {
   function runResult() {
     return { score: Math.floor(W.score), dist: Math.floor(W.dist / 8), secs: Math.round(W.t / 6) / 10,   // the run's length (1.3.5: the shared board checks it)
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts, kois: W.kois,
-                     coins: W.coins, jumps: W.jumps,
+                     coins: W.coins, jumps: W.jumps, spans: W.spans || 0,
                      finished: W.state === 'finish',
                      mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
@@ -2314,7 +2347,7 @@ var Game = (function () {
        tearing past by the end. */
     var sp = pace(), s, sy, sx;
     ctx.strokeStyle = B.streak || 'rgba(255,255,255,.5)';   // streaks of polished ice
-    ctx.lineWidth = 4 - 2.2 * sp;
+    ctx.lineWidth = 5 - 2.4 * sp;                    // a little bolder (the owner, 23 Nov 2026: 4 to 1.8 before)
     for (i = 0; i < W.streaks.length; i++) {          // the ones gone below come round again
       s = W.streaks[i];
       if (scrY(s.d) > VIEW_H + 320) { s.d += LOOK + 200; s.x = frnd(-CHUTE, CHUTE); }
@@ -5508,6 +5541,18 @@ var Game = (function () {
     var cBot = chuteAt(o.d) - chuteHere();
     var lTop = VIEW_W / 2 + cTop - CHUTE - 30, rTop = VIEW_W / 2 + cTop + CHUTE + 30;
     var lBot = VIEW_W / 2 + cBot - CHUTE - 30, rBot = VIEW_W / 2 + cBot + CHUTE + 30;
+    var rimT = function (xx) { return rimAt(xx, top, lTop, rTop, 7, 0.6); },
+        rimB = function (xx) { return rimAt(xx, bot, lBot, rBot, 7, 2.3); };
+    /* A span of ice (1.3.5): the hole is not painted there at all, so what
+       shows is the run itself, its own colour and its streaks, joined from
+       lip to lip (the owner's picture); only the rim round each end of the
+       hole is drawn, after. */
+    if (o.bw) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-50, -50, VIEW_W + 100, VIEW_H + 100);
+      spanPath(o, top, bot, rimT, rimB, 20);
+      ctx.clip('evenodd');
+    }
 
     function edge(yy, xa, xb, amp, phase) {          // a broken, icy lip
       var n = 16, i;
@@ -5597,7 +5642,41 @@ var Game = (function () {
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;  // the broken rim
     ctx.beginPath(); ctx.moveTo(lTop, top); edge(top, lTop, rTop, 7, 0.6); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(lBot, bot); edge(bot, lBot, rBot, 7, 2.3); ctx.stroke();
+    if (o.bw) { ctx.restore(); drawSpanRims(o, top, bot, rimT, rimB); }
   }
+  /* where the broken rim runs at x (the same wave as edge() draws) */
+  function rimAt(xx, yy, xa, xb, amp, phase) {
+    var t = (xx - xa) / (xb - xa);
+    return yy + Math.sin(t * 9 + phase) * amp + Math.sin(t * 23) * amp * 0.4;
+  }
+  /* The two lips joined across the crevasse (1.3.5; on half of them, in
+     place of the ramp). */
+  /* The span's outline: its sides bowing a little inward from lip to lip,
+     carried on straight past the lips by `over`. */
+  var SPAN_BOW = 0.84;
+  function spanPath(o, top, bot, rimT, rimB, over) {
+    var x = scrX(o.bx), h = o.bw / 2, mid = (top + bot) / 2, dy = (bot - top) * 0.2, k = SPAN_BOW;
+    ctx.moveTo(x - h, top - over); ctx.lineTo(x - h, rimT(x - h));
+    ctx.bezierCurveTo(x - h * k, mid - dy, x - h * k, mid + dy, x - h, rimB(x - h));
+    ctx.lineTo(x - h, bot + over); ctx.lineTo(x + h, bot + over); ctx.lineTo(x + h, rimB(x + h));
+    ctx.bezierCurveTo(x + h * k, mid + dy, x + h * k, mid - dy, x + h, rimT(x + h));
+    ctx.lineTo(x + h, top - over); ctx.closePath();
+  }
+  /* the white broken rim, round the end of each hole: from the far lip
+     down the span's side to the near */
+  function drawSpanRims(o, top, bot, rimT, rimB) {
+    var x = scrX(o.bx), h = o.bw / 2, mid = (top + bot) / 2, dy = (bot - top) * 0.2, k = SPAN_BOW;
+    ctx.save();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - h, rimT(x - h));
+    ctx.bezierCurveTo(x - h * k, mid - dy, x - h * k, mid + dy, x - h, rimB(x - h)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + h, rimT(x + h));
+    ctx.bezierCurveTo(x + h * k, mid - dy, x + h * k, mid + dy, x + h, rimB(x + h)); ctx.stroke();
+    ctx.restore();
+  }
+
+
+
 
   /* The way across: packed snow heaped into a ramp, sitting exactly in the
      row's opening so it is aimed at the same way as every other gap. */

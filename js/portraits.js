@@ -1013,72 +1013,112 @@ PORTRAIT.dragon = function (c, S, o) {
   });
 };
 PORTRAIT.orca = function (c, S, o) {
-  /* 22 Nov 2026, worked up to the dragon's finish: the white patches are
-     markings above and behind her eyes, edged and shaded (soft white blobs
-     read as glare); the white of her chin and front is shaded round her
-     body; the grey saddle behind her shoulders; her skin glossy, with the
-     pale rake marks every orca carries from her family's teeth. */
+  /* Turned three-quarters, her snout to the RIGHT (1.3.5, the owner: from
+     the front she looked strange; and then, the first side view was the
+     narwhal's own shape, with the fin growing out of the back of her head).
+     An orca's own shape: a big round head with no beak and no neck, the
+     line of her throat running straight up to a rounded chin; behind the
+     head her back rises to the tall dorsal fin, curved back at its tip,
+     with the grey saddle behind it. Black and glossy; the white patch
+     behind and above her eye, long and tilted up toward her back; the white
+     of her lower jaw running back under her throat; a big round paddle of
+     a flipper, black over the white; the pale rake marks from her family's
+     teeth. The light comes from the upper left, as on every portrait. */
   o = o || {};
-  var b = o.body || S.body, mark = o.mark || S.mark, white = o.mark ? ptLit(mark, 0.3) : '#ffffff';
-  ptBust(c, b, { front: mark, fw: 22, chest: function (cc) {
-    if (!o.noPatches) [-1, 1].forEach(function (s2) {             // the grey saddle, low on either shoulder
-      var sg = cc.createRadialGradient(50 + s2 * 34, 92, 1, 50 + s2 * 34, 92, 13);
-      sg.addColorStop(0, 'rgba(170,180,195,.55)'); sg.addColorStop(1, 'rgba(170,180,195,0)');
-      cc.fillStyle = sg; ptEll(cc, 50 + s2 * 34, 92, 13, 9, s2 * 0.5); cc.fill();
-    });
-    if (o.chest) o.chest(cc);
-  }, skin: true });
-  [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 31, 82); c.rotate(s * 0.5); c.scale(0.78, 0.78); ptFlipper(c, 'whale', S.flipper, s); c.restore(); });
-  ptHead(c, 50, 46, 28, 26, b);
-  c.save(); ptEll(c, 50, 46, 28, 26); c.clip();
-  /* rake marks: pale scratches in pairs and threes, on her cheeks and crown */
-  c.strokeStyle = 'rgba(200,215,230,.22)'; c.lineWidth = 0.35; c.beginPath();
-  [[30, 50, 0.9], [66, 54, -0.8], [60, 26, 0.3], [34, 30, -0.4]].forEach(function (r) {
+  var b = o.body || S.body, mark = o.mark || S.mark, white = ptLit(mark, 0.1), edge = ptOutlineCol(b[2]);
+  c.save(); ptClip(c);
+  function orcaShape(cc) {
+    cc.beginPath(); cc.moveTo(88, 59);                                   // the tip of her snout
+    cc.bezierCurveTo(87, 46, 72, 32, 51, 31);                            // the melon, one long round curve
+    cc.bezierCurveTo(38, 31, 24, 35, 8, 43);                             // her back, falling away behind the fin
+    cc.lineTo(-6, 50); cc.lineTo(-6, 110); cc.lineTo(68, 110);
+    cc.bezierCurveTo(68, 94, 71, 80, 78, 71);                            // her throat, leaning back
+    cc.bezierCurveTo(83, 66, 88, 63, 88, 59); cc.closePath();           // and the rounded chin
+  }
+  var hg = c.createRadialGradient(46, 40, 4, 50, 62, 58);
+  hg.addColorStop(0, ptLit(b[0], 0.18)); hg.addColorStop(0.5, b[1]); hg.addColorStop(1, b[2]);
+  c.fillStyle = hg; orcaShape(c); c.fill();
+  c.save(); orcaShape(c); c.clip();
+  /* the grey saddle, on her back behind the fin */
+  var sg = c.createRadialGradient(4, 52, 1, 4, 52, 12);
+  sg.addColorStop(0, 'rgba(170,182,198,.42)'); sg.addColorStop(0.6, 'rgba(160,172,188,.18)'); sg.addColorStop(1, 'rgba(160,172,188,0)');
+  c.fillStyle = sg; ptEll(c, 4, 52, 12, 7, -0.35); c.fill();
+  /* the white of her lower jaw and throat, back under her to the belly,
+     shaded where it curves away */
+  var jaw = function () {
+    c.beginPath(); c.moveTo(88, 60.6); c.quadraticCurveTo(74, 67.2, 61, 64);
+    c.bezierCurveTo(56, 70, 50, 86, 42, 110); c.lineTo(92, 110); c.lineTo(92, 60); c.closePath();
+  };
+  var wg = c.createLinearGradient(0, 62, 0, 106); wg.addColorStop(0, ptLit(white, -0.12)); wg.addColorStop(0.35, white); wg.addColorStop(1, ptLit(white, -0.2));
+  c.fillStyle = wg; jaw(); c.fill();
+  c.save(); jaw(); c.clip();
+  var js = c.createLinearGradient(42, 0, 88, 0); js.addColorStop(0, 'rgba(60,80,110,.3)'); js.addColorStop(0.35, 'rgba(60,80,110,0)'); js.addColorStop(0.75, 'rgba(60,80,110,0)'); js.addColorStop(1, 'rgba(40,55,80,.42)');
+  c.fillStyle = js; c.fillRect(40, 58, 54, 54);
+  var ju = c.createLinearGradient(0, 62, 0, 73); ju.addColorStop(0, 'rgba(10,16,30,.36)'); ju.addColorStop(1, 'rgba(10,16,30,0)');
+  c.fillStyle = ju; c.fillRect(54, 60, 40, 13);                                       // under the line of her mouth
+  c.restore();
+  c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.55; c.beginPath(); c.moveTo(61, 64); c.bezierCurveTo(56, 70, 50, 86, 42, 110); c.stroke();
+  /* the eye patch: behind and above the eye, long, tilted up toward her
+     back, crisp at its edge with a shade along its lower side */
+  var patch = function () { c.beginPath(); c.ellipse(47, 50, 9.4, 3.7, 0.38, 0, 6.2832); };
+  if (!o.noPatch) {
+    var pg = c.createLinearGradient(43, 46, 51, 55); pg.addColorStop(0, white); pg.addColorStop(1, ptLit(white, -0.1));
+    c.fillStyle = pg; patch(); c.fill();
+    c.save(); patch(); c.clip(); c.fillStyle = 'rgba(30,40,60,.2)'; ptEll(c, 45.5, 52.8, 9, 2.4, 0.38); c.fill(); c.restore();
+    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 0.45; patch(); c.stroke();
+  }
+  /* rake marks: pale scratches in twos and threes on her crown and side */
+  c.strokeStyle = 'rgba(205,218,232,.17)'; c.lineWidth = 0.4; c.beginPath();
+  [[34, 40, -0.5], [24, 68, 0.3], [66, 44, -0.9], [16, 84, -0.2]].forEach(function (r) {
     for (var k = 0; k < 3; k++) { var dx = Math.cos(r[2] + 1.57) * k * 1.3, dy = Math.sin(r[2] + 1.57) * k * 1.3;
       c.moveTo(r[0] + dx - Math.cos(r[2]) * 4, r[1] + dy - Math.sin(r[2]) * 4); c.lineTo(r[0] + dx + Math.cos(r[2]) * 4, r[1] + dy + Math.sin(r[2]) * 4); }
   });
   c.stroke();
+  /* light from the upper left: lit along her back and crown, shade round
+     her chin and throat; the wet gloss on her melon */
+  var sh = c.createLinearGradient(10, 28, 90, 92);
+  sh.addColorStop(0, 'rgba(255,255,255,.1)'); sh.addColorStop(0.5, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
+  c.fillStyle = sh; c.fillRect(-6, 26, 100, 86);
+  c.strokeStyle = 'rgba(255,255,255,.32)'; c.lineWidth = 2; c.beginPath(); c.ellipse(54, 60, 25, 25, 0, 3.8, 4.8); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(54, 60, 25, 25, 0, 4.0, 4.6); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.2)'; ptEll(c, 80, 47, 3.4, 1.4, 0.8); c.fill();             // a glint on her snout
   c.restore();
-  if (!o.noPatches) {
-    /* the eye patches: long ovals tilted up and out, above and behind her
-       eyes, crisp at the edge, the skin's sheen over them */
-    [-1, 1].forEach(function (s) {
-      var px = 50 + s * 16.5, py = 34.6, ang = s * 0.42;
-      var path = function () { c.beginPath(); c.ellipse(px, py, 8.4, 3.8, ang, 0, 6.2832); };
-      var g = c.createLinearGradient(px, py - 4, px, py + 4); g.addColorStop(0, white); g.addColorStop(1, ptLit(o.mark ? mark : '#dfe6ee', -0.08));
-      c.fillStyle = g; path(); c.fill();
-      c.save(); path(); c.clip();
-      c.fillStyle = 'rgba(30,40,60,.18)'; ptEll(c, px + s * 1.6, py + 2.6, 8, 2.6, ang); c.fill();   // shade along its lower edge
-      c.restore();
-      c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 0.5; path(); c.stroke();
-    });
-    /* the white of her throat and front, rounded with shade at its sides
-       (a closed white crescent under the mouth read as a grin) */
-    c.save(); ptClip(c);
-    var front = function () { c.beginPath(); c.moveTo(27, 101); c.bezierCurveTo(27, 70, 38, 60, 50, 59.6); c.bezierCurveTo(62, 60, 73, 70, 73, 101); c.closePath(); };
-    var cg = c.createLinearGradient(0, 58, 0, 76); cg.addColorStop(0, ptLit(mark, -0.25)); cg.addColorStop(0.5, ptLit(mark, -0.05)); cg.addColorStop(1, white);
-    c.fillStyle = cg; front(); c.fill();
-    c.save(); front(); c.clip();
-    var side = c.createLinearGradient(27, 0, 73, 0);
-    side.addColorStop(0, 'rgba(60,80,110,.35)'); side.addColorStop(0.25, 'rgba(60,80,110,0)'); side.addColorStop(0.7, 'rgba(60,80,110,0)'); side.addColorStop(1, 'rgba(40,55,80,.45)');
-    c.fillStyle = side; c.fillRect(26, 58, 48, 44);
-    var ch = c.createLinearGradient(0, 59, 0, 70); ch.addColorStop(0, 'rgba(10,16,30,.45)'); ch.addColorStop(1, 'rgba(10,16,30,0)');
-    c.fillStyle = ch; c.fillRect(26, 58, 48, 12);                                                       // under her jaw
-    c.restore();
-    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 0.6; front(); c.stroke();
-    c.restore();
+  ptFinish(c, function () { orcaShape(c); }, 44, 70, 44, 40, edge, { ao: 0.26 });
+  /* the dorsal fin, out of her back where it rises: tall, curved back at
+     its tip; its root runs into the body, so only its two edges are drawn */
+  /* its leading edge to the front (toward her head), convex, sweeping up
+     and back to the tip, which bends toward her tail; the trailing edge
+     hollowed under it */
+  var finEdges = function () { c.moveTo(34, 33); c.bezierCurveTo(28, 29.6, 23.4, 24, 20.4, 18.6); c.quadraticCurveTo(18.8, 17.4, 18.4, 19.4);
+                               c.bezierCurveTo(19, 27, 13.6, 36, 6, 44); };
+  var fin = function () { c.beginPath(); finEdges(); c.lineTo(20, 41); c.closePath(); };
+  var dg = c.createLinearGradient(20, 18, 24, 42); dg.addColorStop(0, ptLit(b[0], 0.16)); dg.addColorStop(0.6, b[1]); dg.addColorStop(1, b[1]);
+  c.fillStyle = dg; fin(); c.fill();
+  c.strokeStyle = 'rgba(225,245,255,.32)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(32.4, 32); c.bezierCurveTo(27.4, 29, 23.2, 24, 20.6, 19.2); c.stroke();   // lit along the leading edge
+  c.strokeStyle = edge; c.lineWidth = 0.9; c.beginPath(); finEdges(); c.stroke();
+  /* the near flipper: a big round paddle from under her jaw, swept back,
+     black over the white of her belly */
+  c.save(); orcaShape(c); c.clip();
+  var fl = function (dx, dy) { c.beginPath(); c.moveTo(64 + dx, 78 + dy); c.bezierCurveTo(54 + dx, 78 + dy, 44 + dx, 87 + dy, 42 + dx, 98 + dy); c.bezierCurveTo(41 + dx, 105 + dy, 50 + dx, 105 + dy, 55 + dx, 98 + dy); c.bezierCurveTo(59 + dx, 92 + dy, 63 + dx, 85 + dy, 64 + dx, 78 + dy); c.closePath(); };
+  c.fillStyle = 'rgba(15,22,35,.25)'; fl(1.6, 2); c.fill();
+  var fg = c.createLinearGradient(46, 80, 62, 104); fg.addColorStop(0, ptLit(b[0], 0.12)); fg.addColorStop(0.6, b[1]); fg.addColorStop(1, b[2]);
+  c.fillStyle = fg; fl(0, 0); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(63, 78.4); c.bezierCurveTo(54, 78.6, 45, 87, 43, 97); c.stroke();
+  c.strokeStyle = edge; c.lineWidth = 0.7; fl(0, 0); c.stroke();
+  c.restore();
+  /* the mouth, long and curving up to its end under the eye, a lit lip over it */
+  c.strokeStyle = 'rgba(0,0,0,.65)'; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(87.6, 60.2); c.quadraticCurveTo(74, 66.6, 61, 63.6); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.45;
+  c.beginPath(); c.moveTo(86, 59.2); c.quadraticCurveTo(74, 65, 61.8, 62.4); c.stroke();
+  /* the blowhole on her crown */
+  c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.ellipse(49, 33.2, 3, 1, -0.06, 0, Math.PI); c.fill();
+  /* the eye, just above the end of her mouth and in front of the patch */
+  if (!o.noEyes) {
+    c.fillStyle = 'rgba(0,0,0,.35)'; ptEll(c, 58.5, 58.6, 3.3, 2.7); c.fill();
+    ptEyes(c, 58.5, 58.6, 0, 2.25, { iris: '#0a0c10', big: true, small: true });
   }
-  /* the gloss of wet skin: a long lit streak over her crown and a small one
-     on the cheek, instead of a blob that read as a white spot */
-  c.save(); ptEll(c, 50, 46, 28, 26); c.clip();
-  c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 2.2; c.beginPath(); c.ellipse(50, 47, 24, 22, 0, 3.55, 4.45); c.stroke();
-  c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(50, 47, 24, 22, 0, 3.7, 4.3); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.18)'; ptEll(c, 30, 48, 1.6, 4, 0.3); c.fill();
   c.restore();
-  if (!o.noEyes) ptEyes(c, 50, 45, 11, 6, { iris: '#0a0c10' });
-  /* the mouth: the long line of it curving up toward her eyes, a lit lip over it */
-  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(31, 52); c.quadraticCurveTo(50, 61, 69, 52); c.stroke();
-  c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(33, 51); c.quadraticCurveTo(50, 59.4, 67, 51); c.stroke();
 };
 PORTRAIT.narwhal = function (c, S, o) {
   /* Turned three-quarters, her snout to the left (1.3.4): a narwhal's tooth
@@ -1669,32 +1709,53 @@ PORTRAIT_ALT.king = function (c, S) {
   c.fillStyle = 'rgba(255,255,255,.5)'; ptEll(c, 34, 12, 2, 4, 0.4); c.fill();
 };
 
-/* the robot orca: steel plates with rivets on the seams, a dark visor
-   across her eyes with a red light in it, and an aerial */
+/* the robot orca, side on like the orca herself (1.3.5, the owner): steel
+   plates with rivets along their seams, a dark visor across her eye with a
+   red light in it, an aerial on her crown, a vent grille on her flank, the
+   fin in riveted plate too */
 PORTRAIT_ALT.robot = function (c, S) {
-  var R = ptWith(S, { body: ['#b4c0ce', '#6c7a8c', '#2c3440'], flipper: ['#8a98aa', '#526072', '#262e3a'], mark: '#8a98aa' });
-  PORTRAIT.orca(c, R, { noEyes: true, mark: R.mark });
-  /* a vent grille on her chest plate, and its rivets */
-  c.fillStyle = 'rgba(20,28,40,.6)'; [82, 86, 90, 94].forEach(function (y) { c.beginPath(); c.moveTo(40, y); c.lineTo(60, y); c.lineTo(60, y + 1.8); c.lineTo(40, y + 1.8); c.closePath(); c.fill(); });
-  c.fillStyle = 'rgba(255,255,255,.3)'; [82, 86, 90, 94].forEach(function (y) { c.fillRect(40, y + 1.8, 20, 0.5); });
-  c.fillStyle = '#d8dde4'; [[36, 80], [64, 80], [36, 97], [64, 97]].forEach(function (d) { ptEll(c, d[0], d[1], 0.9, 0.9); c.fill(); });
-  /* the seams of her plates, bowed round her head, riveted */
-  c.strokeStyle = 'rgba(20,28,40,.55)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(26, 34); c.quadraticCurveTo(50, 22, 74, 34); c.moveTo(24, 54); c.quadraticCurveTo(50, 62, 76, 54); c.moveTo(50, 20); c.lineTo(50, 34); c.stroke();
-  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(26, 33.2); c.quadraticCurveTo(50, 21.2, 74, 33.2); c.stroke();
-  c.fillStyle = '#d8dde4'; [[30, 31.6], [40, 27.6], [60, 27.6], [70, 31.6], [30, 56.4], [40, 59], [60, 59], [70, 56.4]].forEach(function (d) { ptEll(c, d[0], d[1], 0.9, 0.9); c.fill(); });
-  /* the visor */
-  c.fillStyle = 'rgba(15,22,40,.4)'; c.beginPath(); c.moveTo(25, 40); c.quadraticCurveTo(50, 34, 75, 40); c.lineTo(75, 50); c.quadraticCurveTo(50, 44, 25, 50); c.closePath(); c.fill();
-  var vg = c.createLinearGradient(0, 37, 0, 49); vg.addColorStop(0, '#2c3440'); vg.addColorStop(1, '#0a0d12');
-  c.fillStyle = vg; c.beginPath(); c.moveTo(24, 38.6); c.quadraticCurveTo(50, 32.6, 76, 38.6); c.lineTo(76, 48.4); c.quadraticCurveTo(50, 42.4, 24, 48.4); c.closePath(); c.fill();
-  var rl = c.createRadialGradient(56, 41, 0.3, 56, 41, 9); rl.addColorStop(0, 'rgba(255,80,60,.95)'); rl.addColorStop(0.4, 'rgba(255,40,30,.5)'); rl.addColorStop(1, 'rgba(255,40,30,0)');
-  c.fillStyle = rl; ptEll(c, 56, 41.4, 9, 3.6); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(28, 39); c.quadraticCurveTo(50, 33.6, 72, 39); c.lineTo(72, 40); c.quadraticCurveTo(50, 34.6, 28, 40); c.closePath(); c.fill();
-  /* the aerial */
-  c.strokeStyle = '#3a4252'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(50, 20); c.lineTo(50, 6); c.stroke();
-  var ag = c.createRadialGradient(50, 5, 0.3, 50, 5, 5); ag.addColorStop(0, 'rgba(255,90,70,.8)'); ag.addColorStop(1, 'rgba(255,90,70,0)');
-  c.fillStyle = ag; ptEll(c, 50, 5, 5, 5); c.fill();
-  c.fillStyle = '#ff4a3a'; ptEll(c, 50, 5, 2, 2); c.fill();
-  c.fillStyle = '#5e6878'; ptEll(c, 50, 20.6, 3, 1.4); c.fill();
+  var R = ptWith(S, { body: ['#b4c0ce', '#6c7a8c', '#2c3440'], flipper: ['#8a98aa', '#526072', '#262e3a'], mark: '#9aa8ba' });
+  PORTRAIT.orca(c, R, { noEyes: true, noPatch: true, mark: R.mark });
+  c.save(); ptClip(c);
+  var rivet = function (x, y) {
+    c.fillStyle = 'rgba(20,28,40,.45)'; ptEll(c, x + 0.3, y + 0.4, 1, 1); c.fill();
+    c.fillStyle = '#e2e7ee'; ptEll(c, x, y, 0.85, 0.85); c.fill();
+  };
+  /* the seams of her plates: one round her head behind the eye, one down
+     her flank, one along her back; dark with a lit edge, riveted */
+  var seams = [
+    [[50, 33], [42, 48], [44, 66], [52, 78]],
+    [[30, 40], [24, 58], [24, 78], [30, 104]],
+    [[60, 32], [74, 40], [84, 50], [87, 58]]
+  ];
+  seams.forEach(function (q) {
+    c.strokeStyle = 'rgba(20,28,40,.55)'; c.lineWidth = 0.8;
+    c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.bezierCurveTo(q[1][0], q[1][1], q[2][0], q[2][1], q[3][0], q[3][1]); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.5;
+    c.beginPath(); c.moveTo(q[0][0] + 0.8, q[0][1] + 0.6); c.bezierCurveTo(q[1][0] + 0.8, q[1][1] + 0.6, q[2][0] + 0.8, q[2][1] + 0.6, q[3][0] + 0.8, q[3][1] + 0.6); c.stroke();
+  });
+  [[47, 40], [43, 54], [45, 68], [27, 50], [24, 66], [26, 84], [68, 36], [80, 46]].forEach(function (p2) { rivet(p2[0], p2[1]); });
+  rivet(24, 31); rivet(16, 39);                                                         // on the fin
+  /* the vent grille on her flank, and its rivets */
+  c.fillStyle = 'rgba(20,28,40,.6)'; [70, 74, 78, 82].forEach(function (y) { c.beginPath(); c.moveTo(6, y); c.lineTo(20, y - 1); c.lineTo(20, y + 0.8); c.lineTo(6, y + 1.8); c.closePath(); c.fill(); });
+  c.fillStyle = 'rgba(255,255,255,.3)'; [70, 74, 78, 82].forEach(function (y) { c.beginPath(); c.moveTo(6, y + 1.8); c.lineTo(20, y + 0.8); c.lineTo(20, y + 1.3); c.lineTo(6, y + 2.3); c.closePath(); c.fill(); });
+  rivet(4, 68); rivet(22, 67); rivet(4, 86); rivet(22, 85);
+  /* the visor across her eye, curving round her head, the red light in it */
+  var visor = function (dy) { c.beginPath(); c.moveTo(48, 52 + dy); c.quadraticCurveTo(62, 51 + dy, 76, 55 + dy); c.lineTo(75, 62 + dy); c.quadraticCurveTo(62, 58.6 + dy, 49, 60 + dy); c.closePath(); };
+  c.fillStyle = 'rgba(15,22,40,.4)'; visor(1.4); c.fill();
+  var vg = c.createLinearGradient(0, 51, 0, 61); vg.addColorStop(0, '#2c3440'); vg.addColorStop(1, '#0a0d12');
+  c.fillStyle = vg; visor(0); c.fill();
+  var rl = c.createRadialGradient(60, 56.4, 0.3, 60, 56.4, 8); rl.addColorStop(0, 'rgba(255,80,60,.95)'); rl.addColorStop(0.4, 'rgba(255,40,30,.5)'); rl.addColorStop(1, 'rgba(255,40,30,0)');
+  c.save(); visor(0); c.clip(); c.fillStyle = rl; ptEll(c, 60, 56.4, 8, 3.4); c.fill(); c.restore();
+  c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(50, 52.6); c.quadraticCurveTo(62, 51.6, 74, 55.4); c.lineTo(74, 56.4); c.quadraticCurveTo(62, 52.6, 50, 53.6); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(10,14,22,.6)'; c.lineWidth = 0.5; visor(0); c.stroke();
+  /* the aerial, up from her crown */
+  c.strokeStyle = '#3a4252'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(56, 32); c.lineTo(58, 17); c.stroke();
+  var ag = c.createRadialGradient(58.2, 15.6, 0.3, 58.2, 15.6, 5); ag.addColorStop(0, 'rgba(255,90,70,.8)'); ag.addColorStop(1, 'rgba(255,90,70,0)');
+  c.fillStyle = ag; ptEll(c, 58.2, 15.6, 5, 5); c.fill();
+  c.fillStyle = '#ff4a3a'; ptEll(c, 58.2, 15.6, 2, 2); c.fill();
+  c.fillStyle = '#5e6878'; ptEll(c, 56, 32.2, 3, 1.3, -0.1); c.fill();
+  c.restore();
 };
 
 /* Aurora's galaxy: night-blue, a spiral galaxy turning on her front, stars

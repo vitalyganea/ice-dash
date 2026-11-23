@@ -45,7 +45,7 @@ var crossed = 0, fellIn = 0, seen = 0, jumps = 0, minAirLeft = 1e9;
     /* how much air is left the moment the far lip goes by */
     for (var i = 0; i < W.objects.length; i++) {
       var o = W.objects[i];
-      if (o.t === 'crevasse' && o.passed && !o.checked &&
+      if (o.t === 'crevasse' && o.passed && !o.checked && !o.bw &&        // crossed by the ramp (one with a span is ridden over)
           W.dist >= o.d + 150) {
         o.checked = true;
         minAirLeft = Math.min(minAirLeft, W.airTo - W.dist);
@@ -68,7 +68,7 @@ console.log('\nB. missing the ramp drops you in');
 var died = 0, tried = 0;
 for (var s = 0; s < 120 && tried < 34; s++) {
   H.setSeed(1000 + s * 37); G.start(0, {}, 'snowcap');
-  var target = null, launched = false;
+  var target = null, launched = false, spans0 = 0;
   for (var f = 0; f < 9000; f++) {
     var W = G.debug(); if (!W || W.state !== 'run') break;
     if (!target) {
@@ -96,8 +96,9 @@ for (var s = 0; s < 120 && tried < 34; s++) {
        An attempt only counts if he never left the ground. */
     if (W3 && W3.airTo > W3.dist) launched = true;
     /* Grace after spending a life now carries him over a hole too, so an
-       attempt made inside it says nothing about the ramp. */
-    var guarded = W3 && (W3.shield > 0 || W3.rushT > 0 || W3.grace > 0 || launched);
+       attempt made inside it says nothing about the ramp. Nor does riding
+       over the span of ice where the lips meet (1.3.5): that is no miss. */
+    var guarded = W3 && (W3.shield > 0 || W3.rushT > 0 || W3.grace > 0 || launched || W3.spans > spans0);
     if (target && W3 && W3.state !== 'run' && W3.dist >= target.d - 30) {
       if (!guarded) { tried++; died++; }
       break;
@@ -110,6 +111,72 @@ for (var s = 0; s < 120 && tried < 34; s++) {
   G.stop();
 }
 ok(tried >= 24, 'set up ' + tried + ' deliberate misses');
+/* ---- B2. the span of ice: the two lips joined (1.3.5) ---------- */
+(function () {
+  console.log('\nB2. where the lips meet, he rides across');
+  var found = 0, across = 0, flew = 0, inReach = 0, clearOfRamp = 0;
+  for (var s2 = 0; s2 < 60 && found < 12; s2++) {
+    H.setSeed(7000 + s2 * 29); G.start(0, {}, 'snowcap');
+    var cv = null, sp0 = 0;
+    for (var f2 = 0; f2 < 12000; f2++) {
+      var W = G.debug(); if (!W) break;
+      if (W.state === 'crash') { W.state = 'run'; W.invuln = 60; }          // only the span is under test here
+      if (!cv) {
+        for (var i = 0; i < W.objects.length; i++) {
+          var o = W.objects[i];
+          if (o.t === 'crevasse' && o.bw && o.d > W.dist + 120 && o.d < W.dist + 300) { cv = o; break; }
+        }
+        if (cv) {
+          found++; sp0 = W.spans;
+          var row = null; for (var r = 0; r < W.rows.length; r++) if (Math.abs(W.rows[r].d - cv.d) < 1) row = W.rows[r];
+          var prev = null; for (r = 0; r < W.rows.length; r++) if (W.rows[r].d < cv.d - 1) prev = W.rows[r];
+          var rel = cv.bx - G._chuteAt(cv.d);
+          if (row && Math.abs(rel - row.gap) < 1) inReach++;                    // in the row's own opening
+          var ramp = W.objects.filter(function (q) { return q.t === 'ramp' && Math.abs(q.d - (cv.d - 52)) < 2; })[0];
+          if (!ramp) clearOfRamp++;                                              // and no ramp with it
+        }
+      }
+      if (cv && W.dist < cv.d + 10) {
+        /* hold him on the span, the hill around it cleared */
+        W.px = cv.bx; W.vx = 0;
+        W.objects = W.objects.filter(function (q) { return q === cv || q.d > cv.d + 40 || q.d < W.dist - 40 || q.t === 'crevasse'; });
+      }
+      H.frames(1);
+      var W2 = G.debug();
+      if (cv && W2 && W2.dist > cv.d + 5) {
+        if (W2.state === 'run' && W2.spans === sp0 + 1) across++;
+        if (W2.airTo > W2.dist) flew++;
+        break;
+      }
+    }
+    G.stop();
+  }
+  ok(found >= 8, 'the hill laid ' + found + ' crevasses with a span across (of those looked at)');
+  ok(across === found, 'on the span he rides across every time, no jump and no fall (' + across + ' of ' + found + ')');
+  ok(flew === 0, 'and he never leaves the ground for it');
+  ok(inReach === found, 'the span lies in the row\'s opening, where the ramp would be (' + inReach + ' of ' + found + ')');
+  ok(clearOfRamp === found, 'and a crevasse with a span has no ramp: one way over or the other (' + clearOfRamp + ' of ' + found + ')');
+  /* about half and half */
+  var withSpan = 0, withRamp = 0, both = 0, neither = 0;
+  for (var s3 = 0; s3 < 8; s3++) {
+    H.setSeed(9100 + s3 * 13); G.start(0, {}, 'snowcap');
+    var seenD = {};
+    for (var f3 = 0; f3 < 9000; f3++) {
+      var W3 = G.debug(); if (!W3) break;
+      if (W3.state === 'crash') { W3.state = 'run'; W3.invuln = 60; }
+      W3.objects.forEach(function (q) {
+        if (q.t !== 'crevasse' || seenD[q.d]) return;
+        seenD[q.d] = 1;
+        var rp = W3.objects.some(function (z) { return z.t === 'ramp' && Math.abs(z.d - (q.d - 52)) < 2; });
+        if (q.bw && rp) both++; else if (q.bw) withSpan++; else if (rp) withRamp++; else neither++;
+      });
+      H.frames(1);
+    }
+    G.stop();
+  }
+  ok(both === 0 && neither === 0 && withSpan > 0.3 * (withSpan + withRamp) && withRamp > 0.3 * (withSpan + withRamp),
+     'over many hills: a span or a ramp on every crevasse, never both, about half each (' + withSpan + ' spans, ' + withRamp + ' ramps)');
+})();
 ok(died >= tried * 0.75,
    'missing the ramp ended the run ' + died + ' times out of ' + tried);
 

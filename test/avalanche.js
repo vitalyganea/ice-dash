@@ -48,11 +48,14 @@ H.setSeed(7);
 G.start(0, {}, 'snowcap', null, 2, { mode: 'avalanche' });
 var W = G.debug();
 var g0 = W.avGap;
-ok(W.mode === 'avalanche' && g0 >= 400, 'starts with a lead on the snow (' + Math.round(g0 / 8) + ' m)');
+/* 1.3.5 (the owner, 23 Nov 2026): the snow in sight from the start, just
+   inside the bottom of the screen, and a little slower than him at first */
+ok(W.mode === 'avalanche' && g0 >= 80 && g0 <= K.VIEW_H - K.PLAYER_Y,
+   'starts with the snow in sight, just behind him (' + Math.round(g0 / 8) + ' m, the screen shows ' + Math.round((K.VIEW_H - K.PLAYER_Y) / 8) + ' m behind)');
 for (var f = 0; f < 300; f++) { clearAhead(G.debug()); H.frames(1); }
 W = G.debug();
-ok(W.state === 'run' && W.avGap <= g0 && W.avGap > g0 - 200,
-   'five seconds of clean riding loses a little of it, not all (' + Math.round(g0 / 8) + ' -> ' + Math.round(W.avGap / 8) + ' m)');
+ok(W.state === 'run' && W.avGap > g0 && W.avGap < g0 + 100,
+   'five seconds of clean riding pulls away from it a little, not out of reach (' + Math.round(g0 / 8) + ' -> ' + Math.round(W.avGap / 8) + ' m)');
 G.stop();
 
 /* ---- B. Freeride is untouched --------------------------------- */

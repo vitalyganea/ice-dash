@@ -19,8 +19,10 @@ work always starts at the top.
    skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
    skill, and on 23 Nov the translation fixes of `i18n-review.md`), ships in
    1.3.5.**
-6. Review every mode: the bugs part first. **Machine pass done 22 Nov 2026, no
-   bugs found; left: the owner's 4 decisions (section below).**
+6. Review every mode: the bugs part first. **Done 23 Nov 2026: no bugs found;
+   the owner decided the 4 points (Avalanche in sight from the start, row 194;
+   modes and events stay as they are; the dragon egg's button in dragon fire;
+   one fish number on the results, row 193), ships in 1.3.5.**
 7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
    live at board.icedasher.workers.dev, ships in 1.3.5; Android checked on the
    OPPO (internal test 27) and the owner's iPhone (TestFlight build 16); left:
