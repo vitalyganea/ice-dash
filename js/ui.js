@@ -912,14 +912,6 @@
       }, function () {});
     });
   }
-  /* an Android head and an iPhone, drawn plain: no maker's logo */
-  var PLAT_SVG = {
-    android: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 12.5a5.5 5.5 0 0 1 11 0z" fill="#2fa86a"/>' +
-             '<path d="M4.6 6.4 3.4 4.4M11.4 6.4l1.2-2" stroke="#2fa86a" stroke-width="1.3" stroke-linecap="round"/>' +
-             '<circle cx="6" cy="10" r=".9" fill="#fff"/><circle cx="10" cy="10" r=".9" fill="#fff"/></svg>',
-    ios: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="4" y="1.5" width="8" height="13" rx="2" fill="none" stroke="#4a5a68" stroke-width="1.4"/>' +
-         '<path d="M6.6 3h2.8" stroke="#4a5a68" stroke-width="1.2" stroke-linecap="round"/></svg>'
-  };
   function boardRow(x) {
     var row = document.createElement('button');
     row.className = 'board-row' + (x.me ? ' me' : '');
@@ -933,15 +925,6 @@
     var who = document.createElement('span');
     who.className = 'board-who';
     who.textContent = x.name || '—';
-    /* the shared board (1.3.5): which phone the player is on, small, before
-       the name; a picture only (the name says who), so nothing to read out */
-    if (x.plat === 'android' || x.plat === 'ios') {
-      var ph = document.createElement('span');
-      ph.className = 'board-plat ' + x.plat;
-      ph.setAttribute('aria-hidden', 'true');
-      ph.innerHTML = PLAT_SVG[x.plat];
-      name.appendChild(ph);
-    }
     name.appendChild(who);
     if (x.me) {
       var you = document.createElement('small');

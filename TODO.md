@@ -566,7 +566,8 @@ rows come from changes. The look stays.
   - `native.js` sends the best and the card to the server as well as to the
     native board, which stays as a backup (and for Game Center
     achievements).
-  - The panel reads the shared rows, with a platform icon next to each name.
+  - The panel reads the shared rows (no mark of the player's phone: the
+    owner, 23 Nov 2026).
   - If the server can't be reached, fall back to today's native rows.
 - **Old scores:** they can't be copied out of the native boards. Each player
   shows up with their saved best the first time they sync (the game sends it

@@ -795,7 +795,7 @@ async function walk(cdp, sid, P) {
 
     /* One board for both phones (1.3.5): once the player is proven to the
        game's server, the board's rows, the player's place and the cards
-       come from it, with each player's phone; a run goes up with its metres
+       come from it; a run goes up with its metres
        and seconds, the save's best once; the server out of reach, the board
        is Play Games' as before. */
     await ev("sessionStorage.setItem('srv','1');localStorage.removeItem('icedash-srv');localStorage.removeItem('icedash-srv-run');1");
@@ -810,11 +810,10 @@ async function walk(cdp, sid, P) {
     await sleep(1200);
     var sb = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row');return {n:r.length," +
       "names:Array.prototype.map.call(r,function(x){return x.querySelector('.board-who').textContent;})," +
-      "plats:Array.prototype.map.call(r,function(x){var p=x.querySelector('.board-plat');return p?p.className.replace('board-plat ',''):'';})," +
       "me:Array.prototype.map.call(document.querySelectorAll('#board-list .board-row.me .board-who'),function(x){return x.textContent;})," +
-      "hidden:Array.prototype.every.call(document.querySelectorAll('.board-plat'),function(x){return x.getAttribute('aria-hidden')==='true';})};})()");
-    ok(sb.n === 3 && sb.names.join() === 'Ana,Vitalie,Ion' && sb.plats.join() === 'ios,android,ios' && sb.me.join() === 'Vitalie' && sb.hidden,
-       'the rows come from the shared board: both phones on it, each with its phone, the player\'s own row marked (' + JSON.stringify(sb) + ')');
+      "plat:document.querySelectorAll('#board-list .board-plat').length};})()");
+    ok(sb.n === 3 && sb.names.join() === 'Ana,Vitalie,Ion' && sb.me.join() === 'Vitalie' && sb.plat === 0,
+       'the rows come from the shared board: both phones on it, no mark of whose phone (the owner, 23 Nov 2026), the player\'s own row marked (' + JSON.stringify(sb) + ')');
     await shot('a9-shared-board');
     var gets = await ev("__srv.gets.slice()");
     ok(gets.some(function (g) { return /^\/v1\/top\?span=all&t=\d+$/.test(g); }) && gets.indexOf('/v1/me') >= 0 && gets.some(function (g) { return /^\/v1\/cards/.test(g); }),
@@ -830,7 +829,7 @@ async function walk(cdp, sid, P) {
     await sleep(2500);
     await clickFor('#title-best', '#screen-board');
     await sleep(1500);
-    ok(await ev("document.querySelectorAll('#board-list .board-row').length") === 101 && await ev("document.querySelectorAll('.board-plat').length") === 0,
+    ok(await ev("document.querySelectorAll('#board-list .board-row').length") === 101,
        'the server out of reach: the board is Play Games\' own, as before');
     await ev("sessionStorage.removeItem('srv');sessionStorage.removeItem('srvDown');localStorage.removeItem('icedash-srv');localStorage.removeItem('icedash-srv-run');1");
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:' + PORT + '/android.html' }, sid);
