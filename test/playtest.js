@@ -1167,9 +1167,22 @@ async function walk(cdp, sid, P) {
   ok(await waitFor('#screen-title'), 'Menu from the pause screen reaches the title');
   ok(await visible('#resume-row'), 'and NOW Continue is offered');
   await clickFor('[data-action="shop"]', '#screen-shop');
+  /* 1.3.5 (the owner: a way to cheat): a life bought and another creature
+     put on while the run waits are for the next run, not this one */
+  var paused0 = await ev("({lives:Game.debug().lives,skin:Game._skinId(),up:JSON.stringify(Game._boosts())})");
+  await ev("(function(){var b=document.querySelector('#shop-supply [data-buy-life]');if(b)b.click();})();1");
+  await clickFor('#shop-grid [data-pick="mitten"]', '#sheet-skin');
+  await click('#sheet-skin-btn');
+  await sleep(150);
+  var sv0 = await readSave();
   await clickFor('#btn-back', '#screen-title');
   await clickFor('[data-action="continue"]', null);
   await sleep(300);
+  var paused1 = await ev("({lives:Game.debug().lives,skin:Game._skinId(),up:JSON.stringify(Game._boosts())})");
+  ok(sv0.lives === paused0.lives + 1 && sv0.equipped === 'mitten',
+     'a life bought and the mitten put on while the run was paused are in the save (' + sv0.lives + ' lives, ' + sv0.equipped + ')');
+  ok(paused1.lives === paused0.lives && paused1.skin === 'seal' && paused1.skin === paused0.skin && paused1.up === paused0.up,
+     'and the run carries on with what it set out with (' + JSON.stringify(paused1) + ')');
   var back = await ev("Game.debug() ? Math.round(Game.debug().dist) : -1");
   /* A range, not a point: the run is moving again by the time it can be
      read, so the thing to check is that it carried on from where it was

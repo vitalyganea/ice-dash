@@ -109,11 +109,13 @@ var Game = (function () {
   var CALL_FRAMES  = 5 * 60;                        // every fish bends to you
   var CREV_SPAN = 150;                  // how wide the hole in the ice is
   /* An event's gifts: one every GIFT_EVERY of hill (45 m) once past the
-     first GIFT_FROM, a little either side of it. Gathered about three in
-     four, that is some 25 on a run of 1,500 m, the owner's 1,000 in about
-     forty runs. Laid off the row's own hash, not Math.random, so a seed
+     first GIFT_FROM, a little either side of it. Laid off the row's own hash, not Math.random, so a seed
      gives the same hill with gifts or without. */
-  var GIFT_EVERY = 360, GIFT_FROM = 800;
+  /* 1.3.5: one gift every ~250 m (was 360 units, ~45 m; the owner, 23 Nov
+     2026: a player had all 1,000 in an hour). The tests' casual rider now
+     takes ~290 an hour (was ~1,140), so the 2,027 of the goal are some 7
+     hours of Freeride before 7 January. */
+  var GIFT_EVERY = 2000, GIFT_FROM = 800;
   /* the dragon's flight (1.3.4): every kilometre, three seconds over it all */
   var SOAR_EVERY = 8000, SOAR_FRAMES = 180;
   var RAMP_LEAD = 52;                   // how far the ramp sits before it
@@ -329,6 +331,10 @@ var Game = (function () {
     w.zoneT = w.hold ? 0 : ZONE_SHOW;
     w.px = chuteAt(0);
     if (perk().startShield) w.shield = 1;
+    /* the trophies' clean stretches (1.3.5): where the stretch without a
+       fish, without a fall or a bubble, and without deep snow began */
+    w.fishFrom = w.cleanFrom = w.snowFrom = w.dist;
+    w.dryBest = 0; w.cleanBest = 0; w.snowBest = 0;
     /* The combo perks: one starts the run of catches already at ten (x2),
        the other carries a token that forgives a single missed fish. */
     w.combo = perk().comboStart || 0;
@@ -1325,6 +1331,7 @@ var Game = (function () {
               * slowmo() * bogged() * tutPace();
     if (W.bog > 0) W.bog--;
     W.dist += W.speed;
+    stretchStep();
     /* The dragon opens his wings every kilometre and flies over everything
        for three seconds. He comes down in a moment's grace, as after a life,
        so nothing he lands on or beside can catch him. */
@@ -1407,12 +1414,12 @@ var Game = (function () {
         if (o.t === 'fish')      {
           if (steered) comboUp();
           var tw = W.twinT > 0 ? 2 : 1;                    // the twin fish: every catch counts twice
-          W.fish++; W.score += 25 * comboMult() * tw;
+          W.fish++; W.score += 25 * comboMult() * tw; W.fishFrom = W.dist;
           W.coins += ((W.fish <= FIRST_CATCH) ? 2 : 1) * tw;   // early catch pays double
           Sfx.berry();
         }
         else if (o.t === 'gold') {
-          if (steered) comboUp(); W.gold++; W.score += 150 * comboMult(); Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12;
+          if (steered) comboUp(); W.gold++; W.fishFrom = W.dist; W.score += 150 * comboMult(); Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12;
           fx('gold');
         }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
@@ -1947,6 +1954,17 @@ var Game = (function () {
   /* What a run comes to, as the results take it: at its end, and when the
      player gives one up from the pause screen (1.3.4: giving up lost the
      best and the fish). */
+  /* The longest of each clean stretch in this run, in metres (the 1.3.5
+     trophies): no fish or golden fish taken; no fall and no bubble held
+     (one held carries him, so the stretch is his own only once it is
+     gone); no deep snow touched, ploughing through it included. */
+  function stretchStep() {
+    if (W.shield > 0) W.cleanFrom = W.dist;
+    if (W.bog > 0) W.snowFrom = W.dist;
+    W.dryBest = Math.max(W.dryBest, Math.floor((W.dist - W.fishFrom) / 8));
+    W.cleanBest = Math.max(W.cleanBest, Math.floor((W.dist - W.cleanFrom) / 8));
+    W.snowBest = Math.max(W.snowBest, Math.floor((W.dist - W.snowFrom) / 8));
+  }
   function runResult() {
     return { score: Math.floor(W.score), dist: Math.floor(W.dist / 8), secs: Math.round(W.t / 6) / 10,   // the run's length (1.3.5: the shared board checks it)
                      fish: W.fish, gold: W.gold, gates: W.gates, saved: W.saved, gifts: W.gifts, kois: W.kois,
@@ -1955,7 +1973,8 @@ var Game = (function () {
                      mode: W.mode, clocks: W.clocks, perfects: W.perfects, perfChain: W.perfChainBest, caught: W.state === 'caught', closes: W.closes, comboBest: W.comboBest,
                      course: W.course ? W.course.id : null,
                      fishTotal: W.fishTotal,
-                     finds: W.finds, revives: W.revives,
+                     finds: W.finds, revives: W.revives, lives: W.lives, skin: skin ? skin.id : '',
+                     dry: W.dryBest || 0, clean: W.cleanBest || 0, noSnow: W.snowBest || 0,
                      rushes: W.rushes, smashed: W.smashed, forks: W.forks,
                      /* Only a crash, the clock or the snow can be walked
                         back, and only while a life is in hand. Crossing
@@ -2075,6 +2094,7 @@ var Game = (function () {
     if (!rescuable() || W.lives <= 0) return false;
     var was = W.state;
     W.lives--; W.revives++;
+    W.cleanFrom = W.dist;                            // a fall: the clean stretch starts again
     W.state = 'run'; W.endT = 0; W.crashAt = null; W.shake = 0;
     if (was === 'timeup') { W.timeT = HEART_TIME; W.penT = 0; }
     if (was === 'caught') W.avGap = Math.max(W.avGap, HEART_AVGAP);
@@ -13347,6 +13367,8 @@ var Game = (function () {
     /* what the player's animal wears: { color, wear } or null (looks) */
     /* the skin the player's animal is in ('' its own coat) */
     setBoosts: function (o) { BOOST = o || {}; },
+    _skinId: function () { return skin ? skin.id : ''; },    // the creature the run is ridden on (tests)
+    _boosts: function () { return BOOST; },
     _drawn: function () { return { n: renders, d: drawnD }; },
     drawKoi: function (c, x, y, r, t, v, bare) { drawKoi(c, x, y, r, t, v, bare); },
     setLook: function (alt) { PLAYER_ALT = ALT_PAINT[alt] ? alt : ''; },

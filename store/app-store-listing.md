@@ -32,6 +32,78 @@ same short name as on Google Play (the owner's choice; "Ice Dasher" was free
 and is held by version 1.2.12). The subtitles stay as above and carry the
 search words.
 
+## What's New in 1.3.5 (23 Nov 2026)
+
+One board for Android and iPhone, spans of ice over crevasses, Avalanche in
+sight, six trophies, the orca redrawn, the New Year goal of 2,027, a fairer
+economy. Under 500 characters each (Google Play's limit).
+
+en:
+```
+• One leaderboard for everyone: Android and iPhone players together
+• Bridges of ice: some crevasses can now be ridden across instead of jumped
+• Avalanche: the snow is in sight from the very start
+• 6 new trophies for clean riding
+• The Orca and her Robot skin redrawn
+• New Year: collect 2,027 gifts in Freeride for the wreath
+• Fairer play: upgrades and golden fish rebalanced, and what you buy during a pause is for your next run
+```
+
+ro:
+```
+• Un singur clasament pentru toți: jucătorii de Android și iPhone împreună
+• Punți de gheață: unele crevase se trec acum pe punte, fără săritură
+• Avalanșa: zăpada se vede chiar de la start
+• 6 trofee noi pentru o coborâre curată
+• Orca și costumul ei Robot, redesenate
+• Anul Nou: strânge 2.027 de cadouri în Freeride pentru coroniță
+• Joc mai corect: îmbunătățirile și peștii aurii reechilibrați, iar ce cumperi în pauză e pentru cursa următoare
+```
+
+ru:
+```
+• Одна таблица лидеров для всех: игроки Android и iPhone вместе
+• Ледяные мостики: некоторые трещины теперь можно переехать, а не перепрыгивать
+• Лавина: снег виден с самого старта
+• 6 новых трофеев за чистую езду
+• Косатка и её облик «Робот» нарисованы заново
+• Новый год: собери 2027 подарков во Фрирайде ради венка
+• Честнее: улучшения и золотые рыбки сбалансированы, а купленное на паузе — для следующего заезда
+```
+
+es (Spain and Mexico):
+```
+• Una sola clasificación para todos: jugadores de Android e iPhone juntos
+• Puentes de hielo: algunas grietas ya se cruzan sin saltar
+• Avalancha: la nieve se ve desde el principio
+• 6 trofeos nuevos por bajar limpio
+• La Orca y su aspecto Robot, redibujados
+• Año Nuevo: reúne 2027 regalos en Freeride para la corona
+• Más justo: mejoras y peces dorados reequilibrados, y lo que compras en pausa es para la siguiente bajada
+```
+
+pt-BR:
+```
+• Um só ranking para todos: jogadores de Android e iPhone juntos
+• Pontes de gelo: algumas fendas agora se atravessam sem pular
+• Avalanche: a neve aparece desde o início
+• 6 novos troféus para descidas limpas
+• A Orca e seu visual Robô redesenhados
+• Ano Novo: junte 2027 presentes no Freeride pela guirlanda
+• Mais justo: melhorias e peixes dourados reequilibrados, e o que você compra na pausa vale para a próxima descida
+```
+
+de:
+```
+• Eine Bestenliste für alle: Android- und iPhone-Spieler zusammen
+• Eisbrücken: über manche Gletscherspalten fährst du jetzt einfach hinüber
+• Lawine: der Schnee ist von Anfang an zu sehen
+• 6 neue Trophäen für saubere Fahrten
+• Die Orca und ihr Kostüm Roboter neu gezeichnet
+• Neujahr: sammle 2027 Geschenke im Freeride für den Kranz
+• Fairer: Upgrades und goldene Fische neu ausbalanciert, und was du in der Pause kaufst, gilt für die nächste Abfahrt
+```
+
 ## What's New in 1.3.4 (21 Nov 2026)
 
 The Dragon's egg and the Sakura Garden, upgrades for the timed pickups, the

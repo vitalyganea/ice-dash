@@ -156,6 +156,24 @@ function fakeCert(spki) {
   let c = await call('GET', '/v1/cards');
   ok(c.j.rows[0].card === 'new42' && c.j.rows[0].k === kA, 'the newest card comes first');
 
+  console.log('\n--- a cheat: banned, reset ---');
+  db.prepare("UPDATE players SET banned = 1 WHERE id = (SELECT id FROM players WHERE plat = 'android')").run();
+  t = await call('GET', '/v1/top?span=all&b=1');
+  ok(t.j.rows.every((x) => x.plat !== 'android'), 'a banned player is off the board');
+  ok((await call('GET', '/v1/cards?b=1')).j.rows.every((x) => x.plat !== 'android'), 'and off the cards');
+  clock += 5000;
+  const sb = await call('POST', '/v1/score', { score: 999999, dist: 40000, secs: 900 }, tA);
+  ok(sb.s === 200 && sb.j.taken === false, 'their score is answered as taken, and kept out');
+  ok(db.prepare("SELECT best FROM players WHERE plat = 'android'").get().best < 999999, 'it never reaches their row');
+  const mb = await call('GET', '/v1/me', null, tA);
+  ok(mb.s === 200 && mb.j.all === null, 'they have no place on the board');
+  db.prepare("UPDATE players SET banned = 0, best = 0, best_t = 0, day_best = 0, week_best = 0, imported = 1 WHERE plat = 'android'").run();
+  clock += 5000;
+  ok((await call('POST', '/v1/score', { score: 4000000, kind: 'best' }, tA)).j.taken === false, 'reset: the save\'s old best is not taken again');
+  clock += 5000;
+  const sr = await call('POST', '/v1/score', { score: 300, dist: 200, secs: 20 }, tA);
+  ok(sr.j.taken === true && db.prepare("SELECT best FROM players WHERE plat = 'android'").get().best === 300, 'and they start again from their next run');
+
   console.log('\n--- forget ---');
   ok((await call('DELETE', '/v1/me', null, tI)).s === 200, 'a player can be removed');
   t = await call('GET', '/v1/top?span=all');

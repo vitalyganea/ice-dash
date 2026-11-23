@@ -1945,7 +1945,8 @@ var ACH_GLYPH = {
   gold1: 'coin', gold25: 'coin', gates100: 'ring', jump1: 'jump', jump50: 'jump', saves10: 'shield', wear3: 'paw', wearAll: 'paw',
   find1: 'gem', find10: 'gem', rush5: 'bolt', smash50: 'burst', revive1: 'heart', forks10: 'fork', lines1: 'path', linesAll: 'path',
   stars18: 'star', rush500: 'watch', rush2000: 'watch', clocks50: 'watch', daily1: 'calendar', streak3: 'calendar', streak7: 'calendar',
-  av500: 'avalanche', av1500: 'avalanche', avrings50: 'ring'
+  av500: 'avalanche', av1500: 'avalanche', avrings50: 'ring',
+  dry500: 'fish', clean1000: 'shield', gold5run: 'coin', combo3: 'bolt', nosnow1500: 'mountain', spans10: 'path'
 };
 /* a medal's metal from what the trophy pays */
 var MEDAL_METAL = {

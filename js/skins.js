@@ -395,7 +395,8 @@ var PROFILE_V = 1;
    slot), as one number in base MEDAL_B. Its low six bits go in the field
    kept for later, the rest above the 42 bits, where a build before 1.3.3
    never looks: it reads the card as it always did, without the medals.
-   Room for 39 trophies (there are 33); 40^3 / 64 = 1000 above the 42
+   Room for 39 trophies, and there are 39 (1.3.5): one more needs a
+   wider medal field first; 40^3 / 64 = 1000 above the 42
    bits keeps it under 2^52, exact in a double, 11 base-36 characters. */
 var MEDAL_B = 40, MEDAL_MAX = 3;
 function medalsCode(list) {

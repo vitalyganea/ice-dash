@@ -64,7 +64,17 @@ var ACHIEVEMENTS = [
      caught (about 700), so it asks for rings taken, not just no mistakes. */
   { id: 'av500',    reward:  75, goal: 500,  stat: function (s) { return s.bestAv; }, go: 'avalanche' },
   { id: 'av1500',   reward: 225, goal: 2500, stat: function (s) { return s.bestAv; }, go: 'avalanche' },
-  { id: 'avrings50',reward: 150, goal: 120,   stat: function (s) { return s.totAvRings; }, go: 'avalanche' }
+  { id: 'avrings50',reward: 150, goal: 120,   stat: function (s) { return s.totAvRings; }, go: 'avalanche' },
+  /* Six asked for by the owner (23 Nov 2026), at the END so the medals on
+     everyone's card keep their numbers (skins.js medalsCode: room for 39,
+     these make 39). Clean stretches within one run, a greedy run, a run of
+     catches at x3 (twenty in a row), and the spans of ice of 1.3.5. */
+  { id: 'dry500',   reward:  60, goal: 500,  stat: function (s) { return s.bestDry; }, go: 'free' },
+  { id: 'clean1000',reward: 120, goal: 1000, stat: function (s) { return s.bestClean; }, go: 'free' },
+  { id: 'gold5run', reward: 200, goal: 5,    stat: function (s) { return s.bestRunGold; }, go: 'free' },
+  { id: 'combo3',   reward:  80, goal: 20,   stat: function (s) { return s.bestCombo; }, go: 'free' },
+  { id: 'nosnow1500',reward: 125, goal: 1500, stat: function (s) { return s.bestNoSnow; }, go: 'free' },
+  { id: 'spans10',  reward:  75, goal: 10,   stat: function (s) { return s.totSpans; }, go: 'free' }
 ];
 
 /* ---- today's tasks ----

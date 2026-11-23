@@ -51,6 +51,9 @@
              /* spare lives bought at the market, and unopened finds */
              lives: 0, finds: 0, totRevives: 0,
              totFinds: 0, totRushes: 0, totSmashed: 0, totForks: 0,
+             /* the 1.3.5 trophies: one run's best clean stretches (metres),
+                golden fish and catches in a row, and the spans crossed */
+             bestDry: 0, bestClean: 0, bestNoSnow: 0, bestRunGold: 0, bestCombo: 0, totSpans: 0,
              /* stars earned per marked run, by id */
              courses: {},
              /* the first-run tutorial has been finished or skipped */
@@ -125,7 +128,8 @@
       if (o.lang) save.lang = o.lang;                // unknown ids fall back inside setLang
       ['totFish','totGold','totGates','totJumps','totSaves','bestDist','bestRunFish',
        'totRevives','totFinds','totRushes','totSmashed','totForks','bestRush','totClocks','bestAv','totAvRings',
-       'dailyStreak','dailyBest','dailyDays']
+       'dailyStreak','dailyBest','dailyDays',
+       'bestDry','bestClean','bestNoSnow','bestRunGold','bestCombo','totSpans']
         .forEach(function (k) { save[k] = Math.max(0, parseInt(o[k], 10) || 0); });
       /* Both are capped on load as well as on purchase: a hand-edited save
          should not be able to hand out a hundred lives. */
@@ -529,6 +533,7 @@
     rideEv = (!lastCourse && !lastMode && typeof liveEvent === 'function') ? liveEvent() : null;
     rideKoi = !lastMode && !!lastCourse && !!(courseById(lastCourse) || {}).koi && typeof dragonOn === 'function' && dragonOn();
     if (Game.setBoosts) Game.setBoosts(save.up);
+    if (Game.setLook) Game.setLook(altOf(save.equipped));
     Game.start(lastMode === 'rush' ? save.bestRush : lastMode === 'avalanche' ? save.bestAv : save.best,
                { hud: function () {}, over: onOver, lesson: onLesson, fx: onFx },
                save.equipped, lastCourse, save.lives || 0, { mode: lastMode, gifts: !!rideEv, koi: rideKoi });
@@ -633,7 +638,9 @@
   }
 
   function showRevive(ad) {
-    var n = ad ? 0 : (save.lives || 0);
+    /* the run's own lives: those it set out with, less those spent; one
+       bought while it was paused waits for the next run */
+    var n = ad ? 0 : Math.min(save.lives || 0, (pendingRes && pendingRes.lives) || 0);
     /* What the life buys: carrying on from the fall, ten more seconds when
        Time Rush's clock has run out, or the snow pushed back in Avalanche. */
     var r = pendingRes || {}, why = r.crashed ? '' : r.mode === 'rush' ? '.time' : r.caught ? '.snow' : '';
@@ -681,18 +688,19 @@
       : t(metres ? 'goal.bestm' : 'goal.best', { n: d }).replace(String(d), num(d));
   }
 
-  /* Back into a paused run, carrying whatever was bought while it waited.
-     The menu is where lives and animals come from, so a run you can pause
-     and shop from has to pick up what you did there. */
+  /* Back into a paused run, with what it set out with and nothing more
+     (1.3.5, the owner: pausing to buy lives, put on another creature or
+     buy an upgrade, then carrying on, was a way to cheat). Whatever was
+     bought while it waited is in the purse for the next run. */
   function carryOn() {
-    if (Game.syncFromSave) Game.syncFromSave(save.lives || 0, save.equipped);
     showGame();
     Game.resume();
   }
 
   var tickT = null;
   function useLife() {
-    if ((save.lives || 0) <= 0) { noLife(); return; }
+    var r = pendingRes || {};
+    if ((save.lives || 0) <= 0 || !(r.lives > 0)) { noLife(); return; }
     countIn(function () {
       save.lives = Math.max(0, (save.lives || 0) - 1);
       store();
@@ -1149,9 +1157,18 @@
     save.totRushes  += res.rushes  || 0;
     save.totSmashed += res.smashed || 0;
     save.totForks   += res.forks   || 0;
+    if (res.course !== 'tutorial') {
+      save.bestDry     = Math.max(save.bestDry || 0, res.dry || 0);
+      save.bestClean   = Math.max(save.bestClean || 0, res.clean || 0);
+      save.bestNoSnow  = Math.max(save.bestNoSnow || 0, res.noSnow || 0);
+      save.bestRunGold = Math.max(save.bestRunGold || 0, res.gold || 0);
+      save.bestCombo   = Math.max(save.bestCombo || 0, res.comboBest || 0);
+      save.totSpans    = (save.totSpans || 0) + (res.spans || 0);
+    }
     var taskWon = (res.course === 'tutorial') ? [] : tasksCheck(save, res, dailyKey());
-    albumAdd(save, save.equipped, res);              // the creature that rode it
-    var storyWon = albumCheck(save, save.equipped);  // pays its chapters' fish
+    var rode = (res.skin && SKIN_BY_ID[res.skin]) ? res.skin : save.equipped;
+    albumAdd(save, rode, res);                       // the creature that rode it, not one put on since
+    var storyWon = albumCheck(save, rode);           // pays its chapters' fish
     var won = achCheck(save);
     store();
     showWon(won, taskWon, storyWon);
@@ -1864,7 +1881,9 @@
      Profile (a frame bought, a title won with a trophy). The catalogue and
      the card's code are in skins.js. */
   function altOf(id) { return save.alts.on[id] || ''; }
-  function applyLook() { if (Game.setLook) Game.setLook(altOf(save.equipped)); }
+  /* a run keeps the look it set out in: one put on while it is paused is
+     worn from the next */
+  function applyLook() { if (Game.setLook && !Game.isRunning()) Game.setLook(altOf(save.equipped)); }
   function ownsAlt(id) { return save.alts.own.indexOf(id) >= 0; }
   /* The face on the card: the avatar picked in My profile while its creature
      (and its skin) are still owned, otherwise the creature being ridden */
@@ -1939,7 +1958,7 @@
     var id = b.getAttribute('data-up'), lv = save.up[id] || 0;
     if (lv >= UP_MAX || !pay({ currency: 'gold', price: UP_COST[lv] })) return;
     save.up[id] = lv + 1;
-    if (Game.setBoosts) Game.setBoosts(save.up);
+    if (Game.setBoosts && !Game.isRunning()) Game.setBoosts(save.up);   // a paused run keeps the levels it set out with
     Sfx.gold(); store(); wallet(); buildUps();
     var r0 = b.getBoundingClientRect();
     screenBurst('gold', r0.left + r0.width / 2, r0.top + r0.height / 2);

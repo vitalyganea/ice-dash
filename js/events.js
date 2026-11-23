@@ -9,17 +9,21 @@
    the end for any step reached in time.
 
    The New Year event (asked for by the owner, 19 Nov 2026): from the
-   update until 7 January 2027, 1,000 gifts in Freeride in four steps, the
+   update until 7 January 2027, 2,027 gifts in Freeride (1,000 until 1.3.5) in four steps, the
    last with an exclusive avatar frame, the wreath. Gifts count only here:
    no points, no fish, so the boards and the market are as they were.
    =========================================================== */
 var EVENTS = [
-  { id: 'ny2027', name: 'ny', ends: [2027, 0, 7], goal: 1000,
+  /* 2,027 gifts for 2027 and gifts four times rarer (the owner, 23 Nov
+     2026: all 1,000 came in an hour). A step is kept by its place in the
+     list (save.ev[id].got), so a step claimed under the old numbers stays
+     claimed, the wreath with it. */
+  { id: 'ny2027', name: 'ny', ends: [2027, 0, 7], goal: 2027,
     stages: [
-      { n: 250,  fish: 500 },
-      { n: 500,  fish: 1000 },
-      { n: 750,  gold: 20 },
-      { n: 1000, fish: 3000, gold: 50, frame: 'wreath' }
+      { n: 500,  fish: 500 },
+      { n: 1000, fish: 1000 },
+      { n: 1500, gold: 20 },
+      { n: 2027, fish: 3000, gold: 50, frame: 'wreath' }
     ] }
 ];
 

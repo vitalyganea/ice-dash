@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS players (
   week_best INTEGER NOT NULL DEFAULT 0,
   last_t    INTEGER NOT NULL DEFAULT 0,   -- the last score taken, ms (a few seconds between)
   imported  INTEGER NOT NULL DEFAULT 0,   -- 1 once the save's old best came in
+  -- 1: off every board and the cards, scores taken without a word and kept
+  -- out (admin.mjs ban; the owner, 23 Nov 2026). On the live database it
+  -- came with ALTER TABLE players ADD COLUMN banned INTEGER NOT NULL DEFAULT 0
+  banned    INTEGER NOT NULL DEFAULT 0,
   created   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS players_best ON players (best DESC, best_t);

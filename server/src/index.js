@@ -23,6 +23,10 @@
      GET    /v1/me     -> {all:{rank,score}, day:{...}, week:{...}}
      GET    /v1/cards  -> {rows:[{name, card, plat, k}]} the hundred newest cards
      DELETE /v1/me     the player's row is removed
+   A cheat is dealt with from the owner's own machine, never over the web:
+   admin.mjs runs SQL on the database through wrangler (ban, unban, reset).
+   A banned player is off every board and the cards, and a score of theirs
+   is answered as if taken, so the app does not keep sending it.
    k is a short keyed hash of the player's id: the app finds its own row
    with it, and nobody learns the id.
    =========================================================== */
@@ -217,6 +221,7 @@ async function score(req, env, id) {
   const row = await env.DB.prepare('SELECT * FROM players WHERE id = ?1').bind(id).first();
   if (!row) throw new HttpError(401, 'no player');
   const now = Date.now(), cd = cleanCard(b.card);
+  if (row.banned) return json({ ok: true, taken: false, best: row.best });
   if (b.kind === 'best') {
     /* the best kept in the save from before this board, once a player */
     if (row.imported) return json({ ok: true, taken: false, best: row.best });
@@ -251,9 +256,9 @@ async function card(req, env, id) {
 }
 
 function spanSql(span, now) {
-  if (span === 'day') return { col: 'day_best', where: 'day = ?1 AND day_best > 0', arg: dayOf(now) };
-  if (span === 'week') return { col: 'week_best', where: 'week = ?1 AND week_best > 0', arg: weekOf(now) };
-  if (span === 'all') return { col: 'best', where: 'best > 0 AND ?1 = ?1', arg: '' };
+  if (span === 'day') return { col: 'day_best', where: 'day = ?1 AND day_best > 0 AND banned = 0', arg: dayOf(now) };
+  if (span === 'week') return { col: 'week_best', where: 'week = ?1 AND week_best > 0 AND banned = 0', arg: weekOf(now) };
+  if (span === 'all') return { col: 'best', where: 'best > 0 AND banned = 0 AND ?1 = ?1', arg: '' };
   throw new HttpError(400, 'span');
 }
 
@@ -284,7 +289,7 @@ async function top(req, env, ctx, span) {
 async function cards(req, env, ctx) {
   return cached(req, ctx, async () => {
     const r = await env.DB.prepare(
-      'SELECT id, plat, name, card FROM players WHERE card <> \'\' ORDER BY card_t DESC LIMIT ' + TOP_N
+      'SELECT id, plat, name, card FROM players WHERE card <> \'\' AND banned = 0 ORDER BY card_t DESC LIMIT ' + TOP_N
     ).all();
     const rows = [];
     for (const x of r.results || []) rows.push({ name: x.name, card: x.card, plat: x.plat, k: await keyOf(x.id, env) });
@@ -298,6 +303,7 @@ async function mine(env, id) {
   const now = Date.now(), out = {};
   for (const span of ['all', 'day', 'week']) {
     const s = spanSql(span, now);
+    if (row.banned) { out[span] = null; continue; }
     const mineScore = span === 'all' ? row.best : (row[span] === s.arg ? row[s.col] : 0);
     if (!mineScore) { out[span] = null; continue; }
     const c = await env.DB.prepare(
