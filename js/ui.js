@@ -901,7 +901,15 @@
      player (by name, all a row has), today's, then this week's, then its
      own. The fresher boards are fetched alongside (fetchFresh). */
   var freshCards = { cards: {}, day: {}, week: {} };
-  function cardCode(x) { var c = x && (x.tag || x.ctx); return c && c !== '0' ? c : 0; }
+  /* A Play Games tag is base 36 (a string, profileFrom parses it so); a
+     Game Center context comes back as a decimal string and must be a number,
+     or profileFrom reads it as base 36 and every iPhone card is lost. */
+  function cardCode(x) {
+    if (!x) return 0;
+    if (x.tag) return x.tag;
+    var n = +x.ctx;
+    return n > 0 && isFinite(n) ? n : 0;
+  }
   function noteCards(span, rows) {
     if (!freshCards[span]) return;
     (rows || []).forEach(function (x) { var c = cardCode(x); if (x && x.name && c) freshCards[span][x.name] = c; });

@@ -231,7 +231,13 @@ var FAKE_NATIVE_IOS = [
   [" prepareRewardVideoAd:function(){__ads.prepared++;", " prepareRewardVideoAd:function(o){__ads.prepared++;__ads.units.push(o.adId);"],
   ["PlayGames:{status:", "GameCenter:{addListener:function(n,f){if(n==='signedIn')on(n,function(){__gcIn=true;f();});return on('x',function(){});},status:"],
   [" submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:true});}__board.submits.push(o.score);return Promise.resolve({sent:true});},",
-   " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:__gcIn});}__board.submits.push(o.score);return Promise.resolve({sent:__gcIn});},"]
+   " submit:function(o){if(o.which==='cards'){__board.cards.push(o);return Promise.resolve({sent:__gcIn});}__board.submits.push(o.score);return Promise.resolve({sent:__gcIn});},"],
+  /* Game Center gives a row's card back as its context, a decimal string
+     (GameCenterPlugin.swift row()), not a base-36 tag: 1.3.1 to 1.3.4 read
+     it as base 36 and showed no iPhone player's card */
+  [" top:function(o){if(o.which==='cards')",
+   " top:function(o){return this.__top0(o).then(function(r){((r&&r.rows)||[]).forEach(function(x){if(x.tag){x.ctx=String(parseInt(x.tag,36));delete x.tag;}});return r;});}," +
+   " __top0:function(o){if(o.which==='cards')"]
 ].reduce(function (s, r) { return swap(s, r[0], r[1]); }, FAKE_NATIVE);
 
 async function walk(cdp, sid, P) {
@@ -419,6 +425,11 @@ async function walk(cdp, sid, P) {
     await sleep(400);
     ok(await ev("document.querySelectorAll('#board-list .board-row').length") === 101 && (await ev("__board.tops"))[0] === 'all',
        'the best opens the board, the rows from Game Center');
+    await sleep(800);
+    var gcAv = await ev("(function(){var r=document.querySelectorAll('#board-list .board-row'),c=function(i,k){return r[i].querySelector('.board-av').classList.contains(k);};" +
+      "return {gold:c(0,'pf-gold'),aurora:c(1,'pf-aurora'),snow:c(2,'pf-snow'),pic:!!r[0].querySelector('.board-av canvas')};})()");
+    ok(gcAv.gold && gcAv.aurora && gcAv.snow && gcAv.pic,
+       'the cards come back from Game Center as a decimal context and show as they went up (' + JSON.stringify(gcAv) + ')');
     await click('.q-opt[data-span="day"]');
     await sleep(300);
     var note = await ev("document.getElementById('board-note').textContent");
