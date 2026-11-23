@@ -247,7 +247,7 @@ HUD, the comic captions, the market rows.
   - PERFECT!/CLOSE! are slid onto the screen near the edge, where half the word used to be lost.
   - The skill: `.claude/skills/visual-qa/`.
 - Left:
-  - The translation list is waiting on the owner. It covers the Freeride name in ro/es/pt/de, trophy/spare-life terms and several outright mistakes.
+  - The translation list is waiting on the owner: `i18n-review.md` (redone 23 Nov 2026, the first one was never written down). It covers the Freeride name in ro/es/pt/de, trophy/spare-life terms and ten outright mistakes.
   - Avatars evened out, 22 Nov 2026. The owner said: "the dragon stays, the rest as detailed as him". The musk ox also stays as in 1.3.3.
     - All creatures got the dragon's finish (`ptFinish` in `js/portraits.js`): a drawn edge on head, shoulders and ears, the underside in shadow and a lit rim. A soft shadow replaced the flat grey ellipse under the chin.
     - The orca, seal, walrus and narwhal were worked up one by one.
