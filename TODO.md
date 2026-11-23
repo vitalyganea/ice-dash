@@ -479,7 +479,7 @@ Asked for by the owner, 22 Nov 2026. The modes today (title screen and the
 1. **Avalanche and Freeride are the same game for a first-timer.** They crash before the snow ever matters. Avalanche only becomes its own game for players who already survive a minute.
 2. **Every mode pays about the same per minute.** Modes are variety and trophies, not a better farm. That is healthy, but nothing pulls a player towards Rush or Avalanche either. Idea: each gets its own board, or its own weekly trophy.
 3. **The Event is not a separate mode.** It is Freeride with gifts on the hill, and the event button opens its page, whose button is Freeride. That is fine, but the "Modes" screen lists it as if it were a mode.
-4. **The results line is confusing.** It shows "fish: 4" (fish caught) while the purse gets 8 (the first catches pay double). The `over-earned` "+8" line says the real number, but two different fish numbers on one card can confuse.
+4. **The results line is confusing.** It shows "fish: 4" (fish caught) while the purse gets 8 (the first catches pay double). The `over-earned` "+8" line says the real number, but two different fish numbers on one card can confuse. **Decided 23 Nov 2026: one number** (SYSTEMS row 193, done).
 
 For each mode:
 

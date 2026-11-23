@@ -1217,8 +1217,11 @@ async function walk(cdp, sid, P) {
   /* what the line under the score says the run paid, and the purse */
   function paidNow() {
     return ev("(function(){var t=document.getElementById('over-earned').textContent,s=JSON.parse(localStorage.getItem('icedash-save-v1')||'{}');" +
-      "var f=/\\+(\\d+)\\u00a0fish/.exec(t),g=/\\+(\\d+)\\u00a0gold/.exec(t);return {lf:f?+f[1]:0,lg:g?+g[1]:0,pf:s.fish||0,pg:s.gold||0};})()");
+      "var f=/\\+(\\d+)\\u00a0fish/.exec(t),g=/\\+(\\d+)\\u00a0gold/.exec(t),d=/fish: (\\d+)/.exec(document.getElementById('over-detail').textContent);" +
+      "return {lf:f?+f[1]:0,lg:g?+g[1]:0,pf:s.fish||0,pg:s.gold||0,df:d?+d[1]:-1};})()");
   }
+  var pr0 = await paidNow();
+  ok(pr0.df === pr0.lf, 'the fish on the results are one number: the detail line says what the line under it does (' + pr0.df + ' and +' + pr0.lf + ')');
   if (await visible('#over-finds')) {
     var opened = 0, prize = '', lineOk = 0, lineBad = [];
     for (var round = 0; round < 2 && await visible('#over-finds'); round++) {
@@ -1241,7 +1244,7 @@ async function walk(cdp, sid, P) {
          the purse (1.3.5, the owner: they seemed lost, the line never moved) */
       await sleep(1100);
       var p1 = await paidNow();
-      if (p1.lf - p0.lf === p1.pf - p0.pf && p1.lg - p0.lg === p1.pg - p0.pg) lineOk++;
+      if (p1.lf - p0.lf === p1.pf - p0.pf && p1.lg - p0.lg === p1.pg - p0.pg && p1.df === p1.lf) lineOk++;
       else lineBad.push(JSON.stringify([p0, p1]));
     }
     ok(opened >= 1, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');

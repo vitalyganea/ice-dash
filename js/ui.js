@@ -743,8 +743,13 @@
      (1.3.5, the owner: they were banked, but the line under the score
      never moved while the prize flew into it, so they seemed lost) */
   var paid = { coins: 0, starPay: 0, gold: 0, doubled: false, findFish: 0, findGold: 0 };
+  var overBits = null;                 // the results' detail line, its fish kept in step with the earned line
   function showEarned() {
     var earned = $('over-earned');
+    if (overBits) {
+      overBits[1] = t('unit.fish') + ': ' + (paid.coins + (paid.findFish || 0));
+      $('over-detail').textContent = overBits.join('  ·  ');
+    }
     var bits = [];
     var fish = paid.coins + (paid.findFish || 0), gold = paid.gold + (paid.findGold || 0);
     if (fish) bits.push('+' + fish + '\u00a0' + t('cur.fish', { n: fish }));
@@ -1137,6 +1142,7 @@
     store();
     showWon(won, taskWon, storyWon);
     paid = { coins: res.coins || 0, starPay: starPay, gold: res.gold || 0, doubled: false, findFish: 0, findGold: 0 };
+    overBits = null;                   // this run's detail line is written below
     showEarned();
     $('over-double').classList.toggle('hidden', !(paid.coins > 0 && adReady()));
     $('over-board').classList.toggle('hidden', !(boardReady() && !cd && !mRun));
@@ -1182,7 +1188,12 @@
     again.classList.toggle('btn-blue', !!nextLine);
     $('over-score').textContent = mRun ? res.dist + '\u00a0' + t('unit.m')
                                           : t('over.points', { n: res.score });
-    var bits = [res.dist + '\u00a0' + t('unit.m'), t('unit.fish') + ': ' + res.fish];
+    /* the fish as the purse takes them, the number the HUD showed through
+       the run and the line under it says: the early catches paying double
+       and the arcs paying too made "fish: 92" stand over "+122 fish" (the
+       owner, 23 Nov 2026: one number). The finds opened here and an ad's
+       double go into it as well (showEarned). */
+    var bits = [res.dist + '\u00a0' + t('unit.m'), t('unit.fish') + ': ' + (res.coins || 0)];
     if (res.gold)  bits.push(t('unit.golden') + ': ' + res.gold);
     if (res.gates) bits.push(t('unit.gates') + ': ' + res.gates);
     if (res.saved) bits.push(t('unit.saves') + ': ' + res.saved);
@@ -1193,6 +1204,7 @@
     if (avRun) bits[0] = t('unit.avrings') + ': ' + (res.gates || 0);
     if (streakNow) bits.push(t('unit.streak', { n: streakNow }));
     $('over-detail').textContent = bits.join('  ·  ');
+    overBits = bits;
     buildFinds(true);
     /* Opening the modes is the biggest thing that happens to a new player
        after the tutorial, and it used to be silent: three buttons quietly
