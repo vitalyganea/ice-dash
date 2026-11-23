@@ -2,27 +2,54 @@
 
 ## Order for the global launch (owner, 22 Nov 2026)
 
-Most critical first. 1.3.5 = items 1–8, then the server items, then the rest.
+Most critical first. 1.3.5 = items 1–9, then the server items, then the rest.
 Every new item gets its place here when it is added (rule in CLAUDE.md);
 work always starts at the top.
 
-1. The close button under a player's card (minutes).
-2. No vibration on a golden fish (minutes, ships with 1).
-3. Crash and error reporting (below).
-4. Visual quality: text that fits, translations, the palette and contrast
+1. The close button under a player's card (minutes). **Done 22 Nov 2026, ships in 1.3.5.**
+2. No vibration on a golden fish (minutes, ships with 1). **Done 22 Nov 2026, ships in 1.3.5.**
+3. The ×2/×3 that seems to come from nowhere (below). **Done 22 Nov 2026, ships in 1.3.5.**
+4. Crash and error reporting (below).
+5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
    skill to keep it so.
-5. Review every mode: the bugs part first.
-6. A better performance test, on many devices.
-7. Economy: upgrades cost more, fewer golden fish (before many new players
+6. Review every mode: the bugs part first.
+7. A better performance test, on many devices.
+8. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
-8. Store listings and SEO/ASO in every language (below). Also pause the old
+9. Store listings and SEO/ASO in every language (below). Also pause the old
    Play closed-testing track "1.0" (the AD_ID error).
-9. The rest of the brand book (the written book, store art style).
-10. One leaderboard for Android and iPhone.
-11. Play Games / Game Center achievements.
-12. The transfer code.
-13. Avatars, second pass.
+10. The rest of the brand book (the written book, store art style).
+11. One leaderboard for Android and iPhone.
+12. Play Games / Game Center achievements.
+13. The transfer code.
+14. Avatars, second pass.
+
+## The ×2/×3 that seems to come from nowhere
+
+Reported by the owner, 22 Nov 2026: with some creatures, "×2", "×3" turns up
+by itself, without the player doing anything.
+
+What it most likely is (to confirm by playing): the yellow pill next to the
+score is the catch multiplier, `comboMult()` in `js/game.js` (1 + one per ten
+fish in a row, up to ×3, on points only). `comboUp()` counts every fish
+caught. With creatures that pull fish in by themselves (magnet or reach
+perks), or with the puffin keeping the run (`comboKeep`, the pill flashing
+white), the run of catches grows without the player aiming, so the ×2/×3
+pops up unexplained. The "CLOSE! ×2" of the leopard and "PERFECT! ×N" are
+other ×-words that may be mistaken for it.
+
+- First reproduce it: which creatures, which ×, where on screen (a
+  screenshot or a recording from the owner helps).
+- Then fix by making it understood, or by changing the rule:
+  - The pill says what it is ("combo ×2" / a fish icon with the count to the
+    next step), with a short pop and a sound when it rises, and a "combo
+    lost" when it resets.
+  - A line about it in the tutorial / first run.
+  - Maybe count only fish the player steered to, not those pulled in by a
+    perk (check what this does to the perk's worth in `test/perks.js`).
+- Check that every ×-word is in all 6 languages and doesn't collide with the
+  others on screen.
 
 ## Crash and error reporting
 
@@ -188,6 +215,22 @@ artist went over it. Three things give it away: the avatars are uneven, about
 together with the brand book below, should take graphics to ~75. Every word
 must show properly on every screen: buttons, tabs, prices, pills, popups, the
 HUD, the comic captions, the market rows.
+
+**Progress, 22 Nov 2026:**
+- Done:
+  - `test/textfit.js` (real Chrome, 22 screens, 6 languages × 4 widths). It checks fit, clipping and "…", 3-line buttons, WCAG contrast, and the HUD's painted words per phone width.
+  - Fixed the task rows in de/ru/es and the RO modes button.
+  - Gold words on pale ground were at 2.4:1. They are now `--gold-ink`.
+  - Darker title ribbons on the profile card, the "worn" tick and the red button's text.
+  - PERFECT!/CLOSE! are slid onto the screen near the edge, where half the word used to be lost.
+  - The skill: `.claude/skills/visual-qa/`.
+- Left:
+  - The translation list is waiting on the owner. It covers the Freeride name in ro/es/pt/de, trophy/spare-life terms and several outright mistakes.
+  - Avatars evened out, 22 Nov 2026. The owner said: "the dragon stays, the rest as detailed as him". The musk ox also stays as in 1.3.3.
+    - All creatures got the dragon's finish (`ptFinish` in `js/portraits.js`): a drawn edge on head, shoulders and ears, the underside in shadow and a lit rim. A soft shadow replaced the flat grey ellipse under the chin.
+    - The orca, seal, walrus and narwhal were worked up one by one.
+    - The 18 alternate skins still draw correctly (test/out/avatars-*.png).
+  - The rest of the palette goes with the brand book (item 10).
 
 **A skill for it.** Write a project skill once (`.claude/skills/visual-qa/`,
 with the skill-creator), so every later change gets the same check without
@@ -374,6 +417,45 @@ Asked for by the owner, 22 Nov 2026. The modes today (title screen and the
   - New Year (`btn-event`, `js/events.js`).
   - The dragon egg, Sakura Garden (`btn-dragon`).
 - **The tutorial / First Light** (`tut-first`).
+
+**Findings, 22 Nov 2026 (first pass, by the machine):**
+
+*Real-Chrome walk (390 px).* Each mode was played start to end:
+
+| Mode | Start | Pause/resume | Spare life (3-2-1, carry on) | Results | Fish paid once | Console errors |
+|---|---|---|---|---|---|---|
+| Freeride | ok | ok | ok | ok | ok | 0 |
+| Known Line (First Light) | ok | — | ok | ok | ok | 0 |
+| Daily | ok | — | ok | ok | ok | 0 |
+| Rush | ok | ok | ok | ok | ok | 0 |
+| Avalanche | ok | ok | ok | ok | ok | 0 |
+| Event (New Year) | ok | ok | ok | ok | ok | 0 |
+| Dragon / Sakura | ok | — | ok | ok | ok | 0 |
+
+- "—" means the bot crashed before it could pause.
+- **No player-facing bug found.**
+- A pause tapped during the crash does nothing, so it cannot strand a run. The resume button only stranded a run when a script clicked it while hidden.
+
+*Simulated players* (the `ladder.js` bot, 12 runs each). Fish per minute:
+
+| Mode | First-timer | Casual | Run length (first-timer / casual) |
+|---|---|---|---|
+| Freeride | 58 | 65 | 27 / 78 s |
+| Rush | 57 | 61 | 24 / 29 s |
+| Avalanche | 58 | 62 | 27 / 64 s |
+| Daily | 85 | 73 | — |
+| Known Lines | ~60 | ~60 | — |
+
+- Daily pays a bit more, which suits a daily habit.
+- Finish rate on the first Known Line: 33% for first-timers, 92% for casual players.
+- Finish rate on Daily: 8% for first-timers, 83% for casual players.
+- Finish rate on Sakura: 8% for first-timers, 75% for casual players.
+
+**Points for the owner to decide:**
+1. **Avalanche and Freeride are the same game for a first-timer.** They crash before the snow ever matters. Avalanche only becomes its own game for players who already survive a minute.
+2. **Every mode pays about the same per minute.** Modes are variety and trophies, not a better farm. That is healthy, but nothing pulls a player towards Rush or Avalanche either. Idea: each gets its own board, or its own weekly trophy.
+3. **The Event is not a separate mode.** It is Freeride with gifts on the hill, and the event button opens its page, whose button is Freeride. That is fine, but the "Modes" screen lists it as if it were a mode.
+4. **The results line is confusing.** It shows "fish: 4" (fish caught) while the purse gets 8 (the first catches pay double). The `over-earned` "+8" line says the real number, but two different fish numbers on one card can confuse.
 
 For each mode:
 

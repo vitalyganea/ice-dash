@@ -95,8 +95,38 @@ function ptCheeks(c, cx, cy, gap, col) {
   [-1, 1].forEach(function (s) { ptEll(c, cx + s * gap, cy, 5, 3); c.fill(); });
 }
 function ptShade(c, x, y, rx, ry, a) {
-  c.fillStyle = 'rgba(15,22,40,' + (a || 0.28) + ')'; ptEll(c, x, y, rx, ry); c.fill();
+  if (PT_OLD) { c.fillStyle = 'rgba(15,22,40,' + (a || 0.28) + ')'; ptEll(c, x, y, rx, ry); c.fill(); return; }
+  /* a soft shadow, densest at its middle and gone at its edge (a flat grey
+     ellipse under the chin read as a mistake: the owner, 22 Nov 2026) */
+  c.save(); c.translate(x, y); c.scale(1, ry / rx);
+  var g = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+  g.addColorStop(0, 'rgba(10,16,34,' + ((a || 0.28) * 1.35) + ')'); g.addColorStop(0.55, 'rgba(10,16,34,' + ((a || 0.28) * 0.7) + ')'); g.addColorStop(1, 'rgba(10,16,34,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, rx, 0, 6.2832); c.fill();
+  c.restore();
 }
+/* ---- the finish (22 Nov 2026, the owner: every face as worked as the
+   dragon's) ----
+   What the dragon has and the others lacked: a drawn edge, the underside
+   in shadow, a lit rim where the sky catches it, and texture. These run
+   over a shape already painted; `path` lays the shape down again. The
+   musk ox and the dragon keep their own finish (PT_OLD). */
+var PT_OLD = false;
+function ptFinish(c, path, x, y, rx, ry, dark, o) {
+  if (PT_OLD) return;
+  o = o || {};
+  c.save(); path(); c.clip();
+  /* the underside: the shape curving away from the light */
+  var ao = c.createRadialGradient(x - rx * 0.25, y - ry * 0.45, Math.min(rx, ry) * 0.35, x, y, Math.max(rx, ry) * 1.12);
+  ao.addColorStop(0, 'rgba(0,0,0,0)'); ao.addColorStop(0.7, 'rgba(0,0,0,0)'); ao.addColorStop(1, 'rgba(8,12,28,' + (o.ao || 0.3) + ')');
+  c.fillStyle = ao; c.fillRect(x - rx - 2, y - ry - 2, rx * 2 + 4, ry * 2 + 4);
+  /* the lit rim, top left, where the sky catches the edge */
+  c.lineWidth = Math.max(1.4, rx * 0.09); c.strokeStyle = 'rgba(225,245,255,' + (o.rim || 0.38) + ')';
+  c.translate(1.1, 1.3); path(); c.stroke();
+  c.restore();
+  /* the drawn edge */
+  c.strokeStyle = dark; c.lineWidth = o.lw || 0.9; path(); c.stroke();
+}
+function ptOutlineCol(col) { return ptLit(col, -0.62); }
 function ptSparkle(c, x, y, r, col) {
   c.fillStyle = col || '#ffffff';
   c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x + r * 0.18, y - r * 0.18, x + r, y); c.quadraticCurveTo(x + r * 0.18, y + r * 0.18, x, y + r);
@@ -223,6 +253,7 @@ function ptPenguin(c, S, P, o) {
   c.globalAlpha = 0.45; ptFur(c, 50, 86, 22, 16, '#c3ccd6', 220, 1, 3); c.globalAlpha = 1;   // the white front's feathers, close
   c.restore();
   if (o.chest) o.chest(c);
+  ptFinish(c, function () { ptEll(c, 50, 100, 36, 32); }, 50, 100, 36, 32, ptOutlineCol(body[2]), { ao: 0.2, rim: 0.3 });
   ptShade(c, 53, 70, 24, 8, 0.28);
   c.restore();
   /* the head: its size and shape the kind's own (1.3.4) */
@@ -276,6 +307,7 @@ function ptPenguin(c, S, P, o) {
   c.restore();
   c.fillStyle = 'rgba(255,255,255,.14)'; ptEll(c, 39, 30, 10, 5, -0.5); c.fill();
   c.strokeStyle = 'rgba(120,150,200,.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(50, 45, HW - 0.6, HH - 0.6, 0, 3.3, 4.7); c.stroke();
+  ptFinish(c, function () { ptEll(c, 50, 45, HW, HH); }, 50, 45, HW, HH, ptOutlineCol(body[2]), { ao: 0.26 });
   if (!o.noCheeks) ptCheeks(c, 50, 55, 18, o.cheek);
   ptEyes(c, 50, 43, 11, 6.6, { ring: o.ring !== undefined ? o.ring : (f === 'adelie' ? '#f6f9fc' : f === 'puffin' ? '#e8553a' : null), dead: o.dead, veins: o.veins, iris: o.iris || P.iris });
   if (f === 'puffin') {                            // the little dark marks fore and aft of a puffin's eye
@@ -433,6 +465,7 @@ function ptBust(c, body, o) {
     c.fillStyle = 'rgba(255,255,255,.1)'; ptEll(c, 34, 82, 12, 5, -0.4); c.fill();
   }
   if (o.chest) o.chest(c);
+  ptFinish(c, function () { ptEll(c, 50, 101, o.w || 38, 32); }, 50, 101, o.w || 38, 32, ptOutlineCol(body[2]), { ao: 0.2, rim: 0.3 });
   ptShade(c, 53, 71, o.sw || 24, 8, 0.28);
   c.restore();
 }
@@ -483,6 +516,7 @@ function ptHead(c, x, y, rx, ry, body, fur, shape) {
   c.fillStyle = rim; c.fillRect(x - rx, y - ry, rx * 2, ry * 2);
   c.restore();
   c.fillStyle = 'rgba(255,255,255,.12)'; ptEll(c, x - rx * 0.38, y - ry * 0.55, rx * 0.34, ry * 0.18, -0.5); c.fill();
+  ptFinish(c, function () { ptHeadPath(c, shape, x, y, rx, ry); }, x, y, rx, ry, ptOutlineCol(body[2]));
 }
 function ptMuzzle(c, x, y, rx, ry, col) {
   var g = c.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 0.5, x, y, Math.max(rx, ry));
@@ -493,6 +527,7 @@ function ptMuzzle(c, x, y, rx, ry, col) {
 function ptRoundEars(c, x, y, gap, r, back, inner) {
   [-1, 1].forEach(function (s) {
     c.fillStyle = back; ptEll(c, x + s * gap, y, r, r * 0.92); c.fill();
+    if (!PT_OLD && back.charAt(0) === '#') { c.strokeStyle = ptOutlineCol(back); c.lineWidth = 0.8; c.stroke(); }
     c.fillStyle = inner; ptEll(c, x + s * gap + s * 0.4, y + 0.6, r * 0.55, r * 0.5); c.fill();
   });
 }
@@ -503,9 +538,30 @@ PORTRAIT.seal = function (c, S) {
   /* her front flippers, held up at the sides */
   [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 30, 84); c.rotate(s * 0.4); c.scale(0.7, 0.7); ptFlipper(c, 'seal', S.flipper, s); c.restore(); });
   ptHead(c, 50, 46, 27, 25, b, 0, 'dome');
-  c.fillStyle = 'rgba(40,50,60,.22)';
-  [[33, 32, 3.4], [64, 30, 2.8], [70, 48, 2.4], [28, 50, 2.6], [56, 24, 2]].forEach(function (d) { ptEll(c, d[0], d[1], d[2], d[2] * 0.75, 0.4); c.fill(); });
+  /* her coat (22 Nov 2026, the dragon's finish): close short fur with a
+     sheen, and a ringed seal's markings, dark spots and pale-centred rings
+     scattered over her crown, cheeks and shoulders, smaller toward the face */
+  var spots = function (cx, cy, rx, ry, n, seed) {
+    for (var i = 0; i < n; i++) {
+      var a2 = ptH(i * 7.3 + seed) * 6.2832, rr = Math.sqrt(ptH(i * 3.9 + seed)), x = cx + Math.cos(a2) * rx * rr, y = cy + Math.sin(a2) * ry * rr;
+      if (Math.abs(x - 50) < 13 && y > 48 && y < 66) continue;                       // the muzzle stays clean
+      var r = 0.7 + ptH(i * 1.7 + seed) * 1.7, rot = ptH(i + seed) * 3;
+      c.fillStyle = 'rgba(38,46,58,.42)'; ptEll(c, x, y, r * 1.3, r, rot); c.fill();
+      if (r > 1.5) { c.fillStyle = ptLit(b[1], 0.08); ptEll(c, x, y, r * 0.65, r * 0.45, rot); c.fill(); }   // a ring's pale middle
+    }
+  };
+  c.save(); ptHeadPath(c, 'dome', 50, 46, 27, 25); c.clip();
+  c.globalAlpha = 0.5; ptFur(c, 50, 44, 27, 25, b[1], 240, 0.9, 5); c.globalAlpha = 1;
+  spots(50, 44, 27, 25, 46, 2);
+  c.restore();
+  c.save(); ptClip(c); c.beginPath(); c.ellipse(50, 101, 38, 32, 0, 0, 6.2832); c.clip(); spots(50, 92, 38, 18, 34, 9); c.restore();
   ptMuzzle(c, 50, 58, 13, 8.6, S.mark);
+  /* the whisker pads, swelling either side under her nose */
+  [-1, 1].forEach(function (s) { var wp = c.createRadialGradient(50 + s * 5.4, 58, 0.5, 50 + s * 5.4, 58.6, 6.4); wp.addColorStop(0, 'rgba(255,255,255,.25)'); wp.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = wp; ptEll(c, 50 + s * 5.4, 58.6, 6.4, 4.6); c.fill(); });
+  /* the brow whiskers, a few long hairs over each eye */
+  c.strokeStyle = 'rgba(240,245,250,.7)'; c.lineWidth = 0.4; c.beginPath();
+  [-1, 1].forEach(function (s) { [0, 1.6].forEach(function (d) { c.moveTo(50 + s * (9 + d), 33.6 - d * 0.4); c.quadraticCurveTo(50 + s * (14 + d), 28 - d, 50 + s * (19 + d), 27 - d * 0.6); }); });
+  c.stroke();
   ptEyes(c, 50, 42, 12, 7.2, { iris: '#141820' });
   /* a seal's nostrils: two slits closing in a V over the muzzle (a round
      nose made her a dog) */
@@ -529,7 +585,7 @@ PORTRAIT.otter = function (c, S) {
   /* a sea otter's head is pale, grizzled cream all over, broad and flat,
      her ears small and low at its sides, her nose broad, flat and dark
      (a brown hood round a pale face, round ears on top, made her a bear) */
-  [-1, 1].forEach(function (s) { c.fillStyle = ptLit(S.mark, -0.35); ptEll(c, 50 + s * 26.4, 42, 2.6, 2.2); c.fill(); c.fillStyle = 'rgba(120,90,60,.6)'; ptEll(c, 50 + s * 26.6, 42.2, 1.2, 1); c.fill(); });
+  [-1, 1].forEach(function (s) { c.fillStyle = ptLit(S.mark, -0.35); ptEll(c, 50 + s * 26.4, 42, 2.6, 2.2); c.fill(); c.strokeStyle = ptOutlineCol(S.mark); c.lineWidth = 0.7; c.stroke(); c.fillStyle = 'rgba(120,90,60,.6)'; ptEll(c, 50 + s * 26.6, 42.2, 1.2, 1); c.fill(); });
   ptHead(c, 50, 47, 27, 23, [ptLit(S.mark, 0.35), S.mark, ptLit(S.mark, -0.3)], true, 'otter');
   c.strokeStyle = 'rgba(150,120,90,.25)'; c.lineWidth = 0.6; c.beginPath();
   for (var gq = 0; gq < 16; gq++) { var ga = 3.4 + gq * 0.19; c.moveTo(50 + Math.cos(ga) * 20, 47 + Math.sin(ga) * 17); c.lineTo(50 + Math.cos(ga) * 25.4, 47 + Math.sin(ga) * 21.6); }
@@ -666,8 +722,12 @@ PORTRAIT.reindeer = function (c, S, o) {
   /* his ears, out to the sides */
   [-1, 1].forEach(function (s) {
     c.save(); c.translate(50 + s * 24, 32); c.rotate(s * 0.9);
-    c.fillStyle = b[1]; ptEll(c, 0, 0, 4, 8.4); c.fill();
+    c.fillStyle = ptRound(c, 0, 0, 4, 8.4, [ptLit(b[0], 0.1), b[1], b[2]]); ptEll(c, 0, 0, 4, 8.4); c.fill();
     c.fillStyle = 'rgba(240,210,190,.7)'; ptEll(c, 0, 0.6, 2, 5.4); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 0.35; c.beginPath();     // the pale hairs inside it
+    for (var eh = -1; eh <= 1; eh++) { c.moveTo(eh * 0.7, 4.6); c.lineTo(eh * 1.2, -2.6); }
+    c.stroke();
+    c.strokeStyle = ptOutlineCol(b[2]); c.lineWidth = 0.8; ptEll(c, 0, 0, 4, 8.4); c.stroke();
     c.restore();
   });
   /* a long face, narrowing to a broad, pale, furred muzzle (a round face
@@ -679,6 +739,7 @@ PORTRAIT.reindeer = function (c, S, o) {
   c.fillStyle = rm; c.beginPath(); c.moveTo(39, 58); c.quadraticCurveTo(50, 53, 61, 58); c.quadraticCurveTo(63, 68, 58, 73); c.quadraticCurveTo(50, 77, 42, 73); c.quadraticCurveTo(37, 68, 39, 58); c.closePath(); c.fill();
   c.save(); c.beginPath(); c.moveTo(50, 22); c.bezierCurveTo(66, 22, 72, 36, 69, 48); c.bezierCurveTo(66, 60, 62, 70, 50, 74); c.bezierCurveTo(38, 70, 34, 60, 31, 48); c.bezierCurveTo(28, 36, 34, 22, 50, 22); c.clip();
   ptFur(c, 50, 44, 20, 26, b[1], 300, 2, 21); c.restore();
+  ptFinish(c, function () { c.beginPath(); c.moveTo(50, 22); c.bezierCurveTo(66, 22, 72, 36, 69, 48); c.bezierCurveTo(66, 60, 62, 70, 50, 74); c.bezierCurveTo(38, 70, 34, 60, 31, 48); c.bezierCurveTo(28, 36, 34, 22, 50, 22); c.closePath(); }, 50, 47, 20, 27, ptOutlineCol(b[2]));
   ptEyes(c, 50, 43, 12, 5.6, { iris: '#20160f' });
   if (o.nose) o.nose(c);
   else ptNose(c, 50, 64, 5, S.nose);
@@ -696,6 +757,7 @@ PORTRAIT.hare = function (c, S, o) {
     c.fillStyle = ptRound(c, -1, -12, 6, 16, b, 0.5, 0.3); ear(); c.fill();
     c.fillStyle = 'rgba(250,190,190,.7)'; c.beginPath(); c.moveTo(-2.4, 0); c.bezierCurveTo(-3.6, -12, -2.6, -21, 0, -24); c.bezierCurveTo(2.6, -21, 3.6, -12, 2.4, 0); c.closePath(); c.fill();
     c.save(); ear(); c.clip(); c.fillStyle = o.earTip || S.nose; ptEll(c, 0, -30, 8, 7); c.fill(); c.restore();
+    c.strokeStyle = ptOutlineCol(b[2]); c.lineWidth = 0.8; ear(); c.stroke();
     c.restore();
   });
   ptHead(c, 50, 48, 24, 23, b, true, 'hare');
@@ -763,6 +825,25 @@ PORTRAIT.walrus = function (c, S, o) {
   [80, 86, 92].forEach(function (y) { c.moveTo(18, y + 4); c.quadraticCurveTo(50, y - 4, 82, y + 4); }); c.stroke(); c.restore();
   ptHead(c, 50, 45, 30, 25, b, 0, 'walrus');
   c.strokeStyle = 'rgba(60,30,20,.3)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(36, 30); c.quadraticCurveTo(50, 26, 64, 30); c.moveTo(38, 34); c.quadraticCurveTo(50, 31, 62, 34); c.stroke();
+  /* (22 Nov 2026, the dragon's finish) his hide: lumpy, creased round the
+     eyes and down the cheeks, pinker where it is thin, scarred */
+  c.save(); ptHeadPath(c, 'walrus', 50, 45, 30, 25); c.clip();
+  for (var wk = 0; wk < 70; wk++) {                                             // the lumps, each lit on top
+    var wx = 22 + ptH(wk * 2.3 + 4) * 56, wy = 22 + ptH(wk * 1.9 + 8) * 44, wr = 0.8 + ptH(wk * 5.1) * 1.4;
+    if (wy > 44 && Math.abs(wx - 50) < 18) continue;
+    c.fillStyle = 'rgba(60,28,18,.18)'; ptEll(c, wx + 0.3, wy + 0.4, wr, wr * 0.8); c.fill();
+    c.fillStyle = 'rgba(255,220,200,.12)'; ptEll(c, wx - 0.2, wy - 0.3, wr * 0.6, wr * 0.45); c.fill();
+  }
+  var pk = c.createRadialGradient(50, 36, 2, 50, 36, 18); pk.addColorStop(0, 'rgba(230,150,130,.22)'); pk.addColorStop(1, 'rgba(230,150,130,0)');
+  c.fillStyle = pk; ptEll(c, 50, 36, 18, 12); c.fill();
+  c.strokeStyle = 'rgba(60,30,20,.38)'; c.lineWidth = 0.55; c.beginPath();
+  [-1, 1].forEach(function (s) {
+    [0, 1.8, 3.6].forEach(function (d) { c.moveTo(50 + s * (19 + d), 34 + d * 0.6); c.quadraticCurveTo(50 + s * (22 + d), 40 + d, 50 + s * (20 + d * 0.6), 47 + d); });   // creases at the eyes' corners
+    c.moveTo(50 + s * 23, 48); c.quadraticCurveTo(50 + s * 27, 56, 50 + s * 24, 64);                                                                                     // down the cheek
+  });
+  c.stroke();
+  c.strokeStyle = 'rgba(255,225,205,.3)'; c.lineWidth = 0.45; c.beginPath(); c.moveTo(60, 24); c.lineTo(66, 31); c.moveTo(61.6, 23.6); c.lineTo(67.4, 30); c.stroke();   // an old scar
+  c.restore();
   ptEyes(c, 50, 38, 13, 5, { iris: '#2a1810' });
   /* the tusks, long and ivory, down from under his lip */
   [-1, 1].forEach(function (s) {
@@ -770,7 +851,13 @@ PORTRAIT.walrus = function (c, S, o) {
     c.fillStyle = 'rgba(15,22,40,.3)'; tk(1.2, 1.6); c.fill();
     var g = c.createLinearGradient(50 + s * 1.4, 0, 50 + s * 8, 0); g.addColorStop(0, '#fffdf4'); g.addColorStop(1, '#d4c6a4');
     c.fillStyle = g; tk(0, 0); c.fill();
-    c.strokeStyle = 'rgba(120,100,70,.5)'; c.lineWidth = 0.5; tk(0, 0); c.stroke();
+    c.save(); tk(0, 0); c.clip();                                                 // the ivory's growth lines, and a worn tip
+    c.strokeStyle = 'rgba(150,125,85,.35)'; c.lineWidth = 0.35; c.beginPath();
+    for (var ty = 62; ty < 90; ty += 2.6) { c.moveTo(50 + s * 0.5, ty); c.lineTo(50 + s * 9, ty + 1.2); }
+    c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.5)'; ptEll(c, 50 + s * 3.4, 70, 0.7, 7, -s * 0.12); c.fill();
+    c.restore();
+    c.strokeStyle = 'rgba(70,55,35,.7)'; c.lineWidth = 0.6; tk(0, 0); c.stroke();
   });
   /* the whiskered pad, two lobes, bristles in rows */
   [-1, 1].forEach(function (s) { c.fillStyle = 'rgba(15,22,40,.25)'; ptEll(c, 50 + s * 8 + 0.8, 53.4, 10.6, 8); c.fill(); });
@@ -926,24 +1013,72 @@ PORTRAIT.dragon = function (c, S, o) {
   });
 };
 PORTRAIT.orca = function (c, S, o) {
+  /* 22 Nov 2026, worked up to the dragon's finish: the white patches are
+     markings above and behind her eyes, edged and shaded (soft white blobs
+     read as glare); the white of her chin and front is shaded round her
+     body; the grey saddle behind her shoulders; her skin glossy, with the
+     pale rake marks every orca carries from her family's teeth. */
   o = o || {};
-  var b = o.body || S.body, mark = o.mark || S.mark;
-  ptBust(c, b, { front: mark, fw: 22, chest: o.chest, skin: true });
+  var b = o.body || S.body, mark = o.mark || S.mark, white = o.mark ? ptLit(mark, 0.3) : '#ffffff';
+  ptBust(c, b, { front: mark, fw: 22, chest: function (cc) {
+    if (!o.noPatches) [-1, 1].forEach(function (s2) {             // the grey saddle, low on either shoulder
+      var sg = cc.createRadialGradient(50 + s2 * 34, 92, 1, 50 + s2 * 34, 92, 13);
+      sg.addColorStop(0, 'rgba(170,180,195,.55)'); sg.addColorStop(1, 'rgba(170,180,195,0)');
+      cc.fillStyle = sg; ptEll(cc, 50 + s2 * 34, 92, 13, 9, s2 * 0.5); cc.fill();
+    });
+    if (o.chest) o.chest(cc);
+  }, skin: true });
   [-1, 1].forEach(function (s) { c.save(); c.translate(50 + s * 31, 82); c.rotate(s * 0.5); c.scale(0.78, 0.78); ptFlipper(c, 'whale', S.flipper, s); c.restore(); });
   ptHead(c, 50, 46, 28, 26, b);
+  c.save(); ptEll(c, 50, 46, 28, 26); c.clip();
+  /* rake marks: pale scratches in pairs and threes, on her cheeks and crown */
+  c.strokeStyle = 'rgba(200,215,230,.22)'; c.lineWidth = 0.35; c.beginPath();
+  [[30, 50, 0.9], [66, 54, -0.8], [60, 26, 0.3], [34, 30, -0.4]].forEach(function (r) {
+    for (var k = 0; k < 3; k++) { var dx = Math.cos(r[2] + 1.57) * k * 1.3, dy = Math.sin(r[2] + 1.57) * k * 1.3;
+      c.moveTo(r[0] + dx - Math.cos(r[2]) * 4, r[1] + dy - Math.sin(r[2]) * 4); c.lineTo(r[0] + dx + Math.cos(r[2]) * 4, r[1] + dy + Math.sin(r[2]) * 4); }
+  });
+  c.stroke();
+  c.restore();
   if (!o.noPatches) {
-    /* the white patches behind her eyes and the white of her chin */
-    [-1, 1].forEach(function (s) { var g = c.createRadialGradient(50 + s * 18, 33, 1, 50 + s * 18, 34, 8); g.addColorStop(0, '#ffffff'); g.addColorStop(1, ptLit(mark, -0.12)); c.fillStyle = g; ptEll(c, 50 + s * 17.6, 33.4, 7.6, 4.6, s * 0.5); c.fill(); });
-    /* the white of her throat, running on down into her front (a closed
-       white crescent under the mouth read as a grin) */
-    var cg = c.createLinearGradient(0, 58, 0, 76); cg.addColorStop(0, ptLit(mark, -0.25)); cg.addColorStop(0.5, ptLit(mark, -0.05)); cg.addColorStop(1, o.mark ? ptLit(mark, 0.3) : '#ffffff');
+    /* the eye patches: long ovals tilted up and out, above and behind her
+       eyes, crisp at the edge, the skin's sheen over them */
+    [-1, 1].forEach(function (s) {
+      var px = 50 + s * 16.5, py = 34.6, ang = s * 0.42;
+      var path = function () { c.beginPath(); c.ellipse(px, py, 8.4, 3.8, ang, 0, 6.2832); };
+      var g = c.createLinearGradient(px, py - 4, px, py + 4); g.addColorStop(0, white); g.addColorStop(1, ptLit(o.mark ? mark : '#dfe6ee', -0.08));
+      c.fillStyle = g; path(); c.fill();
+      c.save(); path(); c.clip();
+      c.fillStyle = 'rgba(30,40,60,.18)'; ptEll(c, px + s * 1.6, py + 2.6, 8, 2.6, ang); c.fill();   // shade along its lower edge
+      c.restore();
+      c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 0.5; path(); c.stroke();
+    });
+    /* the white of her throat and front, rounded with shade at its sides
+       (a closed white crescent under the mouth read as a grin) */
     c.save(); ptClip(c);
-    c.fillStyle = cg; c.beginPath(); c.moveTo(27, 101); c.bezierCurveTo(27, 70, 38, 60, 50, 59.6); c.bezierCurveTo(62, 60, 73, 70, 73, 101); c.closePath(); c.fill();
+    var front = function () { c.beginPath(); c.moveTo(27, 101); c.bezierCurveTo(27, 70, 38, 60, 50, 59.6); c.bezierCurveTo(62, 60, 73, 70, 73, 101); c.closePath(); };
+    var cg = c.createLinearGradient(0, 58, 0, 76); cg.addColorStop(0, ptLit(mark, -0.25)); cg.addColorStop(0.5, ptLit(mark, -0.05)); cg.addColorStop(1, white);
+    c.fillStyle = cg; front(); c.fill();
+    c.save(); front(); c.clip();
+    var side = c.createLinearGradient(27, 0, 73, 0);
+    side.addColorStop(0, 'rgba(60,80,110,.35)'); side.addColorStop(0.25, 'rgba(60,80,110,0)'); side.addColorStop(0.7, 'rgba(60,80,110,0)'); side.addColorStop(1, 'rgba(40,55,80,.45)');
+    c.fillStyle = side; c.fillRect(26, 58, 48, 44);
+    var ch = c.createLinearGradient(0, 59, 0, 70); ch.addColorStop(0, 'rgba(10,16,30,.45)'); ch.addColorStop(1, 'rgba(10,16,30,0)');
+    c.fillStyle = ch; c.fillRect(26, 58, 48, 12);                                                       // under her jaw
+    c.restore();
+    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 0.6; front(); c.stroke();
     c.restore();
   }
-  c.fillStyle = 'rgba(255,255,255,.22)'; ptEll(c, 38, 30, 9, 3.6, -0.5); c.fill();
+  /* the gloss of wet skin: a long lit streak over her crown and a small one
+     on the cheek, instead of a blob that read as a white spot */
+  c.save(); ptEll(c, 50, 46, 28, 26); c.clip();
+  c.strokeStyle = 'rgba(255,255,255,.3)'; c.lineWidth = 2.2; c.beginPath(); c.ellipse(50, 47, 24, 22, 0, 3.55, 4.45); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(50, 47, 24, 22, 0, 3.7, 4.3); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.18)'; ptEll(c, 30, 48, 1.6, 4, 0.3); c.fill();
+  c.restore();
   if (!o.noEyes) ptEyes(c, 50, 45, 11, 6, { iris: '#0a0c10' });
-  c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(38, 56.4); c.quadraticCurveTo(50, 60, 62, 56.4); c.stroke();
+  /* the mouth: the long line of it curving up toward her eyes, a lit lip over it */
+  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(31, 52); c.quadraticCurveTo(50, 61, 69, 52); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(33, 51); c.quadraticCurveTo(50, 59.4, 67, 51); c.stroke();
 };
 PORTRAIT.narwhal = function (c, S, o) {
   /* Turned three-quarters, her snout to the left (1.3.4): a narwhal's tooth
@@ -984,8 +1119,19 @@ PORTRAIT.narwhal = function (c, S, o) {
   sh.addColorStop(0, 'rgba(255,255,255,.16)'); sh.addColorStop(0.45, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
   c.fillStyle = sh; c.fillRect(14, 18, 82, 92);
   c.fillStyle = 'rgba(255,255,255,.2)'; ptEll(c, 52, 30, 10, 4, -0.3); c.fill();      // the shine on her melon
+  /* (22 Nov 2026, the dragon's finish) the folds of skin where her head
+     turns into her body, a few pale old scratches, and the grain of her skin */
+  c.strokeStyle = 'rgba(30,42,58,.35)'; c.lineWidth = 0.6; c.beginPath();
+  [0, 3.2, 6.4].forEach(function (d) { c.moveTo(28 + d * 0.4, 66 + d); c.quadraticCurveTo(36 + d, 64 + d * 0.8, 44 + d * 1.4, 66 + d * 0.5); });
+  c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.4; c.beginPath();
+  [0, 3.2, 6.4].forEach(function (d) { c.moveTo(28.4 + d * 0.4, 67 + d); c.quadraticCurveTo(36 + d, 65 + d * 0.8, 44 + d * 1.4, 67 + d * 0.5); });
+  [[66, 40, 0.5], [72, 70, -0.3], [56, 46, 0.9]].forEach(function (r) { for (var k2 = 0; k2 < 2; k2++) { c.moveTo(r[0] + k2 * 1.4, r[1] - 4); c.lineTo(r[0] + k2 * 1.4 + r[2] * 5, r[1] + 4); } });
+  c.stroke();
+  c.fillStyle = 'rgba(0,0,0,.05)';
+  for (var gk = 0; gk < 140; gk++) { ptEll(c, 20 + ptH(gk * 2.1 + 9) * 72, 22 + ptH(gk * 3.3 + 2) * 84, 0.5, 0.5); c.fill(); }
   c.restore();
-  c.strokeStyle = 'rgba(30,40,55,.22)'; c.lineWidth = 0.5; whale(c); c.stroke();
+  ptFinish(c, function () { whale(c); }, 56, 64, 38, 44, ptOutlineCol(b[2]), { ao: 0.28 });
   /* a small rounded flipper, low on her near side */
   /* the near flipper, from under the jaw and swept back along her side, its
      skin running on into the body's (the far one is behind her) */
@@ -1590,8 +1736,11 @@ function paintPortrait(c, size, id, alt) {
   c.lineJoin = 'round'; c.lineCap = 'round';
   ptDisc(c);
   var A = alt && PORTRAIT_ALT[alt];
-  if (A) A(c, S);
-  else if (PORTRAIT[S.id]) PORTRAIT[S.id](c, S);
+  PT_OLD = S.id === 'muskox' || S.id === 'dragon';
+  try {
+    if (A) A(c, S);
+    else if (PORTRAIT[S.id]) PORTRAIT[S.id](c, S);
+  } finally { PT_OLD = false; }
   c.restore();
 }
 function drawPortrait(cv, size, id, alt) {

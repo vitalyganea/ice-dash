@@ -15,6 +15,7 @@
   --pink:       #ff6ba8;
   --gold:       #ffc531;
   --gold-dark:  #e09b00;
+  --gold-ink:   #9a6200;   /* gold for words on pale ground: --gold-dark there is 2.4:1 (textfit's contrast check) */
   --radius:     22px;
 }
 
@@ -426,7 +427,7 @@ body{
 .btn-blue  { --hi:#b4ebff; --face:#55bdf0; --lo:#2789d8; --edge:#0450b8; --deep:#022f73; }
 .btn-green { --hi:#c6f8e6; --face:#45d3a2; --lo:#1ea27c; --edge:#0b7560; --deep:#05463a; }
 .btn-purple{ --hi:#ddd4ff; --face:#9a86f4; --lo:#6c55d8; --edge:#4430a6; --deep:#271a6e; }
-.btn-red   { --hi:#ffcbd2; --face:#f1667c; --lo:#cf3a53; --edge:#991d35; --deep:#5e0f20; }
+.btn-red   { --hi:#ffcbd2; --face:#f1667c; --lo:#cf3a53; --edge:#991d35; --deep:#4a0816; }
 /* Gold is the colour of the golden fish, so it marks the Market. */
 .btn-gold  { --hi:#fff2b8; --face:#ffcd3a; --lo:#f0a000; --edge:#ad6800; --deep:#6a3e00; }
 /* Frost: the quiet buttons. Pale ice with dark letters, and no snow, so
@@ -571,7 +572,7 @@ body{
 .stars-earned span.lit:nth-child(3){ animation-delay:.32s; }
 @keyframes starPop{ from{ transform:scale(0) rotate(-90deg) } to{ transform:none } }
 
-.big-score{ font-size:clamp(26px,5vw,40px); font-weight:800; color:var(--gold-dark); margin:6px 0 2px; }
+.big-score{ font-size:clamp(26px,5vw,40px); font-weight:800; color:var(--gold-ink); margin:6px 0 2px; }
 
 /* ------------------- FLOATING DECOR ------------------- */
 .sky-deco{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
@@ -634,7 +635,7 @@ body{
 .wallet{
   display:flex; gap:18px; justify-content:center;
   font-size:clamp(18px,3.2vw,26px); font-weight:800;
-  color:var(--gold-dark);
+  color:var(--gold-ink);
   margin:2px 0 14px;
 }
 
@@ -688,7 +689,7 @@ body{
 .earned{
   font-size:clamp(17px,3vw,23px);
   font-weight:800;
-  color:var(--gold-dark);
+  color:var(--gold-ink);
   margin:2px 0 4px;
 }
 
@@ -794,7 +795,7 @@ body{
 }
 .board-who{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .board-name small{ flex:0 0 auto; font-size:12px; color:#0b7560; }
-.board-score{ flex:0 0 auto; font-weight:800; font-size:clamp(14px,2.2vw,17px); color:var(--gold-dark); }
+.board-score{ flex:0 0 auto; font-weight:800; font-size:clamp(14px,2.2vw,17px); color:var(--gold-ink); }
 .q-note{ margin:8px 0 0; font-size:13px; text-align:center; color:var(--ink-soft); }
 
 /* Android only (js/native.js). Padded out to a 44px target: the links
@@ -861,7 +862,7 @@ body{
   flex:0 0 auto; text-align:right;
   font-weight:800; font-size:clamp(11px,1.8vw,14px); color:var(--ink-soft);
 }
-.ach-right small{ display:block; font-weight:800; color:var(--gold-dark); font-size:max(12px, .92em); }
+.ach-right small{ display:block; font-weight:800; color:var(--gold-ink); font-size:max(12px, .92em); }
 
 .won-box{ display:flex; flex-direction:column; gap:4px; margin:6px 0 2px; }
 .fx-burst{ position:fixed; inset:0; width:100%; height:100%; z-index:70; pointer-events:none; }
@@ -885,7 +886,7 @@ body{
             border:2px solid rgba(43,93,134,.45); color:#fff; font-size:14px; }
 .task-row.got .task-tick{ background:#21c48a; border-color:#0b7560; }
 .task-txt{ flex:1 1 auto; }
-.task-pay{ flex:0 0 auto; color:var(--gold-dark); }
+.task-pay{ flex:0 0 auto; color:var(--gold-ink); }
 
 /* A trophy or a task not yet earned is a button to where it is earned
    (ui.js goEarn): the same row, a chevron at its end, and it gives under
@@ -893,7 +894,7 @@ body{
 .ach-row.go, .task-row.go{ width:100%; font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
                            transition:transform .12s ease, background-color .12s ease; }
 .ach-row.go{ color:inherit; }
-.task-row.go{ border:0; }
+.task-row.go{ border:0; font-size:clamp(13px,2.1vw,15px); line-height:1.25; gap:8px; padding:7px 10px; }   /* font:inherit above had put back the panel's 16px: three lines in German at 390 px */
 .ach-row.go:active, .task-row.go:active{ transform:scale(.98); background:rgba(255,255,255,.95); }
 .ach-row.go:focus-visible, .task-row.go:focus-visible{ outline:3px solid #ffd84a; outline-offset:2px; }
 .go-mark{ flex:0 0 auto; margin-left:2px; font-size:24px; line-height:1; font-weight:900; color:#2789d8; }
@@ -953,7 +954,7 @@ body{
 @media (prefers-reduced-motion: reduce){ .badge{ animation:none; } }
 .won-row{
   font-weight:800; font-size:clamp(13px,2.1vw,16px);
-  color:var(--gold-dark);
+  color:var(--gold-ink);
   background:rgba(255,246,213,.85);
   border-radius:99px; padding:5px 14px;
 }
@@ -1495,7 +1496,7 @@ body{
 .run-mid{ flex:1 1 auto; min-width:0; }
 .run-name{ font-weight:800; font-size:clamp(15px,2.3vw,18px); }
 .run-sub{ font-size:clamp(12px,1.8vw,13px); color:var(--ink-soft); }
-.run-stars{ flex:0 0 auto; font-size:clamp(14px,2.2vw,18px); letter-spacing:1px; color:var(--gold-dark); }
+.run-stars{ flex:0 0 auto; font-size:clamp(14px,2.2vw,18px); letter-spacing:1px; color:var(--gold-ink); }
 p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:3px; }
 
 /* ------------------- FIRST-RUN TUTORIAL -------------------
@@ -1673,7 +1674,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .skin-tag.can{ color:#062a78; background:#d9f0ff; border-color:#062a78; }
 .skin-tag.gold.can{ color:#7a4a00; background:#fff2c2; border-color:#a86a00; }
 .skin-tag.tag-worn{
-  padding:2px 9px; color:#fff; background:var(--green); border-color:#062a78;
+  padding:2px 9px; color:#fff; background:var(--green-dark); border-color:#062a78;
 }
 .coin{ display:inline-block; vertical-align:middle; flex:0 0 auto; }
 @media (max-width:540px){
@@ -1696,7 +1697,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 }
 .sheet-card{ width:min(400px,100%); margin:0; padding:30px 24px 22px; }
 .sheet-x{
-  position:absolute; top:8px; right:8px;
+  position:absolute; top:8px; right:8px; z-index:5;   /* over a hero card (.pcard.hero is positioned too) */
   width:44px; height:44px; border-radius:50%;   /* a finger's width, like every other button */
   border:2px solid #062a78; background:#fff; cursor:pointer;
 }
@@ -1739,6 +1740,8 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .upd-later{ margin-top:12px; }
 .sheet.upd-must .sheet-x, .sheet.upd-must .upd-later{ display:none; }
 .sheet-card .shop-note{ margin-top:12px; }
+/* a player's card from the board: clear of the close cross */
+#sheet-prof .pcard.hero{ margin-top:26px; }
 
 /* ---- the language: flag and name, the list in a window ---- */
 .flag{
@@ -1916,7 +1919,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .album-row .ach-bar{ margin-top:6px; }
 .sheet-card{ max-height:calc(100vh - 40px); overflow-y:auto; }
 @media (max-width:520px){ .sheet-card{ padding-bottom:78px; } }   /* its last line scrolls up clear of the Back arrow */
-.won-story{ color:#a86a00; }
+.won-story{ color:#8f5a00; }
 
 /* ---- the creature being ridden: a tag in its window, a pop on its tile ---- */
 .chosen-tag{
@@ -2187,7 +2190,7 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
    once. Under it three tabs instead of one long list. */
 .pcard.hero{ position:relative; flex-direction:column; gap:8px; width:min(330px,100%); box-sizing:border-box;
   margin-top:12px; padding:20px 16px 16px; border-radius:26px; border:3px solid #fff; text-align:center;
-  --hc1:#e8f6ff; --hc2:#9fd3f3; --hink:#0d3a5c; --hsoft:#2b5d86; --hrib:#2f86e0; --hpill:rgba(255,255,255,.75);
+  --hc1:#e8f6ff; --hc2:#9fd3f3; --hink:#0d3a5c; --hsoft:#2b5d86; --hrib:#1f6fc4; --hpill:rgba(255,255,255,.75);
   background:
     radial-gradient(circle at 18% 22%, rgba(255,255,255,.7) 0 1.3px, transparent 2.3px),
     radial-gradient(circle at 84% 30%, rgba(255,255,255,.6) 0 1.1px, transparent 2px),
@@ -2215,11 +2218,11 @@ p.run-stars{ font-size:clamp(22px,4.4vw,34px); margin:2px 0 4px; letter-spacing:
 .pcard.hero .pcard-stats b{ font-size:17px; color:var(--hink); line-height:1.1; font-variant-numeric:tabular-nums; }
 .pcard.hero .pcard-stats small{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--hsoft); }
 /* the card in its frame's colours */
-.pcard.hero.hero-snow{ --hc1:#ffffff; --hc2:#d8e6f1; --hrib:#6f8fae; }
-.pcard.hero.hero-neon{ --hc1:#3b1d7a; --hc2:#0e1a4d; --hink:#ffffff; --hsoft:#c9b8ff; --hrib:#d43fd0; --hpill:rgba(255,255,255,.12);
+.pcard.hero.hero-snow{ --hc1:#ffffff; --hc2:#d8e6f1; --hrib:#557590; }
+.pcard.hero.hero-neon{ --hc1:#3b1d7a; --hc2:#0e1a4d; --hink:#ffffff; --hsoft:#c9b8ff; --hrib:#b02cad; --hpill:rgba(255,255,255,.12);
   box-shadow:0 0 0 2px rgba(255,79,216,.6), 0 0 22px rgba(41,230,255,.35), 0 12px 26px -8px rgba(10,10,60,.6); }
-.pcard.hero.hero-aurora{ --hc1:#1d6f78; --hc2:#3b2a7a; --hink:#ffffff; --hsoft:#bff3e6; --hrib:#8a5cf0; --hpill:rgba(255,255,255,.14); }
-.pcard.hero.hero-gold{ --hc1:#fff6d6; --hc2:#f0c43c; --hink:#5a3500; --hsoft:#8a5a0a; --hrib:#c98a00; --hpill:rgba(255,255,255,.6); }
+.pcard.hero.hero-aurora{ --hc1:#1d6f78; --hc2:#3b2a7a; --hink:#ffffff; --hsoft:#bff3e6; --hrib:#7448e0; --hpill:rgba(255,255,255,.14); }
+.pcard.hero.hero-gold{ --hc1:#fff6d6; --hc2:#f0c43c; --hink:#5a3500; --hsoft:#8a5a0a; --hrib:#9a6200; --hpill:rgba(255,255,255,.6); }
 .pcard.hero.hero-wreath{ --hc1:#2b7a43; --hc2:#0f4a29; --hink:#ffffff; --hsoft:#cdeed6; --hrib:#c4161c; --hpill:rgba(255,255,255,.14); }
 /* the three tabs */
 .prof-tabs{ display:flex; gap:6px; margin:14px auto 10px; padding:4px; width:max-content; max-width:100%; border-radius:999px;

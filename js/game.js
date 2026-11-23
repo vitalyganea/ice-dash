@@ -321,6 +321,9 @@ var Game = (function () {
        the other carries a token that forgives a single missed fish. */
     w.combo = perk().comboStart || 0;
     w.comboKeep = perk().comboKeep ? 1 : 0;
+    /* the multiplier as the HUD last showed it: a rise or a loss is said
+       in words (1.3.5: a bare x2 seemed to come from nowhere) */
+    w.multWas = 1; w.multT = 0; w.multUp = 0;
     var i;
     var nStreak = Math.round(46 * Math.max(1, LOOK / 620));
     for (i = 0; i < nStreak; i++)
@@ -1369,15 +1372,21 @@ var Game = (function () {
           Math.abs(dy) < grab && Math.abs(dx) < grab) {
         o.got = true;
         var tone = '#bfe4ff';
+        /* A fish only a reach perk could take (outside the plain grab) goes
+           in the purse but leaves the run of catches as it was: neither a
+           step up nor a miss. The x2/x3 is for fish the player steered to;
+           with Mitten's long reach it used to climb by itself (the owner,
+           22 Nov 2026). */
+        var plain = o.r + PR, steered = Math.abs(dy) < plain && Math.abs(dx) < plain;
         if (o.t === 'fish')      {
-          comboUp();
+          if (steered) comboUp();
           var tw = W.twinT > 0 ? 2 : 1;                    // the twin fish: every catch counts twice
           W.fish++; W.score += 25 * comboMult() * tw;
           W.coins += ((W.fish <= FIRST_CATCH) ? 2 : 1) * tw;   // early catch pays double
           Sfx.berry();
         }
         else if (o.t === 'gold') {
-          comboUp(); W.gold++; W.score += 150 * comboMult(); Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12;
+          if (steered) comboUp(); W.gold++; W.score += 150 * comboMult(); Sfx.gold(); tone = '#ffd83d'; W.tapFlash = 12;
           fx('gold');
         }
         else if (o.t === 'find') { W.finds++; W.score += 60; Sfx.gold(); tone = '#fff0b0'; W.tapFlash = 16; fx('find'); }
@@ -1662,6 +1671,14 @@ var Game = (function () {
     if (W.closeT > 0) W.closeT--;
     if (W.keepT > 0) W.keepT--;
     if (W.perfT > 0) W.perfT--;
+    /* The catch multiplier: say it when it rises (COMBO x2, with a chime)
+       and when a miss or a crash takes it away. The emperor's head start
+       is said too, as the run begins. */
+    var mNow = comboMult();
+    if (mNow > W.multWas) { W.multT = 75; W.multUp = mNow; if (!W.demo) Sfx.combo(mNow); }
+    else if (mNow < W.multWas) { W.multT = 55; W.multUp = 0; }
+    W.multWas = mNow;
+    if (W.multT > 0) W.multT--;
     if (W.zoneT > 0) W.zoneT--;
     if (W.invuln > 0) W.invuln--;
     if (W.rushT > 0) {
@@ -1787,6 +1804,13 @@ var Game = (function () {
     ctx.restore();
   }
 
+  /* A word said over something near the edge of the hill is slid in so all
+     of it is on the screen: centred on a rock at the side, PERFECT! (and
+     ИДЕАЛЬНО!, ¡PERFECTO! wider still) lost half its letters. */
+  function onScreenX(x, w) {
+    var m = 8 + w / 2;
+    return m * 2 >= VIEW_W ? VIEW_W / 2 : clamp(x, m, VIEW_W - m);
+  }
   function drawCloseCall() {
     if (!W.closeT) return;
     var a = Math.min(1, W.closeT / 18), rise = (55 - W.closeT) * 0.9;
@@ -1798,6 +1822,7 @@ var Game = (function () {
     var tx = scrX(W.px), ty = PLAYER_Y - 62 - rise;
     var word = tr('hud.close', 'CLOSE!');
     if ((perk().closeBonus || 1) > 1) word += ' \u00d7' + perk().closeBonus;   // the leopard's double, said
+    tx = onScreenX(tx, ctx.measureText(word).width + 6);
     ctx.strokeText(word, tx, ty);
     ctx.fillStyle = '#ffe066';
     ctx.fillText(word, tx, ty);
@@ -1831,11 +1856,11 @@ var Game = (function () {
     ctx.save();
     ctx.globalAlpha = a;
     ctx.textAlign = 'center';
-    ctx.translate(sx, sy - 44 - rise);
-    ctx.scale(pop, pop);
     ctx.font = '800 30px "Baloo 2", "Comic Sans MS", system-ui, sans-serif';
-    ctx.lineWidth = 7; ctx.strokeStyle = '#062a78';
     var word = tr('hud.perfect', 'PERFECT!') + (W.perfChain > 1 ? ' \u00d7' + W.perfChain : '');
+    ctx.translate(onScreenX(sx, (ctx.measureText(word).width + 7) * pop), sy - 44 - rise);
+    ctx.scale(pop, pop);
+    ctx.lineWidth = 7; ctx.strokeStyle = '#062a78';
     ctx.strokeText(word, 0, 0);
     var g = ctx.createLinearGradient(0, -24, 0, 6);
     g.addColorStop(0, '#fff6c9'); g.addColorStop(1, '#ffb22e');
@@ -12198,6 +12223,12 @@ var Game = (function () {
     /* the run of catches, as a multiplier on points */
     if (mult > 1) {
       var mx = after;
+      /* a rise pops the pill */
+      var pop = (W.multT > 55 && W.multUp) ? 1 + 0.35 * (W.multT - 55) / 20 : 1;
+      if (pop > 1) {
+        ctx.save();
+        ctx.translate(mx + u * 1.05, y1 - u * 0.6); ctx.scale(pop, pop); ctx.translate(-(mx + u * 1.05), -(y1 - u * 0.6));
+      }
       /* the puffin's shrug: the pill flashes white, kept */
       if (W.keepT > 0) {
         ctx.save(); ctx.globalAlpha = Math.min(1, W.keepT / 15) * (0.5 + 0.5 * Math.abs(Math.sin(W.t * 0.4)));
@@ -12213,7 +12244,23 @@ var Game = (function () {
       ctx.fillStyle = '#7a4a00'; ctx.textAlign = 'center';
       ctx.fillText('x' + mult, mx + u * 1.05, y1 - u * 0.28);
       ctx.textAlign = 'left';
+      /* how far to the next step: ten catches in a row each */
+      if (mult < 3) {
+        var cp = (W.combo % 10) / 10;
+        ctx.fillStyle = 'rgba(6,42,120,.22)';
+        rr(ctx, mx + u * 0.35, y1 + u * 0.22, u * 1.4, u * 0.22, u * 0.11); ctx.fill();
+        if (cp > 0) { ctx.fillStyle = '#ffcd3a';
+          rr(ctx, mx + u * 0.35, y1 + u * 0.22, u * 1.4 * cp, u * 0.22, u * 0.11); ctx.fill(); }
+      }
+      if (pop > 1) ctx.restore();
       after += u * 2.5;
+    }
+    /* the multiplier said in words, beside where its pill is (or was) */
+    if (W.multT > 0) {
+      ctx.globalAlpha = Math.min(1, W.multT / 18);
+      if (W.multUp) outlined(tr('hud.combo', 'COMBO') + ' x' + W.multUp, after, y1 - u * 0.2, Math.round(u * 1.0), '#ffe066', Math.max(3, u * 0.22));
+      else outlined(tr('hud.comboLost', 'COMBO LOST'), after, y1 - u * 0.2, Math.round(u * 0.9), '#ff9aa8', Math.max(3, u * 0.22));
+      ctx.globalAlpha = 1;
     }
     /* what the last ring won back from the snow, for a moment */
     if (aval && W.avPush > 0) {

@@ -62,6 +62,8 @@ bash test/run.sh            # all fast suites (node only)
 bash test/run.sh courses    # one suite
 node test/ladder.js         # slow; run when skins/prices change
 node test/playtest.js       # real Chrome, both platforms
+node test/textfit.js        # real Chrome: every word fits and reads, 6 languages x 4 widths
+                            # (slow; after menu/CSS/translation/HUD-text changes — skill visual-qa)
 bash build.sh               # builds icedash.zip from an allowlist
 ```
 
