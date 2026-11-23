@@ -370,6 +370,7 @@
     Sfx.gold(); buzz(20);
     var msgEl = $(where === 'find' ? 'find-prize' : 'gift-prize');
     if (msgEl) msgEl.textContent = t('life.sold', { n: LIFE_PRICE });
+    if (where === 'find') { paid.findFish += LIFE_PRICE; showEarned(); }     // sold from a find: on the results' line too
     var r = btn.getBoundingClientRect();
     screenBurst('fish', r.left + r.width / 2, r.top + r.height / 2);
     if (typeof wallet === 'function') wallet();
@@ -738,13 +739,17 @@
 
   /* What the run paid, as the results show it. Kept, because a rewarded ad
      can double the fish after the screen is up. */
-  var paid = { coins: 0, starPay: 0, gold: 0, doubled: false };
+  /* findFish, findGold: what the frozen finds opened on this screen paid
+     (1.3.5, the owner: they were banked, but the line under the score
+     never moved while the prize flew into it, so they seemed lost) */
+  var paid = { coins: 0, starPay: 0, gold: 0, doubled: false, findFish: 0, findGold: 0 };
   function showEarned() {
     var earned = $('over-earned');
     var bits = [];
-    if (paid.coins) bits.push('+' + paid.coins + '\u00a0' + t('cur.fish', { n: paid.coins }));
+    var fish = paid.coins + (paid.findFish || 0), gold = paid.gold + (paid.findGold || 0);
+    if (fish) bits.push('+' + fish + '\u00a0' + t('cur.fish', { n: fish }));
     if (paid.starPay) bits.push(t('over.starpay', { n: paid.starPay }));
-    if (paid.gold)  bits.push('+' + paid.gold + '\u00a0' + t('cur.gold', { n: paid.gold }));
+    if (gold)  bits.push('+' + gold + '\u00a0' + t('cur.gold', { n: gold }));
     earned.textContent = bits.join('   ');
     earned.classList.toggle('hidden', !bits.length);
   }
@@ -1131,7 +1136,7 @@
     var won = achCheck(save);
     store();
     showWon(won, taskWon, storyWon);
-    paid = { coins: res.coins || 0, starPay: starPay, gold: res.gold || 0, doubled: false };
+    paid = { coins: res.coins || 0, starPay: starPay, gold: res.gold || 0, doubled: false, findFish: 0, findGold: 0 };
     showEarned();
     $('over-double').classList.toggle('hidden', !(paid.coins > 0 && adReady()));
     $('over-board').classList.toggle('hidden', !(boardReady() && !cd && !mRun));
@@ -1391,8 +1396,8 @@
       if (roll <= 0) { pick = FIND_PRIZES[i]; break; }
     }
     var msg;
-    if (pick.kind === 'fish') { save.fish += pick.n; msg = t('find.fish', { n: pick.n }); }
-    else if (pick.kind === 'gold') { save.gold += pick.n; msg = t('find.gold', { n: pick.n }); }
+    if (pick.kind === 'fish') { save.fish += pick.n; paid.findFish += pick.n; msg = t('find.fish', { n: pick.n }); }
+    else if (pick.kind === 'gold') { save.gold += pick.n; paid.findGold += pick.n; msg = t('find.gold', { n: pick.n }); }
     else {
       /* A life you cannot carry is offered for sale (1.3.4, the owner) */
       if ((save.lives || 0) < LIFE_CAP) { save.lives = (save.lives || 0) + 1; msg = t('find.life'); }
@@ -1434,6 +1439,8 @@
       /* the prize is a line more than the panel was measured with */
       fitScreen();
       flyPrize(kind);
+      /* and the line under the score takes it as the prize lands there */
+      if (kind !== 'life') setTimeout(showEarned, 760);
     }
   }
 

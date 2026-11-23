@@ -17,7 +17,8 @@ work always starts at the top.
 5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
    skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
-   skill), ships in 1.3.5; left: the translation fixes, waiting for the owner.**
+   skill, and on 23 Nov the translation fixes of `i18n-review.md`), ships in
+   1.3.5.**
 6. Review every mode: the bugs part first. **Machine pass done 22 Nov 2026, no
    bugs found; left: the owner's 4 decisions (section below).**
 7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
@@ -27,7 +28,8 @@ work always starts at the top.
 8. A better performance test, on many devices.
 9. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
-10. Store listings and SEO/ASO in every language (below). Also pause the old
+10. Store listings and SEO/ASO in every language (below). The old mode names in
+   the texts go too (Liber, Libre, Livre, Freie Fahrt: now Freeride). Also pause the old
    Play closed-testing track "1.0" (the AD_ID error).
 11. The rest of the brand book (the written book, store art style).
 12. Play Games / Game Center achievements.
@@ -247,7 +249,7 @@ HUD, the comic captions, the market rows.
   - PERFECT!/CLOSE! are slid onto the screen near the edge, where half the word used to be lost.
   - The skill: `.claude/skills/visual-qa/`.
 - Left:
-  - The translation list is waiting on the owner: `i18n-review.md` (redone 23 Nov 2026, the first one was never written down). It covers the Freeride name in ro/es/pt/de, trophy/spare-life terms and ten outright mistakes.
+  - Translations: done 23 Nov 2026 (`i18n-review.md`: Freeride under one name everywhere, one word for spare life, trophies and skins in each language, ten outright mistakes).
   - Avatars evened out, 22 Nov 2026. The owner said: "the dragon stays, the rest as detailed as him". The musk ox also stays as in 1.3.3.
     - All creatures got the dragon's finish (`ptFinish` in `js/portraits.js`): a drawn edge on head, shoulders and ears, the underside in shadow and a lit rim. A soft shadow replaced the flat grey ellipse under the chin.
     - The orca, seal, walrus and narwhal were worked up one by one.

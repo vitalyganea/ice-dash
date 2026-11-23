@@ -1214,11 +1214,17 @@ async function walk(cdp, sid, P) {
   function finds() {
     return ev("(JSON.parse(localStorage.getItem('icedash-save-v1')||'{}').finds)||0");
   }
+  /* what the line under the score says the run paid, and the purse */
+  function paidNow() {
+    return ev("(function(){var t=document.getElementById('over-earned').textContent,s=JSON.parse(localStorage.getItem('icedash-save-v1')||'{}');" +
+      "var f=/\\+(\\d+)\\u00a0fish/.exec(t),g=/\\+(\\d+)\\u00a0gold/.exec(t);return {lf:f?+f[1]:0,lg:g?+g[1]:0,pf:s.fish||0,pg:s.gold||0};})()");
+  }
   if (await visible('#over-finds')) {
-    var opened = 0, prize = '';
+    var opened = 0, prize = '', lineOk = 0, lineBad = [];
     for (var round = 0; round < 2 && await visible('#over-finds'); round++) {
       var before = await finds();
       if (before <= 0) break;
+      var p0 = await paidNow();
       await click('[data-action="open-find"]');
       /* The words are held back until the shell breaks, so wait for the
          prize line to come back rather than for a fixed moment. */
@@ -1231,8 +1237,15 @@ async function walk(cdp, sid, P) {
       if (!shown) break;
       prize = await ev("document.querySelector('#find-prize').textContent.trim()");
       opened++;
+      /* the fish or gold it held reach the line under the score as well as
+         the purse (1.3.5, the owner: they seemed lost, the line never moved) */
+      await sleep(1100);
+      var p1 = await paidNow();
+      if (p1.lf - p0.lf === p1.pf - p0.pf && p1.lg - p0.lg === p1.pg - p0.pg) lineOk++;
+      else lineBad.push(JSON.stringify([p0, p1]));
     }
     ok(opened >= 1, 'a frozen find opens and pays out (' + (prize || 'nothing') + ')');
+    ok(opened >= 1 && lineOk === opened, 'and what it held is added to the line under the score, as it is to the purse (' + (lineBad.join(' ') || lineOk + ' of ' + opened) + ')');
     ok(opened >= 2, 'and the second one opens too, not just the first (' + opened + ' opened)');
     /* The last one took its box with it: the prize was written into a box
        that vanished on the same frame. Its class said shown all along, so

@@ -8,8 +8,11 @@ Checked: all 732 keys in `js/i18n.js`.
 - The comics and the creature stories were only searched for the problems
   found here; they were not read in full.
 
-Waiting for the owner: **A** is a choice; **B**–**D** are fixes to approve;
-**E** is optional.
+**Applied 23 Nov 2026 on the owner's word** ("aplica"): A = 1 ("Freeride" everywhere), B, C, D, and E in full. With them:
+- One word for skins in each language: ro `Costume`/costumul, ru `Облики`/облик, de `Kostüme`/Kostüm.
+- The German daily task `task.jump3` shortened ("Überspring {n} Spalten in einer Abfahrt"): at 390 px it ran onto three lines.
+
+`node test/textfit.js`: every word fits. Still to do: the store texts in `store/` use the old names (`Liber`, `Libre`, `Livre`, `Freie Fahrt`) in the notes of earlier versions. The next notes and listings use Freeride (TODO item 10).
 
 ## A. The name of Freeride
 
