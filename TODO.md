@@ -12,8 +12,10 @@ work always starts at the top.
 4. Crash and error reporting (below).
 5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
-   skill to keep it so.
-6. Review every mode: the bugs part first.
+   skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
+   skill), ships in 1.3.5; left: the translation fixes, waiting for the owner.**
+6. Review every mode: the bugs part first. **Machine pass done 22 Nov 2026, no
+   bugs found; left: the owner's 4 decisions (section below).**
 7. A better performance test, on many devices.
 8. Economy: upgrades cost more, fewer golden fish (before many new players
    arrive, never after).
