@@ -195,7 +195,12 @@ function survival() {
      'sharper play goes at least as far (' + bot.med + 'm vs ' + human.med + 'm)');
   ok(human.alive <= 2,
      'the hill eventually catches a flawed player (' + (14 - human.alive) + '/14 crashed)');
-  ok(human.med >= 300 && human.med <= 7000,
+  /* 9000 m is a run of some 2.8 minutes. The bound stood at 7000 m (2.4
+     minutes) and the median sits beside it, moving with every change to
+     the hill (7659 m in 1.3.4, 6741 m with the spans of 1.3.5), so it
+     failed on code that played the same; it is there to catch a hill gone
+     endless, not a minute's difference. */
+  ok(human.med >= 300 && human.med <= 9000,
      'a decent player runs ' + human.med + 'm — worth a retry, not a chore');
   /* What matters is that one run can be far better than another, which is
      the spread between them. Comparing the best against the MEDIAN was a
