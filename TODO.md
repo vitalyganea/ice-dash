@@ -2,7 +2,10 @@
 
 ## Order for the global launch (owner, 22 Nov 2026)
 
-Most critical first. 1.3.5 = items 1–10, then the other server items, then the rest.
+Most critical first. Items 1–7 and 9 went out in 1.3.5 (Android, live 23 Nov 2026)
+and 1.3.6 (both stores, in review 24 Nov 2026, with the Market shut while a run
+waits and the title's bridge flash fixed, SYSTEMS rows 202–203); remove them
+once 1.3.6 is live on both, and move version.json then.
 (The owner pulled the shared leaderboard forward to 7 on 23 Nov 2026.)
 Every new item gets its place here when it is added (rule in CLAUDE.md);
 work always starts at the top.
@@ -11,9 +14,8 @@ work always starts at the top.
 2. No vibration on a golden fish (minutes, ships with 1). **Done 22 Nov 2026, ships in 1.3.5.**
 3. The ×2/×3 that seems to come from nowhere (below). **Done 22 Nov 2026, ships in 1.3.5.**
 4. Crash and error reporting (below). **Done 23 Nov 2026 (Crashlytics on both apps,
-   script errors, privacy page), ships in 1.3.5; the iOS build passed on GitHub
-   (check 14, TestFlight 16); left: the Play Data safety and Apple App Privacy
-   forms.**
+   script errors, privacy page); Data safety and App Privacy updated 23 Nov.
+   Live on Android in 1.3.5, on iOS with 1.3.6 (in review).**
 5. Visual quality: text that fits, translations, the palette and contrast
    (the brand book's core) and the avatars evened out, with a visual-QA
    skill to keep it so. **Mostly done 22 Nov 2026 (text fit, contrast, avatars,
@@ -25,8 +27,10 @@ work always starts at the top.
    one fish number on the results, row 193), ships in 1.3.5.**
 7. One leaderboard for Android and iPhone (below). **Built 23 Nov 2026, server
    live at board.icedasher.workers.dev, ships in 1.3.5; Android checked on the
-   OPPO (internal test 27) and the owner's iPhone (TestFlight build 16); left:
-   publishing the Play Games "Game server" credential, the store forms.**
+   OPPO (internal test 27) and the owner's iPhone (TestFlight build 16); the
+   Play Games "Game server" credential published 23 Nov; banning and resetting
+   a cheat with `server/admin.mjs` (SYSTEMS row 201). Live on Android in 1.3.5,
+   on iOS with 1.3.6 (in review).**
 8. A better performance test, on many devices.
 9. Economy: upgrades cost more, fewer golden fish (below). **Done 23 Nov 2026
    (SYSTEMS row 197), ships in 1.3.5.**
