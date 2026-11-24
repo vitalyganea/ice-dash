@@ -21,8 +21,9 @@
    kept with their tags and where on the hill they were.
 
    One tap starts it; at the end (or on Stop) the report goes by itself to
-   the board server's /v1/bench, and the page shows its number, which the
-   owner hands over to be read (server/admin.mjs bench-show <no>). The
+   performance-test server (bench.icedasher.workers.dev: its own Worker and
+   database, apart from the leaderboard), and the page shows its number,
+   which the owner hands over to be read (server/admin.mjs bench-show <no>). The
    start screen says what is sent.
 
    URL: ?m=100000 the distance in metres (1,000 at least), ?skin=dragon the
@@ -33,7 +34,7 @@
   var Q = (function () { var o = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); return o; })();
   var GOAL_M = Math.max(1000, Math.min(1000000, parseInt(Q.m, 10) || 100000));
   var SKIN = /^[a-z]+$/.test(Q.skin || '') ? Q.skin : 'snowcap';
-  var SEND_URL = 'https://board.icedasher.workers.dev/v1/bench';
+  var SEND_URL = 'https://bench.icedasher.workers.dev/v1/bench';   // its own server, apart from the board
   var RO = /^ro/i.test(navigator.language || '');
   var TXT = RO ? {
     title: 'Ice Dasher — test de performanță',

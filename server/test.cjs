@@ -20,7 +20,7 @@ function d1(db) {
         bind(...a) { args = a; return st; },
         async first() { return db.prepare(sql).get(...args) || null; },
         async all() { return { results: db.prepare(sql).all(...args) }; },
-        async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid) } }; }
+        async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: r.changes } }; }
       };
       return st;
     }
@@ -173,16 +173,6 @@ function fakeCert(spki) {
   clock += 5000;
   const sr = await call('POST', '/v1/score', { score: 300, dist: 200, secs: 20 }, tA);
   ok(sr.j.taken === true && db.prepare("SELECT best FROM players WHERE plat = 'android'").get().best === 300, 'and they start again from their next run');
-
-  console.log('\n--- the performance test ---');
-  const bres = { v: 1, hz: 120, fps: 118.6, p95: 9.2, late: 1.4, m: 2000, secs: 70, device: { gpu: 'Adreno (TM) 610', screen: '412x915', dpr: 2.6, ua: 'Mozilla/5.0' }, timeline: [[10, 200, 119, 1, 20, 60, '0/1/1', 'Glacier']] };
-  const bo = await W.fetch(new Request('https://board.test/v1/bench', { method: 'POST', headers: { origin: 'https://vitalyganea.github.io', 'content-type': 'application/json' }, body: JSON.stringify(bres) }), env, {});
-  const bj = await bo.json();
-  ok(bo.status === 200 && bj.id > 0 && bo.headers.get('access-control-allow-origin') === 'https://vitalyganea.github.io', 'a result from test.html is taken (no. ' + bj.id + ')');
-  const brow = db.prepare('SELECT * FROM bench WHERE id = ?').get(bj.id);
-  ok(brow && brow.hz === 120 && Math.abs(brow.fps - 118.6) < 1e-9 && /Adreno/.test(brow.dev) && JSON.parse(brow.data).timeline.length === 1, 'kept whole, with its summary in columns');
-  ok((await call('POST', '/v1/bench', { v: 2 })).s === 400, 'anything else is refused');
-  ok((await call('POST', '/v1/bench', { v: 1, pad: 'x'.repeat(70000) })).s === 413, 'and so is a too big one');
 
   console.log('\n--- forget ---');
   ok((await call('DELETE', '/v1/me', null, tI)).s === 200, 'a player can be removed');

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node test.cjs"
+    "test": "node test.cjs && node test-bench.cjs",
+    "deploy:bench": "wrangler deploy -c bench.toml"
   },
   "devDependencies": {
     "wrangler": "^4"

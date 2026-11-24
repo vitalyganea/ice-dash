@@ -11,7 +11,8 @@
                                      scores are taken without a word and kept out
      node admin.mjs unban <id>       back on, with whatever best they had
      node admin.mjs banned           who is banned
-     node admin.mjs bench [n]        the newest performance tests (test.html)
+     node admin.mjs bench [n]        the newest performance tests (test.html; their own
+                                     database, icedasher-bench, not the board's)
      node admin.mjs bench-show <no>  one of them in full (JSON)
 
    <id> as `top` and `find` show it: a:<Play Games id> or i:<Game Center id>.
@@ -25,8 +26,11 @@ const args = process.argv.slice(2).filter((a) => a !== '--local');
 const where = process.argv.includes('--local') ? '--local' : '--remote';
 const [cmd, arg] = args;
 
-function sql(q) {
-  const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'icedasher-board', where, '--json', '--command', q],
+/* the board's database, or with bench the performance tests' own (bench.toml) */
+function sql(q, bench) {
+  const a = ['wrangler', 'd1', 'execute', bench ? 'icedasher-bench' : 'icedasher-board', where, '--json', '--command', q];
+  if (bench) a.push('-c', 'bench.toml');
+  const out = execFileSync('npx', a,
                            { cwd: here, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
   const j = JSON.parse(out);
   return (j[0] && j[0].results) || [];
@@ -77,7 +81,7 @@ switch (cmd) {
   }
   case 'bench': {
     const rows = sql('SELECT id, t, hz, fps, p95, late, m, secs, dev FROM bench ORDER BY id DESC LIMIT ' +
-                     Math.max(1, Math.min(500, parseInt(arg, 10) || 30)));
+                     Math.max(1, Math.min(500, parseInt(arg, 10) || 30)), true);
     if (!rows.length) { console.log('(none)'); break; }
     console.log('   no  when              Hz    fps  p95ms  late%       m   min  device');
     for (const r of rows)
@@ -87,7 +91,7 @@ switch (cmd) {
     break;
   }
   case 'bench-show': {
-    const r = sql('SELECT data FROM bench WHERE id = ' + (parseInt(arg, 10) || 0));
+    const r = sql('SELECT data FROM bench WHERE id = ' + (parseInt(arg, 10) || 0), true);
     console.log(r.length ? JSON.stringify(JSON.parse(r[0].data), null, 1) : '(no such test)');
     break;
   }

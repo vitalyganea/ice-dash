@@ -1,0 +1,24 @@
+# Ice Dasher's performance-test server (24 Nov 2026): the reports of
+# test.html (js/bench.js), kept apart from the leaderboard on purpose: its
+# own Worker and its own database, so nothing here can touch the board.
+# Deploy: npx wrangler deploy -c bench.toml (from server/).
+# The database: npx wrangler d1 execute icedasher-bench --remote -c bench.toml --file=bench-schema.sql
+name = "bench"
+main = "src/bench.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "icedasher-bench"
+database_id = "TO_BE_CREATED"   # npx wrangler d1 create icedasher-bench, then its id here
+
+# reports: twenty a minute from one address at most
+[[ratelimits]]
+name = "BENCH_RL"
+namespace_id = "1002"
+simple = { limit = 20, period = 60 }
+
+[observability]
+enabled = true

@@ -23,7 +23,6 @@
      GET    /v1/me     -> {all:{rank,score}, day:{...}, week:{...}}
      GET    /v1/cards  -> {rows:[{name, card, plat, k}]} the hundred newest cards
      DELETE /v1/me     the player's row is removed
-     POST   /v1/bench  a performance test's result (test.html), anonymous -> {id}
    A cheat is dealt with from the owner's own machine, never over the web:
    admin.mjs runs SQL on the database through wrangler (ban, unban, reset).
    A banned player is off every board and the cards, and a score of theirs
@@ -43,8 +42,7 @@ const TOP_CACHE_S = 30;
    SPEED_MAX 6.4 units a frame, 8 units a metre, is 48 m/s at 60 frames. */
 const SCORE_PER_M = 32, SCORE_FREE = 3000, MAX_MPS = 60;
 
-const ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost', 'ionic://localhost',
-                 'https://vitalyganea.github.io', 'http://localhost:8000', 'http://127.0.0.1:8000'];   // the last three: test.html
+const ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost', 'ionic://localhost'];
 
 export default {
   async fetch(req, env, ctx) {
@@ -72,7 +70,6 @@ async function route(req, env, ctx) {
   if (p === '/v1/card' && m === 'POST') return card(req, env, await who(req, env));
   if (p === '/v1/me' && m === 'GET') return mine(env, await who(req, env));
   if (p === '/v1/me' && m === 'DELETE') return forget(env, await who(req, env));
-  if (p === '/v1/bench' && m === 'POST') return benchIn(req, env);
   throw new HttpError(404, 'no such route');
 }
 
@@ -321,30 +318,6 @@ async function mine(env, id) {
 async function forget(env, id) {
   await env.DB.prepare('DELETE FROM players WHERE id = ?1').bind(id).run();
   return json({ ok: true });
-}
-
-/* ---------------- the performance test (test.html) ---------------- */
-
-const BENCH_MAX = 65536;
-async function benchIn(req, env) {
-  if (env.AUTH_RL) {
-    const ip = req.headers.get('cf-connecting-ip') || 'x';
-    const { success } = await env.AUTH_RL.limit({ key: 'bench:' + ip });
-    if (!success) throw new HttpError(429, 'too many');
-  }
-  const t = await req.text();
-  if (t.length > BENCH_MAX) throw new HttpError(413, 'too big');
-  let b;
-  try { b = JSON.parse(t); } catch (e) { throw new HttpError(400, 'json'); }
-  if (!b || typeof b !== 'object' || b.v !== 1) throw new HttpError(400, 'bench');
-  const num = (x, lo, hi) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 0; };
-  const d = b.device && typeof b.device === 'object' ? b.device : {};
-  const dev = [d.gpu, d.screen, d.dpr, d.ua].map((x) => String(x == null ? '' : x)).join(' | ').slice(0, 600);
-  const r = await env.DB.prepare(
-    'INSERT INTO bench (t, hz, fps, p95, late, m, secs, dev, data) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)'
-  ).bind(Date.now(), Math.round(num(b.hz, 0, 1000)), num(b.fps, 0, 1000), num(b.p95, 0, 10000), num(b.late, 0, 100),
-         Math.round(num(b.m, 0, 1e7)), Math.round(num(b.secs, 0, 1e6)), dev, t).run();
-  return json({ ok: true, id: r.meta && r.meta.last_row_id != null ? r.meta.last_row_id : 0 });
 }
 
 /* ---------------- small things ---------------- */
