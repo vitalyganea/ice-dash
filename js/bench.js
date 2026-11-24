@@ -45,6 +45,32 @@
   'use strict';
   var Q = (function () { var o = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); return o; })();
   var QUICK = Q.quick === '1';
+  /* Two switches to tell apart what makes the iPhone stop for 0.4 s about
+     every 150 s with the time outside the page's script (reports 6-11,
+     24 Nov 2026). They change nothing in the game; each adds to one thing,
+     and if the stops come more often, that thing is it.
+     ?junk=1: as much again of throwaway memory each frame as the hill makes
+              (small objects, lists, colour strings), for the script engine
+              to clear.
+     ?grad=1: as many again of new gradients each frame (some 24), filled
+              into a tiny canvas no one sees, for the drawing side to keep. */
+  var JUNK = Q.junk === '1', GRAD = Q.grad === '1', junkKeep = null, gradCv = null;
+  function junkFrame() {
+    var a = [], i;
+    for (i = 0; i < 2500; i++) a.push({ x: i * 0.5, y: Math.random(), k: [i, i + 1] });
+    for (i = 0; i < 600; i++) a.push('rgba(' + (i & 255) + ',' + ((i * 7) & 255) + ',90,' + Math.random().toFixed(3) + ')');
+    for (i = 0; i < 150; i++) a.push(function (v) { return v + i; });
+    junkKeep = a;                      // kept for a frame, then thrown away
+  }
+  function gradFrame() {
+    if (!gradCv) { gradCv = document.createElement('canvas'); gradCv.width = gradCv.height = 8; }
+    var c = gradCv.getContext('2d');
+    for (var i = 0; i < 24; i++) {
+      var g = i % 3 ? c.createLinearGradient(0, 0, 8, 8) : c.createRadialGradient(4, 4, 0, 4, 4, 4);
+      g.addColorStop(0, 'rgba(255,' + (i * 9) + ',0,.5)'); g.addColorStop(1, 'rgba(0,0,' + (i * 9) + ',0)');
+      c.fillStyle = g; c.fillRect(0, 0, 8, 8);
+    }
+  }
   var SEED = 20271;
   /* which game the report is of: changed with every change made for speed,
      so two reports of one phone can be told apart (and compared) */
@@ -565,6 +591,8 @@
     if (!W) return;
     if (!K) K = Game._consts();
     var b0 = performance.now();
+    if (JUNK) junkFrame();
+    if (GRAD) gradFrame();
     stepFrame(W, t);
     JS.bench = performance.now() - b0;
     if (R.stopped) return;
@@ -593,7 +621,7 @@
     tags.sort(function (a, b) { return (a.tag === 'all frames') - (b.tag === 'all frames') || b.late - a.late || b.ms - a.ms; });
     R.secOrder.forEach(function (k) { secs.push(outS(R.sec[k], { section: k })); });
     return {
-      v: 1, kind: 'bench2', state: state, page: location.host + location.pathname + (QUICK ? '?quick=1' : ''), built: document.lastModified,
+      v: 1, kind: 'bench2', state: state, page: location.host + location.pathname + location.search, built: document.lastModified,
       seed: SEED, elapsed: Math.round((performance.now() - started) / 1000), phase: R.phase,
       hz: R.hz, refresh: r2(R.refresh), frames: R.all.n, fps: R.all.n ? r1(1000 * R.all.n / R.all.sum) : 0,
       p50: pct(0.5), p95: pct(0.95), p99: pct(0.99), late: R.all.n ? r1(100 * R.all.late / R.all.n) : 0,
@@ -607,7 +635,7 @@
       pictures: (function () { var P = Game._pics ? Game._pics() : null; return P ? { n: P.n, ms: Math.round(P.ms), max: Math.round(P.max), mpx: r1(P.px / 1e6),
         wide: P.wide, wideMs: Math.round(P.wideMs), wideMax: Math.round(P.wideMax), wideMpx: r1(P.widePx / 1e6),
         reused: P.reused || 0, pooled: P.pooled || 0, ahead: P.ahead || 0, resized: P.resized || 0 } : null; })(),
-      build: GAME_BUILD, tiers: R.tiers, timeline: R.timeline, device: DEV
+      build: GAME_BUILD + (JUNK ? '+junk' : '') + (GRAD ? '+grad' : ''), tiers: R.tiers, timeline: R.timeline, device: DEV
     };
   }
   /* the report on the server: made at once, sent again every 30 s, once
