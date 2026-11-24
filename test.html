@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>Ice Dasher — performance test</title>
+<!-- The hill's own performance test (js/bench.js): the game's files, the
+     same as index.html, without its menus (ui.js), its save or its sound.
+     Not in build.sh's FILES: it ships with no app and no web portal. -->
+<link rel="stylesheet" href="css/font.css">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .bench{ position:fixed; left:50%; top:calc(10px + env(safe-area-inset-top,0px)); transform:translateX(-50%);
+          width:min(92vw,420px); z-index:50; font-family:'Nunito',system-ui,sans-serif; color:#10304f;
+          background:rgba(247,252,255,.94); border-radius:18px; padding:14px 16px 12px;
+          box-shadow:0 8px 26px rgba(6,22,60,.28); }
+  .bench h1{ margin:0 0 8px; font-size:17px; font-weight:900; }
+  .bench p{ margin:0 0 10px; font-size:14px; line-height:1.35; font-weight:700; }
+  .bench .note{ font-size:12px; color:#3d5a76; }
+  .bench button{ font:inherit; font-weight:900; font-size:15px; border:0; border-radius:12px; padding:10px 16px;
+                 margin:2px 4px 2px 0; color:#fff; background:#1f8a4c; cursor:pointer; }
+  .bench button.alt{ background:#2a6db5; }
+  .bench button.quiet{ background:#8aa2b8; }
+  .bench button:disabled{ opacity:.5; }
+  .bench .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px 10px; margin:4px 0 8px; }
+  .bench .grid div{ font-size:11px; font-weight:800; color:#3d5a76; }
+  .bench .grid b{ display:block; font-size:17px; color:#10304f; }
+  .bench .track{ height:6px; border-radius:3px; background:#d7e6f1; overflow:hidden; margin-bottom:8px; }
+  .bench .track i{ display:block; height:100%; width:0; background:#2a6db5; }
+  .bench ul{ list-style:none; margin:0 0 10px; padding:0; }
+  .bench li{ display:flex; justify-content:space-between; font-size:14px; font-weight:700; padding:3px 0; border-bottom:1px solid #e1ecf4; }
+  .bench #b-status{ font-size:13px; font-weight:800; min-height:1em; margin-top:4px; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="game"></canvas>
+</div>
+
+<div class="bench" id="bench">
+  <h1 id="b-title">Ice Dasher — performance test</h1>
+  <div id="b-intro">
+    <p id="b-intro-text"></p>
+    <button id="b-start">Start</button>
+  </div>
+  <div id="b-run" class="hidden">
+    <div class="track"><i id="b-bar"></i></div>
+    <div class="grid">
+      <div><span id="l-hz"></span><b id="b-hz">–</b></div>
+      <div><span id="l-fps"></span><b id="b-fps">–</b></div>
+      <div><span id="l-late"></span><b id="b-late">–</b></div>
+      <div><span id="l-dist"></span><b id="b-dist">–</b></div>
+      <div><span id="l-time"></span><b id="b-time">–</b></div>
+      <div><span id="l-tier"></span><b id="b-tier">–</b></div>
+    </div>
+    <button id="b-stop" class="quiet">Stop</button>
+  </div>
+  <div id="b-end" class="hidden">
+    <ul id="b-sum"></ul>
+    <button id="b-send">Send</button>
+    <button id="b-copy" class="alt">Copy</button>
+    <button id="b-again" class="quiet">Again</button>
+    <p class="note" id="b-note"></p>
+  </div>
+  <div id="b-status"></div>
+</div>
+
+<script src="js/i18n.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/biomes.js"></script>
+<script src="js/skins.js"></script>
+<script src="js/courses.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/album.js"></script>
+<script src="js/comic.js"></script>
+<script src="js/game.js"></script>
+<script src="js/portraits.js"></script>
+<script src="js/events.js"></script>
+<script src="js/bench.js"></script>
+</body>
+</html>

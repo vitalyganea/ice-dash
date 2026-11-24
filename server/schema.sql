@@ -23,6 +23,21 @@ CREATE TABLE IF NOT EXISTS players (
   created   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS players_best ON players (best DESC, best_t);
+-- The performance test's results (test.html, js/bench.js; 24 Nov 2026), sent
+-- on a tap by whoever ran it. No player and no id: the phone's kind, its
+-- screen and the timings. data is the whole result as sent (JSON).
+CREATE TABLE IF NOT EXISTS bench (
+  id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  t     INTEGER NOT NULL,
+  hz    INTEGER NOT NULL DEFAULT 0,
+  fps   REAL    NOT NULL DEFAULT 0,
+  p95   REAL    NOT NULL DEFAULT 0,
+  late  REAL    NOT NULL DEFAULT 0,
+  m     INTEGER NOT NULL DEFAULT 0,
+  secs  INTEGER NOT NULL DEFAULT 0,
+  dev   TEXT    NOT NULL DEFAULT '',
+  data  TEXT    NOT NULL
+);
 CREATE INDEX IF NOT EXISTS players_day  ON players (day, day_best DESC, best_t);
 CREATE INDEX IF NOT EXISTS players_week ON players (week, week_best DESC, best_t);
 CREATE INDEX IF NOT EXISTS players_card ON players (card_t DESC);

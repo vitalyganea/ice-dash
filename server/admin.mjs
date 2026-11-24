@@ -11,6 +11,8 @@
                                      scores are taken without a word and kept out
      node admin.mjs unban <id>       back on, with whatever best they had
      node admin.mjs banned           who is banned
+     node admin.mjs bench [n]        the newest performance tests (test.html)
+     node admin.mjs bench-show <no>  one of them in full (JSON)
 
    <id> as `top` and `find` show it: a:<Play Games id> or i:<Game Center id>.
    Add --local to work on the wrangler dev database instead. */
@@ -73,6 +75,22 @@ switch (cmd) {
     console.log('unbanned: ' + p.name + ' (' + p.id + ')');
     break;
   }
+  case 'bench': {
+    const rows = sql('SELECT id, t, hz, fps, p95, late, m, secs, dev FROM bench ORDER BY id DESC LIMIT ' +
+                     Math.max(1, Math.min(500, parseInt(arg, 10) || 30)));
+    if (!rows.length) { console.log('(none)'); break; }
+    console.log('   no  when              Hz    fps  p95ms  late%       m   min  device');
+    for (const r of rows)
+      console.log(String(r.id).padStart(5) + '  ' + new Date(r.t).toISOString().slice(0, 16).replace('T', ' ') + '  ' +
+                  String(r.hz).padStart(3) + '  ' + String(r.fps).padStart(5) + '  ' + String(r.p95).padStart(5) + '  ' +
+                  String(r.late).padStart(5) + '  ' + String(r.m).padStart(7) + '  ' + String(Math.round(r.secs / 60)).padStart(4) + '  ' + String(r.dev).slice(0, 70));
+    break;
+  }
+  case 'bench-show': {
+    const r = sql('SELECT data FROM bench WHERE id = ' + (parseInt(arg, 10) || 0));
+    console.log(r.length ? JSON.stringify(JSON.parse(r[0].data), null, 1) : '(no such test)');
+    break;
+  }
   default:
-    console.log('node admin.mjs top [n] | find <name> | reset <id> | ban <id> | unban <id> | banned   [--local]');
+    console.log('node admin.mjs top [n] | find <name> | reset <id> | ban <id> | unban <id> | banned | bench [n] | bench-show <no>   [--local]');
 }
