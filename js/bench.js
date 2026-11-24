@@ -53,8 +53,19 @@
               (small objects, lists, colour strings), for the script engine
               to clear.
      ?grad=1: as many again of new gradients each frame (some 24), filled
-              into a tiny canvas no one sees, for the drawing side to keep. */
-  var JUNK = Q.junk === '1', GRAD = Q.grad === '1', junkKeep = null, gradCv = null;
+              into a tiny canvas no one sees, for the drawing side to keep.
+     ?keep=1: throwaway memory that lives some seconds first (a ring of 300
+              frames' worth), as the hill's things and pictures do: a
+              collector clears what dies at once cheaply and often, and
+              stops for a big clear only when longer-lived things pile up.
+              junk=1 made the stop come at 141 s instead of 165 (report 13). */
+  var JUNK = Q.junk === '1', GRAD = Q.grad === '1', KEEP = Q.keep === '1', junkKeep = null, gradCv = null, ring = [], ringI = 0;
+  function keepFrame() {
+    var a = [], i;
+    for (i = 0; i < 400; i++) a.push({ x: i * 0.5, y: Math.random(), k: [i, i + 1] });
+    for (i = 0; i < 100; i++) a.push('rgba(' + (i & 255) + ',' + ((i * 7) & 255) + ',90,' + Math.random().toFixed(3) + ')');
+    ring[ringI] = a; ringI = (ringI + 1) % 300;   // let go five seconds later
+  }
   function junkFrame() {
     var a = [], i;
     for (i = 0; i < 2500; i++) a.push({ x: i * 0.5, y: Math.random(), k: [i, i + 1] });
@@ -593,6 +604,7 @@
     var b0 = performance.now();
     if (JUNK) junkFrame();
     if (GRAD) gradFrame();
+    if (KEEP) keepFrame();
     stepFrame(W, t);
     JS.bench = performance.now() - b0;
     if (R.stopped) return;
@@ -635,7 +647,7 @@
       pictures: (function () { var P = Game._pics ? Game._pics() : null; return P ? { n: P.n, ms: Math.round(P.ms), max: Math.round(P.max), mpx: r1(P.px / 1e6),
         wide: P.wide, wideMs: Math.round(P.wideMs), wideMax: Math.round(P.wideMax), wideMpx: r1(P.widePx / 1e6),
         reused: P.reused || 0, pooled: P.pooled || 0, ahead: P.ahead || 0, resized: P.resized || 0 } : null; })(),
-      build: GAME_BUILD + (JUNK ? '+junk' : '') + (GRAD ? '+grad' : ''), tiers: R.tiers, timeline: R.timeline, device: DEV
+      build: GAME_BUILD + (JUNK ? '+junk' : '') + (GRAD ? '+grad' : '') + (KEEP ? '+keep' : ''), tiers: R.tiers, timeline: R.timeline, device: DEV
     };
   }
   /* the report on the server: made at once, sent again every 30 s, once
