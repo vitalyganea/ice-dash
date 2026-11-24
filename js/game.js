@@ -12987,6 +12987,7 @@ var Game = (function () {
 
     debug: function () { return W; },
     _fading: function () { return !!FADING; },       // a fade between stretches is on (test.html's bench)
+    _bridgeKinds: function () { return BRIDGE_KINDS.filter(function (k, i, a) { return a.indexOf(k) === i; }); },   // the bench's five bridges
     _skip: function (o) { SKIP = o || {}; },
     /* for tests: the second tier (fewer pixels, no decoration) or none */
     _lite: function (v) { if (v !== undefined) { qWant = { res: 'auto', fx: 'auto' }; qTier = v ? 2 : 0; applyQuality(); if (canvas) resize(); } return LITE; },

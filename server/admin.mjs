@@ -80,14 +80,14 @@ switch (cmd) {
     break;
   }
   case 'bench': {
-    const rows = sql('SELECT id, t, hz, fps, p95, late, m, secs, dev FROM bench ORDER BY id DESC LIMIT ' +
+    const rows = sql('SELECT id, t, hz, fps, p95, late, m, secs, dev, state FROM bench ORDER BY id DESC LIMIT ' +
                      Math.max(1, Math.min(500, parseInt(arg, 10) || 30)), true);
     if (!rows.length) { console.log('(none)'); break; }
-    console.log('   no  when              Hz    fps  p95ms  late%       m   min  device');
+    console.log('   no  when              Hz    fps  p95ms  late%       m   min  state         device');
     for (const r of rows)
       console.log(String(r.id).padStart(5) + '  ' + new Date(r.t).toISOString().slice(0, 16).replace('T', ' ') + '  ' +
                   String(r.hz).padStart(3) + '  ' + String(r.fps).padStart(5) + '  ' + String(r.p95).padStart(5) + '  ' +
-                  String(r.late).padStart(5) + '  ' + String(r.m).padStart(7) + '  ' + String(Math.round(r.secs / 60)).padStart(4) + '  ' + String(r.dev).slice(0, 70));
+                  String(r.late).padStart(5) + '  ' + String(r.m).padStart(7) + '  ' + String(Math.round(r.secs / 60)).padStart(4) + '  ' + String(r.state || '').padEnd(12) + '  ' + String(r.dev).slice(0, 60));
     break;
   }
   case 'bench-show': {

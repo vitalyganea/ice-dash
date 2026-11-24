@@ -25,6 +25,16 @@ function d1(db) {
   const row = db.prepare('SELECT * FROM bench WHERE id = 1').get();
   ok(row.hz === 120 && Math.abs(row.fps - 118.6) < 1e-9 && /Adreno/.test(row.dev) && JSON.parse(row.data).tags[0].tag === 'bridge:under', 'kept whole, its summary in columns');
   ok((await (await post(JSON.stringify(rep))).json()).id === 2, 'the next one is no. 2');
+  ok(/^[0-9a-f]{24}$/.test(j1.key || ''), 'with a key for the page to send it again');
+  const upd = (id, k, body) => W.fetch(new Request('https://bench.test/v1/bench/' + id + '?k=' + k, { method: 'POST',
+    headers: { origin: 'https://vitalyganea.github.io', 'content-type': 'text/plain' }, body }), env);
+  const later = Object.assign({}, rep, { m: 6000, state: 'running', fps: 90 });
+  const u1 = await upd(1, j1.key, JSON.stringify(later));
+  ok(u1.status === 200 && db.prepare('SELECT m, state, fps FROM bench WHERE id = 1').get().m === 6000, 'sent again, it is the report as it stands now');
+  ok((await upd(1, 'f'.repeat(24), JSON.stringify(later))).status === 404 && (await upd(1, 'x', JSON.stringify(later))).status === 403, 'not with another key');
+  await upd(1, j1.key, JSON.stringify(Object.assign({}, later, { state: 'done', m: 9000 })));
+  ok(db.prepare('SELECT state, m FROM bench WHERE id = 1').get().state === 'done', 'its last word: done');
+  ok((await upd(1, j1.key, JSON.stringify(Object.assign({}, later, { state: 'closed early', m: 1 })))).status === 404 && db.prepare('SELECT m FROM bench WHERE id = 1').get().m === 9000, 'and a done report stays as it ended (a late beacon changes nothing)');
   ok((await post(JSON.stringify({ v: 2 }))).status === 400, 'anything but a report is refused');
   ok((await post('{"v":1,"pad":"' + 'x'.repeat(70000) + '"}')).status === 413, 'and a too big one');
   ok((await post('nope')).status === 400, 'and nonsense');

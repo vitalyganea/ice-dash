@@ -12,6 +12,13 @@ CREATE TABLE IF NOT EXISTS bench (
   m     INTEGER NOT NULL DEFAULT 0,
   secs  INTEGER NOT NULL DEFAULT 0,
   dev   TEXT    NOT NULL DEFAULT '',
-  data  TEXT    NOT NULL
+  data  TEXT    NOT NULL,
+  -- a report is made at the start and sent again along the way (the key
+  -- given back with its number lets only that page update it); state is
+  -- running, done, stopped, time limit or closed early; upd its last update
+  key   TEXT    NOT NULL DEFAULT '',
+  state TEXT    NOT NULL DEFAULT '',
+  upd   INTEGER NOT NULL DEFAULT 0
 );
+-- added on the live database 24 Nov 2026 with ALTER TABLE ... ADD COLUMN
 CREATE INDEX IF NOT EXISTS bench_t ON bench (t DESC);

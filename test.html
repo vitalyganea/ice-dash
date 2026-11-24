@@ -32,6 +32,7 @@
   .bench li{ display:flex; justify-content:space-between; font-size:14px; font-weight:700; padding:3px 0; border-bottom:1px solid #e1ecf4; }
   .bench #b-status{ font-size:13px; font-weight:800; min-height:1em; margin-top:4px; }
   .bench .no{ font-size:24px; font-weight:900; color:#1f8a4c; margin:2px 0 2px; }
+  .bench .phase{ font-size:13px; font-weight:900; color:#2a6db5; margin:0 0 6px; min-height:1em; }
   .hidden{ display:none !important; }
 </style>
 </head>
@@ -43,6 +44,8 @@
 
 <div class="bench" id="bench">
   <h1 id="b-title">Ice Dasher — performance test</h1>
+  <div id="b-report" class="hidden"><div class="no" id="b-no"></div><p class="note" id="b-no-note"></p></div>
+  <div class="phase" id="b-phase"></div>
   <div id="b-intro">
     <p id="b-intro-text"></p>
     <p class="note" id="b-intro-note"></p>
@@ -61,7 +64,6 @@
     <button id="b-stop" class="quiet">Stop</button>
   </div>
   <div id="b-end" class="hidden">
-    <div id="b-report" class="hidden"><div class="no" id="b-no"></div><p class="note" id="b-no-note"></p></div>
     <ul id="b-sum"></ul>
     <button id="b-send" class="hidden">Try again</button>
     <button id="b-copy" class="alt">Copy</button>

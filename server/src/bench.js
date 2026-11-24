@@ -6,8 +6,12 @@
    (bench.icedasher.workers.dev) and its own D1 (icedasher-bench).
 
    Routes:
-     POST /v1/bench   a report (JSON, v: 1, up to 64 KB) -> {ok, id}
+     POST /v1/bench            a new report (JSON, v: 1, up to 64 KB) -> {ok, id, key}
+     POST /v1/bench/<id>?k=<key>  the same report again, as it stands now
+                               (every 30 s, on the page being hidden or
+                               closed by beacon, and at the end) -> {ok}
      GET  /v1/health
+   Bodies come as text/plain, so a beacon needs no preflight.
    Reading them is not a route: server/admin.mjs bench | bench-show <no>,
    from the owner's machine, through wrangler.
    =========================================================== */
@@ -23,6 +27,8 @@ export default {
       const url = new URL(req.url);
       if (url.pathname === '/v1/health') return json({ ok: true }, 200, cors);
       if (url.pathname === '/v1/bench' && req.method === 'POST') return json(await take(req, env), 200, cors);
+      const mm = /^\/v1\/bench\/(\d+)$/.exec(url.pathname);
+      if (mm && req.method === 'POST') return json(await again(req, env, Number(mm[1]), url.searchParams.get('k') || ''), 200, cors);
       return json({ error: 'no such route' }, 404, cors);
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;
@@ -32,11 +38,13 @@ export default {
   }
 };
 
-async function take(req, env) {
+async function limited(req, env) {
   if (env.BENCH_RL) {
     const { success } = await env.BENCH_RL.limit({ key: req.headers.get('cf-connecting-ip') || 'x' });
     if (!success) throw new HttpError(429, 'too many');
   }
+}
+async function readReport(req) {
   const t = await req.text();
   if (t.length > MAX) throw new HttpError(413, 'too big');
   let b;
@@ -44,12 +52,32 @@ async function take(req, env) {
   if (!b || typeof b !== 'object' || b.v !== 1) throw new HttpError(400, 'not a report');
   const num = (x, lo, hi) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 0; };
   const d = b.device && typeof b.device === 'object' ? b.device : {};
-  const dev = [d.gpu, d.screen, d.dpr, d.ua].map((x) => String(x == null ? '' : x)).join(' | ').slice(0, 600);
-  const r = await env.DB.prepare(
-    'INSERT INTO bench (t, hz, fps, p95, late, m, secs, dev, data) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)'
-  ).bind(Date.now(), Math.round(num(b.hz, 0, 1000)), num(b.fps, 0, 1000), num(b.p95, 0, 10000), num(b.late, 0, 100),
-         Math.round(num(b.m, 0, 1e7)), Math.round(num(b.secs, 0, 1e6)), dev, t).run();
-  return { ok: true, id: r.meta && r.meta.last_row_id != null ? r.meta.last_row_id : 0 };
+  return {
+    t, hz: Math.round(num(b.hz, 0, 1000)), fps: num(b.fps, 0, 1000), p95: num(b.p95, 0, 10000), late: num(b.late, 0, 100),
+    m: Math.round(num(b.m, 0, 1e7)), secs: Math.round(num(b.secs, 0, 1e6)),
+    dev: [d.gpu, d.screen, d.dpr, d.ua].map((x) => String(x == null ? '' : x)).join(' | ').slice(0, 600),
+    state: String(b.state || '').slice(0, 20)
+  };
+}
+async function take(req, env) {
+  await limited(req, env);
+  const r = await readReport(req), now = Date.now();
+  const key = [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, '0')).join('');
+  const res = await env.DB.prepare(
+    'INSERT INTO bench (t, hz, fps, p95, late, m, secs, dev, data, key, state, upd) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?1)'
+  ).bind(now, r.hz, r.fps, r.p95, r.late, r.m, r.secs, r.dev, r.t, key, r.state).run();
+  return { ok: true, id: res.meta && res.meta.last_row_id != null ? res.meta.last_row_id : 0, key };
+}
+async function again(req, env, id, key) {
+  await limited(req, env);
+  if (!key || !/^[0-9a-f]{24}$/.test(key)) throw new HttpError(403, 'key');
+  const r = await readReport(req);
+  const res = await env.DB.prepare(
+    'UPDATE bench SET hz = ?3, fps = ?4, p95 = ?5, late = ?6, m = ?7, secs = ?8, dev = ?9, data = ?10, state = ?11, upd = ?12 ' +
+    'WHERE id = ?1 AND key = ?2 AND state <> \'done\''
+  ).bind(id, key, r.hz, r.fps, r.p95, r.late, r.m, r.secs, r.dev, r.t, r.state, Date.now()).run();
+  if (!res.meta || !res.meta.changes) throw new HttpError(404, 'no such report');
+  return { ok: true };
 }
 
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
