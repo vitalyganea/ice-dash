@@ -48,7 +48,7 @@
   var SEED = 20271;
   /* which game the report is of: changed with every change made for speed,
      so two reports of one phone can be told apart (and compared) */
-  var GAME_BUILD = 'pics-2';   // 24 Nov 2026: pictures kept and made ahead, the creatures' beads from pictures (SYSTEMS 207)
+  var GAME_BUILD = 'pics-2+js';   // 24 Nov 2026: pictures kept and made ahead, the creatures' beads from pictures (SYSTEMS 207)
   var SEND_URL = 'https://bench.icedasher.workers.dev/v1/bench';
   var LIMIT_MS = (QUICK ? 3.5 : 15) * 60000;           // the whole test, at most
   var PLAN = QUICK ? { surveyM: 4000, runMs: 60000, scoreGoal: 50000, slowAt: 300, midAt: 0, gfx: 2, creatureMs: 1500, creatures: 4, control: 2000 }
@@ -92,7 +92,15 @@
   /* ---- the frame clock: ours, and the game's, which a survey drives ---- */
   var realRAF = window.requestAnimationFrame.bind(window);
   var hold = null;                                    // while set, the game's frames are ours to run
-  window.requestAnimationFrame = function (cb) { if (hold) { hold.cb = cb; return 0; } return realRAF(cb); };
+  /* where a slow frame's time went: the game's own code (its frame, with
+     any garbage collection that fell in it), ours, and the report being
+     sent; what is left is the browser's, outside the page's script. The
+     most each took since the frame before (JS_MAX), read by measure() */
+  var JS = { game: 0, bench: 0, up: 0, upAt: -1e9 };
+  window.requestAnimationFrame = function (cb) {
+    if (hold) { hold.cb = cb; return 0; }
+    return realRAF(function (t) { var s0 = performance.now(); try { cb(t); } finally { var d = performance.now() - s0; if (d > JS.game) JS.game = d; } });
+  };
 
   /* ---- the screen's refresh ---- */
   var HZ_STEPS = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240];
@@ -413,6 +421,10 @@
       R.pics = { n: P.n, ms: P.ms, wide: P.wide, wideMs: P.wideMs };
       if (built > 0) { TAGS.splice(TAGS.length - 1, 0, 'pictures made'); if (wideB > 0) TAGS.splice(TAGS.length - 1, 0, 'wide picture made (a bridge roof)'); }
     }
+    /* this frame's split: the game's frame and the sending since the last,
+       ours from the last frame (the one before this one's) */
+    var js = [Math.round(JS.game), Math.round(R.benchPrev || 0), Math.round(JS.up), r1((performance.now() - JS.upAt) / 1000)];
+    R.benchPrev = JS.bench; JS.game = 0; JS.up = 0;
     var late = dt > R.refresh * 1.5;
     addS(R.all, dt, late);
     R.hist[Math.min(NB, Math.floor(dt / BIN))]++;
@@ -429,12 +441,12 @@
       }
     }
     if (dt > 50 && (R.worst.length < 30 || dt > R.worst[R.worst.length - 1][0])) {
-      R.worst.push([Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), seen, r1(W.speed), built, Math.round(builtMs), wideB, Math.round(wideMs)]);
+      R.worst.push([Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), seen, r1(W.speed), built, Math.round(builtMs), wideB, Math.round(wideMs), js]);
       R.worst.sort(function (x, y) { return y[0] - x[0]; });
       if (R.worst.length > 30) R.worst.length = 30;
     }
     if (dt > 100 && R.freezes.length < 100)
-      R.freezes.push([r1((t - R.t0) / 1000), Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), built, Math.round(builtMs), wideB, Math.round(wideMs)]);
+      R.freezes.push([r1((t - R.t0) / 1000), Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), built, Math.round(builtMs), wideB, Math.round(wideMs), js]);
     if (R.newBiomeT > 0) R.newBiomeT -= dt;
     if (!R.win) R.win = { n: 0, sum: 0, late: 0, max: 0, t: t, pics: Game._drawn ? Game._drawn().n : 0 };
     var w = R.win; w.n++; w.sum += dt; if (late) w.late++; if (dt > w.max) w.max = dt;
@@ -552,7 +564,9 @@
     var W = Game.debug();
     if (!W) return;
     if (!K) K = Game._consts();
+    var b0 = performance.now();
     stepFrame(W, t);
+    JS.bench = performance.now() - b0;
     if (R.stopped) return;
     measure(t, W);
     if (performance.now() - started > LIMIT_MS) finish('time limit');
@@ -608,7 +622,9 @@
   }
   function upload(state, cb) {
     if (!R) return;
+    var u0 = performance.now();
     var body = JSON.stringify(report(state));
+    JS.up += performance.now() - u0; JS.upAt = performance.now();
     if (!RID) post(SEND_URL, body, function (j) {
       if (j && j.id) { RID = j.id; RKEY = j.key || ''; showNo(); }
       if (cb) cb(!!(j && j.id));
