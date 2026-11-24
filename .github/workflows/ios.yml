@@ -27,7 +27,6 @@ on:
       - 'js/**'
       - 'css/**'
       - 'index.html'
-      - 'build.sh'
       - 'build-android.sh'
       - 'capacitor.config.json'
       - 'package.json'

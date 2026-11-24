@@ -3,27 +3,33 @@
 (Ice Dash until 1.2.12, 17 Nov 2026. The package id `com.veetalea.icedash`, the save keys and the
 folder keep the old name on purpose: changing them would lose every player's progress.)
 
-One-tap endless slide for **YouTube Playables**. Plain HTML + CSS + JS: no
-libraries, no build step, no audio files. Everything is drawn on `<canvas>`
-and every sound is synthesised with WebAudio. See `README.md` for the layout.
+One-tap endless slide for **Android and iPhone** (Capacitor apps on Google Play and the
+App Store). Plain HTML + CSS + JS: no libraries, no build step, no audio files.
+Everything is drawn on `<canvas>` and every sound is synthesised with WebAudio. See
+`README.md` for the layout.
+
+The web portals were dropped on 24 Nov 2026 (the owner: focus on the two apps): YouTube
+Playables, Yandex Games and CrazyGames keep the version they have and are not updated;
+their code and build scripts left the repo (copies in `~/Desktop/icedasher-portals-archive/`,
+and in git history). The GitHub Pages site (`main`) still serves the privacy policy,
+`version.json`, the performance test `test.html` and a web copy of the game.
 
 ## Rules that are easy to break
 
 - No dependencies and no external requests (the font is embedded in `css/font.css`).
-  The phone apps alone (`js/native.js`, never loaded by Playables, Yandex or CrazyGames)
-  have three exceptions: `version.json` from the game's own page (1.3.3), crash and
+  The apps' `js/native.js` has three exceptions: `version.json` from the game's own page (1.3.3), crash and
   script-error reports to Firebase Crashlytics (1.3.5, SYSTEMS row 188), and the shared
   board's server `board.icedasher.workers.dev` (1.3.5, `server/`, SYSTEMS row 189).
-- Inside Playables the save goes only through the SDK `saveData`, and only after
-  `loadData()` has settled. `localStorage` is the fallback when the SDK is absent.
-- Do not use the Page Visibility API. Pause/resume come only from `onPause`/`onResume`.
-- No overall mute; audio stays subordinate to `isAudioEnabled()`.
+- The save lives in `localStorage` and, in the apps, in the player's Play Games or iCloud
+  account too (`PLAT.cloudLoad` / `cloudSave`); nothing is written to the cloud before it
+  has answered.
+- The game itself does not watch page visibility: in the apps a run is paused and the
+  sound stopped from Capacitor's App `pause` (`js/native.js`).
 - Every string goes through `js/i18n.js` in all six languages: English and Russian in
   the main table, then the `RO`, `ES`, `PT` (Brazilian) and `DE` blocks. `test/i18n.js`
   fails if any language is missing a key or changes its `{placeholders}` or tags.
 - Must fill the viewport at every aspect ratio from 9:32 to 32:9, and work with
   mouse and touch.
-- `PLAYABLES.md` lists every certification requirement and where it is met. Keep it true.
 - Graphics levels (`js/game.js` LITE, SPARE; Settings > Graphics): a new effect that is
   only for looks stops at low effects (`if (SPARE) return`); nothing that tells the player
   about the hill (fog, lava, hazards) ever does. Effects Off (`OFF`, only when chosen)
@@ -68,12 +74,10 @@ node test/ladder.js         # slow; run when skins/prices change
 node test/playtest.js       # real Chrome, both platforms
 node test/textfit.js        # real Chrome: every word fits and reads, 6 languages x 4 widths
                             # (slow; after menu/CSS/translation/HUD-text changes — skill visual-qa)
-bash build.sh               # builds icedash.zip from an allowlist
 ```
 
-A new runtime file must be added to the `FILES` list in `build.sh`, or it will
-not ship (to Playables, to the Android app, to Yandex or to CrazyGames —
-`build-android.sh`, `build-yandex.sh` and `build-crazygames.sh` read the same list).
+A new runtime file must be added to the `FILES` list in `build-android.sh`, or it will
+not ship in either app (`npm run android:sync` and `ios:sync` both build `www/` from it).
 
 ## Android
 
@@ -113,22 +117,3 @@ are in `ios/ids.xcconfig` and `AD_UNIT_IOS` in `native.js`.
 A store build: push, then GitHub Actions → iOS release (its run number is the
 build number); the build then turns up in App Store Connect to be chosen on
 the version's page.
-
-## Yandex Games
-
-`bash build-yandex.sh` builds `yandex/game/` and `yandex/icedash-yandex.zip`
-(Playables SDK swapped for `/sdk.js`, `js/yandex.js` added). `js/yandex.js` is
-the only Yandex-only code: it answers the game's `window.ytgame` calls with
-Yandex ones. It and `js/crazygames.js` are the only places allowed to watch
-visibility (Yandex requires sound off when hidden); the game itself never does. `node yandex/media.js [--video]`
-regenerates the console's icon, cover, screenshots and videos;
-`yandex/README.md` says what goes where.
-
-## CrazyGames
-
-Same shape: `bash build-crazygames.sh` builds `crazygames/game/` and
-`crazygames/icedash-crazygames.zip` (Playables SDK swapped for CrazyGames
-SDK v3, `js/crazygames.js` added — the only CrazyGames-only code).
-`node crazygames/media.js [--video]` makes the three covers and two preview
-videos; `crazygames/README.md` has the upload steps. Both media scripts run
-on `tools/media-lib.js`.

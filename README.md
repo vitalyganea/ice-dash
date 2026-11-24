@@ -2,14 +2,16 @@
 
 (Called Ice Dash until 1.2.12, 17 Nov 2026; the folder, package id and saves keep the old name.)
 
-A one-tap endless slide, written in plain HTML + CSS + JavaScript and built to
-pass YouTube Playables certification. No libraries, no build step and no
+A one-tap endless slide for Android and iPhone, written in plain HTML + CSS +
+JavaScript and packaged with Capacitor. No libraries, no build step and no
 audio files: the hill, the creatures and every effect are drawn on a
 `<canvas>`, and every sound is synthesised at runtime with WebAudio. The one
 picture in the whole game is the title logo (`img/logo.webp`, with a PNG
 fallback).
 
-See [PLAYABLES.md](PLAYABLES.md) for how each certification requirement is met.
+It was also on YouTube Playables, Yandex Games and CrazyGames until 24 Nov 2026,
+when the owner dropped the web portals to focus on the two apps: those keep the
+version they have, and their code left the repo (it is in git history).
 
 ## Running it
 
@@ -158,24 +160,22 @@ js/skins.js       the creatures you can wear, and what each one does
 js/courses.js     the six marked runs, written out row by row
 js/achievements.js the trophies and what each one pays
 js/game.js        the engine: physics, spawning, collisions, rendering
-js/ui.js          menus, saving, input, Playables lifecycle
-build.sh          builds the upload package from an allowlist
+js/ui.js          menus, saving, input
+js/native.js      the apps' own part (Android and iPhone)
+build-android.sh  builds www/ for both apps from an allowlist
 test/             the checks, and the browser playtest
-PLAYABLES.md      certification requirements and how each one is met
+test.html         the performance test page (js/bench.js; not in the apps)
 ```
 
-`README.md`, `PLAYABLES.md`, `GAME_SPEC.md`, `SYSTEMS.md`, `PLAYTEST.md`,
-`unlock.html`, `build.sh` and `test/` are not part of the game. Rather than
-remember that, run `./build.sh`: it builds `icedash.zip` from a list of the
-thirteen files the game needs and fails if any of the above turns up inside
-the archive.
+`README.md`, `GAME_SPEC.md`, `SYSTEMS.md`, `PLAYTEST.md`, `unlock.html`,
+`test.html` and `test/` are not part of the game: `build-android.sh` copies
+only the files on its list into `www/`.
 
 ## The Android app
 
 The same game, packaged with [Capacitor](https://capacitorjs.com) so it runs
-offline inside the app. `build-android.sh` builds `www/` from exactly the
-files `build.sh` ships to Playables, minus the YouTube SDK tag, plus
-`js/native.js` (the Android back button as the Esc key, haptics through the
+offline inside the app. `build-android.sh` builds `www/` from the files on
+its list, plus `js/native.js` (the Android back button as the Esc key, haptics through the
 native plugin, the status bar hidden, a run paused and the sound stopped
 while the app is out of sight, rewarded ads, the Freeride board on Play
 Games, Play's review card). The game code itself is unchanged.

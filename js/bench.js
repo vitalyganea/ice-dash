@@ -4,7 +4,7 @@
    Asked for by the owner, 24 Nov 2026: a page anyone opens on their own
    phone; one tap, about fifteen minutes, and the report says where the
    hill stutters, on that screen (60, 90, 120 Hz) and that graphics chip.
-   Never shipped with the game: not in build.sh's FILES, and test.html loads
+   Never shipped with the game: not in build-android.sh's FILES, and test.html loads
    the game's own files without ui.js, so no menu, no save and no sound; the
    player's progress on the same site is never read or touched.
 
@@ -403,6 +403,13 @@
     R.frames++;
     if (!K || !K.VIEW_H || R.frames % 30 === 0) K = Game._consts();
     var seen = tagsOf(W);
+    /* the pictures the game made since the last frame (Game._pics) */
+    var P = Game._pics ? Game._pics() : null, built = 0, builtMs = 0, wideB = 0, wideMs = 0;
+    if (P) {
+      if (R.pics) { built = P.n - R.pics.n; builtMs = P.ms - R.pics.ms; wideB = P.wide - R.pics.wide; wideMs = P.wideMs - R.pics.wideMs; }
+      R.pics = { n: P.n, ms: P.ms, wide: P.wide, wideMs: P.wideMs };
+      if (built > 0) { TAGS.splice(TAGS.length - 1, 0, 'pictures made'); if (wideB > 0) TAGS.splice(TAGS.length - 1, 0, 'wide picture made (a bridge roof)'); }
+    }
     var late = dt > R.refresh * 1.5;
     addS(R.all, dt, late);
     R.hist[Math.min(NB, Math.floor(dt / BIN))]++;
@@ -419,12 +426,12 @@
       }
     }
     if (dt > 50 && (R.worst.length < 30 || dt > R.worst[R.worst.length - 1][0])) {
-      R.worst.push([Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), seen, r1(W.speed)]);
+      R.worst.push([Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), seen, r1(W.speed), built, Math.round(builtMs), wideB, Math.round(wideMs)]);
       R.worst.sort(function (x, y) { return y[0] - x[0]; });
       if (R.worst.length > 30) R.worst.length = 30;
     }
     if (dt > 100 && R.freezes.length < 100)
-      R.freezes.push([r1((t - R.t0) / 1000), Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', ')]);
+      R.freezes.push([r1((t - R.t0) / 1000), Math.round(dt), Math.round(W.dist / 8), R.biome, R.section, TAGS.join(', '), built, Math.round(builtMs), wideB, Math.round(wideMs)]);
     if (R.newBiomeT > 0) R.newBiomeT -= dt;
     if (!R.win) R.win = { n: 0, sum: 0, late: 0, max: 0, t: t, pics: Game._drawn ? Game._drawn().n : 0 };
     var w = R.win; w.n++; w.sum += dt; if (late) w.late++; if (dt > w.max) w.max = dt;
@@ -580,6 +587,8 @@
       sections: secs, tags: tags, worst: R.worst, freezes: R.freezes,
       glitches: { flashes: R.flashes, popins: R.popins, errors: R.errors, errorsN: R.errorsN, nan: R.nan,
                   maxObjects: R.maxObjs, maxPuffs: R.maxPuffs, longTasks: { n: R.longN, ms: Math.round(R.longMs), max: Math.round(R.longMax) } },
+      pictures: (function () { var P = Game._pics ? Game._pics() : null; return P ? { n: P.n, ms: Math.round(P.ms), max: Math.round(P.max), mpx: r1(P.px / 1e6),
+        wide: P.wide, wideMs: Math.round(P.wideMs), wideMax: Math.round(P.wideMax), wideMpx: r1(P.widePx / 1e6) } : null; })(),
       tiers: R.tiers, timeline: R.timeline, device: DEV
     };
   }

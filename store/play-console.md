@@ -213,4 +213,4 @@ build sent to Play must have all four.
    GitHub Actions): see `app-store.md`.
 
 The web version keeps running throughout. It can also be served from an
-own server: the files from `build.sh` behind any web server with HTTPS.
+own server: the files on `build-android.sh`'s list behind any web server with HTTPS.

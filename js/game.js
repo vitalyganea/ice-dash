@@ -5089,8 +5089,13 @@ var Game = (function () {
   }
   /* The box runs from (x0, y0) to (x1, y1) around the thing's centre, with
      room for the shadow it throws, which is painted into it too. */
+  /* every picture made, counted (test.html's bench reads it, _pics): how
+     many, how long they took, how many pixels; the wide ones (a bridge's
+     roof, as wide as the screen) on their own */
+  var PICS = { n: 0, ms: 0, max: 0, px: 0, wide: 0, wideMs: 0, wideMax: 0, widePx: 0 };
   function spriteOf(x0, y0, x1, y1, paint) {
     if (typeof document === 'undefined') return null;
+    var t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     var cv = document.createElement('canvas');
     var cx = cv && cv.getContext ? cv.getContext('2d') : null;
     if (!cx) return null;
@@ -5099,6 +5104,11 @@ var Game = (function () {
     cx.setTransform(cv.width / w, 0, 0, cv.height / h, 0, 0);
     var keep = ctx; ctx = cx;
     try { paint(-x0, -y0); } finally { ctx = keep; }
+    if (t0) {
+      var dt = performance.now() - t0, px = cv.width * cv.height;
+      PICS.n++; PICS.ms += dt; PICS.px += px; if (dt > PICS.max) PICS.max = dt;
+      if (w > VIEW_W) { PICS.wide++; PICS.wideMs += dt; PICS.widePx += px; if (dt > PICS.wideMax) PICS.wideMax = dt; }
+    }
     return { cv: cv, x0: x0, y0: y0, w: w, h: h };
   }
   function rockKey(P) { return P.rock + P.rockDark + (P.cap || '') + '|' + drawK; }
@@ -12987,6 +12997,7 @@ var Game = (function () {
 
     debug: function () { return W; },
     _fading: function () { return !!FADING; },       // a fade between stretches is on (test.html's bench)
+    _pics: function () { return PICS; },
     _bridgeKinds: function () { return BRIDGE_KINDS.filter(function (k, i, a) { return a.indexOf(k) === i; }); },   // the bench's five bridges
     _skip: function (o) { SKIP = o || {}; },
     /* for tests: the second tier (fewer pixels, no decoration) or none */

@@ -4,14 +4,11 @@
 (function () {
   'use strict';
 
-  var LOAD_TIMEOUT = 3000;
   var SAVE_KEY = 'icedash-save-v1';
   /* The game used to be called Pine Rush. Anyone who played it then still
      has their fish under the old key, so read it once if the new one is
-     empty. Only matters outside Playables, where the cloud save is keyed
-     by the game rather than by this string. */
+     empty. */
   var OLD_KEYS = ['pinerush-save-v1'];
-  var IN_YT = !!(window.ytgame && window.ytgame.IN_PLAYABLES_ENV);
 
   /* -------------------------- saving ------------------------- */
   /* Declared above adopt(), which clamps a loaded save against the cap. */
@@ -97,7 +94,7 @@
      crazygames.js does). Unset, everything behaves as it always has. */
   var PLAT = window.ICEDASH_PLATFORM || {};
   var save = defaults();
-  var canSave = false, saving = false, saveAgain = false;
+  var canSave = false;
 
   function adopt(raw) {
     if (!raw) return;
@@ -228,12 +225,6 @@
     } catch (e) { /* a corrupt save just falls back to the defaults */ }
   }
   function loadSave() {
-    if (IN_YT) {
-      return Promise.race([
-        window.ytgame.game.loadData().then(adopt, function () {}),
-        new Promise(function (r) { setTimeout(r, LOAD_TIMEOUT); })
-      ]);
-    }
     try {
       var raw = localStorage.getItem(SAVE_KEY);
       for (var i = 0; !raw && i < OLD_KEYS.length; i++) raw = localStorage.getItem(OLD_KEYS[i]);
@@ -317,16 +308,10 @@
   function store() {
     if (!canSave) return;
     cardSoon();
-    if (saving) { saveAgain = true; return; }
     var data = JSON.stringify(save);
-    if (!IN_YT) { try { localStorage.setItem(SAVE_KEY, data); } catch (e) {} pushScore(); pushCloud(data); return; }
-    saving = true;
-    window.ytgame.game.saveData(data).then(done, function () {
-      window.ytgame.game.saveData(data).then(done, done);
-    });
-    function done() { saving = false; pushScore(); if (saveAgain) { saveAgain = false; store(); } }
+    try { localStorage.setItem(SAVE_KEY, data); } catch (e) {}
+    pushScore(); pushCloud(data);
   }
-  var lastSent = -1;
   function pushScore() {
     /* A best the board has never taken (made with no network, or before
        signing in) goes up with a save until it has; one it has taken is not
@@ -334,11 +319,6 @@
     if (PLAT.boardScore && save.best > (save.boardBest || 0)) PLAT.boardScore(save.best);
     /* the shared board (1.3.5) takes the save's best once, as its start */
     if (PLAT.boardBestIs && save.best > 0) PLAT.boardBestIs(save.best);
-    if (!IN_YT || !window.ytgame.engagement) return;
-    if (save.best === lastSent) return;
-    lastSent = save.best;
-    window.ytgame.engagement.sendScore({ value: save.best })
-      .then(null, function () { lastSent = -1; });
   }
 
   /* ------------------------- elements ------------------------ */
@@ -1614,11 +1594,9 @@
     return { fx: d ? gfxLvl(d.fx, true) : 'auto', res: d ? gfxLvl(d.res) : 'auto' };
   }
   function qKeep(tier) {
-    if (IN_YT) return;
     try { localStorage.setItem(Q_KEY, JSON.stringify({ tier: tier, t: Date.now() })); } catch (e) {}
   }
   function qRecord() {
-    if (IN_YT) return 0;
     try {
       var r = JSON.parse(localStorage.getItem(Q_KEY) || 'null');
       if (!r || typeof r.tier !== 'number') return 0;
@@ -3874,20 +3852,6 @@
     }
   });
 
-  /* ------------------ Playables lifecycle -------------------- */
-  function bootSdk() {
-    if (!IN_YT) return;
-    var sys = window.ytgame.system;
-    sys.onPause(function () {
-      if (Game.isRunning() && !Game.isPaused()) { Game.pause(); show('pause'); store(); }
-      Game.suspend();
-    });
-    sys.onResume(function () { Game.unsuspend(); });
-    try { Sfx.platformAudio(sys.isAudioEnabled()); } catch (e) {}
-    sys.onAudioEnabledChange(function (on) { Sfx.platformAudio(on); });
-  }
-  function announce(fn) { if (IN_YT) { try { window.ytgame.game[fn](); } catch (e) {} } }
-
   function firstGesture() {
     Sfx.unlock(); Sfx.sound(save.sfx); Sfx.music(save.music);
     window.removeEventListener('pointerdown', firstGesture);
@@ -3897,7 +3861,6 @@
   window.addEventListener('keydown', firstGesture);
 
   /* --------------------------- boot -------------------------- */
-  bootSdk();
   setLang(save.lang);
   applyI18n();
   Sfx.sound(save.sfx);
@@ -3908,7 +3871,6 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitScreen);
 
   requestAnimationFrame(function () {
-    announce('firstFrameReady');
     loadSave().then(function () {
       canSave = true;
       settle(true);
@@ -3923,7 +3885,6 @@
         else ride('tutorial');
       }
       else show(currentScreen === 'title' ? 'title' : currentScreen);
-      announce('gameReady');
     });
   });
 })();
