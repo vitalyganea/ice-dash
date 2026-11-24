@@ -46,6 +46,9 @@
   var Q = (function () { var o = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); return o; })();
   var QUICK = Q.quick === '1';
   var SEED = 20271;
+  /* which game the report is of: changed with every change made for speed,
+     so two reports of one phone can be told apart (and compared) */
+  var GAME_BUILD = 'pics-2';   // 24 Nov 2026: pictures kept and made ahead, the creatures' beads from pictures (SYSTEMS 207)
   var SEND_URL = 'https://bench.icedasher.workers.dev/v1/bench';
   var LIMIT_MS = (QUICK ? 3.5 : 15) * 60000;           // the whole test, at most
   var PLAN = QUICK ? { surveyM: 4000, runMs: 60000, scoreGoal: 50000, slowAt: 300, midAt: 0, gfx: 2, creatureMs: 1500, creatures: 4, control: 2000 }
@@ -588,8 +591,9 @@
       glitches: { flashes: R.flashes, popins: R.popins, errors: R.errors, errorsN: R.errorsN, nan: R.nan,
                   maxObjects: R.maxObjs, maxPuffs: R.maxPuffs, longTasks: { n: R.longN, ms: Math.round(R.longMs), max: Math.round(R.longMax) } },
       pictures: (function () { var P = Game._pics ? Game._pics() : null; return P ? { n: P.n, ms: Math.round(P.ms), max: Math.round(P.max), mpx: r1(P.px / 1e6),
-        wide: P.wide, wideMs: Math.round(P.wideMs), wideMax: Math.round(P.wideMax), wideMpx: r1(P.widePx / 1e6) } : null; })(),
-      tiers: R.tiers, timeline: R.timeline, device: DEV
+        wide: P.wide, wideMs: Math.round(P.wideMs), wideMax: Math.round(P.wideMax), wideMpx: r1(P.widePx / 1e6),
+        reused: P.reused || 0, pooled: P.pooled || 0, ahead: P.ahead || 0 } : null; })(),
+      build: GAME_BUILD, tiers: R.tiers, timeline: R.timeline, device: DEV
     };
   }
   /* the report on the server: made at once, sent again every 30 s, once

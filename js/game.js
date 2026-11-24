@@ -299,6 +299,7 @@ var Game = (function () {
       combo: 0, comboBest: 0, closes: 0, closeT: 0, closeX: 0,
       lives: 0, revives: 0, finds: 0, gifts: 0, giftsOn: false, nextGiftD: 0, kois: 0, koiOn: false
     };
+    if (W && W.objects) W.objects.forEach(freeAll);      // the last run's, or the title's
     W = w;
     if (pendingCourse) {
       w.course = { id: pendingCourse.id, step: pendingCourse.step, i: 0,
@@ -605,7 +606,7 @@ var Game = (function () {
     for (i = 0; i < W.objects.length; i++) {
       o = W.objects[i];
       if (!o._gone) { out.push(o); continue; }
-      any = true;
+      any = true; freeAll(o);
       if (o.t === 'fish' && W.course && W.fishTotal) W.fishTotal--;   // a marked run's count is of fish you can have
     }
     if (any) W.objects = out;
@@ -1382,7 +1383,7 @@ var Game = (function () {
         /* Counted here rather than where it is laid down: a rock that fell
            off the back of the world is one he actually got past. */
         if (o.t === 'nunatak') W.forks++;
-        W.objects.splice(i, 1); continue;
+        freeAll(o); W.objects.splice(i, 1); continue;
       }
       var dy = o.d - W.dist, dx = o.x - W.px;
       if (o.leap) {                                    // still in the air, out of a smashed rock
@@ -1591,7 +1592,7 @@ var Game = (function () {
                              leap: { x0: o.x, d0: o.d, t: -fk * 3, dur: SMASH_LEAP + fk * 4 } });
           }
         }
-        W.objects.splice(i, 1);
+        freeAll(o); W.objects.splice(i, 1);
         continue;
       }
       /* A close call: how near he came, kept while the thing is beside
@@ -2118,7 +2119,7 @@ var Game = (function () {
       var far = o.d + (o.t === 'crevasse' ? (o.span || 0) : 0);
       if (far < from || o.d > to) continue;
       if (o.t === 'rock' || o.t === 'tree' || o.t === 'crevasse' || o.t === 'ramp') {
-        W.objects.splice(i, 1); n++;
+        freeAll(o); W.objects.splice(i, 1); n++;
       }
     }
     for (var p = 0; p < 18; p++)
@@ -2465,6 +2466,40 @@ var Game = (function () {
     });
   }
 
+  /* The pictures of what is about to come over the top of the screen are
+     made a little before it does (AHEAD), out of what is left of the
+     frame's share once everything on screen has had its own, at most
+     PREP_N a frame: made the frame it came into view, a rock's picture
+     landed on the same frame as the next stretch's, the fish and a bridge,
+     and those were the frames that ran late on a slow phone (OPPO A9 2020,
+     test.html report 7, 24 Nov 2026: 14-24% of them, against 9% on a plain
+     stretch). Nothing is drawn: PREP has drawPictured make and return. */
+  var PREP = false, AHEAD = 260, PREP_N = 2;
+  function prepAhead() {
+    if (spriteBudget <= 0) return;
+    var keepB = spriteBudget, give = Math.min(spriteBudget, PREP_N), B = pal(), roofs = 0;
+    spriteBudget = give; PREP = true;
+    try {
+      for (var i = 0; i < W.objects.length && spriteBudget > 0; i++) {
+        var o = W.objects[i], y = scrY(o.d);
+        if (o.t === 'tunnel') {          // a bridge's roof (prepBridges makes it once it is in), one a frame: they are big
+          if (roofs || y >= -120 || y < -120 - AHEAD) continue;
+          var r0 = spriteBudget;
+          bridgeKind(o, B); roofSet(o, B, roofInk(B), true);
+          if (spriteBudget < r0) { roofs++; PICS.ahead++; }
+          continue;
+        }
+        if (y > -140 || y < -140 - AHEAD) continue;
+        var x = scrX(o.x), n0 = spriteBudget;
+        if (o.t === 'rock') drawRock(x, y, o, B);
+        else if (o.t === 'tree') drawTree(x, y, o, B);
+        else if (o.t === 'deco') { if (o.kind === 'tree') drawTree(x, y, o, B); else drawRock(x, y, o, B); }
+        else if (o.t === 'ramp') drawRamp(x, y, o, B);
+        else continue;
+        PICS.ahead += n0 - spriteBudget;
+      }
+    } finally { PREP = false; spriteBudget = keepB - (give - spriteBudget); }
+  }
   function drawObjects() {
     var list = W.objects.filter(function (o) {
       var y = scrY(o.d);
@@ -2508,6 +2543,7 @@ var Game = (function () {
       else if (o.t === 'geyser') drawGeyser(x, y, o, B);
       else if (o.t === 'nunatak') drawNunatak(o, B);
     }
+    prepAhead();
     for (i = 0; i < W.puffs.length; i++) {
       var p = W.puffs[i];
       ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.75;
@@ -2744,7 +2780,7 @@ var Game = (function () {
     return [{ o: { d: o.d, span: part, ph: o.ph }, kind: inner, bow: bow },
             { o: { d: o.d + o.span - part, span: part, ph: o.ph + 1.7 }, kind: inner, bow: bow }];
   }
-  function roofBlit(R) { ctx.drawImage(R.cv, R.x0 + roofDX(R), R.y0 + roofDY(R), R.w, R.h); }
+  function roofBlit(R) { if (!R.dead) ctx.drawImage(R.cv, 0, 0, R.pw, R.ph, R.x0 + roofDX(R), R.y0 + roofDY(R), R.w, R.h); }
   /* the pictures a bridge is drawn from this frame: one, or through a
      fade the old stretch's and the new one's; made only when build is set,
      at most one a frame, and out of the frame's share of new pictures */
@@ -5061,13 +5097,56 @@ var Game = (function () {
     while (P.length > keep) free(P.splice(P[0].k === key ? 1 : 0, 1)[0]);   // the oldest: the stretch behind
     return s;
   }
-  function free(p) { if (p.s) p.s.cv.width = p.s.cv.height = 0; }   // its memory now, not at the next GC
+  /* A picture let go is kept for the next one of about its size
+     (takeCanvas). A canvas was made and thrown away for every rock, tree
+     and bridge that went by, some fourteen a second, and a thing that left
+     the hill took its pictures with it for the garbage collector to find:
+     the memory piled up and was cleared all at once, a freeze of 0.4 to
+     0.5 s every few minutes on the iPhone (test.html, report 6, 24 Nov
+     2026). Past POOL_MAX pixels a picture is emptied as before (its memory
+     now, not at the next GC). One let go is marked dead and never drawn
+     again: its canvas may already be another thing's. */
+  var POOL = [], POOL_PX = 0, POOL_MAX = 6e6, POOL_N = 24;
+  function free(p) {
+    var s = p && p.s;
+    if (!s || !s.cv || s.dead) return;
+    var cv = s.cv, px = cv.width * cv.height;
+    s.dead = true; s.cv = null;
+    if (px > 0 && POOL_PX + px <= POOL_MAX && POOL.length < POOL_N) { POOL.push(cv); POOL_PX += px; PICS.pooled++; }
+    else cv.width = cv.height = 0;
+  }
+  function freeAll(o) {                  // a thing leaving the hill lets its pictures go with it
+    var i;
+    if (o._pics) { for (i = 0; i < o._pics.length; i++) free(o._pics[i]); o._pics = null; }
+    if (o._roofs) { for (i = 0; i < o._roofs.length; i++) free({ s: o._roofs[i] }); o._roofs = null; }
+  }
+  /* the smallest kept canvas that holds pw by ph, if one is not much bigger */
+  function takeCanvas(pw, ph) {
+    var best = -1, bestA = Infinity, need = pw * ph;
+    for (var i = 0; i < POOL.length; i++) {
+      var c = POOL[i], a = c.width * c.height;
+      if (c.width >= pw && c.height >= ph && a < bestA && a <= need * 1.6 + 4096) { best = i; bestA = a; }
+    }
+    if (best < 0) return null;
+    POOL_PX -= bestA;
+    return POOL.splice(best, 1)[0];
+  }
   /* Draws o from its pictures and says whether it could; when it could
      not, the caller draws it fresh in B. key(P) names o's picture in a
      palette P, paint(P) makes it. */
   function drawPictured(o, x, y, B, key, paint) {
     if (!HILL) return false;           // a comic or an icon: painted fresh, at its own size (a picture made at the hill's size came out blurred)
     var F = (B === PAL) ? FADING : null, N = (B === PAL) ? NEXT : null;
+    if (PREP) {                        // just above the screen (prepAhead): its pictures made, nothing drawn
+      if (!F) {
+        pictureOf(o, key(B), function () { return paint(B); }, N ? 2 : 1);
+        if (N && spriteBudget > 0) pictureOf(o, key(N), function () { return paint(N); }, 2);
+      } else {
+        pictureOf(o, key(F.from), function () { return paint(F.from); }, 2);
+        pictureOf(o, key(F.to), function () { return paint(F.to); }, 2);
+      }
+      return true;
+    }
     if (!F) {
       var one = pictureOf(o, key(B), function () { return paint(B); }, N ? 2 : 1);
       if (N && spriteBudget > 2)            // what is on the hill now goes first
@@ -5092,29 +5171,37 @@ var Game = (function () {
   /* every picture made, counted (test.html's bench reads it, _pics): how
      many, how long they took, how many pixels; the wide ones (a bridge's
      roof, as wide as the screen) on their own */
-  var PICS = { n: 0, ms: 0, max: 0, px: 0, wide: 0, wideMs: 0, wideMax: 0, widePx: 0 };
+  var PICS = { n: 0, ms: 0, max: 0, px: 0, wide: 0, wideMs: 0, wideMax: 0, widePx: 0, reused: 0, pooled: 0, ahead: 0 };
   function spriteOf(x0, y0, x1, y1, paint) {
     if (typeof document === 'undefined') return null;
     var t0 = typeof performance !== 'undefined' ? performance.now() : 0;
-    var cv = document.createElement('canvas');
-    var cx = cv && cv.getContext ? cv.getContext('2d') : null;
+    var w = x1 - x0, h = y1 - y0, pw = Math.ceil(w * drawK), ph = Math.ceil(h * drawK);
+    var cv = takeCanvas(pw, ph), reused = !!cv;
+    if (!cv) {
+      cv = document.createElement('canvas');
+      if (!cv) return null;
+      cv.width = pw; cv.height = ph;
+    }
+    var cx = cv.getContext ? cv.getContext('2d') : null;
     if (!cx) return null;
-    var w = x1 - x0, h = y1 - y0;
-    cv.width = Math.ceil(w * drawK); cv.height = Math.ceil(h * drawK);
-    cx.setTransform(cv.width / w, 0, 0, cv.height / h, 0, 0);
+    if (reused) { cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, cv.width, cv.height); PICS.reused++; }
+    /* painted inside a save, so what it leaves set (a clip, an alpha) goes
+       with it and the canvas is as new for the next picture */
+    cx.save();
+    cx.setTransform(pw / w, 0, 0, ph / h, 0, 0);
     var keep = ctx; ctx = cx;
-    try { paint(-x0, -y0); } finally { ctx = keep; }
+    try { paint(-x0, -y0); } finally { ctx = keep; cx.restore(); }
     if (t0) {
-      var dt = performance.now() - t0, px = cv.width * cv.height;
+      var dt = performance.now() - t0, px = pw * ph;
       PICS.n++; PICS.ms += dt; PICS.px += px; if (dt > PICS.max) PICS.max = dt;
       if (w > VIEW_W) { PICS.wide++; PICS.wideMs += dt; PICS.widePx += px; if (dt > PICS.wideMax) PICS.wideMax = dt; }
     }
-    return { cv: cv, x0: x0, y0: y0, w: w, h: h };
+    return { cv: cv, x0: x0, y0: y0, w: w, h: h, pw: pw, ph: ph };
   }
   function rockKey(P) { return P.rock + P.rockDark + (P.cap || '') + '|' + drawK; }
   function treeKey(P) { return P.tree + P.treeDark + (P.cap || '') + (P.snowyTrees || 0) + '|' + drawK; }
   function plantKey(P) { return (P.flora ? P.flora + P.trunk : '') + treeKey(P); }
-  function blit(spr, x, y) { ctx.drawImage(spr.cv, x + spr.x0, y + spr.y0, spr.w, spr.h); }
+  function blit(spr, x, y) { if (!spr.dead) ctx.drawImage(spr.cv, 0, 0, spr.pw, spr.ph, x + spr.x0, y + spr.y0, spr.w, spr.h); }
 
   /* ---- one sun for the whole hill ----
      Low in the upper left, where every highlight in the game already sits.
@@ -6489,13 +6576,12 @@ var Game = (function () {
       c.beginPath(); c.ellipse(0, -1, 14.5, 19, 0, 0, 6.2832); c.clip();
       c.globalCompositeOperation = 'lighter';
       [['110,255,180', -9, 0], ['150,200,255', -2, 1.7], ['190,130,255', 5, 3.4]].forEach(function (rb) {
+        /* each a glow picture laid in (glowAt): 33 gradients a frame were
+           a draw each, the slowest creature on a slow phone (24 Nov 2026) */
+        var stops = [[0, rb[0], 0.32], [1, rb[0], 0]];
         for (var bx = -15; bx <= 15; bx += 3) {
           var by = rb[1] + Math.sin(bx * 0.16 + ph + rb[2]) * 2.2;
-          var gr = c.createRadialGradient(bx, by, 0, bx, by, 6);
-          gr.addColorStop(0, 'rgba(' + rb[0] + ',.32)');
-          gr.addColorStop(1, 'rgba(' + rb[0] + ',0)');
-          c.fillStyle = gr;
-          c.beginPath(); c.ellipse(bx, by, 6, 6, 0, 0, 6.2832); c.fill();
+          glowAt(c, bx, by, 6, stops, 1);
         }
       });
       c.restore();
@@ -8590,10 +8676,16 @@ var Game = (function () {
     c.restore();
     var k;
     for (k = 10; k >= 0; k--) { c.fillStyle = line; c.beginPath(); c.arc(TP[k].x, TP[k].y, TP[k].w + 1, 0, 6.2832); c.fill(); }
+    var tailScale = function (w) {
+      return function (c, x, y) {
+        var tg = c.createRadialGradient(x - w * 0.4, y, 0.3, x, y, w);
+        tg.addColorStop(0, red[0]); tg.addColorStop(0.6, red[1]); tg.addColorStop(1, red[2]);
+        c.fillStyle = tg; c.beginPath(); c.arc(x, y, w, 0, 6.2832); c.fill();
+      };
+    };
     for (k = 10; k >= 0; k--) {
-      var tq = TP[k], tg = c.createRadialGradient(tq.x - tq.w * 0.4, tq.y, 0.3, tq.x, tq.y, tq.w);
-      tg.addColorStop(0, red[0]); tg.addColorStop(0.6, red[1]); tg.addColorStop(1, red[2]);
-      c.fillStyle = tg; c.beginPath(); c.arc(tq.x, tq.y, tq.w, 0, 6.2832); c.fill();
+      var tq = TP[k];
+      dab(c, 'dragonTail' + red.join() + tq.w.toFixed(2), tq.x, tq.y, tq.w + 0.4, tailScale(tq.w));
     }
     /* the wings, folded along his sides */
     dragonWings(c, S, o);
@@ -9099,6 +9191,40 @@ var Game = (function () {
     var fo = (f || 0) * r, gr = c.createRadialGradient(x - fo, y - fo, f ? r * 0.1 : 0, x, y, r);
     stops.forEach(function (st) { gr.addColorStop(st[0], 'rgba(' + st[1] + ',' + (st[2] * alpha).toFixed(3) + ')'); });
     c.fillStyle = gr; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill();
+  }
+  /* A small thing a creature wears many of — a bead of water, a ball of
+     fur, a pearl, a rivet, a scale of a tail — painted once into a picture
+     at the size it is shown and laid in after, at low effects on the hill
+     (SPARE): each was a shape with a gradient of its own, a draw apiece for
+     a slow phone's graphics chip (Lifeguard's 21 drops were 84 draws; the
+     skins with the most such were the slowest on the OPPO A9 2020, 20-30%
+     of frames late against 3-8% for their plain creature, test.html report
+     7, 24 Nov 2026). paint(c, x, y) paints it centred on (x, y); R is how far
+     it reaches from there. Anywhere else, or with no picture to be had, it
+     is painted as before. */
+  var DABS = {}, DAB_N = 0;
+  function dab(c, key, x, y, R, paint) {
+    var T = (SPARE && HILL && c.getTransform && typeof document !== 'undefined') ? c.getTransform() : null;
+    var k = T ? Math.sqrt(T.a * T.a + T.b * T.b) : 0;
+    if (!(k > 0) || k * R > 60) { paint(c, x, y); return; }
+    var res = Math.pow(2, Math.ceil(Math.log(k) / Math.LN2 * 8) / 8);   // eighth-octave steps: a few pictures, not one a frame
+    var id = key + '|' + res, P = DABS[id];
+    if (P === undefined) {
+      if (DAB_N >= 400) { DABS = {}; DAB_N = 0; }
+      var n = Math.ceil(R * 2 * res) + 4, cv = document.createElement('canvas');
+      var cc = cv && cv.getContext ? cv.getContext('2d') : null;
+      P = null;
+      if (cc) {
+        cv.width = cv.height = n;
+        cc.setTransform(res, 0, 0, res, n / 2, n / 2);
+        cc.lineJoin = c.lineJoin; cc.lineCap = c.lineCap;
+        paint(cc, 0, 0);
+        P = { cv: cv, half: n / 2 / res };
+      }
+      DABS[id] = P; DAB_N++;
+    }
+    if (!P) { paint(c, x, y); return; }
+    c.drawImage(P.cv, x - P.half, y - P.half, P.half * 2, P.half * 2);
   }
   function hexRgb(h) { var n = parseInt(h.slice(1), 16); return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255); }
   /* A cloak over a creature's shoulders, seen from above: wider than he is
@@ -9746,10 +9872,13 @@ var Game = (function () {
           var t = k / 12, fx2 = -14 + t * 28, fy2 = -16.5 - Math.sin(t * Math.PI) * 3.2;
           c.fillStyle = SHD; c.beginPath(); c.arc(fx2 + 1, fy2 + 1.4, 2.8, 0, 6.2832); c.fill();
         }
-        for (k = 0; k <= 12; k++) {
-          var t2 = k / 12, fx3 = -14 + t2 * 28, fy3 = -16.5 - Math.sin(t2 * Math.PI) * 3.2;
+        var furBall = function (c, fx3, fy3) {
           var fgr = c.createRadialGradient(fx3 - 0.8, fy3 - 0.9, 0.3, fx3, fy3, 2.8); fgr.addColorStop(0, '#c8b8a0'); fgr.addColorStop(1, '#6a5a46');
           c.fillStyle = fgr; c.beginPath(); c.arc(fx3, fy3, 2.7, 0, 6.2832); c.fill();
+        };
+        for (k = 0; k <= 12; k++) {
+          var t2 = k / 12;
+          dab(c, 'vikingFur', -14 + t2 * 28, -16.5 - Math.sin(t2 * Math.PI) * 3.2, 3, furBall);
         }
         /* the shield */
         var sy = 9, sr = 11.5;
@@ -10079,13 +10208,15 @@ var Game = (function () {
            on her fur, her suit and the ring, each with its light and its
            shadow; her head's fur wet and glossy; and, as she runs, drops
            flung off her sides that fall behind and fade */
-        var drop = function (x, yy, r) {
-          c.fillStyle = 'rgba(25,32,48,.22)'; c.beginPath(); c.arc(x + r * 0.45, yy + r * 0.6, r, 0, 6.2832); c.fill();
-          var dg = c.createRadialGradient(x - r * 0.35, yy - r * 0.35, r * 0.1, x, yy, r);
-          dg.addColorStop(0, 'rgba(255,255,255,.6)'); dg.addColorStop(0.55, 'rgba(190,225,255,.32)'); dg.addColorStop(1, 'rgba(50,90,140,.55)');
-          c.fillStyle = dg; c.beginPath(); c.arc(x, yy, r, 0, 6.2832); c.fill();
-          c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = Math.max(0.25, r * 0.22); c.beginPath(); c.arc(x, yy, r * 0.62, 0.2, 1.4); c.stroke();
-          c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.arc(x - r * 0.38, yy - r * 0.38, r * 0.28, 0, 6.2832); c.fill();
+        var drop = function (x0, y0, r) {
+          dab(c, 'drop' + r, x0, y0, r * 1.8, function (c, x, yy) {
+            c.fillStyle = 'rgba(25,32,48,.22)'; c.beginPath(); c.arc(x + r * 0.45, yy + r * 0.6, r, 0, 6.2832); c.fill();
+            var dg = c.createRadialGradient(x - r * 0.35, yy - r * 0.35, r * 0.1, x, yy, r);
+            dg.addColorStop(0, 'rgba(255,255,255,.6)'); dg.addColorStop(0.55, 'rgba(190,225,255,.32)'); dg.addColorStop(1, 'rgba(50,90,140,.55)');
+            c.fillStyle = dg; c.beginPath(); c.arc(x, yy, r, 0, 6.2832); c.fill();
+            c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = Math.max(0.25, r * 0.22); c.beginPath(); c.arc(x, yy, r * 0.62, 0.2, 1.4); c.stroke();
+            c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.arc(x - r * 0.38, yy - r * 0.38, r * 0.28, 0, 6.2832); c.fill();
+          });
         };
         [[-2.3, 1.7], [0.35, 1.4], [2.05, 1.8], [-0.9, 1.15], [1.2, 1.0]].forEach(function (q) { drop(Math.cos(q[0]) * rx, y + Math.sin(q[0]) * ry, q[1]); });
         drop(6.4, y + 6.6, 1.3); drop(-5.8, y - 4.4, 1.05);
@@ -11055,8 +11186,10 @@ var Game = (function () {
           c.fillStyle = SHD; c.beginPath(); c.moveTo(bx - nx + 1, by - ny + 1.3); c.lineTo(px + 1, py + 1.3); c.lineTo(bx + nx + 1, by + ny + 1.3); c.closePath(); c.fill();
           c.fillStyle = gold; c.strokeStyle = '#7a520a'; c.lineWidth = 0.35;
           c.beginPath(); c.moveTo(bx - nx, by - ny); c.lineTo(px, py); c.lineTo(bx + nx, by + ny); c.closePath(); c.fill(); c.stroke();
-          var pg = c.createRadialGradient(px - 0.35, py - 0.35, 0.1, px, py, 1.1); pg.addColorStop(0, '#ffffff'); pg.addColorStop(1, '#d8d0c4');
-          c.fillStyle = pg; c.beginPath(); c.arc(px, py, 1, 0, 6.2832); c.fill();
+          dab(c, 'kingPearl', px, py, 1.4, function (c, px, py) {
+            var pg = c.createRadialGradient(px - 0.35, py - 0.35, 0.1, px, py, 1.1); pg.addColorStop(0, '#ffffff'); pg.addColorStop(1, '#d8d0c4');
+            c.fillStyle = pg; c.beginPath(); c.arc(px, py, 1, 0, 6.2832); c.fill();
+          });
         }
         /* the red velvet cap inside the ring, domed */
         var vg = c.createRadialGradient(cx - 2.4, cy - 2.4, 0.4, cx, cy, R);
@@ -11117,9 +11250,11 @@ var Game = (function () {
           /* rivets along it, a little in from her edges */
           [-0.62, 0.62].forEach(function (f) {
             var x = w * f, yy = y + 2.2 + bow * 2 * (1 - f * f) * 0.5 * 2 * 0.5;
-            c.fillStyle = 'rgba(20,28,40,.5)'; c.beginPath(); c.arc(x + 0.4, yy + 0.5, 1, 0, 6.2832); c.fill();
-            var rg = c.createRadialGradient(x - 0.3, yy - 0.3, 0.1, x, yy, 1); rg.addColorStop(0, '#ffffff'); rg.addColorStop(1, '#8a96a8');
-            c.fillStyle = rg; c.beginPath(); c.arc(x, yy, 0.9, 0, 6.2832); c.fill();
+            dab(c, 'robotRivet', x, yy, 1.9, function (c, x, yy) {
+              c.fillStyle = 'rgba(20,28,40,.5)'; c.beginPath(); c.arc(x + 0.4, yy + 0.5, 1, 0, 6.2832); c.fill();
+              var rg = c.createRadialGradient(x - 0.3, yy - 0.3, 0.1, x, yy, 1); rg.addColorStop(0, '#ffffff'); rg.addColorStop(1, '#8a96a8');
+              c.fillStyle = rg; c.beginPath(); c.arc(x, yy, 0.9, 0, 6.2832); c.fill();
+            });
           });
         };
         [-22, -9, 18, 31].forEach(seamAt);
