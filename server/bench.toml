@@ -12,7 +12,7 @@ preview_urls = false
 [[d1_databases]]
 binding = "DB"
 database_name = "icedasher-bench"
-database_id = "TO_BE_CREATED"   # npx wrangler d1 create icedasher-bench, then its id here
+database_id = "57b3c09f-139f-4d4b-b1fa-2995b58c08c3"
 
 # reports: twenty a minute from one address at most
 [[ratelimits]]
