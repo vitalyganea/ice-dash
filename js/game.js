@@ -12986,6 +12986,7 @@ var Game = (function () {
     resize: resize,
 
     debug: function () { return W; },
+    _fading: function () { return !!FADING; },       // a fade between stretches is on (test.html's bench)
     _skip: function (o) { SKIP = o || {}; },
     /* for tests: the second tier (fewer pixels, no decoration) or none */
     _lite: function (v) { if (v !== undefined) { qWant = { res: 'auto', fx: 'auto' }; qTier = v ? 2 : 0; applyQuality(); if (canvas) resize(); } return LITE; },
