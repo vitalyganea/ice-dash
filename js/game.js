@@ -5106,14 +5106,20 @@ var Game = (function () {
      2026). Past POOL_MAX pixels a picture is emptied as before (its memory
      now, not at the next GC). One let go is marked dead and never drawn
      again: its canvas may already be another thing's. */
-  var POOL = [], POOL_PX = 0, POOL_MAX = 6e6, POOL_N = 24;
+  /* One that does not fit there is emptied (its memory now) but the canvas
+     itself is kept too (EMPTY_CV) and sized again for a later picture, so
+     the hill never throws a canvas away: the iPhone still froze for 0.4 s
+     about every 155 s with nearly all of the time outside the page's
+     script (report 10, 24 Nov 2026), some 7,500 canvases thrown away in a
+     quarter of an hour for it to clear. */
+  var POOL = [], POOL_PX = 0, POOL_MAX = 6e6, POOL_N = 24, EMPTY_CV = [];
   function free(p) {
     var s = p && p.s;
     if (!s || !s.cv || s.dead) return;
     var cv = s.cv, px = cv.width * cv.height;
     s.dead = true; s.cv = null;
     if (px > 0 && POOL_PX + px <= POOL_MAX && POOL.length < POOL_N) { POOL.push(cv); POOL_PX += px; PICS.pooled++; }
-    else cv.width = cv.height = 0;
+    else { cv.width = cv.height = 0; if (EMPTY_CV.length < 400) EMPTY_CV.push(cv); }
   }
   function freeAll(o) {                  // a thing leaving the hill lets its pictures go with it
     var i;
@@ -5171,12 +5177,15 @@ var Game = (function () {
   /* every picture made, counted (test.html's bench reads it, _pics): how
      many, how long they took, how many pixels; the wide ones (a bridge's
      roof, as wide as the screen) on their own */
-  var PICS = { n: 0, ms: 0, max: 0, px: 0, wide: 0, wideMs: 0, wideMax: 0, widePx: 0, reused: 0, pooled: 0, ahead: 0 };
+  var PICS = { n: 0, ms: 0, max: 0, px: 0, wide: 0, wideMs: 0, wideMax: 0, widePx: 0, reused: 0, pooled: 0, ahead: 0, resized: 0 };
   function spriteOf(x0, y0, x1, y1, paint) {
     if (typeof document === 'undefined') return null;
     var t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     var w = x1 - x0, h = y1 - y0, pw = Math.ceil(w * drawK), ph = Math.ceil(h * drawK);
     var cv = takeCanvas(pw, ph), reused = !!cv;
+    if (!cv && EMPTY_CV.length) {      // sized again: its context is as new, its pixels clear
+      cv = EMPTY_CV.pop(); cv.width = pw; cv.height = ph; PICS.resized++;
+    }
     if (!cv) {
       cv = document.createElement('canvas');
       if (!cv) return null;
